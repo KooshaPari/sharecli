@@ -22,7 +22,7 @@ serde_json = "1"
 toml = "0.8"
 
 # Process management
-sysinfo = "0.31"
+sysinfo = "0.38"
 nix = { version = "0.27", features = ["signal"] }
 
 # Utilities
