@@ -24,7 +24,7 @@ toml = "0.8"
 # Process management (substrate SDK + adapter)
 substrate = { git = "https://github.com/KooshaPari/substrate", default-features = false }
 runtime-process = { git = "https://github.com/KooshaPari/substrate", package = "runtime-process" }
-sysinfo = "0.30"
+sysinfo = "0.39"
 
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }
