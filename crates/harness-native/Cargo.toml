@@ -1,0 +1,52 @@
+[package]
+name = "harness-native"
+version = "0.1.0"
+edition = "2021"
+description = "Native helpers for agent-harness: cache-key, is-agent, dispatcher"
+license = "MIT"
+
+[[bin]]
+name = "harness-cache-key"
+path = "src/cache_key.rs"
+
+[[bin]]
+name = "harness-is-agent"
+path = "src/is_agent.rs"
+
+[[bin]]
+name = "helios-shield"
+path = "src/dispatcher.rs"
+required-features = ["unix-dispatcher"]
+
+[lib]
+name = "harness_native"
+path = "src/lib.rs"
+
+[dependencies]
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+clap = { version = "4.5.59", features = ["derive"] }
+fs2 = "0.4"
+rand = "0.10"
+tempfile = "3"
+uuid = { version = "1", features = ["v4"] }
+# P0: Serialization & config
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# P0: Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# P1: Config & paths
+config = "0.14"
+directories = "6"
+# P1: Text & parsing
+regex = "1"
+# P2: Time, errors, process
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+anyhow = "1"
+dunce = "1"
+itertools = "0.12"
+
+[features]
+default = []
+unix-dispatcher = []
