@@ -1,4 +1,5 @@
 //! FR-001 — Managed Process Lifecycle
+//! FR: FR-001
 //!
 //! Covers AC-001.1, AC-001.2, AC-001.3.
 //!
