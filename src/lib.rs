@@ -8,6 +8,7 @@
 
 pub mod commands;
 pub mod config;
+pub mod coordination;
 pub mod monitoring;
 pub mod runtime;
 
