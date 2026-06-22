@@ -81,12 +81,12 @@ impl ProcessPool {
         let procs = self.processes.read().await;
 
         let mut result = Vec::new();
-        for pid in procs.keys() {
-            if let Some(info) = ProcessInfo::from_sysinfo(
-                Pid::from_u32(*pid),
-                procs.get(pid).unwrap().info.name.clone(),
-                &sys,
-            ) {
+        for (pid, managed) in procs.iter() {
+            if let Some(mut info) =
+                ProcessInfo::from_sysinfo(Pid::from_u32(*pid), managed.info.name.clone(), &sys)
+            {
+                info.project = managed.info.project.clone();
+                info.harness = managed.info.harness.clone();
                 result.push(info);
             }
         }
@@ -460,7 +460,9 @@ impl ProcessPool {
             let info =
                 ProcessInfo::from_sysinfo(Pid::from_u32(*pid), managed.info.name.clone(), &sys);
 
-            if let Some(info) = info {
+            if let Some(mut info) = info {
+                info.project = managed.info.project.clone();
+                info.harness = managed.info.harness.clone();
                 let matches = match filter {
                     ProcessFilter::All => true,
                     ProcessFilter::ByProject(ref proj) => info.project.as_ref() == Some(proj),
