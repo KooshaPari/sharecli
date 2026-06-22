@@ -3,6 +3,8 @@ use std::path::Path;
 use harness_native::find_real;
 use harness_native::strategies::{execute, ExecRequest, RuleOpts};
 
+// FR: native harness ownership boundary
+
 #[test]
 fn find_real_ignores_empty_cache_entries() {
     let tmp = tempfile::tempdir().expect("tempdir");
