@@ -51,10 +51,7 @@ async fn fr001_ps_table_columns_present() {
     let pool = ProcessPool::new();
 
     #[cfg(unix)]
-    let info = pool
-        .spawn("sleep", &["1".to_string()], None, None, None)
-        .await
-        .expect("spawn ok");
+    let info = pool.spawn("sleep", &["1".to_string()], None, None, None).await.expect("spawn ok");
     #[cfg(windows)]
     let info = pool
         .spawn(

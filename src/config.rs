@@ -233,10 +233,22 @@ fn default_projects() -> HashMap<String, String> {
 
 fn default_harness_configs() -> HashMap<String, DefaultHarnessConfig> {
     let mut m = HashMap::new();
-    m.insert("claude".into(), DefaultHarnessConfig { enabled: true, max_instances: 11, memory_limit_mb: 512 });
-    m.insert("forge".into(), DefaultHarnessConfig { enabled: true, max_instances: 20, memory_limit_mb: 256 });
-    m.insert("node".into(), DefaultHarnessConfig { enabled: true, max_instances: 30, memory_limit_mb: 256 });
-    m.insert("bun".into(), DefaultHarnessConfig { enabled: true, max_instances: 10, memory_limit_mb: 384 });
+    m.insert(
+        "claude".into(),
+        DefaultHarnessConfig { enabled: true, max_instances: 11, memory_limit_mb: 512 },
+    );
+    m.insert(
+        "forge".into(),
+        DefaultHarnessConfig { enabled: true, max_instances: 20, memory_limit_mb: 256 },
+    );
+    m.insert(
+        "node".into(),
+        DefaultHarnessConfig { enabled: true, max_instances: 30, memory_limit_mb: 256 },
+    );
+    m.insert(
+        "bun".into(),
+        DefaultHarnessConfig { enabled: true, max_instances: 10, memory_limit_mb: 384 },
+    );
     m
 }
 
