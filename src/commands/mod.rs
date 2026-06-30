@@ -61,7 +61,7 @@ pub async fn start(
     project: &str,
     harness: &str,
     cwd: Option<&str>,
-    _args: &[String],
+    args: &[String],
 ) -> Result<()> {
     let cfg = Config::load()?;
 
@@ -86,7 +86,7 @@ pub async fn start(
     let info = pool
         .spawn(
             harness,
-            &[],
+            args,
             Some(project_path.clone()),
             Some(project.to_string()),
             Some(harness.to_string()),
