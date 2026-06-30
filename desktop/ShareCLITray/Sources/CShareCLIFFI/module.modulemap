@@ -1,0 +1,4 @@
+module CShareCLIFFI {
+    header "sharecli_ffi.h"
+    export *
+}

@@ -39,4 +39,8 @@ lto = true
 codegen-units = 1
 
 [workspace]
-members = ["crates/harness-native"]
+members = [
+    "crates/harness-native",
+    "crates/sharecli-ipc",
+    "crates/sharecli-ffi",
+]

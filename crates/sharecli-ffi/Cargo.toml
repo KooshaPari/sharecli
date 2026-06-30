@@ -1,0 +1,23 @@
+[package]
+name = "sharecli-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "C-ABI FFI surface for sharecli — consumed by Swift macOS tray"
+
+# Produces libsharecli_ffi.dylib (macOS) used by the Swift app via the C header
+[lib]
+crate-type = ["cdylib", "staticlib"]
+name = "sharecli_ffi"
+
+[dependencies]
+sharecli = { path = "../../" }
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+anyhow = "1"
+dirs = "5"
+
+# FFI choice: plain C ABI (no uniffi / cxx overhead).
+# The Swift side imports via a bridging header (sharecli_ffi.h).
+# Rationale: the IPC socket is the primary data path;
+# FFI is used only for synchronous "connect / disconnect / peek" lifecycle calls
+# so the narrow C surface is sufficient and avoids a build-tool dependency.
