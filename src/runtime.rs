@@ -54,7 +54,7 @@ impl ProcessInfo {
         sys.process(pid).map(|p| ProcessInfo {
             pid: pid.as_u32(),
             name,
-            cmd: p.cmd().iter().map(|s| s.to_string()).collect(),
+            cmd: p.cmd().iter().map(|s| s.to_string_lossy().into_owned()).collect(),
             memory_mb: p.memory() / 1024 / 1024,
             start_time: p.start_time(),
             project: None,
@@ -492,7 +492,8 @@ impl ProjectResources {
         let mut process_count = 0usize;
 
         for proc in sys.processes().values() {
-            let cmd: Vec<String> = proc.cmd().iter().map(|s| s.to_string()).collect();
+            let cmd: Vec<String> =
+                proc.cmd().iter().map(|s| s.to_string_lossy().into_owned()).collect();
             if cmd.iter().any(|c| c.contains(project)) {
                 total_memory += proc.memory() / 1024 / 1024;
                 process_count += 1;

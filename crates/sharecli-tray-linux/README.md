@@ -1,46 +1,43 @@
 # sharecli-tray-linux
 
-Linux systemtray client for sharecli using freedesktop (ksni) protocol.
+Linux system-tray client for sharecli — the third native tray alongside the
+macOS Swift tray (`desktop/`) and the Windows WinUI 3 tray (`windows/`).
 
-## Features
+It renders a [StatusNotifierItem] tray via the [`ksni`] crate and shows the same
+data as the other trays: managed-process count, memory usage, health, and a
+per-process kill action. All data comes from the shared `sharecli-ipc` daemon
+over its Unix socket (`process.list`, `health.status`, `process.kill`,
+`process.kill_all`) — the same NDJSON-RPC contract the macOS/Windows trays use.
 
-- Systemtray icon with process manager integration
-- Health snapshot display (managed processes, memory usage)
-- D-Bus integration via zbus + ksni
-- Async Tokio-based IPC over Unix socket
-
-## Building
-
-Linux only (macOS/Windows: ignored via `#[cfg(target_os = "linux")]`).
+## Build & run
 
 ```bash
-# On Linux with dbus dev headers
-sudo apt install libdbus-1-dev pkg-config  # Ubuntu
-sudo dnf install dbus-devel pkgconf-pkg-config  # Fedora
-
 cargo build -p sharecli-tray-linux --release
-```
-
-## Running
-
-```bash
-# Start sharecli daemon
-sharecli-ipc &
-
-# Run the tray
+# start the IPC daemon (if not already running), then the tray:
+cargo run -p sharecli-ipc &
 ./target/release/sharecli-tray
 ```
 
-The tray will register with the systemtray service and display a persistent icon.
+The tray polls the daemon every 3 seconds and re-renders. If the daemon is not
+reachable it shows an "offline" state rather than exiting.
 
-## Protocol
+## Requirements
 
-- **Transport**: Unix domain socket (`~/.local/share/sharecli/ipc.sock`)
-- **Format**: NDJSON (newline-delimited JSON)
-- **RPC**: JSON-RPC 2.0 method calls (health.status, process.list, etc.)
+- A running StatusNotifierItem / AppIndicator host (KDE Plasma, or GNOME with the
+  AppIndicator/KStatusNotifierItem extension, or any tray that speaks SNI).
+- The `sharecli-ipc` daemon (started separately, e.g. by your session manager).
 
-## Architecture Notes
+## Configuration
 
-The Linux tray uses the freedesktop systemtray spec (implemented by GNOME, KDE, Xfce, etc.). The ksni crate handles D-Bus registration and the tray lifecycle.
+- `SHARECLI_IPC_SOCK` — override the IPC socket path (defaults to
+  `$XDG_DATA_HOME/sharecli/ipc.sock`, matching `sharecli-ipc`).
+- `RUST_LOG` — tracing filter (defaults to `sharecli_tray=info`).
 
-Unlike the macOS (Swift/AppKit) or Windows (WinUI 3) clients, the Linux tray is lightweight and does not maintain a separate window—it's purely a menu/status provider to the desktop environment.
+## Platform note
+
+The crate compiles on all targets so `cargo build --workspace` stays green
+everywhere, but the tray only functions on Linux (SNI is freedesktop-only). On
+macOS/Windows the binary prints a pointer to the native tray and exits non-zero.
+
+[StatusNotifierItem]: https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem/
+[`ksni`]: https://crates.io/crates/ksni

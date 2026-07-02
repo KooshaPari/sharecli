@@ -1,213 +1,248 @@
-//! sharecli-tray — Linux systemtray client using freedesktop (ksni).
+//! sharecli-tray — Linux system-tray client for sharecli.
 //!
-//! Connects to the sharecli-ipc server over Unix socket and exposes
-//! a tray icon with process list and health status.
-
-#[cfg(target_os = "linux")]
-use anyhow::Result;
-#[cfg(target_os = "linux")]
-use ksni::{menu::*, IconPixmap, Tray, TrayService};
-#[cfg(target_os = "linux")]
-use std::sync::Arc;
-#[cfg(target_os = "linux")]
-use tokio::sync::Mutex;
-#[cfg(target_os = "linux")]
-use tracing::info;
+//! Renders a StatusNotifierItem tray (via `ksni`, the KDE/freedesktop SNI
+//! protocol) that mirrors the macOS Swift tray and Windows WinUI 3 tray: it
+//! shows managed-process health and lets the user kill processes. All data
+//! comes from the same `sharecli-ipc` daemon over the Unix socket — see `ipc`.
+//!
+//! Non-Linux targets get a stub `main` so `cargo build --workspace` stays green
+//! everywhere; the SNI protocol only exists on freedesktop desktops.
 
 mod ipc;
-#[cfg(target_os = "linux")]
-use ipc::{IPCClient, ProcessInfo};
 
 #[cfg(target_os = "linux")]
-#[tokio::main]
-async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
-    // Create the IPC client.
-    let client = Arc::new(Mutex::new(IPCClient::new()));
-
-    // Create the tray service.
-    let tray = Arc::new(MyTray {
-        client: client.clone(),
-        processes: Arc::new(Mutex::new(Vec::new())),
-    });
-
-    // Register with the systemtray service.
-    let service = TrayService::new(tray);
-    let handle = service.register().await?;
-
-    info!("sharecli tray registered with systemtray service");
-
-    // Run indefinitely.
-    std::future::pending().await
+fn main() {
+    linux::run();
 }
 
 #[cfg(not(target_os = "linux"))]
 fn main() {
-    eprintln!("sharecli-tray is only supported on Linux");
+    eprintln!("sharecli-tray: the system tray is only supported on Linux (StatusNotifierItem).");
+    eprintln!("On macOS use the Swift tray (desktop/), on Windows the WinUI 3 tray (windows/).");
     std::process::exit(1);
 }
 
-struct MyTray {
-    client: Arc<Mutex<IPCClient>>,
-    processes: Arc<Mutex<Vec<ProcessInfo>>>,
-}
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::time::Duration;
 
-#[ksni::dbus_interface]
-impl Tray for MyTray {
-    #[dbus_interface(property)]
-    async fn category(&self) -> String {
-        "ApplicationStatus".into()
+    use ksni::blocking::{Handle, TrayMethods};
+
+    use crate::ipc;
+
+    const POLL_INTERVAL: Duration = Duration::from_secs(3);
+
+    /// Snapshot of daemon state rendered into the tray. Refreshed by the poll
+    /// thread via `handle.update`.
+    #[derive(Default)]
+    struct ShareCliTray {
+        processes: Vec<ipc::ProcessSummary>,
+        health: Option<ipc::HealthSnapshot>,
+        connected: bool,
     }
 
-    #[dbus_interface(property)]
-    async fn id(&self) -> String {
-        "sharecli".into()
-    }
+    impl ksni::Tray for ShareCliTray {
+        fn id(&self) -> String {
+            "sharecli".into()
+        }
 
-    #[dbus_interface(property)]
-    async fn title(&self) -> String {
-        "sharecli".into()
-    }
+        fn title(&self) -> String {
+            "ShareCLI".into()
+        }
 
-    #[dbus_interface(property)]
-    async fn status(&self) -> String {
-        "Active".into()
-    }
-
-    #[dbus_interface(property)]
-    async fn window_id(&self) -> i32 {
-        0
-    }
-
-    #[dbus_interface(property)]
-    async fn icon_name(&self) -> String {
-        "process-manager".into()
-    }
-
-    #[dbus_interface(property)]
-    async fn icon_pixmap(&self) -> Vec<IconPixmap> {
-        vec![]
-    }
-
-    #[dbus_interface(property)]
-    async fn attention_icon_name(&self) -> String {
-        String::new()
-    }
-
-    #[dbus_interface(property)]
-    async fn attention_icon_pixmap(&self) -> Vec<IconPixmap> {
-        vec![]
-    }
-
-    #[dbus_interface(property)]
-    async fn overlay_icon_name(&self) -> String {
-        String::new()
-    }
-
-    #[dbus_interface(property)]
-    async fn overlay_icon_pixmap(&self) -> Vec<IconPixmap> {
-        vec![]
-    }
-
-    #[dbus_interface(property)]
-    async fn tooltip_icon_name(&self) -> String {
-        String::new()
-    }
-
-    #[dbus_interface(property)]
-    async fn tooltip_icon_pixmap(&self) -> Vec<IconPixmap> {
-        vec![]
-    }
-
-    #[dbus_interface(property)]
-    async fn tooltip_title(&self) -> String {
-        "sharecli Process Manager".into()
-    }
-
-    #[dbus_interface(property)]
-    async fn tooltip_body(&self) -> String {
-        let client = self.client.lock().await;
-        match client.health_snapshot().await {
-            Ok(health) => {
-                format!(
-                    "Managed: {} | Memory: {} MB",
-                    health.managed_processes, health.used_memory_mb
-                )
+        // Prefer a themed icon; fall back to a stock name shipped by every icon
+        // theme so the tray is never blank.
+        fn icon_name(&self) -> String {
+            if self.connected {
+                "utilities-system-monitor".into()
+            } else {
+                "dialog-warning".into()
             }
-            Err(_) => "Unavailable".into(),
+        }
+
+        fn tool_tip(&self) -> ksni::ToolTip {
+            let description = match (&self.health, self.connected) {
+                (Some(h), true) => format!(
+                    "{} managed · {} / {} MB{}",
+                    h.managed_processes,
+                    h.used_memory_mb,
+                    h.total_memory_mb,
+                    if h.healthy { "" } else { " · UNHEALTHY" },
+                ),
+                _ => "sharecli daemon not reachable".into(),
+            };
+            ksni::ToolTip {
+                title: "ShareCLI".into(),
+                description,
+                icon_name: self.icon_name(),
+                icon_pixmap: Vec::new(),
+            }
+        }
+
+        fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
+            use ksni::menu::*;
+
+            let mut items: Vec<ksni::MenuItem<Self>> = Vec::new();
+
+            let header = match (&self.health, self.connected) {
+                (Some(h), true) => format!(
+                    "{} process(es) · {} / {} MB",
+                    h.managed_processes, h.used_memory_mb, h.total_memory_mb
+                ),
+                _ => "Daemon offline".into(),
+            };
+            items.push(
+                StandardItem { label: header, enabled: false, ..Default::default() }.into(),
+            );
+            items.push(MenuItem::Separator);
+
+            if self.processes.is_empty() {
+                let label = if self.connected {
+                    "No managed processes".to_string()
+                } else {
+                    "Start sharecli-ipc to connect".to_string()
+                };
+                items.push(
+                    StandardItem { label, enabled: false, ..Default::default() }.into(),
+                );
+            } else {
+                for proc in &self.processes {
+                    let submenu = build_process_submenu(proc);
+                    let label = format!(
+                        "{} [{}]{}",
+                        proc.name,
+                        proc.pid,
+                        proc.project
+                            .as_deref()
+                            .map(|p| format!(" · {p}"))
+                            .unwrap_or_default(),
+                    );
+                    items.push(SubMenu { label, submenu, ..Default::default() }.into());
+                }
+            }
+
+            items.push(MenuItem::Separator);
+            items.push(
+                StandardItem {
+                    label: "Kill All Managed".into(),
+                    icon_name: "edit-delete".into(),
+                    enabled: !self.processes.is_empty(),
+                    activate: Box::new(|_this: &mut Self| {
+                        if let Err(e) = ipc::kill_all() {
+                            tracing::warn!("kill_all failed: {e}");
+                        }
+                    }),
+                    ..Default::default()
+                }
+                .into(),
+            );
+            items.push(
+                StandardItem {
+                    label: "Refresh".into(),
+                    icon_name: "view-refresh".into(),
+                    activate: Box::new(|this: &mut Self| refresh(this)),
+                    ..Default::default()
+                }
+                .into(),
+            );
+            items.push(MenuItem::Separator);
+            items.push(
+                StandardItem {
+                    label: "Quit".into(),
+                    icon_name: "application-exit".into(),
+                    activate: Box::new(|_this: &mut Self| std::process::exit(0)),
+                    ..Default::default()
+                }
+                .into(),
+            );
+
+            items
         }
     }
 
-    #[dbus_interface(property)]
-    async fn tooltip_icon_name(&self) -> String {
-        String::new()
-    }
+    fn build_process_submenu(proc: &ipc::ProcessSummary) -> Vec<ksni::MenuItem<ShareCliTray>> {
+        use ksni::menu::*;
 
-    #[dbus_interface(property)]
-    async fn tooltip_icon_pixmap(&self) -> Vec<IconPixmap> {
-        vec![]
-    }
-
-    #[dbus_interface(property)]
-    async fn menu(&self) -> ksni::menu::DbusMenu {
-        ksni::menu::DbusMenu("/".into())
-    }
-
-    async fn context_menu(&self, _x: i32, _y: i32) {
-        let client = self.client.lock().await;
-        match client.process_list().await {
-            Ok(procs) => {
-                let mut processes = self.processes.lock().await;
-                *processes = procs;
-                info!("Updated {} processes in menu", processes.len());
+        let pid = proc.pid;
+        vec![
+            StandardItem {
+                label: format!("Memory: {} MB", proc.memory_mb),
+                enabled: false,
+                ..Default::default()
             }
-            Err(e) => info!("Failed to fetch process list: {}", e),
+            .into(),
+            StandardItem {
+                label: format!("Harness: {}", proc.harness.as_deref().unwrap_or("—")),
+                enabled: false,
+                ..Default::default()
+            }
+            .into(),
+            MenuItem::Separator,
+            StandardItem {
+                label: "Kill".into(),
+                icon_name: "process-stop".into(),
+                activate: Box::new(move |_this: &mut ShareCliTray| {
+                    if let Err(e) = ipc::kill(pid) {
+                        tracing::warn!("kill pid {pid} failed: {e}");
+                    }
+                }),
+                ..Default::default()
+            }
+            .into(),
+        ]
+    }
+
+    /// Pull the latest state from the IPC daemon into the tray struct.
+    fn refresh(tray: &mut ShareCliTray) {
+        match ipc::health() {
+            Ok(h) => {
+                tray.health = Some(h);
+                tray.connected = true;
+            }
+            Err(e) => {
+                tracing::debug!("health poll failed: {e}");
+                tray.connected = false;
+                tray.health = None;
+            }
+        }
+        match ipc::list_processes() {
+            Ok(procs) => tray.processes = procs,
+            Err(e) => {
+                tracing::debug!("process.list poll failed: {e}");
+                tray.processes.clear();
+            }
         }
     }
 
-    async fn activate(&self, _x: i32, _y: i32) {
-        // Tray icon click: refresh process list.
-        self.context_menu(0, 0).await;
-    }
+    pub fn run() {
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "sharecli_tray=info".into()),
+            )
+            .init();
 
-    async fn secondary_activate(&self, _x: i32, _y: i32) {
-        // Right-click or wheel; context menu.
-    }
+        let mut initial = ShareCliTray::default();
+        refresh(&mut initial);
 
-    async fn scroll(&self, _delta: i32, _orientation: &str) {
-        // Mouse wheel; volume/etc.
-    }
+        let handle: Handle<ShareCliTray> = match initial.spawn() {
+            Ok(h) => h,
+            Err(e) => {
+                eprintln!("sharecli-tray: failed to register StatusNotifierItem: {e}");
+                eprintln!("Is a system tray / AppIndicator host running on this desktop?");
+                std::process::exit(1);
+            }
+        };
+        tracing::info!("sharecli-tray registered; polling every {}s", POLL_INTERVAL.as_secs());
 
-    async fn new_title(&self) {
-        // Emitted when title changes.
-    }
-
-    async fn new_icon(&self) {
-        // Emitted when icon changes.
-    }
-
-    async fn new_attention_icon(&self) {
-        // Emitted when attention icon changes.
-    }
-
-    async fn new_overlay_icon(&self) {
-        // Emitted when overlay icon changes.
-    }
-
-    async fn new_tooltip(&self) {
-        // Emitted when tooltip changes.
-    }
-
-    async fn new_icon_theme_path(&self) {
-        // Emitted when theme path changes.
-    }
-
-    async fn new_menu(&self) {
-        // Emitted when menu changes.
-    }
-
-    async fn new_status(&self, _status: &str) {
-        // Emitted when status changes.
+        loop {
+            std::thread::sleep(POLL_INTERVAL);
+            if handle.is_closed() {
+                break;
+            }
+            // The closure runs on the service thread with exclusive access to
+            // the tray struct; returning triggers a menu/icon re-render.
+            handle.update(refresh);
+        }
     }
 }
