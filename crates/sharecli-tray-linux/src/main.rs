@@ -16,7 +16,7 @@ use tracing::info;
 
 mod ipc;
 #[cfg(target_os = "linux")]
-use ipc::IPCClient;
+use ipc::{IPCClient, ProcessInfo};
 
 #[cfg(target_os = "linux")]
 #[tokio::main]
@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
     // Create the tray service.
     let tray = Arc::new(MyTray {
         client: client.clone(),
+        processes: Arc::new(Mutex::new(Vec::new())),
     });
 
     // Register with the systemtray service.
@@ -49,6 +50,7 @@ fn main() {
 
 struct MyTray {
     client: Arc<Mutex<IPCClient>>,
+    processes: Arc<Mutex<Vec<ProcessInfo>>>,
 }
 
 #[ksni::dbus_interface]
@@ -153,12 +155,20 @@ impl Tray for MyTray {
     }
 
     async fn context_menu(&self, _x: i32, _y: i32) {
-        // Context menu would open here; for now, minimal.
+        let client = self.client.lock().await;
+        match client.process_list().await {
+            Ok(procs) => {
+                let mut processes = self.processes.lock().await;
+                *processes = procs;
+                info!("Updated {} processes in menu", processes.len());
+            }
+            Err(e) => info!("Failed to fetch process list: {}", e),
+        }
     }
 
     async fn activate(&self, _x: i32, _y: i32) {
-        // Tray icon click; could open dashboard window.
-        info!("Tray activated");
+        // Tray icon click: refresh process list.
+        self.context_menu(0, 0).await;
     }
 
     async fn secondary_activate(&self, _x: i32, _y: i32) {
