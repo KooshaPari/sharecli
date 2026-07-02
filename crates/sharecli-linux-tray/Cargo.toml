@@ -1,0 +1,26 @@
+[package]
+name = "sharecli-linux-tray"
+version = "0.1.0"
+edition = "2021"
+description = "Linux system-tray client for sharecli (StatusNotifierItem via ksni)"
+license = "MIT"
+authors = ["Phenotype"]
+repository = "https://github.com/KooshaPari/sharecli"
+
+[[bin]]
+name = "sharecli-tray"
+path = "src/main.rs"
+
+# Linux-only crate: the ksni tray talks the StatusNotifierItem D-Bus protocol,
+# which only exists on freedesktop desktops. On other targets the binary is a
+# no-op stub so `cargo build --workspace` stays green cross-platform.
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = { version = "0.3", features = ["blocking"] }
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -46,5 +46,6 @@ members = [
     "crates/harness-native",
     "crates/sharecli-ipc",
     "crates/sharecli-ffi",
+    "crates/sharecli-linux-tray",
     "crates/spawn-core-sys",
 ]
