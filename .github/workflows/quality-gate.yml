@@ -46,7 +46,7 @@ jobs:
           version: 0.14.1
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+        uses: Swatinem/rust-cache@v2
 
       - name: Run unit tests
         run: cargo test --lib --all-features

@@ -36,7 +36,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo
-        uses: Swatinem/rust-cache@5ed47b3c8e5b73d9ebb14236617f0e30a5f9120e # v2.7.5
+        uses: Swatinem/rust-cache@v2
       - name: Install cargo-deny
         run: cargo install --locked cargo-deny
       - name: Run cargo-deny (licenses, bans, advisories, sources)

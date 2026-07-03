@@ -34,7 +34,7 @@ jobs:
         with:
           components: rustfmt
       - name: Cache cargo
-        uses: Swatinem/rust-cache@5ed47b3c8e5b73d9ebb14236617f0e30a5f9120e # v2.7.5
+        uses: Swatinem/rust-cache@v2
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -48,7 +48,7 @@ jobs:
         with:
           components: clippy
       - name: Cache cargo
-        uses: Swatinem/rust-cache@5ed47b3c8e5b73d9ebb14236617f0e30a5f9120e # v2.7.5
+        uses: Swatinem/rust-cache@v2
       - name: Run clippy (deny warnings)
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
@@ -60,7 +60,7 @@ jobs:
       - name: Setup Rust (stable)
         uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo
-        uses: Swatinem/rust-cache@5ed47b3c8e5b73d9ebb14236617f0e30a5f9120e # v2.7.5
+        uses: Swatinem/rust-cache@v2
       - name: Build tests
         run: cargo test --no-run --locked --all-features
       - name: Run tests
@@ -74,7 +74,7 @@ jobs:
       - name: Setup Rust (stable)
         uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo
-        uses: Swatinem/rust-cache@5ed47b3c8e5b73d9ebb14236617f0e30a5f9120e # v2.7.5
+        uses: Swatinem/rust-cache@v2
       - name: Build (debug)
         run: cargo build --locked --all-features
       - name: Build (release)
