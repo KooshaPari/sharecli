@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Rust (stable + rustfmt)
-        uses: dtolnay/rust-toolchain@9cd00a370a8ff8e8042c64f60cd3fe43b7da4b46 # stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
       - name: Cache cargo
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Rust (stable + clippy)
-        uses: dtolnay/rust-toolchain@9cd00a370a8ff8e8042c64f60cd3fe43b7da4b46 # stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - name: Cache cargo
@@ -58,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Rust (stable)
-        uses: dtolnay/rust-toolchain@9cd00a370a8ff8e8042c64f60cd3fe43b7da4b46 # stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo
         uses: Swatinem/rust-cache@5ed47b3c8e5b73d9ebb14236617f0e30a5f9120e # v2.7.5
       - name: Build tests
@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Rust (stable)
-        uses: dtolnay/rust-toolchain@9cd00a370a8ff8e8042c64f60cd3fe43b7da4b46 # stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo
         uses: Swatinem/rust-cache@5ed47b3c8e5b73d9ebb14236617f0e30a5f9120e # v2.7.5
       - name: Build (debug)
