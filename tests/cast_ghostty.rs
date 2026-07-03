@@ -43,10 +43,8 @@ fn send_delivers_when_ghostty_ok() {
 #[test]
 fn send_reports_failed_when_ghostty_missing() {
     // pbcopy succeeds but ghostty goto_window fails
-    let cmds = vec![
-        ("pbcopy", &[] as &[&str]),
-        ("ghostty", &["+action", "goto_window", "1"] as &[&str]),
-    ];
+    let cmds =
+        vec![("pbcopy", &[] as &[&str]), ("ghostty", &["+action", "goto_window", "1"] as &[&str])];
     let outputs: Vec<io::Result<Output>> = vec![
         Ok(Output { status: exit_ok(), stdout: vec![], stderr: vec![] }),
         Err(Error::new(ErrorKind::NotFound, "ghostty not found")),
@@ -79,11 +77,7 @@ fn send_with_various_windows() {
         let pbcopy_args: &[&str] = &[];
         let goto_args: &[&str] = &["+action", "goto_window", &win_str];
         let paste_args: &[&str] = &["+action", "paste-from-clipboard"];
-        let cmds = vec![
-            ("pbcopy", pbcopy_args),
-            ("ghostty", goto_args),
-            ("ghostty", paste_args),
-        ];
+        let cmds = vec![("pbcopy", pbcopy_args), ("ghostty", goto_args), ("ghostty", paste_args)];
         let runner = MockProcessRunner::from_ok(&cmds);
         let caster = GhosttyCaster::new(runner);
         let addr = PaneAddress::parse(&format!("mbp:local:{}:0", window)).unwrap();
@@ -93,10 +87,8 @@ fn send_with_various_windows() {
 
 #[test]
 fn send_goto_window_failure_propagates() {
-    let cmds = vec![
-        ("pbcopy", &[] as &[&str]),
-        ("ghostty", &["+action", "goto_window", "1"] as &[&str]),
-    ];
+    let cmds =
+        vec![("pbcopy", &[] as &[&str]), ("ghostty", &["+action", "goto_window", "1"] as &[&str])];
     let outputs: Vec<io::Result<Output>> = vec![
         Ok(Output { status: exit_ok(), stdout: vec![], stderr: vec![] }),
         Err(Error::new(ErrorKind::Other, "window not found")),
@@ -129,12 +121,9 @@ fn send_paste_failure_propagates() {
 
 #[test]
 fn send_pbcopy_failure_fails_early() {
-    let cmds = vec![
-        ("pbcopy", &[] as &[&str]),
-    ];
-    let outputs: Vec<io::Result<Output>> = vec![
-        Err(Error::new(ErrorKind::NotFound, "pbcopy not found")),
-    ];
+    let cmds = vec![("pbcopy", &[] as &[&str])];
+    let outputs: Vec<io::Result<Output>> =
+        vec![Err(Error::new(ErrorKind::NotFound, "pbcopy not found"))];
     let runner = MockProcessRunner::custom(&cmds, outputs);
     let caster = GhosttyCaster::new(runner);
     let addr = PaneAddress::parse("mbp:local:1:0").unwrap();

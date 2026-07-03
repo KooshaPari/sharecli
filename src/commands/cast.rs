@@ -8,7 +8,10 @@ use std::sync::Arc;
 use anyhow::{anyhow, bail, Result};
 
 use crate::cast::{
-    caster::{Caster, ClipboardCaster, GhosttyCaster, RetryCaster, SendOutcome, SshWinTermCaster, WeztermCaster},
+    caster::{
+        Caster, ClipboardCaster, GhosttyCaster, RetryCaster, SendOutcome, SshWinTermCaster,
+        WeztermCaster,
+    },
     PaneAddress, PaneRegistry,
 };
 
@@ -49,29 +52,19 @@ pub fn list() -> Result<()> {
 /// Reads from the named file, or stdin if `-` / omitted.
 pub fn send(name: &str, file: Option<&str>) -> Result<()> {
     let reg = PaneRegistry::new()?;
-    let addr = reg
-        .resolve(name)?
-        .ok_or_else(|| anyhow!("no pane registered as '{}'", name))?;
+    let addr = reg.resolve(name)?.ok_or_else(|| anyhow!("no pane registered as '{}'", name))?;
 
     let text = match file {
         Some("-") | None => read_stdin()?,
-        Some(p) => fs::read_to_string(p).map_err(|e| {
-            anyhow!("failed to read {}: {}", p, e)
-        })?,
+        Some(p) => fs::read_to_string(p).map_err(|e| anyhow!("failed to read {}: {}", p, e))?,
     };
     if text.is_empty() {
         bail!("refusing to send empty text to pane '{}'", name);
     }
 
     let casters: Vec<(Arc<dyn Caster>, String)> = vec![
-        (
-            Arc::new(RetryCaster::new(WeztermCaster::system(), 3, 200)),
-            "wezterm-retry".to_string(),
-        ),
-        (
-            Arc::new(RetryCaster::new(GhosttyCaster::system(), 3, 200)),
-            "ghostty-retry".to_string(),
-        ),
+        (Arc::new(RetryCaster::new(WeztermCaster::system(), 3, 200)), "wezterm-retry".to_string()),
+        (Arc::new(RetryCaster::new(GhosttyCaster::system(), 3, 200)), "ghostty-retry".to_string()),
         (
             Arc::new(RetryCaster::new(SshWinTermCaster::system(), 2, 1000)),
             "ssh-winterm-retry".to_string(),

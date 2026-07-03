@@ -107,12 +107,7 @@ fn fr_cast_002_register_rejects_invalid_name() {
 
     for bad in ["civis 1", "civis\t1", "civis\n1", "civis\x001"] {
         let err = reg.register(bad, &addr).expect_err("invalid name rejected");
-        assert!(
-            err.to_string().contains("name"),
-            "error mentions name for {:?}: {}",
-            bad,
-            err
-        );
+        assert!(err.to_string().contains("name"), "error mentions name for {:?}: {}", bad, err);
     }
 }
 

@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use sharecli_thermal_tui as thermal_tui;
 
 mod cast;
 mod commands;
@@ -11,8 +12,8 @@ mod runtime;
 mod spawn_policy;
 
 use commands::{
-    cast as cast_cmd, check_limits, config as config_cmd, health, pool_status, project as project_cmd,
-    ps, run_pool, set_limits, start, status, stop,
+    cast as cast_cmd, check_limits, config as config_cmd, health, pool_status,
+    project as project_cmd, ps, run_pool, set_limits, start, status, stop,
 };
 use runtime::ProcessPool;
 
@@ -177,6 +178,17 @@ enum Commands {
         project: String,
     },
 
+    /// Live thermal-gate / hypervisor state monitor (TUI)
+    ///
+    /// Displays current memory pressure level (GREEN/YELLOW/RED), active
+    /// build slots, and the gate's ADMIT/DENY decision.
+    /// Press `q` or Ctrl-C to exit.
+    Thermal {
+        /// Build-slot cap (max concurrent cargo build|check|test processes).
+        #[arg(short, long, default_value_t = thermal_tui::DEFAULT_SLOT_CAP)]
+        cap: u32,
+    },
+
     /// Fleet device management
     Fleet {
         #[command(subcommand)]
@@ -279,6 +291,10 @@ async fn main() -> Result<()> {
             set_limits(project, *memory, *processes).await?
         }
         Commands::Check { project } => check_limits(project).await?,
+        Commands::Thermal { cap } => {
+            let gov = sharecli_fleet::thermal::ThermalGovernor::new();
+            thermal_tui::run(&gov, *cap)?;
+        }
         Commands::Fleet { cmd } => match cmd {
             FleetCmd::Status => fleet_status().await?,
             FleetCmd::Register { name, coordinator } => {
@@ -286,10 +302,10 @@ async fn main() -> Result<()> {
             }
         },
         Commands::Cast { cmd } => match cmd {
-            CastCmd::Register { name, address } => cast_cmd::register(&name, &address)?,
-            CastCmd::Unregister { name } => cast_cmd::unregister(&name)?,
+            CastCmd::Register { name, address } => cast_cmd::register(name, address)?,
+            CastCmd::Unregister { name } => cast_cmd::unregister(name)?,
             CastCmd::List => cast_cmd::list()?,
-            CastCmd::Send { name, file } => cast_cmd::send(&name, file.as_deref())?,
+            CastCmd::Send { name, file } => cast_cmd::send(name, file.as_deref())?,
             CastCmd::Where => cast_cmd::where_file()?,
         },
     }
@@ -316,10 +332,8 @@ async fn fleet_status() -> Result<()> {
 }
 
 async fn fleet_register(name: Option<&str>, coordinator: &str) -> Result<()> {
-    let hostname = name.unwrap_or_else(|| {
-        // Best-effort: fall back to "local" if gethostname is unavailable.
-        "local"
-    });
+    // Best-effort: fall back to "local" if gethostname is unavailable.
+    let hostname = name.unwrap_or("local");
 
     println!("Registering device '{hostname}' with coordinator '{coordinator}'");
 
@@ -332,7 +346,10 @@ async fn fleet_register(name: Option<&str>, coordinator: &str) -> Result<()> {
                 available_slots: 4,
             };
             sharecli_fleet::announce(&client, &record).await?;
-            println!("Registered device '{}' (os={}, slots={})", record.device_id, record.os, record.available_slots);
+            println!(
+                "Registered device '{}' (os={}, slots={})",
+                record.device_id, record.os, record.available_slots
+            );
         }
         Err(e) => {
             println!("Registration failed: {e}");

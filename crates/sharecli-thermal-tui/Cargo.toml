@@ -1,0 +1,17 @@
+[package]
+name = "sharecli-thermal-tui"
+version = "0.1.0"
+edition = "2021"
+description = "Live thermal-gate / hypervisor-state TUI for sharecli"
+license = "MIT"
+
+[dependencies]
+sharecli-fleet = { path = "../sharecli-fleet" }
+ratatui = "0.30"
+crossterm = "0.29"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }

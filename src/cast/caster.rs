@@ -31,6 +31,9 @@ pub enum SendOutcome {
 /// Pluggable transport — `wezterm`, `ghostty`, `wt`, or `clipboard`.
 pub trait Caster: Send + Sync {
     /// Human-readable name (used in error messages and `--caster` flag).
+    // Allow: public trait API — called from RetryCaster::name() and test fixtures;
+    // production call site added in the upcoming --caster flag dispatch PR.
+    #[allow(dead_code)]
     fn name(&self) -> &'static str;
 
     /// Resolve the pane ID for a `PaneAddress` on the current host.
@@ -76,7 +79,12 @@ impl ProcessRunner for SystemRunner {
     }
 
     fn run_with_stdin(&self, bin: &str, args: &[&str], stdin: &[u8]) -> io::Result<Output> {
-        let mut child = Command::new(bin).args(args).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn()?;
+        let mut child = Command::new(bin)
+            .args(args)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()?;
         use std::io::Write;
         child.stdin.take().unwrap().write_all(stdin)?;
         child.wait_with_output()
@@ -87,12 +95,14 @@ impl ProcessRunner for SystemRunner {
 ///
 /// Tests push expected (`bin`, `args`) pairs and the corresponding responses
 /// up front, then `run()` pops the next one and panics if shape mismatches.
+#[cfg(test)]
 #[derive(Default)]
 pub struct MockProcessRunner {
     commands: std::sync::Mutex<std::collections::VecDeque<(String, Vec<String>)>>,
     outputs: std::sync::Mutex<std::collections::VecDeque<io::Result<std::process::Output>>>,
 }
 
+#[cfg(test)]
 impl MockProcessRunner {
     pub fn new() -> Self {
         Self::default()
@@ -137,6 +147,7 @@ impl MockProcessRunner {
     }
 }
 
+#[cfg(test)]
 impl ProcessRunner for MockProcessRunner {
     fn run(&self, bin: &str, args: &[&str]) -> io::Result<std::process::Output> {
         let expected = self
@@ -152,18 +163,21 @@ impl ProcessRunner for MockProcessRunner {
             "MockProcessRunner: args mismatch for bin {}",
             bin
         );
-        self.outputs
-            .lock()
-            .unwrap()
-            .pop_front()
-            .unwrap_or_else(|| Ok(std::process::Output {
+        self.outputs.lock().unwrap().pop_front().unwrap_or_else(|| {
+            Ok(std::process::Output {
                 status: std::process::ExitStatus::default(),
                 stdout: Vec::new(),
                 stderr: Vec::new(),
-            }))
+            })
+        })
     }
 
-    fn run_with_stdin(&self, bin: &str, args: &[&str], _stdin: &[u8]) -> io::Result<std::process::Output> {
+    fn run_with_stdin(
+        &self,
+        bin: &str,
+        args: &[&str],
+        _stdin: &[u8],
+    ) -> io::Result<std::process::Output> {
         // Mock captures the invocation for assertion; ignores stdin bytes.
         self.run(bin, args)
     }
@@ -195,6 +209,9 @@ impl GhosttyCaster<SystemRunner> {
 }
 
 impl<R: ProcessRunner> GhosttyCaster<R> {
+    // Allow: constructor used via MockProcessRunner in test fixtures and planned
+    // for production use in the upcoming --caster flag dispatch PR.
+    #[allow(dead_code)]
     pub fn new(runner: R) -> Self {
         Self { runner }
     }
@@ -287,9 +304,8 @@ impl<C: Caster> Caster for RetryCaster<C> {
                 }
             }
         }
-        last_err.unwrap_or_else(|| {
-            SendOutcome::Failed("retry exhausted without recorded error".into())
-        })
+        last_err
+            .unwrap_or_else(|| SendOutcome::Failed("retry exhausted without recorded error".into()))
     }
 }
 
@@ -324,6 +340,8 @@ impl WeztermCaster<SystemRunner> {
 
 impl<R: ProcessRunner> WeztermCaster<R> {
     /// Construct with a custom process runner (used by tests).
+    // Allow: constructor used in test fixtures; production uses WeztermCaster::system().
+    #[allow(dead_code)]
     pub fn new(runner: R) -> Self {
         Self { runner }
     }
@@ -355,10 +373,8 @@ impl<R: ProcessRunner> Caster for WeztermCaster<R> {
             Ok(v) => v,
             Err(_) => return Ok(None), // non-JSON or empty: degrade
         };
-        let mut matching: Vec<WeztermPane> = panes
-            .into_iter()
-            .filter(|p| p.window_id == want_window)
-            .collect();
+        let mut matching: Vec<WeztermPane> =
+            panes.into_iter().filter(|p| p.window_id == want_window).collect();
         matching.sort_by_key(|p| p.pane_id);
         Ok(matching.into_iter().nth(want_pane_idx).map(|p| p.pane_id))
     }
@@ -375,17 +391,10 @@ impl<R: ProcessRunner> Caster for WeztermCaster<R> {
             Err(e) => return SendOutcome::Failed(e.to_string()),
         };
         let id_str = pane_id.to_string();
-        match self.runner.run(
-            "wezterm",
-            &[
-                "cli",
-                "send-text",
-                "--pane-id",
-                &id_str,
-                "--no-paste",
-                text,
-            ],
-        ) {
+        match self
+            .runner
+            .run("wezterm", &["cli", "send-text", "--pane-id", &id_str, "--no-paste", text])
+        {
             Ok(o) if o.status.success() => SendOutcome::Delivered,
             Ok(o) => SendOutcome::Failed(format!(
                 "wezterm cli send-text exited {}: {}",
@@ -505,6 +514,8 @@ impl SshWinTermCaster<SystemRunner> {
 }
 
 impl<R: ProcessRunner> SshWinTermCaster<R> {
+    // Allow: constructor used in test fixtures; production uses SshWinTermCaster::system().
+    #[allow(dead_code)]
     pub fn new(runner: R) -> Self {
         Self { runner }
     }
@@ -539,13 +550,7 @@ impl<R: ProcessRunner> Caster for SshWinTermCaster<R> {
         // was introduced in PowerShell 5.0).
         let result = self.runner.run_with_stdin(
             "ssh",
-            &[
-                &ssh_target,
-                "powershell",
-                "-NoProfile",
-                "-Command",
-                "$input | Set-Clipboard",
-            ],
+            &[&ssh_target, "powershell", "-NoProfile", "-Command", "$input | Set-Clipboard"],
             text.as_bytes(),
         );
 
@@ -593,10 +598,7 @@ mod tests {
         let outcome = send_with_fallback(&[(a, "clipboard".to_string())], &addr, "hello");
         // The clipboard caster either delivers (real env) or reports unsupported
         // (no clipboard binary). Either is acceptable here.
-        assert!(matches!(
-            outcome,
-            SendOutcome::Delivered | SendOutcome::Unsupported(_)
-        ));
+        assert!(matches!(outcome, SendOutcome::Delivered | SendOutcome::Unsupported(_)));
     }
 
     #[test]
