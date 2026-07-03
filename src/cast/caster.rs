@@ -8,6 +8,7 @@
 
 use std::io;
 use std::process::{Command, Output};
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
@@ -69,6 +70,126 @@ pub struct SystemRunner;
 impl ProcessRunner for SystemRunner {
     fn run(&self, bin: &str, args: &[&str]) -> io::Result<Output> {
         Command::new(bin).args(args).output()
+    }
+}
+
+/// Caster that uses Ghostty's `+action` subcommands.
+///
+/// Ghostty does not expose a rich IPC API like wezterm. This caster works by:
+///
+/// 1. Focusing the target window via `ghostty +action goto_window <n>`.
+/// 2. Sending text via `ghostty +action text "..."` (types into the focused surface).
+///
+/// Window index comes from `PaneAddress.window` (1-indexed).
+///
+/// Limitations:
+/// - Cannot target a split by index (Ghostty only supports directional `goto_split`).
+/// - Changes focus — the user sees the window jump to foreground briefly.
+/// - Only works on macOS (Ghostty is macOS-first; Linux support is partial).
+#[derive(Clone, Debug)]
+pub struct GhosttyCaster<R: ProcessRunner = SystemRunner> {
+    runner: R,
+}
+
+impl GhosttyCaster<SystemRunner> {
+    /// Default constructor — uses real subprocess execution.
+    pub fn system() -> Self {
+        Self { runner: SystemRunner }
+    }
+}
+
+impl<R: ProcessRunner> GhosttyCaster<R> {
+    pub fn new(runner: R) -> Self {
+        Self { runner }
+    }
+}
+
+impl<R: ProcessRunner> Caster for GhosttyCaster<R> {
+    fn name(&self) -> &'static str {
+        "ghostty"
+    }
+
+    fn resolve_pane_id(&self, _addr: &PaneAddress) -> Result<Option<u32>> {
+        // Ghostty doesn't expose pane IDs. We can't resolve; the send path
+        // focuses by window index directly.
+        Ok(None)
+    }
+
+    fn send(&self, addr: &PaneAddress, text: &str) -> SendOutcome {
+        // Ghostty is only available on macOS (and partially on Linux).
+        // If the `ghostty` binary is not on PATH, report unsupported
+        // so the fallback chain can continue.
+        if which("ghostty").is_none() {
+            return SendOutcome::Unsupported("ghostty binary not on PATH".into());
+        }
+
+        // Step 1: focus the target window (1-indexed).
+        let win_idx = addr.window.to_string();
+        if let Err(e) = self.runner.run("ghostty", &["+action", "goto_window", &win_idx]) {
+            return SendOutcome::Failed(format!("ghostty goto_window failed: {}", e));
+        }
+
+        // Step 2: send the text (types into the now-focused surface).
+        // `text` may contain newlines; `ghostty +action text` accepts them.
+        match self.runner.run("ghostty", &["+action", "text", text]) {
+            Ok(o) if o.status.success() => SendOutcome::Delivered,
+            Ok(o) => SendOutcome::Failed(format!(
+                "ghostty text exited {}: {}",
+                o.status,
+                String::from_utf8_lossy(&o.stderr)
+            )),
+            Err(e) => SendOutcome::Failed(format!("ghostty text spawn failed: {}", e)),
+        }
+    }
+}
+
+/// Retry wrapper — wraps any [`Caster`] and automatically retries on
+/// [`SendOutcome::Failed`] with exponential backoff.
+///
+/// Does NOT retry on [`SendOutcome::NeedsFocus`] or [`SendOutcome::Unsupported`] —
+/// those outcomes represent situations where retrying will not help.
+pub struct RetryCaster<C: Caster> {
+    inner: C,
+    max_attempts: usize,
+    base_delay_ms: u64,
+}
+
+impl<C: Caster> RetryCaster<C> {
+    pub fn new(inner: C, max_attempts: usize, base_delay_ms: u64) -> Self {
+        Self { inner, max_attempts, base_delay_ms }
+    }
+}
+
+impl<C: Caster> Caster for RetryCaster<C> {
+    fn name(&self) -> &'static str {
+        // Reuse the inner caster's name, prefixed.
+        self.inner.name()
+    }
+
+    fn resolve_pane_id(&self, addr: &PaneAddress) -> Result<Option<u32>> {
+        // No retry logic for resolution — it's read-only and fast.
+        self.inner.resolve_pane_id(addr)
+    }
+
+    fn send(&self, addr: &PaneAddress, text: &str) -> SendOutcome {
+        let mut last_err = None;
+        for attempt in 1..=self.max_attempts {
+            let outcome = self.inner.send(addr, text);
+            match &outcome {
+                SendOutcome::Delivered | SendOutcome::NeedsFocus => return outcome,
+                SendOutcome::Unsupported(_) => return outcome,
+                SendOutcome::Failed(_e) => {
+                    last_err = Some(outcome);
+                    if attempt < self.max_attempts {
+                        let delay = self.base_delay_ms * (1u64 << (attempt - 1)); // exponential
+                        std::thread::sleep(Duration::from_millis(delay));
+                    }
+                }
+            }
+        }
+        last_err.unwrap_or_else(|| {
+            SendOutcome::Failed("retry exhausted without recorded error".into())
+        })
     }
 }
 
@@ -238,6 +359,7 @@ impl Caster for ClipboardCaster {
 }
 
 /// Caster chain — try each in order; return the first non-`Unsupported` outcome.
+/// Fallback chain — try each caster in order; return the first non-`Unsupported` outcome.
 pub fn send_with_fallback(
     addrs: &[(std::sync::Arc<dyn Caster>, String)],
     addr: &PaneAddress,

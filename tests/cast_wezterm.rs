@@ -10,7 +10,7 @@
 
 use std::collections::VecDeque;
 use std::io;
-use std::process::{ExitStatus, Output};
+use std::process::Output;
 use std::sync::{Arc, Mutex};
 
 use sharecli::cast::{Caster, PaneAddress, ProcessRunner, WeztermCaster};

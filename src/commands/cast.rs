@@ -8,7 +8,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, bail, Result};
 
 use crate::cast::{
-    caster::{Caster, ClipboardCaster, SendOutcome, WeztermCaster},
+    caster::{Caster, ClipboardCaster, GhosttyCaster, RetryCaster, SendOutcome, WeztermCaster},
     Host, PaneAddress, PaneRegistry,
 };
 
@@ -72,7 +72,14 @@ pub fn send(name: &str, file: Option<&str>) -> Result<()> {
     }
 
     let casters: Vec<(Arc<dyn Caster>, String)> = vec![
-        (Arc::new(WeztermCaster::system()), "wezterm".to_string()),
+        (
+            Arc::new(RetryCaster::new(WeztermCaster::system(), 3, 200)),
+            "wezterm-retry".to_string(),
+        ),
+        (
+            Arc::new(RetryCaster::new(GhosttyCaster::system(), 3, 200)),
+            "ghostty-retry".to_string(),
+        ),
         (Arc::new(ClipboardCaster), "clipboard".to_string()),
     ];
 

@@ -181,10 +181,11 @@ enum Commands {
     Fleet {
         #[command(subcommand)]
         cmd: FleetCmd,
+    },
     /// Cross-machine text injection into registered terminal panes
     Cast {
         #[command(subcommand)]
-        cmd: CastCmd,: add cast subcommand foundation (Tasks 1+2 of cast backlog))
+        cmd: CastCmd,
     },
 }
 
@@ -201,6 +202,9 @@ enum FleetCmd {
         #[arg(short, long, default_value = "nats://localhost:4222")]
         coordinator: String,
     },
+}
+
+#[derive(Subcommand, Debug)]
 enum CastCmd {
     /// Register a pane: `cast register <name> <address>`
     Register {
@@ -221,7 +225,7 @@ enum CastCmd {
         file: Option<String>,
     },
     /// Show the on-disk path of the pane-map file
-    Where,: add cast subcommand foundation (Tasks 1+2 of cast backlog))
+    Where,
 }
 
 /// Returns true when the NO_COLOR environment variable is set (per https://no-color.org).
@@ -280,12 +284,13 @@ async fn main() -> Result<()> {
             FleetCmd::Register { name, coordinator } => {
                 fleet_register(name.as_deref(), coordinator).await?
             }
+        },
         Commands::Cast { cmd } => match cmd {
             CastCmd::Register { name, address } => cast_cmd::register(&name, &address)?,
             CastCmd::Unregister { name } => cast_cmd::unregister(&name)?,
             CastCmd::List => cast_cmd::list()?,
             CastCmd::Send { name, file } => cast_cmd::send(&name, file.as_deref())?,
-            CastCmd::Where => cast_cmd::where_file()?,: add cast subcommand foundation (Tasks 1+2 of cast backlog))
+            CastCmd::Where => cast_cmd::where_file()?,
         },
     }
 
