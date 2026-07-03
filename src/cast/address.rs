@@ -45,17 +45,14 @@ impl PaneAddress {
             anyhow::bail!("empty pane address");
         }
 
-        let (machine, rest) = split_once(s, ':')
-            .ok_or_else(|| anyhow::anyhow!("missing host: '{}'", s))?;
+        let (machine, rest) =
+            split_once(s, ':').ok_or_else(|| anyhow::anyhow!("missing host: '{}'", s))?;
 
         if machine.is_empty() {
             anyhow::bail!("empty machine name");
         }
         if !is_valid_machine(machine) {
-            anyhow::bail!(
-                "invalid machine name '{}' (allowed: a-zA-Z0-9._-)",
-                machine
-            );
+            anyhow::bail!("invalid machine name '{}' (allowed: a-zA-Z0-9._-)", machine);
         }
 
         // Peel pane (last) and window (second-to-last) — only if they are u32.
@@ -63,12 +60,7 @@ impl PaneAddress {
 
         let host = parse_host(&host_str)?;
 
-        Ok(PaneAddress {
-            machine: machine.to_string(),
-            host,
-            window,
-            pane,
-        })
+        Ok(PaneAddress { machine: machine.to_string(), host, window, pane })
     }
 }
 
@@ -108,18 +100,15 @@ fn split_once(s: &str, delim: char) -> Option<(&str, &str)> {
 fn peel_pane_window(s: &str) -> anyhow::Result<(u32, u32, String)> {
     // Try to peel pane.
     if let Some((left, right)) = split_once_rev(s, ':') {
-        match parse_index(right, "pane")? {
-            Some(p) => {
-                // Pane peeled. Try to peel window.
-                if let Some((left2, right2)) = split_once_rev(left, ':') {
-                    match parse_index(right2, "window")? {
-                        Some(w) => return Ok((p, w, left2.to_string())),
-                        None => return Ok((p, 0, left.to_string())),
-                    }
+        if let Some(p) = parse_index(right, "pane")? {
+            // Pane peeled. Try to peel window.
+            if let Some((left2, right2)) = split_once_rev(left, ':') {
+                if let Some(w) = parse_index(right2, "window")? {
+                    return Ok((p, w, left2.to_string()));
                 }
                 return Ok((p, 0, left.to_string()));
             }
-            None => {}
+            return Ok((p, 0, left.to_string()));
         }
     }
     Ok((0, 0, s.to_string()))
@@ -137,20 +126,14 @@ fn parse_index(s: &str, label: &'static str) -> anyhow::Result<Option<u32>> {
         // Not numeric at all (could be `local`, `tailscale`, `ssh:...`). Let
         // the caller treat this as a non-index and fall through.
         if s.starts_with('-') {
-            anyhow::bail!(
-                "{} index must be non-negative, got '{}'",
-                label,
-                s
-            );
+            anyhow::bail!("{} index must be non-negative, got '{}'", label, s);
         }
         return Ok(None);
     }
     if s.starts_with('-') {
         anyhow::bail!("{} index must be non-negative, got '{}'", label, s);
     }
-    let n: u32 = s
-        .parse()
-        .map_err(|_| anyhow::anyhow!("{} index out of range: '{}'", label, s))?;
+    let n: u32 = s.parse().map_err(|_| anyhow::anyhow!("{} index out of range: '{}'", label, s))?;
     Ok(Some(n))
 }
 
@@ -179,10 +162,7 @@ fn parse_host(s: &str) -> anyhow::Result<Host> {
             if host.is_empty() {
                 anyhow::bail!("empty ssh host in '{}'", s);
             }
-            Ok(Host::Ssh {
-                user: user.to_string(),
-                host: host.to_string(),
-            })
+            Ok(Host::Ssh { user: user.to_string(), host: host.to_string() })
         }
         other => anyhow::bail!(
             "unknown host '{}' (expected 'local', 'tailscale', or 'ssh:user@host')",
@@ -193,8 +173,7 @@ fn parse_host(s: &str) -> anyhow::Result<Host> {
 
 fn is_valid_machine(s: &str) -> bool {
     !s.is_empty()
-        && s.chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
 }
 
 // ---------------------------------------------------------------------------

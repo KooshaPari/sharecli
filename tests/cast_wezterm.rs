@@ -48,16 +48,12 @@ impl ProcessRunner for MockProcessRunner {
             args: args.iter().map(|s| s.to_string()).collect(),
         });
         // Pop the next queued response or return a sentinel failure.
-        self.responses
-            .lock()
-            .unwrap()
-            .pop_front()
-            .unwrap_or_else(|| {
-                Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "MockProcessRunner out of queued responses",
-                ))
-            })
+        self.responses.lock().unwrap().pop_front().unwrap_or_else(|| {
+            Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "MockProcessRunner out of queued responses",
+            ))
+        })
     }
 
     fn run_with_stdin(&self, bin: &str, args: &[&str], _stdin: &[u8]) -> io::Result<Output> {
@@ -67,11 +63,7 @@ impl ProcessRunner for MockProcessRunner {
 }
 
 fn ok_output(stdout: &str) -> io::Result<Output> {
-    Ok(Output {
-        status: exit_status(0),
-        stdout: stdout.as_bytes().to_vec(),
-        stderr: Vec::new(),
-    })
+    Ok(Output { status: exit_status(0), stdout: stdout.as_bytes().to_vec(), stderr: Vec::new() })
 }
 
 #[cfg(unix)]
@@ -168,9 +160,7 @@ fn fr_cast_004_returns_none_when_window_matches_but_pane_does_not() {
 #[test]
 fn fr_cast_004_propagates_when_list_exits_non_zero() {
     // Arrange: wezterm cli list fails (e.g. daemon not running).
-    let runner = MockProcessRunner::new(vec![ok_output_with_status(
-        1, "", "no wezterm running",
-    )]);
+    let runner = MockProcessRunner::new(vec![ok_output_with_status(1, "", "no wezterm running")]);
     let caster = WeztermCaster::new(runner);
 
     // Act.
@@ -202,10 +192,8 @@ fn fr_cast_004_handles_non_json_stdout_gracefully() {
 #[test]
 fn fr_cast_004_send_delivers_when_pane_resolves() {
     // Arrange: 2 responses — list returns sample, send returns success.
-    let runner = MockProcessRunner::new(vec![
-        ok_output(SAMPLE_LIST),
-        ok_output_with_status(0, "", ""),
-    ]);
+    let runner =
+        MockProcessRunner::new(vec![ok_output(SAMPLE_LIST), ok_output_with_status(0, "", "")]);
     let caster = WeztermCaster::new(runner.clone());
 
     // Act.

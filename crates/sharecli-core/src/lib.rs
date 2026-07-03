@@ -334,6 +334,13 @@ impl Hypervisor {
     ///   retries, return `Err("spawn refused: device is thermally throttled …")`.
     ///   This is **never a silent no-op**.
     ///
+    /// # FUSE IO-intercept
+    /// On a cache miss the hypervisor attempts to mount a sharecli-fuse intercept
+    /// layer over the child's `cwd`.  When the mount succeeds the child runs
+    /// against the FUSE mountpoint — all filesystem access goes through the
+    /// intercept layer for build-system cache sharing.  FUSE is **best-effort**:
+    /// if mounting fails the spawn proceeds without interception.
+    ///
     /// # Coalescing behaviour
     /// - If no cached result exists for this command the process is spawned,
     ///   its output captured, and the result stored.
@@ -343,15 +350,6 @@ impl Hypervisor {
     ///   flock; the first one to acquire the lock spawns; the rest read the
     ///   cache once the lock is released.
     ///
-    /// # FUSE IO-intercept
-    ///
-    /// On cache-miss the hypervisor attempts to mount a sharecli-fuse IO-intercept
-    /// layer over the child's `cwd` so that filesystem access is tracked.  The
-    /// mount is **best-effort**: if the platform does not support FUSE or the
-    /// mount fails the spawn proceeds without interception.  Cache keys always
-    /// use the *original* `cwd` for stable coalescing regardless of whether the
-    /// intercept is active.
-    ///
     /// # TODO(hypervisor): speculative
     /// Record command-frequency histograms here; trigger pre-execution from a
     /// background task when a command crosses the speculation threshold.
@@ -360,6 +358,8 @@ impl Hypervisor {
         self.thermal_gate_check().await?;
 
         // ── Cache lookup ─────────────────────────────────────────────────────
+        // NOTE: the cache key uses the *original* `req.cwd` so that identical
+        // commands produce the same key regardless of whether FUSE is active.
         let key = command_key(&req.argv, &req.cwd, &req.env);
         debug!(key = %key.0, argv = ?req.argv, "hypervisor::run");
 
@@ -375,27 +375,35 @@ impl Hypervisor {
             });
         }
 
+        // ── FUSE intercept (cache-miss only) ─────────────────────────────────
+        // Mount the IO-intercept layer over the child's working directory.
+        // `FuseGuard::try_mount` never fails — if FUSE is unavailable a no-op
+        // guard is returned and the spawn proceeds normally.
+        let fuse_guard = FuseGuard::try_mount(&req.cwd);
+
+        // Build an effective SpawnRequest whose cwd points at the FUSE
+        // mountpoint (or the original cwd when FUSE is inactive).
+        // This is a *separate owned clone* — no borrow relationship to `req`,
+        // which avoids the borrow-checker conflict that would arise if we tried
+        // to modify `req.cwd` inside the `with_lock` closure below.
+        let effective_req = fuse_guard
+            .mountpoint()
+            .map(|mp| SpawnRequest { cwd: mp.to_path_buf(), ..req.clone() })
+            .unwrap_or_else(|| req.clone());
+
         // Cache miss — acquire the advisory flock, re-check inside the lock
         // (a sibling may have stored the result while we were waiting), and
         // only spawn if still a miss.
         //
-        // Cache miss — try to mount FUSE IO-intercept over the child's
-        // working directory so file-system access is tracked.  Non-FUSE
-        // platforms and mount failures return a no-op guard and we use the
-        // original `cwd` unchanged.  Cache keys always use the *original*
-        // `cwd` so coalescing is stable regardless of intercept status.
-        let fuse_guard = FuseGuard::try_mount(&req.cwd);
-        let effective_req = if let Some(ref mp) = fuse_guard.mountpoint() {
-            debug!(mountpoint = %mp.display(), "fuse-io: intercept active");
-            SpawnRequest { cwd: mp.to_path_buf(), ..req.clone() }
-        } else {
-            req.clone()
-        };
+        // Cache keys always use the *original* `cwd` so coalescing is stable
+        // regardless of whether the FUSE intercept is active.
 
         // Lock-Wait-Cache: spawn is the closure called only on a cache miss.
         // We use `effective_req` (with a potentially FUSE-wrapped cwd)
         // inside the closure to avoid any borrow conflict with `req`.
         let cached: CachedResult = self.cache.with_lock(&key, || {
+            // Blocking spawn — `with_lock` is a sync callback.
+            // Uses `effective_req` (owned clone, not borrowing from `req`).
             let outcome = spawn_process_sync(&effective_req)?;
             Ok(CachedResult {
                 exit_code: outcome.exit_code,

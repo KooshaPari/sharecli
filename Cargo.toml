@@ -32,6 +32,9 @@ spawn-core-sys = { path = "crates/spawn-core-sys" }
 # Fleet: device registry + thermal governor
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 
+# Thermal TUI
+sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
+
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
@@ -59,6 +62,7 @@ members = [
     "crates/spawn-core-sys",
     "crates/sharecli-fuse",
     "crates/sharecli-core",
+    "crates/sharecli-thermal-tui",
 ]
 
 # ---------------------------------------------------------------------------

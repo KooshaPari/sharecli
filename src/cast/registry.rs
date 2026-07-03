@@ -33,7 +33,7 @@ impl PaneRegistry {
     pub fn new() -> Result<Self> {
         let base = dirs::config_dir()
             .ok_or_else(|| anyhow::anyhow!("could not resolve user config dir"))?;
-        Ok(Self::new_in(base.join("sharecli").join("cast"))?)
+        Self::new_in(base.join("sharecli").join("cast"))
     }
 
     /// Open (or create) a registry whose file lives in `dir/pane-map.toml`.
@@ -71,9 +71,8 @@ impl PaneRegistry {
         let map = self.load()?;
         let mut out = Vec::with_capacity(map.entries.len());
         for (name, raw) in &map.entries {
-            let addr = PaneAddress::parse(raw).with_context(|| {
-                format!("malformed address for pane '{}': {}", name, raw)
-            })?;
+            let addr = PaneAddress::parse(raw)
+                .with_context(|| format!("malformed address for pane '{}': {}", name, raw))?;
             out.push((name.clone(), addr));
         }
         Ok(out)
@@ -83,9 +82,10 @@ impl PaneRegistry {
     pub fn resolve(&self, name: &str) -> Result<Option<PaneAddress>> {
         let map = self.load()?;
         match map.entries.get(name) {
-            Some(raw) => Ok(Some(PaneAddress::parse(raw).with_context(|| {
-                format!("malformed address for pane '{}': {}", name, raw)
-            })?)),
+            Some(raw) => Ok(Some(
+                PaneAddress::parse(raw)
+                    .with_context(|| format!("malformed address for pane '{}': {}", name, raw))?,
+            )),
             None => Ok(None),
         }
     }
@@ -104,8 +104,7 @@ impl PaneRegistry {
     }
 
     fn save(&self, map: &PaneMap) -> Result<()> {
-        let body = toml::to_string_pretty(map)
-            .context("serialise registry")?;
+        let body = toml::to_string_pretty(map).context("serialise registry")?;
         fs::write(&self.path, body)
             .with_context(|| format!("write registry {}", self.path.display()))?;
         Ok(())
@@ -120,11 +119,7 @@ fn validate_name(name: &str) -> Result<()> {
     }
     for c in name.chars() {
         if c.is_control() || c.is_whitespace() || c == ':' || c == '/' || c == '\\' {
-            anyhow::bail!(
-                "invalid pane name {:?}: contains forbidden character {:?}",
-                name,
-                c
-            );
+            anyhow::bail!("invalid pane name {:?}: contains forbidden character {:?}", name, c);
         }
     }
     Ok(())
@@ -166,9 +161,8 @@ mod tests {
 
     #[test]
     fn round_trip_via_toml() {
-        let map = PaneMap {
-            entries: BTreeMap::from([("a".to_string(), "mbp:local:0:2".to_string())]),
-        };
+        let map =
+            PaneMap { entries: BTreeMap::from([("a".to_string(), "mbp:local:0:2".to_string())]) };
         let s = toml::to_string(&map).expect("serialise");
         let back: PaneMap = toml::from_str(&s).expect("parse");
         assert_eq!(back.entries.get("a").map(String::as_str), Some("mbp:local:0:2"));

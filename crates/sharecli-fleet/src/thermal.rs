@@ -22,6 +22,12 @@ pub struct ThermalGovernor {
     _private: (),
 }
 
+impl Default for ThermalGovernor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ThermalGovernor {
     /// Create a new `ThermalGovernor` that polls the real system.
     pub fn new() -> Self {
