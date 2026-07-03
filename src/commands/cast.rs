@@ -71,17 +71,12 @@ pub fn send(name: &str, file: Option<&str>) -> Result<()> {
         );
     }
 
-    let casters: Vec<(Arc<dyn Caster>, &'static str)> = vec![
-        (Arc::new(WeztermCaster), "wezterm"),
-        (Arc::new(ClipboardCaster), "clipboard"),
+    let casters: Vec<(Arc<dyn Caster>, String)> = vec![
+        (Arc::new(WeztermCaster::system()), "wezterm".to_string()),
+        (Arc::new(ClipboardCaster), "clipboard".to_string()),
     ];
 
-    let owned: Vec<(Arc<dyn Caster>, String)> = casters
-        .into_iter()
-        .map(|(c, n)| (c, n.to_string()))
-        .collect();
-
-    let outcome = crate::cast::caster::send_with_fallback(&owned, &addr, &text);
+    let outcome = crate::cast::caster::send_with_fallback(&casters, &addr, &text);
     report_outcome(name, &addr, &outcome);
     match outcome {
         SendOutcome::Delivered | SendOutcome::NeedsFocus => Ok(()),

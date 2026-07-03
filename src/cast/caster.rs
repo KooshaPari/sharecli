@@ -7,9 +7,10 @@
 //! FR: FR-CAST-003, FR-CAST-004, FR-CAST-005, FR-CAST-007
 
 use std::io;
-use std::process::Command;
+use std::process::{Command, Output};
 
 use anyhow::{anyhow, Result};
+use serde::Deserialize;
 
 use super::address::PaneAddress;
 
@@ -54,9 +55,29 @@ pub fn which(bin: &str) -> Option<std::path::PathBuf> {
     None
 }
 
-/// Build a `Command` for `bin`, capturing stdout/stderr.
-fn run(bin: &str, args: &[&str]) -> io::Result<std::process::Output> {
-    Command::new(bin).args(args).output()
+/// Pluggable process-spawning strategy. Real production uses `SystemRunner`;
+/// tests inject `MockProcessRunner` to assert command shape without actually
+/// shelling out.
+pub trait ProcessRunner: Send + Sync {
+    fn run(&self, bin: &str, args: &[&str]) -> io::Result<Output>;
+}
+
+/// Default `ProcessRunner` — invokes a real subprocess.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SystemRunner;
+
+impl ProcessRunner for SystemRunner {
+    fn run(&self, bin: &str, args: &[&str]) -> io::Result<Output> {
+        Command::new(bin).args(args).output()
+    }
+}
+
+/// One row of `wezterm cli list --format json` output. The CLI emits more
+/// fields than this; we deserialize only the ones we need.
+#[derive(Debug, Deserialize)]
+struct WeztermPane {
+    window_id: u32,
+    pane_id: u32,
 }
 
 /// Cast through the `wezterm` CLI (`wezterm cli send-text`).
@@ -65,21 +86,38 @@ fn run(bin: &str, args: &[&str]) -> io::Result<std::process::Output> {
 /// inter-process control surface today. This caster shells out to
 /// `wezterm cli list` to resolve window:pane → numeric pane id, then
 /// `wezterm cli send-text --pane-id <id> <text>` to deliver.
-pub struct WeztermCaster;
+///
+/// Parameterised over [`ProcessRunner`] so unit tests can swap in a mock
+/// and assert against the exact argv constructed — no wezterm binary
+/// required in CI.
+pub struct WeztermCaster<R: ProcessRunner = SystemRunner> {
+    runner: R,
+}
 
-impl Caster for WeztermCaster {
+impl WeztermCaster<SystemRunner> {
+    /// Default constructor — uses real subprocess execution.
+    pub fn system() -> Self {
+        Self { runner: SystemRunner }
+    }
+}
+
+impl<R: ProcessRunner> WeztermCaster<R> {
+    /// Construct with a custom process runner (used by tests).
+    pub fn new(runner: R) -> Self {
+        Self { runner }
+    }
+}
+
+impl<R: ProcessRunner> Caster for WeztermCaster<R> {
     fn name(&self) -> &'static str {
         "wezterm"
     }
 
     fn resolve_pane_id(&self, addr: &PaneAddress) -> Result<Option<u32>> {
-        if which("wezterm").is_none() {
-            return Err(anyhow!("wezterm not found on PATH"));
-        }
-        // `wezterm cli list --format json` — one entry per pane with
-        // {window_id, pane_id, tab_id, title, ...}.
-        let output = run("wezterm", &["cli", "list", "--format", "json"])
-            .map_err(|e| anyhow!("wezterm cli list failed: {}", e))?;
+        let output = self
+            .runner
+            .run("wezterm", &["cli", "list", "--format", "json"])
+            .map_err(|e| anyhow!("wezterm cli list failed to spawn: {}", e))?;
         if !output.status.success() {
             return Err(anyhow!(
                 "wezterm cli list exited {}: {}",
@@ -88,30 +126,44 @@ impl Caster for WeztermCaster {
             ));
         }
         let body = String::from_utf8_lossy(&output.stdout);
-        // Parse: we keep this minimal — JSON lines with "window_id" + "pane_id".
-        // For a from-scratch caster we don't pull in a full JSON dep.
-        // The full implementation lives in follow-up task; this stub
-        // returns Ok(None) so callers can degrade to the next caster.
-        let _ = body;
-        Ok(None)
+        // `window` in PaneAddress is 1-indexed and maps directly to wezterm's
+        // window_id.  `pane` is 0-indexed — the Nth pane within that window.
+        let want_window = addr.window;
+        let want_pane_idx = addr.pane as usize;
+        let panes: Vec<WeztermPane> = match serde_json::from_str(&body) {
+            Ok(v) => v,
+            Err(_) => return Ok(None), // non-JSON or empty: degrade
+        };
+        let mut matching: Vec<WeztermPane> = panes
+            .into_iter()
+            .filter(|p| p.window_id == want_window)
+            .collect();
+        matching.sort_by_key(|p| p.pane_id);
+        Ok(matching.into_iter().nth(want_pane_idx).map(|p| p.pane_id))
     }
 
     fn send(&self, addr: &PaneAddress, text: &str) -> SendOutcome {
-        if which("wezterm").is_none() {
-            return SendOutcome::Unsupported("wezterm not found on PATH".into());
-        }
         let pane_id = match self.resolve_pane_id(addr) {
             Ok(Some(id)) => id,
             Ok(None) => {
-                return SendOutcome::Failed(
-                    "wezterm pane id resolution returned None (no JSON parser yet)".into(),
-                );
+                return SendOutcome::Failed(format!(
+                    "no wezterm pane matching window:{} pane:{}",
+                    addr.window, addr.pane
+                ));
             }
             Err(e) => return SendOutcome::Failed(e.to_string()),
         };
-        match run(
+        let id_str = pane_id.to_string();
+        match self.runner.run(
             "wezterm",
-            &["cli", "send-text", "--pane-id", &pane_id.to_string(), "--no-paste", text],
+            &[
+                "cli",
+                "send-text",
+                "--pane-id",
+                &id_str,
+                "--no-paste",
+                text,
+            ],
         ) {
             Ok(o) if o.status.success() => SendOutcome::Delivered,
             Ok(o) => SendOutcome::Failed(format!(

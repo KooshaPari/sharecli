@@ -14,7 +14,9 @@ pub mod registry;
 use std::path::PathBuf;
 
 pub use address::{Host, PaneAddress};
-pub use caster::{Caster, ClipboardCaster, SendOutcome, WeztermCaster};
+pub use caster::{
+    Caster, ClipboardCaster, ProcessRunner, SendOutcome, SystemRunner, WeztermCaster,
+};
 pub use registry::PaneRegistry;
 
 /// Default on-disk location for the pane map.
