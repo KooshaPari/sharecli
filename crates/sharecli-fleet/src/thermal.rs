@@ -8,17 +8,42 @@ pub enum ThermalLevel {
     Red,
 }
 
-#[derive(Debug, Default, Clone)]
+/// A thermal / memory-pressure governor.
+///
+/// `poll()` returns the current system thermal state.  The `with_mock()`
+/// constructor is available (in all builds) for downstream tests that need
+/// deterministic control over the thermal level.
+#[derive(Debug, Clone)]
 pub struct ThermalGovernor {
+    /// When `Some`, `poll()` returns this level instead of querying the real
+    /// system.  Intended for downstream tests.
+    mock_level: Option<ThermalLevel>,
+    /// Prevents direct construction outside the crate.
     _private: (),
 }
 
 impl ThermalGovernor {
+    /// Create a new `ThermalGovernor` that polls the real system.
     pub fn new() -> Self {
-        Self { _private: () }
+        Self { mock_level: None, _private: () }
     }
 
+    /// Create a `ThermalGovernor` that always returns the given level.
+    ///
+    /// Intended for downstream tests that need deterministic thermal states
+    /// (e.g. verifying that `Red` correctly blocks spawns).
+    pub fn with_mock(level: ThermalLevel) -> Self {
+        Self { mock_level: Some(level), _private: () }
+    }
+
+    /// Poll the current thermal / memory-pressure level.
+    ///
+    /// Returns the mock level if one was set via [`Self::with_mock`];
+    /// otherwise queries the real system.
     pub fn poll(&self) -> anyhow::Result<ThermalLevel> {
+        if let Some(level) = self.mock_level {
+            return Ok(level);
+        }
         self.poll_impl()
     }
 

@@ -23,8 +23,8 @@
 //! ```
 //!
 //! # TODO hooks (follow-up PRs)
-//! - `// TODO(hypervisor): thermal-gate` — query `sharecli-fleet::ThermalGovernor`
-//!   before spawning; back-pressure when the device is thermally throttled.
+//! - `// DONE(hypervisor): thermal-gate` — queries `sharecli-fleet::ThermalGovernor`
+//!   before spawning; returns `Err` when the device is in `Red` state; warns on `Yellow`.
 //! - `// TODO(hypervisor): fuse-io` — mount FUSE intercept layer from `sharecli-fuse`
 //!   over the child's working directory for IO ownership tracking.
 //! - `// TODO(hypervisor): speculative` — pre-execute high-probability commands during
@@ -33,6 +33,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use sharecli_fleet::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{CachedResult, CoalesceCache, command_key};
 use tracing::debug;
 
@@ -104,6 +105,7 @@ impl From<SpawnOutcome> for CachedResult {
 /// single execution, with all waiters receiving the same cached result.
 pub struct Hypervisor {
     cache: CoalesceCache,
+    thermal: ThermalGovernor,
     #[allow(dead_code)]
     config: HypervisorConfig,
 }
@@ -113,7 +115,22 @@ impl Hypervisor {
     pub fn new(cache_root: impl Into<PathBuf>) -> Self {
         let cache_root = cache_root.into();
         let config = HypervisorConfig { cache_root: cache_root.clone() };
-        Self { cache: CoalesceCache::new(cache_root), config }
+        Self {
+            cache: CoalesceCache::new(cache_root),
+            thermal: ThermalGovernor::new(),
+            config,
+        }
+    }
+
+    /// Create a `Hypervisor` with a custom [`ThermalGovernor`] (test-only).
+    #[cfg(test)]
+    pub fn with_governor(
+        cache_root: impl Into<PathBuf>,
+        thermal: ThermalGovernor,
+    ) -> Self {
+        let cache_root = cache_root.into();
+        let config = HypervisorConfig { cache_root: cache_root.clone() };
+        Self { cache: CoalesceCache::new(cache_root), thermal, config }
     }
 
     /// Run a managed spawn with Lock-Wait-Cache coalescing.
@@ -126,11 +143,6 @@ impl Hypervisor {
     /// - Concurrent callers with the same command key block on an advisory
     ///   flock; the first one to acquire the lock spawns; the rest read the
     ///   cache once the lock is released.
-    ///
-    /// # TODO(hypervisor): thermal-gate
-    /// Before calling `spawn_process` check `ThermalGovernor::can_schedule()`
-    /// from `sharecli-fleet`; return `Err` or sleep-retry when the device is
-    /// throttled.
     ///
     /// # TODO(hypervisor): fuse-io
     /// Wrap the child's `cwd` with the `sharecli-fuse` IO intercept mount so
@@ -153,6 +165,24 @@ impl Hypervisor {
                 stderr: cached.stderr,
                 from_cache: true,
             });
+        }
+
+        // Thermal gate — defer spawns when the device is throttled.
+        // Cache hits are still served regardless of thermal state.
+        match self.thermal.poll()? {
+            ThermalLevel::Green => {}
+            ThermalLevel::Yellow => {
+                tracing::warn!(
+                    key = %key.0,
+                    "thermal: yellow — proceeding with caution"
+                );
+            }
+            ThermalLevel::Red => {
+                anyhow::bail!(
+                    "thermal: red — device is throttled, deferring spawn {:?}",
+                    req.argv,
+                );
+            }
         }
 
         // Cache miss — acquire the advisory flock, re-check inside the lock
@@ -273,5 +303,43 @@ mod tests {
         assert!(second.from_cache, "second run must come from cache");
         assert_eq!(second.stdout, first.stdout, "cached stdout must match original");
         assert_eq!(second.exit_code, first.exit_code);
+    }
+
+    /// (c) Thermal gate in Red state must reject the spawn with an error.
+    #[tokio::test]
+    async fn run_thermal_red_rejects() {
+        let dir = TempDir::new().expect("tempdir");
+        let red_governor = ThermalGovernor::with_mock(ThermalLevel::Red);
+        let hv = Hypervisor::with_governor(dir.path(), red_governor);
+
+        let req = SpawnRequest {
+            argv: echo_argv("hot-test"),
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+        };
+
+        let err = hv.run(req).await.unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(msg.contains("thermal: red"), "error should mention thermal: red, got: {msg}");
+    }
+
+    /// (d) Thermal gate in Yellow state must proceed normally (with a warning).
+    #[tokio::test]
+    async fn run_thermal_yellow_proceeds() {
+        let dir = TempDir::new().expect("tempdir");
+        let yellow_governor = ThermalGovernor::with_mock(ThermalLevel::Yellow);
+        let hv = Hypervisor::with_governor(dir.path(), yellow_governor);
+
+        let req = SpawnRequest {
+            argv: echo_argv("warm-test"),
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+        };
+
+        let outcome = hv.run(req).await.expect("yellow should still allow spawns");
+        assert_eq!(outcome.exit_code, 0, "echo should exit 0");
+        assert!(!outcome.from_cache, "must not come from cache");
+        let stdout = String::from_utf8_lossy(&outcome.stdout);
+        assert!(stdout.contains("warm-test"), "stdout should contain 'warm-test'");
     }
 }
