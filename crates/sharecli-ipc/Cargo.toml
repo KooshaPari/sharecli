@@ -17,6 +17,9 @@ serde_json = "1"
 # Errors
 anyhow = "1"
 
+# Process liveness probe (kill(pid, 0)) for serve-lock staleness detection
+libc = "0.2"
+
 # IPC server (bin only)
 sharecli = { path = "../../" }
 tokio = { version = "1", features = ["full"] }

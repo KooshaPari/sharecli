@@ -18,6 +18,8 @@
 //! - `// TODO(hypervisor): eviction` — periodic sweep of `root/<key>.json` files older
 //!   than the configured TTL inside [`CoalesceCache::store`].
 
+pub mod serve_lock;
+
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
