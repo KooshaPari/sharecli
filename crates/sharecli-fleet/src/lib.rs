@@ -37,3 +37,21 @@ pub async fn announce(client: &Client, record: &DeviceRecord) -> anyhow::Result<
 pub async fn subscribe(client: &Client) -> anyhow::Result<async_nats::Subscriber> {
     Ok(client.subscribe(FLEET_SUBJECT).await?)
 }
+
+/// Publish a DeviceRecord health-beat every `interval` until the token is cancelled.
+///
+/// Runs in the background — spawn with `tokio::spawn(health_beat(...))`.
+/// Stops cleanly when the `async_nats::Client` is dropped or the interval is cancelled.
+pub async fn health_beat(
+    client: Client,
+    record: DeviceRecord,
+    interval: std::time::Duration,
+) {
+    let mut ticker = tokio::time::interval(interval);
+    loop {
+        ticker.tick().await;
+        if let Err(e) = announce(&client, &record).await {
+            tracing::warn!("health_beat: announce failed: {e}");
+        }
+    }
+}
