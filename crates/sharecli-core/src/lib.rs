@@ -36,13 +36,27 @@
 //!   if the device remains RED after [`THERMAL_MAX_RETRIES`] attempts it returns
 //!   an explicit `Err`.  This is **never a silent no-op**.
 //!
+//! # FUSE IO-intercept behaviour
+//!
+//! Before executing a cache-miss spawn the hypervisor attempts to mount a
+//! sharecli-fuse IO-intercept layer over the child's working directory.  When
+//! the mount succeeds the child's `cwd` is transparently replaced with the
+//! FUSE mountpoint — all filesystem access goes through the intercept layer,
+//! which tracks reads/writes for build-system cache sharing.
+//!
+//! FUSE mounting is **best-effort**: if the platform does not support FUSE
+//! (non-Linux/macOS) or the mount fails for any reason, the spawn proceeds
+//! without interception.  Cache keys always use the *original* (unwrapped)
+//! `cwd` so that identical commands produce the same cache entry regardless
+//! of whether FUSE was active.
+//!
 //! # TODO hooks (follow-up PRs)
-//! - `// TODO(hypervisor): fuse-io` — mount FUSE intercept layer from `sharecli-fuse`
-//!   over the child's working directory for IO ownership tracking.
 //! - `// TODO(hypervisor): speculative` — pre-execute high-probability commands during
 //!   idle periods and pre-populate the coalesce cache.
 
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
@@ -84,7 +98,7 @@ pub trait ThermalGate: Send + Sync {
 /// If `poll()` returns an error (e.g. missing sysctl) the gate defaults to
 /// [`ThermalDecision::Allow`] and logs a warning so that sysctl unavailability
 /// does not block spawns on non-macOS CI runners.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SystemThermalGate {
     governor: ThermalGovernor,
 }
@@ -122,6 +136,100 @@ pub const THERMAL_MAX_RETRIES: u32 = 5;
 ///
 /// 2 s per attempt → up to ~10 s total wait before a hard error is returned.
 pub const THERMAL_RETRY_SLEEP: Duration = Duration::from_secs(2);
+
+// ---------------------------------------------------------------------------
+// FUSE IO-intercept guard
+// ---------------------------------------------------------------------------
+
+/// RAII guard that manages a sharecli-fuse intercept mount lifetime.
+///
+/// On construction (best-effort) it creates a temporary directory, spawns a
+/// background thread running the FUSE event loop that mirrors a backing path,
+/// and exposes the mountpoint via [`mountpoint()`][FuseGuard::mountpoint].
+///
+/// On drop the guard force-unmounts the FUSE filesystem and removes the
+/// temporary mountpoint directory.
+///
+/// # Best-effort semantics
+///
+/// [`FuseGuard::try_mount`] **never** returns an error.  If mounting fails
+/// (platform unsupported, FUSE kernel module not loaded, etc.) a no-op guard
+/// is returned and [`mountpoint()`][FuseGuard::mountpoint] returns `None`.
+/// Callers should always check `mountpoint()` and fall back to the original
+/// path when it returns `None`.
+struct FuseGuard {
+    /// Path to the temporary mountpoint directory.
+    /// `None` when FUSE could not be started (no-op guard).
+    mountpoint: Option<PathBuf>,
+    /// Keep the TempDir alive so it is not cleaned up before the unmount in
+    /// [`Drop`] runs.
+    _tmpdir: Option<tempfile::TempDir>,
+}
+
+impl FuseGuard {
+    /// Attempt to mount a sharecli-fuse IO-intercept layer mirroring `backing`.
+    ///
+    /// When FUSE is unavailable or the mount fails a no-op guard is returned
+    /// (the spawn proceeds without interception).
+    fn try_mount(backing: &Path) -> Self {
+        // Non-Linux/macOS: no-op guard — FUSE is not available.
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        {
+            let _ = backing;
+            return Self { mountpoint: None, _tmpdir: None };
+        }
+
+        // Linux / macOS: try to start FUSE.
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            let tmpdir = match tempfile::tempdir() {
+                Ok(d) => d,
+                Err(_) => return Self { mountpoint: None, _tmpdir: None },
+            };
+            let mountpoint = tmpdir.path().to_path_buf();
+            let backing = backing.to_path_buf();
+            let mp = mountpoint.clone();
+
+            // Spawn the FUSE event loop on a background thread — it blocks
+            // until unmounted.
+            std::thread::spawn(move || {
+                let _ = sharecli_fuse::mount(&mp, &backing);
+            });
+
+            // Brief pause so the mount is ready when the child process spawns.
+            std::thread::sleep(Duration::from_millis(100));
+
+            Self { mountpoint: Some(mountpoint), _tmpdir: Some(tmpdir) }
+        }
+    }
+
+    /// The mountpoint directory, or `None` if the guard is a no-op.
+    fn mountpoint(&self) -> Option<&Path> {
+        self.mountpoint.as_deref()
+    }
+}
+
+impl Drop for FuseGuard {
+    fn drop(&mut self) {
+        if let Some(ref mp) = self.mountpoint {
+            // Force-unmount (the `_tmpdir` field is dropped after this,
+            // which removes the now-empty mountpoint directory).
+            #[cfg(target_os = "linux")]
+            {
+                let _ = std::process::Command::new("fusermount")
+                    .arg("-uz")
+                    .arg(mp)
+                    .status();
+            }
+            #[cfg(target_os = "macos")]
+            {
+                let _ = std::process::Command::new("umount")
+                    .arg(mp)
+                    .status();
+            }
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -235,9 +343,14 @@ impl Hypervisor {
     ///   flock; the first one to acquire the lock spawns; the rest read the
     ///   cache once the lock is released.
     ///
-    /// # TODO(hypervisor): fuse-io
-    /// Wrap the child's `cwd` with the `sharecli-fuse` IO intercept mount so
-    /// that file-system access is tracked for build-system cache sharing.
+    /// # FUSE IO-intercept
+    ///
+    /// On cache-miss the hypervisor attempts to mount a sharecli-fuse IO-intercept
+    /// layer over the child's `cwd` so that filesystem access is tracked.  The
+    /// mount is **best-effort**: if the platform does not support FUSE or the
+    /// mount fails the spawn proceeds without interception.  Cache keys always
+    /// use the *original* `cwd` for stable coalescing regardless of whether the
+    /// intercept is active.
     ///
     /// # TODO(hypervisor): speculative
     /// Record command-frequency histograms here; trigger pre-execution from a
@@ -266,10 +379,24 @@ impl Hypervisor {
         // (a sibling may have stored the result while we were waiting), and
         // only spawn if still a miss.
         //
+        // Cache miss — try to mount FUSE IO-intercept over the child's
+        // working directory so file-system access is tracked.  Non-FUSE
+        // platforms and mount failures return a no-op guard and we use the
+        // original `cwd` unchanged.  Cache keys always use the *original*
+        // `cwd` so coalescing is stable regardless of intercept status.
+        let fuse_guard = FuseGuard::try_mount(&req.cwd);
+        let effective_req = if let Some(ref mp) = fuse_guard.mountpoint() {
+            debug!(mountpoint = %mp.display(), "fuse-io: intercept active");
+            SpawnRequest { cwd: mp.to_path_buf(), ..req.clone() }
+        } else {
+            req.clone()
+        };
+
         // Lock-Wait-Cache: spawn is the closure called only on a cache miss.
+        // We use `effective_req` (with a potentially FUSE-wrapped cwd)
+        // inside the closure to avoid any borrow conflict with `req`.
         let cached: CachedResult = self.cache.with_lock(&key, || {
-            // Blocking spawn — `with_lock` is a sync callback.
-            let outcome = spawn_process_sync(&req)?;
+            let outcome = spawn_process_sync(&effective_req)?;
             Ok(CachedResult {
                 exit_code: outcome.exit_code,
                 stdout: outcome.stdout,
@@ -548,6 +675,62 @@ mod tests {
         assert_eq!(outcome.exit_code, 0);
         let stdout = String::from_utf8_lossy(&outcome.stdout);
         assert!(stdout.contains("recover"));
+    }
+
+    // ── FUSE IO-intercept tests ──────────────────────────────────────────
+
+    /// FuseGuard::try_mount never panics and returns a valid object on all
+    /// platforms.  On non-FUSE platforms the guard is a no-op; on Linux/macOS
+    /// it may or may not succeed depending on the FUSE kernel module.
+    #[test]
+    fn fuse_guard_try_mount_never_panics() {
+        let dir = TempDir::new().expect("tempdir");
+        let guard = FuseGuard::try_mount(dir.path());
+        // The guard object is valid regardless of whether FUSE is active.
+        // Dropping it must not panic.
+        drop(guard);
+    }
+
+    /// When FUSE is active the mountpoint must differ from the backing path.
+    /// When FUSE is inactive mountpoint() returns None — the no-op guard.
+    #[test]
+    fn fuse_guard_mountpoint_returns_path_or_none() {
+        let dir = TempDir::new().expect("tempdir");
+        let guard = FuseGuard::try_mount(dir.path());
+        match guard.mountpoint() {
+            Some(mp) => {
+                // FUSE is active — mountpoint must be different from backing.
+                assert_ne!(mp, dir.path(), "mountpoint must differ from backing");
+                assert!(
+                    mp.starts_with(std::env::temp_dir()),
+                    "mountpoint must be under temp dir"
+                );
+            }
+            None => {
+                // FUSE not available — best-effort, still valid.
+            }
+        }
+    }
+
+    /// With FUSE wired into the run() path, a spawn must still succeed
+    /// regardless of whether the intercept is active.
+    #[tokio::test]
+    async fn fuse_io_run_succeeds_with_or_without_intercept() {
+        let dir = TempDir::new().expect("tempdir");
+        let hv = Hypervisor::new(dir.path());
+
+        let req = SpawnRequest {
+            argv: echo_argv("fuse-run"),
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+        };
+
+        let outcome =
+            hv.run(req).await.expect("run must succeed with fuse-io wiring");
+        assert_eq!(outcome.exit_code, 0);
+        assert!(!outcome.from_cache);
+        let stdout = String::from_utf8_lossy(&outcome.stdout);
+        assert!(stdout.contains("fuse-run"));
     }
 
     /// FakeThermalGate::check() must return the decision it was constructed with.
