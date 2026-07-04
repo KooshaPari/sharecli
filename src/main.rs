@@ -7,6 +7,7 @@ use sharecli_thermal_tui as thermal_tui;
 mod cast;
 mod commands;
 mod config;
+mod config_watcher;
 mod monitoring;
 mod runtime;
 mod serve_lock;

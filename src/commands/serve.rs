@@ -4,6 +4,8 @@
 //! WS   /ws       -- streams periodic ProcessSummary snapshots as JSON,
 //!                   plus thermal pressure events when pressure changes.
 
+use crate::config::Config;
+use crate::config_watcher::ConfigWatcher;
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 use anyhow::Result;
 use axum::http::header;
@@ -18,7 +20,7 @@ use axum::{
 };
 use serde_json::json;
 use std::sync::Arc;
-use tokio::sync::{broadcast, watch};
+use tokio::sync::{broadcast, watch, RwLock};
 use tracing::{info, warn};
 
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
@@ -63,6 +65,8 @@ struct AppState {
     thermal_tx: Arc<broadcast::Sender<ThermalEvent>>,
     /// Set to `true` when a shutdown has been requested.
     shutdown_tx: Arc<watch::Sender<bool>>,
+    /// Live config — updated on hot-reload without restart.
+    config: Arc<RwLock<Config>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +112,38 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     let (thermal_tx, _) = broadcast::channel::<ThermalEvent>(64);
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
-    let state = AppState { thermal_tx: Arc::new(thermal_tx), shutdown_tx: Arc::new(shutdown_tx) };
+    // Build the live config and start the hot-reload watcher.
+    let initial_config = Config::load().unwrap_or_default();
+    let config_arc = Arc::new(RwLock::new(initial_config.clone()));
+    let (cfg_tx, mut cfg_rx) = watch::channel(initial_config);
+
+    let config_path = dirs::config_dir()
+        .map(|d| d.join("sharecli").join("config.toml"))
+        .unwrap_or_else(|| std::path::PathBuf::from("config.toml"));
+
+    // `_config_watcher` is kept alive by the AppState so the file watch persists
+    // for the lifetime of the server.
+    let _config_watcher = ConfigWatcher::new(config_path, cfg_tx)
+        .inspect_err(|e| {
+            warn!("config_watcher: could not start file watcher: {e}; hot-reload disabled");
+        })
+        .ok();
+
+    // Spawn a task that propagates config-reload signals into the shared RwLock.
+    let config_arc_writer = Arc::clone(&config_arc);
+    tokio::spawn(async move {
+        while cfg_rx.changed().await.is_ok() {
+            let new_cfg = cfg_rx.borrow().clone();
+            *config_arc_writer.write().await = new_cfg;
+            info!("serve: config hot-reloaded");
+        }
+    });
+
+    let state = AppState {
+        thermal_tx: Arc::new(thermal_tx),
+        shutdown_tx: Arc::new(shutdown_tx),
+        config: config_arc,
+    };
 
     // Spawn background thermal poller (uses parse_pressure_level as the canonical parser).
     tokio::spawn(thermal_poll_task(Arc::clone(&state.thermal_tx), Arc::clone(&state.shutdown_tx)));
@@ -118,6 +153,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     let app = Router::new()
         .route("/", get(dashboard))
         .route("/healthz", get(healthz))
+        .route("/config", get(config_handler))
         .route("/ws", get(ws_handler))
         .with_state(state);
 
@@ -218,6 +254,15 @@ async fn dashboard() -> impl IntoResponse {
 
 async fn healthz() -> impl IntoResponse {
     Json(json!({"status": "ok"}))
+}
+
+/// `GET /config` — returns the current live config as JSON.
+///
+/// The value here reflects the last successful hot-reload; it updates
+/// in-place whenever the config file is saved with valid TOML.
+async fn config_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let cfg = state.config.read().await.clone();
+    Json(serde_json::to_value(cfg).unwrap_or_else(|_| json!({"error": "serialization failed"})))
 }
 
 // ---------------------------------------------------------------------------

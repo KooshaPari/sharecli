@@ -9,6 +9,7 @@
 pub mod cast;
 pub mod commands;
 pub mod config;
+pub mod config_watcher;
 pub mod coordination;
 pub mod monitoring;
 pub mod runtime;
