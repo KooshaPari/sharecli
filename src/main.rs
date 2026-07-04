@@ -201,11 +201,19 @@ enum Commands {
         on_conflict: String,
     },
 
-    /// Print a one-shot fleet analytics snapshot
+    /// Print a fleet analytics snapshot (one-shot or live watch mode)
     Report {
         /// Output format: text (default) or json
         #[arg(long, default_value = "text")]
         format: String,
+
+        /// Re-render every N seconds (like `watch -n N`); omit for one-shot
+        #[arg(short, long)]
+        watch: Option<u64>,
+
+        /// Sort top-consumers by: memory (default) or name
+        #[arg(long, default_value = "memory")]
+        sort: String,
     },
 
     /// Fleet device management
@@ -310,10 +318,11 @@ async fn main() -> Result<()> {
             set_limits(project, *memory, *processes).await?
         }
         Commands::Check { project } => check_limits(project).await?,
-        Commands::Report { format } => {
+        Commands::Report { format, watch, sort } => {
             use std::str::FromStr as _;
             let fmt = commands::report::ReportFormat::from_str(format)?;
-            commands::report::run(fmt).await?
+            let sort_key = commands::report::SortBy::from_str(sort)?;
+            commands::report::run(fmt, *watch, sort_key).await?
         }
         Commands::Serve { bind, on_conflict } => {
             use crate::serve_lock::OnConflict;
