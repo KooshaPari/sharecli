@@ -11,6 +11,7 @@ mod config;
 mod config_watcher;
 mod health_check;
 mod monitoring;
+mod notifier;
 mod proc_compose;
 mod runtime;
 mod serve_lock;
