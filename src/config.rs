@@ -453,4 +453,39 @@ pub enum ProjectCmd {
     Discover { path: Option<String> },
     /// Generate process-compose.yml from registered projects
     Generate { output: Option<String> },
+    /// Start all stopped processes belonging to a project group
+    Start {
+        /// Project name
+        name: String,
+        /// Harness type to start (e.g. cargo, node, bun)
+        #[arg(long)]
+        harness: Option<String>,
+    },
+    /// Stop all running processes in a project group
+    Stop {
+        /// Project name
+        name: String,
+        /// Force-kill processes instead of graceful stop
+        #[arg(long)]
+        force: bool,
+    },
+    /// Stop then start all processes in a project group
+    Restart {
+        /// Project name
+        name: String,
+        /// Harness type to restart (e.g. cargo, node, bun)
+        #[arg(long)]
+        harness: Option<String>,
+        /// Force-kill on stop phase
+        #[arg(long)]
+        force: bool,
+    },
+    /// Show status table for all processes in a project group
+    Status {
+        /// Project name
+        name: String,
+        /// Output machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
 }

@@ -306,7 +306,7 @@ async fn main() -> Result<()> {
         }
         Commands::Status { verbose } => status(*verbose).await?,
         Commands::Config { cmd } => config_cmd(cmd)?,
-        Commands::Project { cmd } => project_cmd(cmd)?,
+        Commands::Project { cmd } => project_cmd(cmd).await?,
         Commands::Optimize { apply } => optimize(*apply).await?,
         Commands::Prune { idle_seconds, force } => {
             prune(idle_seconds.unwrap_or(config::global().spawn.prune_idle_seconds), *force).await?

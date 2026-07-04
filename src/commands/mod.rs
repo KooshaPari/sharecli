@@ -233,8 +233,16 @@ pub fn config(cfg_cmd: &ConfigCmd) -> Result<()> {
     Ok(())
 }
 
-/// Project management
-pub fn project(proj_cmd: &ProjectCmd) -> Result<()> {
+/// Filter a process list to those belonging to a specific project.
+///
+/// Used by the bulk project-group operations and exposed for unit testing.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn filter_by_project<'a>(processes: &'a [ProcessInfo], project: &str) -> Vec<&'a ProcessInfo> {
+    processes.iter().filter(|p| p.project.as_deref() == Some(project)).collect()
+}
+
+/// Project management (async — bulk ops need an async runtime)
+pub async fn project(proj_cmd: &ProjectCmd) -> Result<()> {
     match proj_cmd {
         ProjectCmd::Add { name, path } => {
             let mut cfg = Config::load()?;
@@ -322,7 +330,137 @@ pub fn project(proj_cmd: &ProjectCmd) -> Result<()> {
             println!("Generated process-compose.yml with {} services", cfg.projects.len());
             println!("Written to: {:?}", out_path);
         }
+        ProjectCmd::Start { name, harness } => {
+            project_group_start(name, harness.as_deref()).await?;
+        }
+        ProjectCmd::Stop { name, force } => {
+            project_group_stop(name, *force).await?;
+        }
+        ProjectCmd::Restart { name, harness, force } => {
+            project_group_stop(name, *force).await?;
+            project_group_start(name, harness.as_deref()).await?;
+        }
+        ProjectCmd::Status { name, json } => {
+            project_group_status(name, *json).await?;
+        }
     }
+    Ok(())
+}
+
+/// Start all stopped processes for a project group.
+///
+/// Spawns a process in the project's configured directory.  If `harness` is
+/// `None` the function defaults to `"sh"` so that there is always something
+/// runnable without additional flags.
+async fn project_group_start(name: &str, harness: Option<&str>) -> Result<()> {
+    let cfg = Config::load()?;
+    let project_path = if let Some(path) = cfg.projects.get(name) {
+        PathBuf::from(expand_path(path))
+    } else {
+        anyhow::bail!("Unknown project: '{}'. Add with 'sharecli project add <name> <path>'", name);
+    };
+
+    if !project_path.exists() {
+        anyhow::bail!("Project path does not exist: {:?}", project_path);
+    }
+
+    let harness_name = harness.unwrap_or("sh");
+    let pool = ProcessPool::new();
+
+    println!("Starting '{}' harness for project group '{}'...", harness_name, name);
+    let info = pool
+        .spawn(
+            harness_name,
+            &[],
+            Some(project_path),
+            Some(name.to_string()),
+            Some(harness_name.to_string()),
+        )
+        .await?;
+
+    println!("Affected: 1 process started. PID {} ({})", info.pid, info.name);
+    Ok(())
+}
+
+/// Stop all running processes in a project group.
+///
+/// Returns the number of processes killed.  Collects failures and reports
+/// them after attempting every process so that a single bad PID does not
+/// prevent the rest from being stopped.
+async fn project_group_stop(name: &str, _force: bool) -> Result<()> {
+    let pool = ProcessPool::new();
+    let processes = pool.find(ProcessFilter::ByProject(name.to_string())).await;
+
+    if processes.is_empty() {
+        println!("No running processes found for project '{}'.", name);
+        return Ok(());
+    }
+
+    let total = processes.len();
+    let mut stopped = 0usize;
+    let mut failures: Vec<String> = Vec::new();
+
+    for proc in &processes {
+        match pool.kill(proc.pid).await {
+            Ok(()) => {
+                println!("Stopped {} ({})", proc.pid, proc.name);
+                stopped += 1;
+            }
+            Err(e) => {
+                failures.push(format!("PID {} ({}): {}", proc.pid, proc.name, e));
+            }
+        }
+    }
+
+    println!("\nAffected: {}/{} processes stopped.", stopped, total);
+    if !failures.is_empty() {
+        println!("Failures:");
+        for f in &failures {
+            println!("  - {}", f);
+        }
+        anyhow::bail!("{} process(es) could not be stopped", failures.len());
+    }
+    Ok(())
+}
+
+/// Show a status table for all processes in a project group.
+async fn project_group_status(name: &str, json: bool) -> Result<()> {
+    let pool = ProcessPool::new();
+    let processes = pool.find(ProcessFilter::ByProject(name.to_string())).await;
+
+    if json {
+        // Emit a JSON array of process objects.
+        let items: Vec<serde_json::Value> = processes
+            .iter()
+            .map(|p| {
+                serde_json::json!({
+                    "pid": p.pid,
+                    "name": p.name,
+                    "memory_mb": p.memory_mb,
+                    "project": p.project,
+                    "harness": p.harness,
+                    "cmd": p.cmd,
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&items)?);
+        return Ok(());
+    }
+
+    println!("=== Project '{}' — {} process(es) ===\n", name, processes.len());
+    println!("{:<8} {:<20} {:<12} {:<15}", "PID", "NAME", "MEM(MB)", "HARNESS");
+    println!("{}", "-".repeat(58));
+
+    for proc in &processes {
+        let harness = proc.harness.as_deref().unwrap_or("-");
+        println!(
+            "{:<8} {:<20} {:<12.1} {:<15}",
+            proc.pid, proc.name, proc.memory_mb as f64, harness
+        );
+    }
+
+    let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
+    println!("\nTotal: {} processes, {} MB memory", processes.len(), total_mem);
     Ok(())
 }
 
@@ -467,4 +605,101 @@ fn expand_path(path: &str) -> String {
         }
     }
     path.to_string()
+}
+
+#[cfg(test)]
+mod project_group_tests {
+    use super::*;
+
+    fn make_proc(
+        pid: u32,
+        name: &str,
+        project: Option<&str>,
+        harness: Option<&str>,
+    ) -> ProcessInfo {
+        ProcessInfo {
+            pid,
+            name: name.to_string(),
+            cmd: vec![],
+            memory_mb: 100,
+            start_time: 0,
+            project: project.map(str::to_string),
+            harness: harness.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn filter_returns_only_matching_project() {
+        let procs = vec![
+            make_proc(1, "alpha", Some("proj-a"), Some("cargo")),
+            make_proc(2, "beta", Some("proj-b"), Some("node")),
+            make_proc(3, "gamma", Some("proj-a"), Some("bun")),
+            make_proc(4, "delta", None, None),
+        ];
+        let result = filter_by_project(&procs, "proj-a");
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().all(|p| p.project.as_deref() == Some("proj-a")));
+    }
+
+    #[test]
+    fn filter_returns_empty_when_no_match() {
+        let procs = vec![
+            make_proc(1, "alpha", Some("proj-a"), Some("cargo")),
+            make_proc(2, "beta", Some("proj-b"), Some("node")),
+        ];
+        let result = filter_by_project(&procs, "proj-c");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn filter_ignores_processes_with_no_project() {
+        let procs = vec![
+            make_proc(1, "untagged", None, None),
+            make_proc(2, "tagged", Some("proj-a"), Some("cargo")),
+        ];
+        let result = filter_by_project(&procs, "proj-a");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].pid, 2);
+    }
+
+    #[test]
+    fn filter_returns_all_when_all_match() {
+        let procs = vec![
+            make_proc(1, "a", Some("myproj"), Some("cargo")),
+            make_proc(2, "b", Some("myproj"), Some("node")),
+            make_proc(3, "c", Some("myproj"), Some("bun")),
+        ];
+        let result = filter_by_project(&procs, "myproj");
+        assert_eq!(result.len(), 3);
+    }
+
+    #[test]
+    fn filter_is_case_sensitive() {
+        let procs = vec![
+            make_proc(1, "a", Some("Proj-A"), Some("cargo")),
+            make_proc(2, "b", Some("proj-a"), Some("cargo")),
+        ];
+        let result = filter_by_project(&procs, "proj-a");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].pid, 2);
+    }
+
+    #[test]
+    fn filter_on_empty_list_returns_empty() {
+        let procs: Vec<ProcessInfo> = vec![];
+        let result = filter_by_project(&procs, "any-project");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn filter_preserves_all_fields() {
+        let procs = vec![make_proc(42, "my-proc", Some("target"), Some("cargo"))];
+        let result = filter_by_project(&procs, "target");
+        assert_eq!(result.len(), 1);
+        let p = result[0];
+        assert_eq!(p.pid, 42);
+        assert_eq!(p.name, "my-proc");
+        assert_eq!(p.harness.as_deref(), Some("cargo"));
+        assert_eq!(p.memory_mb, 100);
+    }
 }
