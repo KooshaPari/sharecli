@@ -1,3 +1,4 @@
+mod plugins;
 //! sharecli - Shared CLI process manager
 
 use anyhow::Result;
