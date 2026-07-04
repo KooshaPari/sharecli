@@ -9,6 +9,7 @@ mod commands;
 mod config;
 mod config_watcher;
 mod monitoring;
+mod proc_compose;
 mod runtime;
 mod serve_lock;
 mod spawn_policy;
@@ -227,6 +228,12 @@ enum Commands {
         #[command(subcommand)]
         cmd: CastCmd,
     },
+
+    /// process-compose.yaml integration
+    ProcCompose {
+        #[command(subcommand)]
+        cmd: ProcComposeCmd,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -266,6 +273,23 @@ enum CastCmd {
     },
     /// Show the on-disk path of the pane-map file
     Where,
+}
+
+#[derive(Subcommand, Debug)]
+enum ProcComposeCmd {
+    /// Pretty-print all services from process-compose.yaml with their current status.
+    Status {
+        /// Path to process-compose.yaml (auto-discovered from cwd if omitted)
+        #[arg(short, long)]
+        file: Option<String>,
+    },
+
+    /// List services defined in process-compose.yaml (names only).
+    List {
+        /// Path to process-compose.yaml (auto-discovered from cwd if omitted)
+        #[arg(short, long)]
+        file: Option<String>,
+    },
 }
 
 /// Returns true when the NO_COLOR environment variable is set (per https://no-color.org).
@@ -351,6 +375,7 @@ async fn main() -> Result<()> {
             CastCmd::Send { name, file } => cast_cmd::send(name, file.as_deref())?,
             CastCmd::Where => cast_cmd::where_file()?,
         },
+        Commands::ProcCompose { cmd } => proc_compose_cmd(cmd)?,
     }
 
     Ok(())
@@ -397,6 +422,40 @@ async fn fleet_register(name: Option<&str>, coordinator: &str) -> Result<()> {
         Err(e) => {
             println!("Registration failed: {e}");
             println!("  Is the NATS coordinator running at '{coordinator}'?");
+        }
+    }
+    Ok(())
+}
+
+fn proc_compose_cmd(cmd: &ProcComposeCmd) -> Result<()> {
+    let resolve_path = |file: &Option<String>| -> Result<std::path::PathBuf> {
+        if let Some(f) = file {
+            let p = std::path::PathBuf::from(f);
+            if !p.exists() {
+                anyhow::bail!("File not found: {}", p.display());
+            }
+            Ok(p)
+        } else {
+            let cwd = std::env::current_dir()?;
+            proc_compose::find_config(&cwd)
+                .ok_or_else(|| anyhow::anyhow!("No process-compose.yaml found in {cwd:?} or any parent directory"))
+        }
+    };
+
+    match cmd {
+        ProcComposeCmd::Status { file } => {
+            let path = resolve_path(file)?;
+            println!("Using: {}", path.display());
+            let cfg = proc_compose::load_config(&path)?;
+            let defs = cfg.to_process_defs();
+            proc_compose::print_status(&defs);
+        }
+        ProcComposeCmd::List { file } => {
+            let path = resolve_path(file)?;
+            let cfg = proc_compose::load_config(&path)?;
+            for d in cfg.to_process_defs() {
+                println!("{}", d.name);
+            }
         }
     }
     Ok(())

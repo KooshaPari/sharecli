@@ -43,6 +43,9 @@ sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
 # Config hot-reload
 notify = { version = "7", features = ["serde"] }
 
+# process-compose.yaml parsing
+serde_yaml = "0.9"
+
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
