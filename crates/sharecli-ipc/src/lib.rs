@@ -18,7 +18,9 @@
 //! - `// TODO(hypervisor): eviction` — periodic sweep of `root/<key>.json` files older
 //!   than the configured TTL inside [`CoalesceCache::store`].
 
+pub mod handler;
 pub mod serve_lock;
+pub mod ws_client;
 
 use std::fs;
 use std::io::{self, Write};
@@ -196,6 +198,7 @@ impl CoalesceCache {
         let lock_file = fs::OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(false)
             .open(&lock_path)
             .with_context(|| format!("open lock file {}", lock_path.display()))?;
 

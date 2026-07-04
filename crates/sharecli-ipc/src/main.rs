@@ -93,6 +93,7 @@ async fn serve_unix_connection(
     Ok(())
 }
 
+#[cfg(windows)]
 async fn serve_tcp_connection(stream: tokio::net::TcpStream, handler: Arc<Handler>) -> Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut lines = BufReader::new(reader).lines();

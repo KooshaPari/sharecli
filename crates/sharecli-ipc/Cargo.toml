@@ -20,6 +20,10 @@ anyhow = "1"
 # Process liveness probe (kill(pid, 0)) for serve-lock staleness detection
 libc = "0.2"
 
+# WS client
+tokio-tungstenite = { version = "0.26", features = ["connect"] }
+futures-util = "0.3"
+
 # IPC server (bin only)
 sharecli = { path = "../../" }
 tokio = { version = "1", features = ["full"] }

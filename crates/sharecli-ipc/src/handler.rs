@@ -47,7 +47,7 @@ impl Response {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ProcessSummary {
     pub pid: u32,
     pub name: String,
@@ -72,7 +72,7 @@ impl From<ProcessInfo> for ProcessSummary {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HealthSnapshot {
     pub managed_processes: usize,
     pub used_memory_mb: u64,
