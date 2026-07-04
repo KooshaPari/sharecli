@@ -11,6 +11,7 @@ pub mod commands;
 pub mod config;
 pub mod config_watcher;
 pub mod coordination;
+pub mod health_check;
 pub mod monitoring;
 pub mod runtime;
 pub mod serve_lock;

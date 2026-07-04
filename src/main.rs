@@ -8,6 +8,7 @@ mod cast;
 mod commands;
 mod config;
 mod config_watcher;
+mod health_check;
 mod monitoring;
 mod proc_compose;
 mod runtime;
@@ -437,8 +438,9 @@ fn proc_compose_cmd(cmd: &ProcComposeCmd) -> Result<()> {
             Ok(p)
         } else {
             let cwd = std::env::current_dir()?;
-            proc_compose::find_config(&cwd)
-                .ok_or_else(|| anyhow::anyhow!("No process-compose.yaml found in {cwd:?} or any parent directory"))
+            proc_compose::find_config(&cwd).ok_or_else(|| {
+                anyhow::anyhow!("No process-compose.yaml found in {cwd:?} or any parent directory")
+            })
         }
     };
 

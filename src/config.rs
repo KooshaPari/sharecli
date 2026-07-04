@@ -50,6 +50,10 @@ pub struct Config {
 
     /// Cross-machine text-injection (`cast`) settings
     pub cast: CastConfig,
+
+    /// Per-process health-check schedules (process name → config).
+    /// Each entry spawns a background poller when `sharecli serve` runs.
+    pub health_checks: HashMap<String, crate::health_check::HealthCheckConfig>,
 }
 
 impl Default for Config {
@@ -66,6 +70,7 @@ impl Default for Config {
             spawn: SpawnConfig::default(),
             spawn_policy: SpawnPolicyConfig::default(),
             cast: CastConfig::default(),
+            health_checks: HashMap::new(),
         }
     }
 }

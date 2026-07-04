@@ -6,6 +6,7 @@
 
 use crate::config::Config;
 use crate::config_watcher::ConfigWatcher;
+use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 use anyhow::Result;
 use axum::http::header;
@@ -67,6 +68,8 @@ struct AppState {
     shutdown_tx: Arc<watch::Sender<bool>>,
     /// Live config — updated on hot-reload without restart.
     config: Arc<RwLock<Config>>,
+    /// Shared health-check status for all monitored processes.
+    health_store: HealthCheckStore,
 }
 
 // ---------------------------------------------------------------------------
@@ -115,7 +118,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     // Build the live config and start the hot-reload watcher.
     let initial_config = Config::load().unwrap_or_default();
     let config_arc = Arc::new(RwLock::new(initial_config.clone()));
-    let (cfg_tx, mut cfg_rx) = watch::channel(initial_config);
+    let (cfg_tx, mut cfg_rx) = watch::channel(initial_config.clone());
 
     let config_path = dirs::config_dir()
         .map(|d| d.join("sharecli").join("config.toml"))
@@ -139,10 +142,19 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         }
     });
 
+    // Build the health-check store and start per-process schedulers.
+    let health_store: HealthCheckStore =
+        Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new()));
+    {
+        let scheduler = HealthCheckScheduler::new(Arc::clone(&health_store));
+        scheduler.start(initial_config.health_checks.clone());
+    }
+
     let state = AppState {
         thermal_tx: Arc::new(thermal_tx),
         shutdown_tx: Arc::new(shutdown_tx),
         config: config_arc,
+        health_store,
     };
 
     // Spawn background thermal poller (uses parse_pressure_level as the canonical parser).
@@ -154,6 +166,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         .route("/", get(dashboard))
         .route("/healthz", get(healthz))
         .route("/config", get(config_handler))
+        .route("/health/processes", get(health_processes_handler))
         .route("/ws", get(ws_handler))
         .with_state(state);
 
@@ -317,6 +330,28 @@ async fn handle_ws(mut socket: WebSocket, state: AppState) {
             }
         }
     }
+}
+
+/// `GET /health/processes` — returns health status of all monitored processes.
+async fn health_processes_handler(State(state): State<AppState>) -> impl IntoResponse {
+    use std::collections::HashMap;
+
+    let map = state.health_store.lock().await;
+    // Serialize to a plain JSON map: process_name → status fields.
+    let out: HashMap<&str, serde_json::Value> = map
+        .iter()
+        .map(|(name, status)| {
+            (
+                name.as_str(),
+                json!({
+                    "healthy": status.healthy,
+                    "consecutive_failures": status.consecutive_failures,
+                    "last_error": status.last_error,
+                }),
+            )
+        })
+        .collect();
+    Json(serde_json::to_value(out).unwrap_or_else(|_| json!({})))
 }
 
 async fn build_snapshot() -> serde_json::Value {
