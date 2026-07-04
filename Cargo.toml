@@ -7,6 +7,10 @@ license = "MIT"
 authors = ["Phenotype"]
 repository = "https://github.com/KooshaPari/sharecli"
 
+[package.metadata.dist]
+installers = ["cargo-binstall"]
+targets = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu"]
+
 [dependencies]
 # CLI
 clap = { version = "4.5", features = ["derive", "env"] }

@@ -8,6 +8,24 @@ it, exposes a small HTTP API for health and metrics, and ships with first-class
 desktop and webhook notifications, shell completions, `proc-compose`
 integration, Prometheus metrics, and an executable plugin registry.
 
+## Installation
+
+Install `sharecli` with one of the following methods:
+
+```bash
+# Install from source via crates.io
+cargo install sharecli
+
+# Install a prebuilt binary via cargo-binstall
+cargo binstall sharecli
+```
+
+Homebrew (formula stub — `sha256` and `version` to be filled in at release time):
+
+```bash
+brew install sharecli
+```
+
 ## Features
 
 - **Config hot-reload** — uses `notify` to watch the config file and apply
