@@ -61,3 +61,4 @@ pub mod deque;
 pub mod trim;
 pub mod itoa;
 pub mod astar;
+pub mod graph;
