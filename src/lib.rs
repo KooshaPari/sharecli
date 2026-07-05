@@ -107,3 +107,6 @@ pub mod trie_compressed;
 
 pub mod flatbuffers_lite;
 pub mod lz4_block;
+
+pub mod crc64;
+pub mod glob_pattern;
