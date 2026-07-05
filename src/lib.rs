@@ -116,3 +116,6 @@ pub mod xxhash3;
 
 pub mod xxtea;
 pub mod apfs_uuid;
+
+pub mod base_n_radix;
+pub mod word_count;
