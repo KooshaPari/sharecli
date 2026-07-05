@@ -49,3 +49,4 @@ pub mod uuid;
 pub mod jsonpath_lite;
 pub mod rational;
 pub mod stopwatch;
+pub mod base64_util;
