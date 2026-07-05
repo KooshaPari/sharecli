@@ -43,3 +43,4 @@ pub mod object_pool;
 pub mod retry;
 pub mod cron_parser;
 pub mod template;
+pub mod ring_buffer;
