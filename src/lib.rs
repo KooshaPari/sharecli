@@ -113,3 +113,6 @@ pub mod glob_pattern;
 
 pub mod base85;
 pub mod xxhash3;
+
+pub mod xxtea;
+pub mod apfs_uuid;
