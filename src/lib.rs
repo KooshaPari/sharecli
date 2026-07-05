@@ -82,3 +82,4 @@ pub mod ipv4_util;
 pub mod config_merger;
 pub mod binary_search;
 pub mod matrix;
+pub mod perm;
