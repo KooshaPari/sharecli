@@ -101,3 +101,6 @@ pub mod kmp_search;
 
 pub mod bloom_filter;
 pub mod lru_cache_ext;
+
+pub mod skiplist;
+pub mod trie_compressed;
