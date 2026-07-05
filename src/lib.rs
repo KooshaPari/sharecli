@@ -69,3 +69,4 @@ pub mod lru;
 pub mod utf8v;
 pub mod lazy;
 pub mod argparse;
+pub mod pin;
