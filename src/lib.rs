@@ -45,3 +45,4 @@ pub mod cron_parser;
 pub mod template;
 pub mod sorted_vec;
 pub mod ring_buffer;
+pub mod jsonpath_lite;
