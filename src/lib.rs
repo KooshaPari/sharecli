@@ -77,3 +77,4 @@ pub mod typed_id;
 pub mod sliding_window;
 pub mod credit_card;
 pub mod vlq;
+pub mod tar_util;
