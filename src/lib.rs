@@ -51,3 +51,4 @@ pub mod rational;
 pub mod stopwatch;
 pub mod base64_util;
 pub mod money;
+pub mod hash_util;
