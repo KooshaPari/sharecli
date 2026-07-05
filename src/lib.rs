@@ -37,3 +37,4 @@ pub mod api;
 pub mod queue;
 pub mod cache;
 pub mod rate_limiter;
+pub mod backoff;
