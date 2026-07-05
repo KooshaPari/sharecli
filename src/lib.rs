@@ -71,3 +71,4 @@ pub mod lazy;
 pub mod argparse;
 pub mod stream;
 pub mod pin;
+pub mod sortedset;
