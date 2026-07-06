@@ -135,3 +135,6 @@ pub mod macho_parse;
 pub mod ini_parser;
 pub mod wasm_opcode;
 pub mod toml_lite;
+pub mod elf_section;
+pub mod tar_header;
+pub mod elf_section;
