@@ -1,5 +1,13 @@
 # sharecli
 
+<p align="center">
+  <a href="assets/icons/sharecli-512x512.png"><img src="assets/icons/sharecli-512x512.png" alt="sharecli" width="160" height="160"></a>
+</p>
+<p align="center"><em>Shared CLI process manager for multi-project agent orchestration — declarative, hot-reload, observable.</em></p>
+<p align="center"><sub>Backbone-2 graphite palette · brand SVG ships in `sharecli-iconset` worktree (Backbone-2 source-of-truth)</sub></p>
+
+---
+
 A process supervisor CLI for managing long-running services with declarative
 configuration, hot-reload, and rich observability.
 
