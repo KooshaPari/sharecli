@@ -131,3 +131,4 @@ pub mod markdown_inline;
 
 pub mod zip_crc32;
 pub mod msgpack;
+pub mod ini_parser;
