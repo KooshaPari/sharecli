@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 270" width="480" height="270" role="img" aria-label="sharecli identity demo: process heartbeat + cooldown">
+  <title>sharecli — L105 Identity Demo (Backbone-2 pulse + warm-amber cooldown)</title>
+  <defs>
+    <linearGradient id="scBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0d12"/>
+      <stop offset="1" stop-color="#161b22"/>
+    </linearGradient>
+    <radialGradient id="scGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#3fb950" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#3fb950" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#3fb950" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+      .sc-mono { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace; }
+      .sc-pulse {
+        transform-origin: 240px 135px;
+        animation: sc-beat 1s cubic-bezier(.4,0,.2,1) infinite;
+      }
+      @keyframes sc-beat {
+        0%   { transform: scale(0.8);  opacity: 0.45; }
+        20%  { transform: scale(1.25); opacity: 1; }
+        40%  { transform: scale(0.92); opacity: 0.85; }
+        60%  { transform: scale(1.05); opacity: 0.95; }
+        100% { transform: scale(0.8);  opacity: 0.45; }
+      }
+      .sc-cooldown {
+        transform-origin: 400px 200px;
+        animation: sc-cooldown 4s ease-in-out infinite;
+      }
+      @keyframes sc-cooldown {
+        0%, 80%, 100% { opacity: 0; }
+        85%           { opacity: 1; }
+        92%           { opacity: 0.4; }
+        96%           { opacity: 1; }
+      }
+      .sc-amber { animation: sc-flash 4s ease-in-out infinite; }
+      @keyframes sc-flash {
+        0%, 80%, 100% { fill: #3fb950; }
+        85%, 95%      { fill: #d29922; }
+      }
+      .sc-label { animation: sc-fade 1s ease-in-out infinite; }
+      @keyframes sc-fade {
+        0%, 100% { opacity: 0.7; }
+        50%      { opacity: 1; }
+      }
+    </style>
+  </defs>
+
+  <rect width="480" height="270" fill="url(#scBg)"/>
+  <rect x="14" y="14" width="452" height="242" rx="10" ry="10" fill="none" stroke="#3fb950" stroke-opacity="0.18" stroke-width="1"/>
+
+  <g stroke="#3fb950" stroke-width="1.5" fill="none" opacity="0.6">
+    <path d="M 20 175 L 80 175 L 95 155 L 110 195 L 125 175 L 200 175 L 215 145 L 230 205 L 245 175 L 320 175 L 335 160 L 350 190 L 365 175 L 460 175"/>
+  </g>
+
+  <circle cx="240" cy="135" r="86" fill="url(#scGlow)"/>
+  <g class="sc-pulse">
+    <circle cx="240" cy="135" r="38" fill="#161b22" stroke="#3fb950" stroke-width="2.5"/>
+    <rect x="222" y="115" width="36" height="6" fill="#3fb950" class="sc-amber"/>
+    <rect x="222" y="129" width="36" height="6" fill="#3fb950" class="sc-amber"/>
+    <rect x="222" y="143" width="36" height="6" fill="#3fb950" class="sc-amber"/>
+  </g>
+
+  <g class="sc-cooldown">
+    <circle cx="400" cy="40" r="6" fill="#d29922"/>
+    <text x="412" y="44" font-family="ui-monospace" font-size="10" fill="#d29922" letter-spacing="0.1em">cooldown</text>
+  </g>
+
+  <g class="sc-mono">
+    <text x="240" y="232" text-anchor="middle" font-size="14" font-weight="700" fill="#f6f8fa" letter-spacing="0.08em" class="sc-label">SHARECLI</text>
+    <text x="240" y="248" text-anchor="middle" font-size="9" fill="#3fb950" letter-spacing="0.18em" opacity="0.85">process · control · plane</text>
+  </g>
+
+  <g stroke="#3fb950" stroke-width="1.5" stroke-linecap="round" opacity="0.7">
+    <path d="M22 22 L34 22 M22 22 L22 34"/>
+    <path d="M458 22 L446 22 M458 22 L458 34"/>
+    <path d="M22 248 L34 248 M22 248 L22 236"/>
+    <path d="M458 248 L446 248 M458 248 L458 236"/>
+  </g>
+</svg>
