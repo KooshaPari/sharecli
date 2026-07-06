@@ -27,6 +27,7 @@ mod runtime;
 mod serve_lock;
 mod skiplist;
 mod spawn_policy;
+mod theme;
 mod util_cmd;
 mod xml_escape;
 mod xxhash3;
@@ -55,6 +56,11 @@ struct Cli {
     /// Quiet mode
     #[arg(short, long)]
     quiet: bool,
+
+    /// Color theme: `backbone-2` (default), `backbone2`, or `bb2`.
+    /// Maps to the Backbone-2 family in tokens.css.
+    #[arg(long, value_name = "NAME", default_value = "backbone-2")]
+    theme: String,
 }
 
 #[derive(Subcommand, Debug)]
@@ -330,6 +336,14 @@ fn is_no_color() -> bool {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
+    let tokens = theme::Tokens::from_name(&cli.theme)
+        .ok_or_else(|| anyhow::anyhow!(
+            "unknown theme '{}': expected backbone-2 / backbone2 / bb2",
+            cli.theme,
+        ))?;
+    eprintln!(
+        "{}", tokens.panel.ansi_fg()
+    );
 
     // Initialise global config (must happen before any command handler)
     let cfg = config::init_global();
