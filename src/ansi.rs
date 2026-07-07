@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn paint_wraps_with_reset() {
-        let p = paint("hello", fg(2));
+        let p = paint("hello", &fg(2));
         assert_eq!(p, "\x1b}[32mhello\x1b[0m");
     }
 }
