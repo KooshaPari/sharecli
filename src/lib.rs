@@ -12,14 +12,11 @@ pub mod config;
 pub mod config_watcher;
 pub mod coordination;
 pub mod health_check;
-pub mod macho_stub_loader;
 pub mod monitoring;
 pub mod notifier;
 pub mod runtime;
 pub mod serve_lock;
-pub mod smtp_response;
 pub mod spawn_policy;
-pub mod tacacs_acl;
 pub mod watchdog;
 
 pub use anyhow::Result;
@@ -160,14 +157,5 @@ pub mod m3u8_playlist;
 
 pub mod imap_response;
 pub mod smtp_envelope;
-
-// L122: wave-29 utility modules — IPFIX parser parity + Git pack index (dhcp_options already wave-23)
-pub mod git_pack_idx;
-pub mod ipfix_parser_parity;
-
-// L121: hypervisor/scheduler primitives (FUSE interception, coalesce/debounce/queue, speculative cache)
-pub mod bounded_queue;
-pub mod coalesce;
-pub mod debounce;
-pub mod fuse_io;
-pub mod speculative_cache;
+pub mod mp4_box;
+pub mod cue_sheet;
