@@ -178,3 +178,5 @@ pub mod snmpv3_msg;
 pub mod cdp_meraki_discovery;
 pub mod qoi_image;
 pub mod bmp_image;
+pub mod mapi_props;
+pub mod pres_header_parse;
