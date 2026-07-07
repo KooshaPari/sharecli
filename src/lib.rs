@@ -159,3 +159,7 @@ pub mod imap_response;
 pub mod smtp_envelope;
 pub mod mp4_box;
 pub mod cue_sheet;
+
+// L130: sharecli library expansion — ANSI terminal codes + CRC checksums
+pub mod ansi;
+pub mod cyclic_check;
