@@ -161,6 +161,10 @@ pub mod m3u8_playlist;
 pub mod imap_response;
 pub mod smtp_envelope;
 
+// L122: wave-29 utility modules — IPFIX parser parity + Git pack index (dhcp_options already wave-23)
+pub mod git_pack_idx;
+pub mod ipfix_parser_parity;
+
 // L121: hypervisor/scheduler primitives (FUSE interception, coalesce/debounce/queue, speculative cache)
 pub mod bounded_queue;
 pub mod coalesce;
