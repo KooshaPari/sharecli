@@ -176,3 +176,5 @@ pub mod coap_option_parse;
 pub mod ipsec_esp_parse;
 pub mod snmpv3_msg;
 pub mod cdp_meraki_discovery;
+pub mod qoi_image;
+pub mod bmp_image;
