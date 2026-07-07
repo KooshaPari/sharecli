@@ -165,4 +165,6 @@ pub mod ansi;
 pub mod cyclic_check;
 pub mod webvtt_cue;
 pub mod webmanifest;
->>>>>>> origin/main
+
+pub mod x12_edi_segment;
+pub mod dns_query_parser;
