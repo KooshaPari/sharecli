@@ -165,4 +165,8 @@ pub mod ansi;
 pub mod cyclic_check;
 pub mod webvtt_cue;
 pub mod webmanifest;
->>>>>>> origin/main
+
+// L139: sharecli library expansion — file listing + URL-safe base64 + Roman numerals
+pub mod base64url;
+pub mod natural_sort;
+pub mod roman_numeral;
