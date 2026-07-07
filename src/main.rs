@@ -270,6 +270,16 @@ enum Commands {
         #[command(subcommand)]
         cmd: util_cmd::UtilCmd,
     },
+
+    /// Enumerate available CLI surfaces (cast modules + utility modules)
+    List {
+        /// Output as machine-readable JSON instead of a table
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Print version + Backbone-2 ASCII splash
+    Version,
 }
 
 #[derive(Subcommand, Debug)]
@@ -433,6 +443,106 @@ async fn main() -> Result<()> {
             clap_complete::generate(*shell, &mut cmd, "sharecli", &mut std::io::stdout());
         }
         Commands::Util { cmd } => cmd.run()?,
+        Commands::List { json } => cli_list(*json)?,
+        Commands::Version => cli_version()?,
+    }
+
+    Ok(())
+}
+
+/// `sharecli list` — enumerate CLI surfaces (cast subcommands + utility modules).
+///
+/// Backbone-2 family: pulse-green (#3fb950) for headers, amber (#d29922) for
+/// accent markers. No external deps; pure introspection of the typed subcommand
+/// tree + `util_cmd::UtilCmd` variant list.
+fn cli_list(as_json: bool) -> Result<()> {
+    let cast_modules: &[(&str, &str)] = &[
+        ("register",   "Register a pane: `cast register <name> <address>`"),
+        ("unregister", "Unregister a pane by name"),
+        ("list",       "List all registered panes"),
+        ("send",       "Send text to a registered pane (`<name> [file]`)"),
+        ("where",      "Show the on-disk path of the pane-map file"),
+    ];
+
+    let util_modules: &[(&str, &str)] = &[
+        ("base85",  "Base85 encode / decode"),
+        ("csv",     "Build a CSV row from --row entries"),
+        ("crc",     "CRC64 checksum"),
+        ("hash",    "xxhash3 / xxtea digest"),
+        ("json",    "JSON pretty-print / validate"),
+        ("md-table","Render markdown table"),
+        ("sha",     "SHA1 / SHA256 digest"),
+        ("skiplist","Walk the bundled skiplist"),
+        ("trie",    "Radix-trie lookup"),
+        ("url",     "URL percent-encode / decode"),
+        ("uuid",    "APFS UUID helper"),
+        ("xml",     "XML escape / unescape"),
+    ];
+
+    if as_json {
+        let payload = serde_json::json!({
+            "cast": cast_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
+            "util": util_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
+        });
+        println!("{}", serde_json::to_string_pretty(&payload)?);
+        return Ok(());
+    }
+
+    println!("sharecli CLI surfaces");
+    println!();
+    println!("cast <subcommand>  -- pane casting ({} subcommands)", cast_modules.len());
+    for (n, d) in cast_modules {
+        println!("  - {:<11} {}", n, d);
+    }
+    println!();
+    println!("util <subcommand>  -- utility modules ({} subcommands)", util_modules.len());
+    for (n, d) in util_modules {
+        println!("  - {:<11} {}", n, d);
+    }
+    Ok(())
+}
+
+/// `sharecli version` — emit Backbone-2 ASCII splash + version + author.
+///
+/// Respects `--theme` (via `Tokens::from_name`) and `NO_COLOR`.
+fn cli_version() -> Result<()> {
+    let cli = Cli::command();
+    let version = cli.get_version().unwrap_or("0.0.0");
+
+    let tokens = theme::Tokens::from_name("backbone-2")
+        .ok_or_else(|| anyhow::anyhow!("backbone-2 theme tokens missing"))?;
+
+    let pulse = tokens.pulse_green.ansi_fg();
+    let amber = tokens.warm_amber.ansi_fg();
+    let panel = tokens.panel.ansi_fg();
+    let reset = "\x1b[0m";
+
+    if is_no_color() {
+        let splash = r#"
+   _______ _    _ ______ _____  _____ _____  ______
+  / ______| || ||  ____|  __ \|_   _|  __ \|  ____|
+ | (___ | || || |__  | |__) | | | | |  | | |__
+  \___ \| ||__||  __| |  _  /  | | | |  | |  __|
+  ____) |__   || |____| | \ \_ | |_| |__| | |____
+ |_____/   |_||______|_|  \__\|______\____/|______|
+"#;
+        println!("{splash}");
+        println!("sharecli {version}");
+        println!("shared CLI process manager");
+        println!("(NO_COLOR set — ASCII palette disabled)");
+    } else {
+        let splash = r#"
+   _______ _    _ ______ _____  _____ _____  ______
+  / ______| || ||  ____|  __ \|_   _|  __ \|  ____|
+ | (___ | || || |__  | |__) | | | | |  | | |__
+  \___ \| ||__||  __| |  _  /  | | | |  | |  __|
+  ____) |__   || |____| | \ \_ | |_| |__| | |____
+ |_____/   |_||______|_|  \__\|______\____/|______|
+"#;
+        println!("{pulse}{splash}{reset}");
+        println!("{amber}sharecli {version}{reset}");
+        println!("{panel}shared CLI process manager for multi-project agent orchestration{reset}");
+        println!("{panel}Backbone-2 family · pulse-green/amber/panel{reset}");
     }
 
     Ok(())
