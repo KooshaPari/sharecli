@@ -170,3 +170,5 @@ pub mod x12_edi_segment;
 pub mod dns_query_parser;
 pub mod coap_option_parse;
 pub mod ipsec_esp_parse;
+pub mod snmpv3_msg;
+pub mod cdp_meraki_discovery;
