@@ -163,3 +163,6 @@ pub mod cue_sheet;
 // L130: sharecli library expansion — ANSI terminal codes + CRC checksums
 pub mod ansi;
 pub mod cyclic_check;
+pub mod webvtt_cue;
+pub mod webmanifest;
+>>>>>>> origin/main
