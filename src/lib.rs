@@ -159,3 +159,6 @@ pub mod imap_response;
 pub mod smtp_envelope;
 pub mod mp4_box;
 pub mod cue_sheet;
+
+pub mod webvtt_cue;
+pub mod webmanifest;
