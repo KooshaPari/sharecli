@@ -185,3 +185,5 @@ pub mod asn1_ber;
 pub mod bip39_wordlist;
 pub mod bip39_mnemonic;
 pub mod rdp_neg;
+pub mod dnssec_chain;
+pub mod asn1_ber_parity;
