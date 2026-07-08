@@ -41,9 +41,9 @@ impl XxHash64 {
             self.acc[n] = round(self.acc[n], v);
         }
     }
-    pub fn finalize(mut self) -> u64 {
+    pub fn finalize(self) -> u64 {
         if self.total_len < 32 {
-            let mut h = self.seed.wrapping_add(P5());
+            let mut h = self.seed.wrapping_add(p5());
             h ^= (self.total_len as u64).wrapping_add(P1);
             for i in 0..self.buf_len {
                 h ^= (self.buf[i] as u64).wrapping_mul(P2.wrapping_add(i as u64));
@@ -55,7 +55,7 @@ impl XxHash64 {
         for n in 0..4 {
             h ^= round(0, self.acc[n]);
         }
-        h ^= (self.total_len).wrapping_add(P1).wrapping_add(P4());
+        h ^= (self.total_len).wrapping_add(P1).wrapping_add(p4());
         // incorporate remaining buf
         let mut off = 0;
         while off + 8 <= self.buf_len {
@@ -91,8 +91,8 @@ fn avalanche(mut x: u64) -> u64 {
     x
 }
 fn read_u64(b: &[u8]) -> u64 { u64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]) }
-fn P4() -> u64 { 0x85ebca6b2a5e3a3d }
-fn P5() -> u64 { 0xc2b2ae3d27d4eb4f }
+fn p4() -> u64 { 0x85ebca6b2a5e3a3d }
+fn p5() -> u64 { 0xc2b2ae3d27d4eb4f }
 
 pub fn hash(data: &[u8]) -> u64 {
     let mut h = XxHash64::new(0);

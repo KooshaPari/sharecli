@@ -22,10 +22,6 @@
 // Decoded pixel layout is channels*width*height bytes in row-major order.
 // For channels=4 the alpha is preserved; for channels=3 alpha output is omitted.
 
-const QOI_OP_INDEX: u8 = 0b00_000000;
-const QOI_OP_DIFF: u8 = 0b01_000000;
-const QOI_OP_LUMA: u8 = 0b10_000000;
-const QOI_OP_RUN: u8 = 0b11_000000 | 0b00_000010; // 0xC2
 const QOI_OP_RGB: u8 = 0b11_111110; // 0xFE
 const QOI_OP_RGBA: u8 = 0b11_111111; // 0xFF
 
@@ -256,7 +252,7 @@ mod tests {
         // All pixels stay at (0,0,0,a=255) by default — index 0 used throughout.
         // One QOI_OP_INDEX for each pixel (62 max per spec).
         for _ in 0..(width as usize * height as usize) {
-            out.push(QOI_OP_INDEX | 0); // index 0 (the initial prev pixel)
+            out.push(0b00_000000); // QOI_OP_INDEX 0 (the initial prev pixel)
         }
         out.extend_from_slice(&QOI_END_MARKER);
         out
@@ -439,7 +435,7 @@ mod tests {
         bytes.push(0);
         bytes.push(QOI_OP_RGB);
         bytes.extend_from_slice(&[5, 5, 5]);
-        bytes.push(QOI_OP_RUN); // encodes run=3
+        bytes.push(0b11_000000 | 0b00_000010); // 0xC2 — encodes run=3
         bytes.extend_from_slice(&QOI_END_MARKER);
 
         let img = decode(&bytes).unwrap();
@@ -503,12 +499,12 @@ mod tests {
         bytes.push(0b10_100001);
         bytes.push(0b0111_0111);
         // pixels 4,5,6: run of 3 -> 0xC2 (since (b1 & 0x3F) + 1 = 3 -> run = 3)
-        bytes.push(QOI_OP_RUN);
+        bytes.push(0b11_000000 | 0b00_000010); // 0xC2
         // pixel 7: rgb literal
         bytes.push(QOI_OP_RGB);
         bytes.extend_from_slice(&[40, 50, 60]);
         // pixel 8: index 0 -> initial prev pixel (0,0,0,255)
-        bytes.push(QOI_OP_INDEX | 0);
+        bytes.push(0b00_000000); // QOI_OP_INDEX 0
         bytes.extend_from_slice(&QOI_END_MARKER);
 
         let img = decode(&bytes).unwrap();

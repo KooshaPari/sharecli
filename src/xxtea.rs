@@ -34,7 +34,7 @@ pub fn encrypt_bytes(data: &[u8], key: &[u8; 16]) -> Vec<u8> {
     out.extend_from_slice(&((padded.len() / 16) as u32).to_le_bytes());
     for (i, chunk) in padded.chunks(16).enumerate() {
         let ks = keystream(i as u32, &key_words);
-        let mut block = [
+        let block = [
             u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) ^ ks[0],
             u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]) ^ ks[1],
             u32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]) ^ ks[2],

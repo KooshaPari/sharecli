@@ -1,6 +1,5 @@
 // Base-N radix conversion (2..36) with arbitrary-precision representation via Vec<u32> limbs.
 const LIMB_BITS: u32 = 32;
-const LIMB_MASK: u64 = 0xffff_ffff;
 
 pub fn encode(value: u64, base: u32) -> String {
     if base < 2 || base > 36 {

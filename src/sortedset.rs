@@ -9,7 +9,7 @@ impl<T: Ord + Clone> SortedSet<T> {
     pub fn remove(&mut self, v: &T) -> bool {
         match self.items.binary_search(v) { Ok(p) => { self.items.remove(p); true }, Err(_) => false }
     }
-    pub fn iter(&self) -> std::slice::Iter<T> { self.items.iter() }
+    pub fn iter(&self) -> std::slice::Iter<'_, T> { self.items.iter() }
     pub fn to_vec(&self) -> Vec<T> { self.items.clone() }
 }
 #[cfg(test)]

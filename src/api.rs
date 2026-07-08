@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 #[derive(Debug,Clone,PartialEq)]
 pub enum RouteMethod { Get, Post, Put, Delete }
 

@@ -6,7 +6,7 @@ pub fn encode(data: &[u8]) -> String {
     let mut out = String::new();
     let mut i = 0;
     while i + 4 <= data.len() {
-        let mut v = ((data[i] as u32) << 24) | ((data[i+1] as u32) << 16) | ((data[i+2] as u32) << 8) | (data[i+3] as u32);
+        let v = ((data[i] as u32) << 24) | ((data[i+1] as u32) << 16) | ((data[i+2] as u32) << 8) | (data[i+3] as u32);
         // All 4-byte blocks (including zero blocks) encode as 5 alphabet chars.
         let mut vv = v;
         let mut chars = [0u8; 5];
@@ -58,7 +58,7 @@ pub fn decode(input: &str) -> Result<Vec<u8>, String> {
     if buf.len() == 1 { return Err("trailing 1 char".into()); }
     if buf.len() > 1 {
         let mut v: u64 = 0;
-        for (i, &x) in buf.iter().enumerate() { v = v * 85 + x as u64; }
+        for (_, &x) in buf.iter().enumerate() { v = v * 85 + x as u64; }
         for _ in buf.len()..5 { v = v * 85 + 84; }
         let rem = buf.len() - 1;
         for i in 0..rem {

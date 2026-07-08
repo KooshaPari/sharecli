@@ -10,7 +10,7 @@ impl<T: Ord> SortedVec<T> {
     pub fn contains(&self, v: &T) -> bool { self.items.binary_search(v).is_ok() }
     pub fn len(&self) -> usize { self.items.len() }
     pub fn is_empty(&self) -> bool { self.items.is_empty() }
-    pub fn iter(&self) -> std::slice::Iter<T> { self.items.iter() }
+    pub fn iter(&self) -> std::slice::Iter<'_, T> { self.items.iter() }
     pub fn pop(&mut self) -> Option<T> { self.items.pop() }
 }
 #[cfg(test)]

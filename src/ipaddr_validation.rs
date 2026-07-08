@@ -38,7 +38,7 @@ pub fn is_ipv6(s: &str) -> bool {
     let head_parts: Vec<&str> = if head.is_empty() { vec![] } else { head.split(':').collect() };
     let tail_parts: Vec<&str> = if tail.is_empty() { vec![] } else { tail.split(':').collect() };
     if head_parts.len() + tail_parts.len() > 8 { return false; }
-    let mut groups = head_parts.len() + tail_parts.len();
+    let groups = head_parts.len() + tail_parts.len();
     if double_colon_count == 1 && groups < 8 { /* ok */ } else if groups != 8 { return false; }
     let mut total = 0;
     for p in head_parts.iter().chain(tail_parts.iter()) {

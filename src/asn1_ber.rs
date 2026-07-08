@@ -84,7 +84,6 @@ pub fn parse(input: &[u8]) -> Result<(Ber, &[u8]), String> {
         // High-tag-number form (X.690 §8.1.2.4).
         let mut acc: u32 = 0;
         let mut cursor = rest;
-        let mut found_last = false;
         loop {
             let (b, next) = cursor
                 .split_first()
@@ -93,7 +92,7 @@ pub fn parse(input: &[u8]) -> Result<(Ber, &[u8]), String> {
                 .checked_shl(7)
                 .ok_or_else(|| "high-tag-number overflow".to_string())?
                 | (*b as u32) & 0x7f;
-            found_last = (*b & 0x80) == 0;
+            let found_last = (*b & 0x80) == 0;
             cursor = next;
             if found_last {
                 break;
@@ -102,9 +101,6 @@ pub fn parse(input: &[u8]) -> Result<(Ber, &[u8]), String> {
                 // unreachable guard to keep the borrow checker happy
                 return Err("infinite high-tag-number loop".to_string());
             }
-        }
-        if !found_last {
-            return Err("unterminated high-tag-number form".to_string());
         }
         (acc, cursor)
     };

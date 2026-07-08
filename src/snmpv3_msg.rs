@@ -93,7 +93,7 @@ pub fn parse(input: &[u8]) -> Result<V3Msg, String> {
 
     // ---- msgID [INTEGER] -----------------------------------------------------
     // Tag=0x02, length=0x01..0x04, then value bytes (we accept 1..4 bytes)
-    let (msg_id_len, msg_id_value_len, _msg_id_bytes) =
+    let (msg_id_len, _msg_id_value_len, _msg_id_bytes) =
         read_int_tlv(input, &mut i, "msgID")?;
 
     // ---- msgMaxSize [INTEGER] (optional but ubiquitous) ----------------------

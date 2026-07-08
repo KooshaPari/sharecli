@@ -69,7 +69,6 @@ pub fn parse(input: &[u8]) -> Result<Vec<CdpTlv>, String> {
                 i, length
             ));
         }
-        let value_len = length - 4;
         if i + length > input.len() {
             return Err(format!(
                 "CDP TLV at offset {} (type 0x{:04X}) claims {} bytes but only {} remain",

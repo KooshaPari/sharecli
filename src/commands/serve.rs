@@ -71,8 +71,6 @@ struct AppState {
     config: Arc<RwLock<Config>>,
     /// Shared health-check status for all monitored processes.
     health_store: HealthCheckStore,
-    /// Notification dispatcher (desktop + webhooks).
-    notifier: Arc<Notifier>,
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +160,6 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         shutdown_tx: Arc::new(shutdown_tx),
         config: config_arc,
         health_store,
-        notifier,
     };
 
     // Spawn background thermal poller (uses parse_pressure_level as the canonical parser).
