@@ -141,6 +141,7 @@ pub mod s_expression;
 pub mod url_safe_base64;
 pub mod dns_zone;
 pub mod dhcp_options;
+pub mod dhcpv6_msg;
 pub mod ssh_known_hosts;
 pub mod ntp_timestamp;
 
@@ -183,3 +184,4 @@ pub mod pres_header_parse;
 pub mod asn1_ber;
 pub mod bip39_wordlist;
 pub mod bip39_mnemonic;
+pub mod rdp_neg;
