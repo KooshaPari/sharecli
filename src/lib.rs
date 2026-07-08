@@ -187,3 +187,5 @@ pub mod bip39_mnemonic;
 pub mod rdp_neg;
 pub mod dnssec_chain;
 pub mod asn1_ber_parity;
+pub mod mapi_props_parity;
+pub mod pres_header_parity;
