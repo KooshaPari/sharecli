@@ -180,3 +180,6 @@ pub mod qoi_image;
 pub mod bmp_image;
 pub mod mapi_props;
 pub mod pres_header_parse;
+pub mod asn1_ber;
+pub mod bip39_wordlist;
+pub mod bip39_mnemonic;
