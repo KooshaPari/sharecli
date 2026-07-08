@@ -189,3 +189,9 @@ pub mod dnssec_chain;
 pub mod asn1_ber_parity;
 pub mod mapi_props_parity;
 pub mod pres_header_parity;
+
+// L137: sharecli parity expansion — FIPS 202 SHA-3 + RFC 5869 HKDF + RFC 7693 BLAKE2 + RFC 8439 ChaCha20
+pub mod sha3_keccak;
+pub mod hkdf;
+pub mod blake2;
+pub mod chacha20;
