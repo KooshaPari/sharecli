@@ -49,7 +49,6 @@ pub struct Blake2bVar {
     out_len: usize,
     t0: u64,
     t1: u64,
-    last: bool,
 }
 
 impl Blake2bVar {
@@ -67,7 +66,6 @@ impl Blake2bVar {
             out_len,
             t0: 0,
             t1: 0,
-            last: false,
         };
         if !key.is_empty() {
             s.buf[..key.len()].copy_from_slice(key);
@@ -221,7 +219,6 @@ pub struct Blake2sVar {
     buf_len: usize,
     out_len: usize,
     t: u32,
-    last: bool,
 }
 
 impl Blake2sVar {
@@ -236,7 +233,6 @@ impl Blake2sVar {
             buf_len: 0,
             out_len,
             t: 0,
-            last: false,
         };
         if !key.is_empty() {
             s.buf[..key.len()].copy_from_slice(key);

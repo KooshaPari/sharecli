@@ -6,6 +6,9 @@ const RHO: [u32; 25] = [
     0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21,
     8, 18, 2, 61, 56, 14,
 ];
+// Reference π lane permutation table (FIPS 202). The in-place ρ/π step below
+// uses the closed-form (nx, ny) mapping instead of indexing this table.
+#[allow(dead_code)]
 const PI: [usize; 24] = [
     10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 19, 22, 23, 20, 4, 15, 13, 6,
     9, 2, 12, 14, 1,

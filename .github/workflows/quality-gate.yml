@@ -69,7 +69,6 @@ jobs:
             echo "Coverage $COVERAGE% is below threshold $COVERAGE_THRESHOLD%"
             exit 1
           fi
-        continue-on-error: true
 
   e2e-tests:
     name: E2E Tests

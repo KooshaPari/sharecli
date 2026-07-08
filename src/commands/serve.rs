@@ -1,6 +1,7 @@
 //! `sharecli serve` -- lock-guarded HTTP + WebSocket dashboard server.
 //!
 //! GET  /healthz  -- liveness probe (JSON)
+//! GET  /readyz   -- readiness probe (JSON; 503 if shutdown requested)
 //! WS   /ws       -- streams periodic ProcessSummary snapshots as JSON,
 //!                   plus thermal pressure events when pressure changes.
 
@@ -10,7 +11,7 @@ use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::notifier::Notifier;
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 use anyhow::Result;
-use axum::http::header;
+use axum::http::{header, StatusCode};
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -170,6 +171,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     let app = Router::new()
         .route("/", get(dashboard))
         .route("/healthz", get(healthz))
+        .route("/readyz", get(readyz))
         .route("/config", get(config_handler))
         .route("/health/processes", get(health_processes_handler))
         .route("/metrics/prometheus", get(metrics_prometheus_handler))
@@ -273,6 +275,18 @@ async fn dashboard() -> impl IntoResponse {
 
 async fn healthz() -> impl IntoResponse {
     Json(json!({"status": "ok"}))
+}
+
+/// `GET /readyz` — readiness probe; 200 while serving, 503 once shutdown is requested.
+async fn readyz(State(state): State<AppState>) -> impl IntoResponse {
+    if *state.shutdown_tx.borrow() {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"status": "unavailable"})),
+        )
+    } else {
+        (StatusCode::OK, Json(json!({"status": "ok"})))
+    }
 }
 
 /// `GET /config` — returns the current live config as JSON.

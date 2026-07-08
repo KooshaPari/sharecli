@@ -106,3 +106,8 @@ jobs:
           echo "clippy:  ${{ needs.clippy.result }}"
           echo "test:    ${{ needs.test.result }}"
           echo "build:   ${{ needs.build.result }}"
+      - name: Fail if any required job did not succeed
+        if: needs.fmt.result != 'success' || needs.clippy.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success'
+        run: |
+          echo "fmt=${{ needs.fmt.result }} clippy=${{ needs.clippy.result }} test=${{ needs.test.result }} build=${{ needs.build.result }}"
+          exit 1
