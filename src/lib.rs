@@ -161,6 +161,12 @@ pub mod smtp_envelope;
 pub mod mp4_box;
 pub mod cue_sheet;
 
+// L138: sharecli library expansion — Keccak / SHA-3 hash + segment tree + Bellman-Ford + matrix ops
+pub mod keccak;
+pub mod segment_tree_basic;
+pub mod bellman_ford;
+pub mod matrix_ops;
+
 // L130: sharecli library expansion — ANSI terminal codes + CRC checksums
 pub mod ansi;
 pub mod cyclic_check;
