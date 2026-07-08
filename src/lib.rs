@@ -201,3 +201,9 @@ pub mod sha3_keccak;
 pub mod hkdf;
 pub mod blake2;
 pub mod chacha20;
+
+// L139: sharecli library expansion — Kahn/DFS topological sort + integer square root + Catalan numbers + 3D vector math
+pub mod topological_sort;
+pub mod sqrt_integer;
+pub mod catalan_number;
+pub mod vector_3d;
