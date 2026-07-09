@@ -5,21 +5,69 @@
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
   "commit": "31cf3166ce5744d3e08c91f2ed434d3a34ebff03",
   "date": "2026-07-08",
-  "overall_pct": 46.3,
+  "overall_pct": 47.2,
   "grade": "D",
   "clusters": {
-    "C00": { "pct": 50, "grade": "D", "score": "15/30" },
-    "C01": { "pct": 63, "grade": "C", "score": "19/30" },
-    "C02": { "pct": 50, "grade": "D", "score": "15/30" },
-    "C03": { "pct": 61, "grade": "D", "score": "22/36" },
-    "C04": { "pct": 47, "grade": "D", "score": "14/30" },
-    "C05": { "pct": 30, "grade": "F", "score": "9/30" },
-    "C06": { "pct": 57, "grade": "D", "score": "17/30" },
-    "C07": { "pct": 33, "grade": "F", "score": "10/30" },
-    "C08": { "pct": 0, "grade": "F", "score": "0/30" },
-    "C09": { "pct": 58, "grade": "D", "score": "26/45" },
-    "C10": { "pct": 64, "grade": "C", "score": "23/36" },
-    "C11": { "pct": 42, "grade": "D", "score": "19/45" }
+    "C00": {
+      "pct": 50,
+      "grade": "D",
+      "score": "15/30"
+    },
+    "C01": {
+      "pct": 63,
+      "grade": "C",
+      "score": "19/30"
+    },
+    "C02": {
+      "pct": 50,
+      "grade": "D",
+      "score": "15/30"
+    },
+    "C03": {
+      "pct": 61,
+      "grade": "D",
+      "score": "22/36"
+    },
+    "C04": {
+      "pct": 47,
+      "grade": "D",
+      "score": "14/30"
+    },
+    "C05": {
+      "grade": "D",
+      "pct": 40,
+      "score": "12/30"
+    },
+    "C06": {
+      "pct": 57,
+      "grade": "D",
+      "score": "17/30"
+    },
+    "C07": {
+      "pct": 33,
+      "grade": "F",
+      "score": "10/30"
+    },
+    "C08": {
+      "pct": 0,
+      "grade": "F",
+      "score": "0/30"
+    },
+    "C09": {
+      "pct": 58,
+      "grade": "D",
+      "score": "26/45"
+    },
+    "C10": {
+      "grade": "C",
+      "pct": 67,
+      "score": "24/36"
+    },
+    "C11": {
+      "pct": 42,
+      "grade": "D",
+      "score": "19/45"
+    }
   },
   "scorecard_md": "audit/SCORECARD-v38.md"
 }
