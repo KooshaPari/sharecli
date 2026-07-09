@@ -43,6 +43,7 @@
 //    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 use std::fmt;
+
 use sha2::{Digest, Sha256};
 
 /// DNSKEY RDATA parsed from wire format (RFC 4034 §2).
@@ -214,11 +215,9 @@ pub fn validate_chain(
 
     match ds.digest_type {
         2 => {
-            let computed = Sha256::digest(&canonical_dnskey_digest_input(
-                owner_name_canonical,
-                dnskey,
-            ))
-            .to_vec();
+            let computed =
+                Sha256::digest(&canonical_dnskey_digest_input(owner_name_canonical, dnskey))
+                    .to_vec();
             if computed != ds.digest {
                 return ChainStatus::Insecure(
                     "DNSKEY SHA-256 digest does not match DS digest (RFC 4034 §5.1.4)".into(),
@@ -240,14 +239,7 @@ mod tests {
     use super::*;
 
     fn make_key(zone: bool, sep: bool, revoke: bool, algo: u8, pk: Vec<u8>) -> DnsKey {
-        DnsKey {
-            sep,
-            revoke,
-            zone_key: zone,
-            protocol: 3,
-            algorithm: algo,
-            public_key: pk,
-        }
+        DnsKey { sep, revoke, zone_key: zone, protocol: 3, algorithm: algo, public_key: pk }
     }
 
     #[test]
@@ -255,7 +247,8 @@ mod tests {
         let k1 = make_key(true, true, false, 13, vec![0xAA; 64]);
         let k2 = make_key(true, true, false, 13, vec![0xAA; 64]);
         assert_eq!(k1.key_tag(), k2.key_tag());
-        assert!(k1.key_tag() <= 0xFFFF);
+        // key_tag is u16; assert non-trivial wire checksum for this key material
+        assert_ne!(k1.key_tag(), 0);
     }
 
     #[test]
@@ -284,31 +277,19 @@ mod tests {
 
     #[test]
     fn ds_validates_digest_lengths() {
-        let bad = DelegationSigner {
-            key_tag: 1,
-            algorithm: 13,
-            digest_type: 2,
-            digest: vec![0u8; 31],
-        };
+        let bad =
+            DelegationSigner { key_tag: 1, algorithm: 13, digest_type: 2, digest: vec![0u8; 31] };
         assert!(bad.validate().is_err());
 
-        let good = DelegationSigner {
-            key_tag: 1,
-            algorithm: 13,
-            digest_type: 2,
-            digest: vec![0u8; 32],
-        };
+        let good =
+            DelegationSigner { key_tag: 1, algorithm: 13, digest_type: 2, digest: vec![0u8; 32] };
         assert!(good.validate().is_ok());
     }
 
     #[test]
     fn ds_rejects_unknown_digest_type() {
-        let ds = DelegationSigner {
-            key_tag: 1,
-            algorithm: 13,
-            digest_type: 99,
-            digest: vec![0u8; 32],
-        };
+        let ds =
+            DelegationSigner { key_tag: 1, algorithm: 13, digest_type: 99, digest: vec![0u8; 32] };
         assert!(ds.validate().is_err());
     }
 
@@ -317,12 +298,7 @@ mod tests {
         let key = make_key(true, true, false, 13, vec![0xCD; 32]);
         let owner = b"\x07example\x03com\x00".to_vec();
         let digest = Sha256::digest(canonical_dnskey_digest_input(&owner, &key)).to_vec();
-        let ds = DelegationSigner {
-            key_tag: key.key_tag(),
-            algorithm: 13,
-            digest_type: 2,
-            digest,
-        };
+        let ds = DelegationSigner { key_tag: key.key_tag(), algorithm: 13, digest_type: 2, digest };
         assert_eq!(validate_chain(&owner, &ds, &key), ChainStatus::Secure);
     }
 
@@ -392,10 +368,7 @@ mod tests {
             digest_type: 1,
             digest: vec![0; 20],
         };
-        assert!(matches!(
-            validate_chain(&owner, &ds, &key),
-            ChainStatus::Insecure(_)
-        ));
+        assert!(matches!(validate_chain(&owner, &ds, &key), ChainStatus::Insecure(_)));
     }
 
     #[test]

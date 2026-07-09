@@ -116,10 +116,12 @@ fn reload_config(path: &PathBuf) -> Result<Config> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io::Write;
+
     use tempfile::NamedTempFile;
     use tokio::sync::watch;
+
+    use super::*;
 
     /// Minimal valid TOML that round-trips through `Config`.
     fn minimal_toml() -> &'static str {

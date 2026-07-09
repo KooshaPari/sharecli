@@ -2,26 +2,38 @@
 // std-only Rust. Reference vectors from NIST FIPS 202 + Keccak team.
 
 // Keccak-p[1600] rho offsets: 5x5 rotation constants indexed row-major.
-const RHO: [u32; 25] = [
-    0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21,
-    8, 18, 2, 61, 56, 14,
-];
+const RHO: [u32; 25] =
+    [0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14];
 // Reference π lane permutation table (FIPS 202). The in-place ρ/π step below
 // uses the closed-form (nx, ny) mapping instead of indexing this table.
 #[allow(dead_code)]
-const PI: [usize; 24] = [
-    10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 19, 22, 23, 20, 4, 15, 13, 6,
-    9, 2, 12, 14, 1,
-];
+const PI: [usize; 24] =
+    [10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 19, 22, 23, 20, 4, 15, 13, 6, 9, 2, 12, 14, 1];
 const RC: [u64; 24] = [
-    0x0000000000000001, 0x0000000000008082, 0x800000000000808a,
-    0x8000000080008000, 0x000000000000808b, 0x0000000080000001,
-    0x8000000080008081, 0x8000000000008009, 0x000000000000008a,
-    0x0000000000000088, 0x0000000080008009, 0x000000008000000a,
-    0x000000008000808b, 0x800000000000008b, 0x8000000000008089,
-    0x8000000000008003, 0x8000000000008002, 0x8000000000000080,
-    0x000000000000800a, 0x800000008000000a, 0x8000000080008081,
-    0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+    0x0000000000000001,
+    0x0000000000008082,
+    0x800000000000808a,
+    0x8000000080008000,
+    0x000000000000808b,
+    0x0000000080000001,
+    0x8000000080008081,
+    0x8000000000008009,
+    0x000000000000008a,
+    0x0000000000000088,
+    0x0000000080008009,
+    0x000000008000000a,
+    0x000000008000808b,
+    0x800000000000008b,
+    0x8000000000008089,
+    0x8000000000008003,
+    0x8000000000008002,
+    0x8000000000000080,
+    0x000000000000800a,
+    0x800000008000000a,
+    0x8000000080008081,
+    0x8000000000008080,
+    0x0000000080000001,
+    0x8000000080008008,
 ];
 
 #[inline]
@@ -59,8 +71,8 @@ pub fn keccak_p1600(state: &mut [u64; 25]) {
         // χ
         for y in 0..5 {
             for x in 0..5 {
-                state[x + 5 * y] = b[x + 5 * y]
-                    ^ ((!b[((x + 1) % 5) + 5 * y]) & b[((x + 2) % 5) + 5 * y]);
+                state[x + 5 * y] =
+                    b[x + 5 * y] ^ ((!b[((x + 1) % 5) + 5 * y]) & b[((x + 2) % 5) + 5 * y]);
             }
         }
         // ι
@@ -90,8 +102,14 @@ fn sponge(rate: usize, d: usize, input: &[u8], suffix: u8, outlen: usize) -> Vec
         for i in 0..lanes {
             let off = i * 8;
             state[i] ^= u64::from_le_bytes([
-                chunk[off], chunk[off + 1], chunk[off + 2], chunk[off + 3],
-                chunk[off + 4], chunk[off + 5], chunk[off + 6], chunk[off + 7],
+                chunk[off],
+                chunk[off + 1],
+                chunk[off + 2],
+                chunk[off + 3],
+                chunk[off + 4],
+                chunk[off + 5],
+                chunk[off + 6],
+                chunk[off + 7],
             ]);
         }
         keccak_p1600(&mut state);
@@ -191,10 +209,7 @@ mod tests {
         // SHAKE128("", 32) -> 7f9c2ba4e88f827d616045507605853e d73b8093f6efbc88eb1a6eacfa66ef26
         let v = shake128(b"", 32);
         let s: String = v.iter().map(|b| format!("{:02x}", b)).collect();
-        assert_eq!(
-            s,
-            "7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26"
-        );
+        assert_eq!(s, "7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26");
     }
 
     #[test]

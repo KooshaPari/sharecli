@@ -48,10 +48,7 @@ pub fn parse_header(input: &[u8]) -> Result<Bmp, String> {
         return Err(format!("BMP too short for file header: {} < 14", input.len()));
     }
     if &input[0..2] != b"BM" {
-        return Err(format!(
-            "bad BMP magic: expected 'BM', got {:?}",
-            &input[0..2]
-        ));
+        return Err(format!("bad BMP magic: expected 'BM', got {:?}", &input[0..2]));
     }
 
     let _file_size = u32::from_le_bytes([input[2], input[3], input[4], input[5]]);
@@ -60,10 +57,7 @@ pub fn parse_header(input: &[u8]) -> Result<Bmp, String> {
     let pixel_offset = u32::from_le_bytes([input[10], input[11], input[12], input[13]]) as usize;
 
     if pixel_offset < 14 {
-        return Err(format!(
-            "BMP pixel offset {} is before end of file header",
-            pixel_offset
-        ));
+        return Err(format!("BMP pixel offset {} is before end of file header", pixel_offset));
     }
     if pixel_offset > input.len() {
         return Err(format!(
@@ -96,14 +90,8 @@ pub fn parse_header(input: &[u8]) -> Result<Bmp, String> {
     let (width, height, planes, bpp, compression) = match dib_size {
         12 => {
             // BITMAPCOREHEADER: width/height are i16 (max 32767).
-            let width = i16::from_le_bytes([
-                input[dib_off + 4],
-                input[dib_off + 5],
-            ]) as i32;
-            let height = i16::from_le_bytes([
-                input[dib_off + 6],
-                input[dib_off + 7],
-            ]) as i32;
+            let width = i16::from_le_bytes([input[dib_off + 4], input[dib_off + 5]]) as i32;
+            let height = i16::from_le_bytes([input[dib_off + 6], input[dib_off + 7]]) as i32;
             let planes = u16::from_le_bytes([input[dib_off + 8], input[dib_off + 9]]);
             let bpp = u16::from_le_bytes([input[dib_off + 10], input[dib_off + 11]]);
             (width, height, planes, bpp, 0u32)
@@ -169,14 +157,7 @@ pub fn parse_header(input: &[u8]) -> Result<Bmp, String> {
         input[pixel_offset..pixel_offset + total_pixel_bytes].to_vec()
     };
 
-    Ok(Bmp {
-        width,
-        height,
-        bits_per_pixel: bpp,
-        compression,
-        pixel_data,
-        bytes_per_row,
-    })
+    Ok(Bmp { width, height, bits_per_pixel: bpp, compression, pixel_data, bytes_per_row })
 }
 
 /// Compute the row stride (in bytes) for a row of `width` pixels at `bpp`
@@ -185,9 +166,8 @@ fn compute_bytes_per_row(width: usize, bpp: usize) -> Result<usize, String> {
     if bpp == 0 || bpp % 8 != 0 {
         return Err(format!("unsupported BMP bits per pixel: {}", bpp));
     }
-    let bits_per_row = width
-        .checked_mul(bpp)
-        .ok_or_else(|| "BMP row width overflows usize".to_string())?;
+    let bits_per_row =
+        width.checked_mul(bpp).ok_or_else(|| "BMP row width overflows usize".to_string())?;
     let bytes_per_row_unaligned = (bits_per_row + 7) / 8;
     Ok((bytes_per_row_unaligned + 3) & !3)
 }
@@ -361,10 +341,8 @@ mod tests {
         out.extend_from_slice(&0u32.to_le_bytes());
         // BGRA pixel data
         let pixels = vec![
-            0xAA, 0xBB, 0xCC, 0xDD,
-            0x11, 0x22, 0x33, 0x44,
-            0x55, 0x66, 0x77, 0x88,
-            0x99, 0xAA, 0xBB, 0xCC,
+            0xAA, 0xBB, 0xCC, 0xDD, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA,
+            0xBB, 0xCC,
         ];
         out.extend_from_slice(&pixels);
 
@@ -378,7 +356,7 @@ mod tests {
     fn parse_top_down_negative_height() {
         // Top-down DIBs use a negative height. Our parser accepts that and
         // exposes the sign through the struct field.
-        let pixel_size = 2 * 1 * 3;
+        let _pixel_size = 2 * 1 * 3;
         // Row width = 2*3 = 6, padded to 8.
         let padded_row = 8;
         let total = padded_row * 1;

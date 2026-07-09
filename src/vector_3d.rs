@@ -78,8 +78,7 @@ impl Vec3 {
 
     /// `normalize` panics on zero length; use `try_normalize` for safety.
     pub fn normalize(self) -> Self {
-        self.try_normalize()
-            .expect("Vec3::normalize called on zero vector")
+        self.try_normalize().expect("Vec3::normalize called on zero vector")
     }
 
     pub fn distance(self, o: Self) -> f64 {
@@ -117,9 +116,7 @@ mod tests {
     }
 
     fn vec_approx_eq(a: Vec3, b: Vec3, eps: f64) -> bool {
-        approx_eq(a.x, b.x, eps)
-            && approx_eq(a.y, b.y, eps)
-            && approx_eq(a.z, b.z, eps)
+        approx_eq(a.x, b.x, eps) && approx_eq(a.y, b.y, eps) && approx_eq(a.z, b.z, eps)
     }
 
     #[test]

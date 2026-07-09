@@ -82,7 +82,7 @@ pub fn build_ppt_header(version: u16, is_encrypted: bool) -> Vec<u8> {
     // Number of DIFAT (offset 72) — 0.
     // DIFAT (offset 76..512) — anchor FAT[0] at index 0 of the DIFAT.
     buf[76..80].copy_from_slice(&0u32.to_le_bytes()); // DIFAT[0] = sector 0
-    // Synthetic encryption flag overlay (offset 510..512) — see module note.
+                                                      // Synthetic encryption flag overlay (offset 510..512) — see module note.
     if is_encrypted {
         buf[510] = 0x01;
         buf[511] = 0x00;
@@ -165,10 +165,7 @@ mod tests {
     fn built_v3_header_matches_ms_cfb_magic_at_offset_0() {
         // [MS-CFB] 2.2 — 8-byte signature at the start.
         let buf = build_ppt_header(3, false);
-        assert_eq!(
-            &buf[0..8],
-            &[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]
-        );
+        assert_eq!(&buf[0..8], &[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]);
     }
 
     #[test]
@@ -237,8 +234,8 @@ mod tests {
     fn assert_round_trip_rejects_bad_magic() {
         let mut buf = build_ppt_header(3, false);
         buf[0] = 0xAB; // corrupt magic
-        // The parser will reject; we expect the parse call inside
-        // assert_round_trip to fail.
+                       // The parser will reject; we expect the parse call inside
+                       // assert_round_trip to fail.
         let result = std::panic::catch_unwind(|| assert_round_trip(&buf));
         assert!(result.is_err(), "assertion must panic on bad magic");
     }

@@ -10,6 +10,8 @@
 //! The event loop in [`run`] polls the [`ThermalGovernor`] on a configurable
 //! interval and redraws until the user presses `q` or `Ctrl-C`.
 
+use std::time::{Duration, Instant};
+
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use ratatui::{
@@ -20,7 +22,6 @@ use ratatui::{
     Frame,
 };
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
-use std::time::{Duration, Instant};
 
 // ---------------------------------------------------------------------------
 // Pure transforms — unit-testable
@@ -289,13 +290,14 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
 ///
 /// Returns when the user presses `q` or `Ctrl-C`.
 pub fn run(governor: &ThermalGovernor, slot_cap: u32) -> Result<()> {
+    use std::io;
+
     use crossterm::{
         execute,
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     };
     use ratatui::backend::CrosstermBackend;
     use ratatui::Terminal;
-    use std::io;
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();

@@ -51,7 +51,9 @@ pub enum ThemeVariant {
 }
 
 impl Default for ThemeVariant {
-    fn default() -> Self { ThemeVariant::Backbone2 }
+    fn default() -> Self {
+        ThemeVariant::Backbone2
+    }
 }
 
 /// Palette + derived decorations.
@@ -69,15 +71,17 @@ impl Tokens {
     /// Canonical Backbone-2 family, matching tokens.css exactly.
     pub const BACKBONE2: Tokens = Tokens {
         variant: ThemeVariant::Backbone2,
-        graphite:   Rgb::from_hex("#0a0d12"),
-        panel:      Rgb::from_hex("#161b22"),
-        pulse_green:Rgb::from_hex("#3fb950"),
-        sync_violet:Rgb::from_hex("#a371f7"),
+        graphite: Rgb::from_hex("#0a0d12"),
+        panel: Rgb::from_hex("#161b22"),
+        pulse_green: Rgb::from_hex("#3fb950"),
+        sync_violet: Rgb::from_hex("#a371f7"),
         warm_amber: Rgb::from_hex("#d29922"),
     };
 
     /// Default palette = Backbone-2.
-    pub const fn default() -> Self { Self::BACKBONE2 }
+    pub const fn default() -> Self {
+        Self::BACKBONE2
+    }
 
     /// Resolve variant by name; case-insensitive on the canonical family name.
     pub fn from_name(name: &str) -> Option<Self> {
@@ -107,11 +111,11 @@ mod tests {
     #[test]
     fn backbone2_constants_match_tokens_css() {
         let t = Tokens::BACKBONE2;
-        assert_eq!(t.graphite,    Rgb(0x0a, 0x0d, 0x12));
-        assert_eq!(t.panel,       Rgb(0x16, 0x1b, 0x22));
+        assert_eq!(t.graphite, Rgb(0x0a, 0x0d, 0x12));
+        assert_eq!(t.panel, Rgb(0x16, 0x1b, 0x22));
         assert_eq!(t.pulse_green, Rgb(0x3f, 0xb9, 0x50));
         assert_eq!(t.sync_violet, Rgb(0xa3, 0x71, 0xf7));
-        assert_eq!(t.warm_amber,  Rgb(0xd2, 0x99, 0x22));
+        assert_eq!(t.warm_amber, Rgb(0xd2, 0x99, 0x22));
     }
 
     #[test]

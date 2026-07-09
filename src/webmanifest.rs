@@ -61,7 +61,8 @@ fn extract_string(body: &str, key: &str) -> Option<String> {
         let abs = idx + found;
         // Make sure this is a key (preceded by `,`, `{`, or whitespace) and not
         // a substring of some larger key like `"short_name"` matching `"name"`.
-        let before_ok = abs == 0 || matches!(body.as_bytes()[abs - 1], b',' | b'{' | b'\n' | b' ' | b'\t' | b'\r');
+        let before_ok = abs == 0
+            || matches!(body.as_bytes()[abs - 1], b',' | b'{' | b'\n' | b' ' | b'\t' | b'\r');
         if !before_ok {
             idx = abs + 1;
             continue;
@@ -122,33 +123,53 @@ fn parse_object_members(body: &str) -> HashMap<String, String> {
         while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\r' | b'\n' | b',') {
             i += 1;
         }
-        if i >= bytes.len() || bytes[i] == b'}' { break; }
-        if bytes[i] != b'"' { break; }
+        if i >= bytes.len() || bytes[i] == b'}' {
+            break;
+        }
+        if bytes[i] != b'"' {
+            break;
+        }
         // Read key.
         i += 1;
         let key_start = i;
         while i < bytes.len() && bytes[i] != b'"' {
-            if bytes[i] == b'\\' { i += 1; }
+            if bytes[i] == b'\\' {
+                i += 1;
+            }
             i += 1;
         }
-        if i >= bytes.len() { break; }
+        if i >= bytes.len() {
+            break;
+        }
         let key = body[key_start..i].to_string();
         i += 1;
         // Skip ws and find ':'.
-        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\r' | b'\n') { i += 1; }
-        if i >= bytes.len() || bytes[i] != b':' { break; }
+        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\r' | b'\n') {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] != b':' {
+            break;
+        }
         i += 1;
-        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\r' | b'\n') { i += 1; }
+        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\r' | b'\n') {
+            i += 1;
+        }
         // Read value: string or array/object (we just slurp the rest).
-        if i >= bytes.len() { break; }
+        if i >= bytes.len() {
+            break;
+        }
         let value_start = i;
         if bytes[i] == b'"' {
             i += 1;
             while i < bytes.len() && bytes[i] != b'"' {
-                if bytes[i] == b'\\' { i += 1; }
+                if bytes[i] == b'\\' {
+                    i += 1;
+                }
                 i += 1;
             }
-            if i < bytes.len() { i += 1; }
+            if i < bytes.len() {
+                i += 1;
+            }
             out.insert(key, body[value_start..i].to_string());
         } else if bytes[i] == b'[' || bytes[i] == b'{' {
             let open = bytes[i];
@@ -160,20 +181,33 @@ fn parse_object_members(body: &str) -> HashMap<String, String> {
                     b'"' => {
                         i += 1;
                         while i < bytes.len() && bytes[i] != b'"' {
-                            if bytes[i] == b'\\' { i += 1; }
+                            if bytes[i] == b'\\' {
+                                i += 1;
+                            }
                             i += 1;
                         }
-                        if i < bytes.len() { i += 1; }
+                        if i < bytes.len() {
+                            i += 1;
+                        }
                     }
-                    b'[' | b'{' => { depth += 1; i += 1; }
-                    b']' | b'}' => { depth -= 1; i += 1; }
-                    _ => { i += 1; }
+                    b'[' | b'{' => {
+                        depth += 1;
+                        i += 1;
+                    }
+                    b']' | b'}' => {
+                        depth -= 1;
+                        i += 1;
+                    }
+                    _ => {
+                        i += 1;
+                    }
                 }
             }
             out.insert(key, body[value_start..i].to_string());
         } else {
             // Number, bool, null — slurp until separator.
-            while i < bytes.len() && !matches!(bytes[i], b',' | b'}' | b' ' | b'\t' | b'\r' | b'\n') {
+            while i < bytes.len() && !matches!(bytes[i], b',' | b'}' | b' ' | b'\t' | b'\r' | b'\n')
+            {
                 i += 1;
             }
             out.insert(key, body[value_start..i].to_string());
@@ -188,7 +222,9 @@ fn extract_array(body: &str, key: &str) -> Option<String> {
     let members = parse_object_members(body);
     let raw = members.get(key)?;
     let raw = raw.trim();
-    if !raw.starts_with('[') || !raw.ends_with(']') { return None; }
+    if !raw.starts_with('[') || !raw.ends_with(']') {
+        return None;
+    }
     Some(raw[1..raw.len() - 1].to_string())
 }
 
@@ -200,9 +236,15 @@ pub fn parse_icons(body: &str) -> Vec<ManifestIcon> {
     let bytes = arr.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\r' | b'\n' | b',') { i += 1; }
-        if i >= bytes.len() || bytes[i] == b']' { break; }
-        if bytes[i] != b'{' { break; }
+        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\r' | b'\n' | b',') {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] == b']' {
+            break;
+        }
+        if bytes[i] != b'{' {
+            break;
+        }
         let obj_start = i;
         let mut depth: i32 = 1;
         i += 1;
@@ -211,14 +253,26 @@ pub fn parse_icons(body: &str) -> Vec<ManifestIcon> {
                 b'"' => {
                     i += 1;
                     while i < bytes.len() && bytes[i] != b'"' {
-                        if bytes[i] == b'\\' { i += 1; }
+                        if bytes[i] == b'\\' {
+                            i += 1;
+                        }
                         i += 1;
                     }
-                    if i < bytes.len() { i += 1; }
+                    if i < bytes.len() {
+                        i += 1;
+                    }
                 }
-                b'{' => { depth += 1; i += 1; }
-                b'}' => { depth -= 1; i += 1; }
-                _ => { i += 1; }
+                b'{' => {
+                    depth += 1;
+                    i += 1;
+                }
+                b'}' => {
+                    depth -= 1;
+                    i += 1;
+                }
+                _ => {
+                    i += 1;
+                }
             }
         }
         let obj = &arr[obj_start..i];
@@ -244,12 +298,13 @@ pub fn is_css_color(s: &str) -> bool {
         return true;
     }
     if let Some(rest) = s.strip_prefix('#') {
-        return matches!(rest.len(), 3 | 4 | 6 | 8)
-            && rest.chars().all(|c| c.is_ascii_hexdigit());
+        return matches!(rest.len(), 3 | 4 | 6 | 8) && rest.chars().all(|c| c.is_ascii_hexdigit());
     }
     let lower = s.to_ascii_lowercase();
-    if lower.starts_with("rgb(") || lower.starts_with("rgba(")
-        || lower.starts_with("hsl(") || lower.starts_with("hsla(")
+    if lower.starts_with("rgb(")
+        || lower.starts_with("rgba(")
+        || lower.starts_with("hsl(")
+        || lower.starts_with("hsla(")
         || lower.starts_with("color(")
     {
         return s.ends_with(')');
@@ -372,8 +427,8 @@ mod tests {
         assert!(is_css_color("transparent"));
         assert!(!is_css_color(""));
         assert!(!is_css_color(r#"#zzz"#));
-        assert!(!is_css_color(r#"#ff"#));      // wrong length
-        assert!(!is_css_color(r#"#fffff"#));   // wrong length
+        assert!(!is_css_color(r#"#ff"#)); // wrong length
+        assert!(!is_css_color(r#"#fffff"#)); // wrong length
         assert!(!is_css_color(r#"#1234567"#)); // wrong length
     }
 

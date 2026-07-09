@@ -15,8 +15,7 @@
 //! assert_eq!(decode_unchecked("aGVsbG8gd29ybGQ").unwrap(), b"hello world");
 //! ```
 
-const ALPHABET: &[u8; 64] =
-    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 /// Reverse alphabet for fast lookup. Value 64 is the "padding / invalid" sentinel.
 const DECODE_TABLE: [u8; 256] = build_decode_table();

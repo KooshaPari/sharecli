@@ -104,12 +104,10 @@ pub fn parse(input: &str) -> Result<Zone, (usize, String)> {
         if let Some(rest) = line.strip_prefix('$') {
             // Directive.
             let mut parts = rest.split_whitespace();
-            let directive = parts
-                .next()
-                .ok_or((line_no + 1, "empty directive after $".to_string()))?;
-            let value = parts
-                .next()
-                .ok_or((line_no + 1, format!("$ {} missing value", directive)))?;
+            let directive =
+                parts.next().ok_or((line_no + 1, "empty directive after $".to_string()))?;
+            let value =
+                parts.next().ok_or((line_no + 1, format!("$ {} missing value", directive)))?;
             // Tolerate stray tokens after the value.
             match directive.to_ascii_uppercase().as_str() {
                 "ORIGIN" => origin = value.to_string(),
@@ -117,10 +115,7 @@ pub fn parse(input: &str) -> Result<Zone, (usize, String)> {
                     default_ttl = parse_ttl(value).map_err(|e| (line_no + 1, e))?;
                 }
                 other => {
-                    return Err((
-                        line_no + 1,
-                        format!("unknown directive: ${}", other),
-                    ));
+                    return Err((line_no + 1, format!("unknown directive: ${}", other)));
                 }
             }
             continue;
@@ -138,7 +133,8 @@ pub fn parse(input: &str) -> Result<Zone, (usize, String)> {
         let name_owned;
         if is_type_token(name_token) {
             // No explicit owner — treat as inherited.
-            name_owned = String::from(if records.is_empty() { "@" } else { &records.last().unwrap().name });
+            name_owned =
+                String::from(if records.is_empty() { "@" } else { &records.last().unwrap().name });
             // Don't consume the token; it's the type.
         } else {
             name_owned = name_token.to_string();
@@ -189,10 +185,7 @@ pub fn parse(input: &str) -> Result<Zone, (usize, String)> {
         }
         let rdata_tokens = &tokens[idx..];
         if rdata_tokens.is_empty() {
-            return Err((
-                line_no + 1,
-                format!("missing rdata for {}", type_token),
-            ));
+            return Err((line_no + 1, format!("missing rdata for {}", type_token)));
         }
         let record_type = RecordType::parse(type_token);
         // Drop standalone '(' and ')' tokens (RFC 1035 paren-grouping);
@@ -205,24 +198,11 @@ pub fn parse(input: &str) -> Result<Zone, (usize, String)> {
             .collect::<Vec<_>>()
             .join(" ");
         if rdata.is_empty() {
-            return Err((
-                line_no + 1,
-                format!("missing rdata for {}", type_token),
-            ));
+            return Err((line_no + 1, format!("missing rdata for {}", type_token)));
         }
-        records.push(Record {
-            name: name_owned,
-            ttl,
-            class,
-            record_type,
-            rdata,
-        });
+        records.push(Record { name: name_owned, ttl, class, record_type, rdata });
     }
-    Ok(Zone {
-        origin,
-        default_ttl,
-        records,
-    })
+    Ok(Zone { origin, default_ttl, records })
 }
 
 /// Returns true iff `s` looks like a record TYPE field (uppercase alphabetic,
@@ -237,8 +217,7 @@ fn is_type_token(s: &str) -> bool {
     let upper = s.to_ascii_uppercase();
     matches!(
         upper.as_str(),
-        "A"
-            | "AAAA"
+        "A" | "AAAA"
             | "NS"
             | "CNAME"
             | "MX"
@@ -292,12 +271,8 @@ fn parse_ttl(s: &str) -> Result<u32, String> {
     if !saw_unit {
         // Consume the remainder of chars (empty in this case).
     }
-    let v: u64 = digits
-        .parse()
-        .map_err(|e| format!("invalid TTL {}: {}", s, e))?;
-    let total = v
-        .checked_mul(unit as u64)
-        .ok_or_else(|| format!("TTL overflow: {}", s))?;
+    let v: u64 = digits.parse().map_err(|e| format!("invalid TTL {}: {}", s, e))?;
+    let total = v.checked_mul(unit as u64).ok_or_else(|| format!("TTL overflow: {}", s))?;
     if total > u32::MAX as u64 {
         return Err(format!("TTL overflow: {}", s));
     }
@@ -495,7 +470,10 @@ mod tests {
         assert_eq!(z.records.len(), 1);
         let r = &z.records[0];
         assert_eq!(r.record_type, RecordType::SOA);
-        assert_eq!(r.rdata, "ns.example.com. hostmaster.example.com. 2024010101 10800 1800 1209600 3600");
+        assert_eq!(
+            r.rdata,
+            "ns.example.com. hostmaster.example.com. 2024010101 10800 1800 1209600 3600"
+        );
     }
 
     #[test]

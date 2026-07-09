@@ -220,3 +220,18 @@ jobs:
 | Top root causes | (1) rustfmt drift ~160 files; (2) `RUSTFLAGS=-D warnings` + dead_code in `keccak`/`blake2`; (3) mass clippy/unused warnings under deny; (4) echo-only `coverage.yml`; (5) quality-gate threshold `continue-on-error` |
 | Missing Zig on CI? | **No** for run 28935093973 |
 | CI Success falsely green? | **Yes** — job succeeds when verify step is skipped under `if: always()` |
+
+---
+
+## Remediation applied (PR #198 / `feat/sharecli-v38-audit-ci-truth`)
+
+**Run referenced for leaf failures:** [28983758462](https://github.com/KooshaPari/sharecli/actions/runs/28983758462) (CI) + [28983758434](https://github.com/KooshaPari/sharecli/actions/runs/28983758434) (coverage).
+
+| Leaf | Fix |
+|------|-----|
+| `cargo fmt` | `cargo fmt --all` (~170 files) |
+| `cargo build` / `cargo test --no-run` | Wire unused binary-only APIs via `util_cmd`; allow intentional dead code (`plugins`, `HealthCheckScheduler::new`); fix lib-test unused imports/vars/comparisons |
+| `cargo clippy` | Temporary `[lints.clippy]` allow-list in root `Cargo.toml` for mass style/pedantic lints. **`RUSTFLAGS=-D warnings` unchanged** — do not weaken CI env; re-enable allows as debt is paid |
+| `coverage` | Not blocked by sharecli compile: llvm-cov ran; failed on `sharecli-ipc` `serve_lock` tests (`u32::MAX` → `kill(-1)` false-alive; same-process flock re-acquire). Fixed in `crates/sharecli-ipc/src/serve_lock.rs` |
+
+**Local Windows note:** full `cargo check` for the main package may still fail in `spawn-core-sys` Zig (`fork` / POSIX) — unrelated to Linux CI leaf jobs.

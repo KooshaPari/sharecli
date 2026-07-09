@@ -346,14 +346,10 @@ fn is_no_color() -> bool {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let tokens = theme::Tokens::from_name(&cli.theme)
-        .ok_or_else(|| anyhow::anyhow!(
-            "unknown theme '{}': expected backbone-2 / backbone2 / bb2",
-            cli.theme,
-        ))?;
-    eprintln!(
-        "{}", tokens.panel.ansi_fg()
-    );
+    let tokens = theme::Tokens::from_name(&cli.theme).ok_or_else(|| {
+        anyhow::anyhow!("unknown theme '{}': expected backbone-2 / backbone2 / bb2", cli.theme,)
+    })?;
+    eprintln!("{}", tokens.panel.ansi_fg());
 
     // Initialise global config (must happen before any command handler)
     let cfg = config::init_global();
@@ -457,26 +453,26 @@ async fn main() -> Result<()> {
 /// tree + `util_cmd::UtilCmd` variant list.
 fn cli_list(as_json: bool) -> Result<()> {
     let cast_modules: &[(&str, &str)] = &[
-        ("register",   "Register a pane: `cast register <name> <address>`"),
+        ("register", "Register a pane: `cast register <name> <address>`"),
         ("unregister", "Unregister a pane by name"),
-        ("list",       "List all registered panes"),
-        ("send",       "Send text to a registered pane (`<name> [file]`)"),
-        ("where",      "Show the on-disk path of the pane-map file"),
+        ("list", "List all registered panes"),
+        ("send", "Send text to a registered pane (`<name> [file]`)"),
+        ("where", "Show the on-disk path of the pane-map file"),
     ];
 
     let util_modules: &[(&str, &str)] = &[
-        ("base85",  "Base85 encode / decode"),
-        ("csv",     "Build a CSV row from --row entries"),
-        ("crc",     "CRC64 checksum"),
-        ("hash",    "xxhash3 / xxtea digest"),
-        ("json",    "JSON pretty-print / validate"),
-        ("md-table","Render markdown table"),
-        ("sha",     "SHA1 / SHA256 digest"),
-        ("skiplist","Walk the bundled skiplist"),
-        ("trie",    "Radix-trie lookup"),
-        ("url",     "URL percent-encode / decode"),
-        ("uuid",    "APFS UUID helper"),
-        ("xml",     "XML escape / unescape"),
+        ("base85", "Base85 encode / decode"),
+        ("csv", "Build a CSV row from --row entries"),
+        ("crc", "CRC64 checksum"),
+        ("hash", "xxhash3 / xxtea digest"),
+        ("json", "JSON pretty-print / validate"),
+        ("md-table", "Render markdown table"),
+        ("sha", "SHA1 / SHA256 digest"),
+        ("skiplist", "Walk the bundled skiplist"),
+        ("trie", "Radix-trie lookup"),
+        ("url", "URL percent-encode / decode"),
+        ("uuid", "APFS UUID helper"),
+        ("xml", "XML escape / unescape"),
     ];
 
     if as_json {

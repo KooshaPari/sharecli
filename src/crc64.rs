@@ -268,24 +268,32 @@ pub fn crc64(data: &[u8]) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn empty() { assert_eq!(crc64(&[]), 0); }
-    #[test] fn known_string() {
+    #[test]
+    fn empty() {
+        assert_eq!(crc64(&[]), 0);
+    }
+    #[test]
+    fn known_string() {
         assert_eq!(crc64(b"123456789"), 0x995dc9bbdf1939fa);
     }
-    #[test] fn known_zero8() {
+    #[test]
+    fn known_zero8() {
         assert_eq!(crc64(&[0u8; 8]), 0xb66a73654282cac0);
     }
-    #[test] fn deterministic() {
+    #[test]
+    fn deterministic() {
         let a = crc64(b"hello world");
         let b = crc64(b"hello world");
         assert_eq!(a, b);
     }
-    #[test] fn different() {
+    #[test]
+    fn different() {
         let a = crc64(b"hello");
         let b = crc64(b"world");
         assert_ne!(a, b);
     }
-    #[test] fn incremental() {
+    #[test]
+    fn incremental() {
         let full = crc64(b"abcdef");
         let mut state: u64 = 0xffffffffffffffff;
         for &b in b"abcdef" {

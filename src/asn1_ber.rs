@@ -68,9 +68,7 @@ impl fmt::Display for Ber {
 /// reading child TLVs until a 0x00 0x00 end-of-content marker, per X.690
 /// §8.1.3.6.
 pub fn parse(input: &[u8]) -> Result<(Ber, &[u8]), String> {
-    let (first_id, rest) = input
-        .split_first()
-        .ok_or_else(|| "empty input".to_string())?;
+    let (first_id, rest) = input.split_first().ok_or_else(|| "empty input".to_string())?;
 
     // Class lives in bits 7-6 (top 2 bits) of the first identifier byte,
     // not in the bottom 2 bits. X.690 §8.1.2.2.
@@ -85,12 +83,9 @@ pub fn parse(input: &[u8]) -> Result<(Ber, &[u8]), String> {
         let mut acc: u32 = 0;
         let mut cursor = rest;
         loop {
-            let (b, next) = cursor
-                .split_first()
-                .ok_or_else(|| "truncated high-tag-number form".to_string())?;
-            acc = acc
-                .checked_shl(7)
-                .ok_or_else(|| "high-tag-number overflow".to_string())?
+            let (b, next) =
+                cursor.split_first().ok_or_else(|| "truncated high-tag-number form".to_string())?;
+            acc = acc.checked_shl(7).ok_or_else(|| "high-tag-number overflow".to_string())?
                 | (*b as u32) & 0x7f;
             let found_last = (*b & 0x80) == 0;
             cursor = next;
@@ -112,11 +107,7 @@ pub fn parse(input: &[u8]) -> Result<(Ber, &[u8]), String> {
         (Vec::new(), after_eoc, Some(children))
     } else {
         if after_len.len() < len {
-            return Err(format!(
-                "truncated value: need {} bytes, have {}",
-                len,
-                after_len.len()
-            ));
+            return Err(format!("truncated value: need {} bytes, have {}", len, after_len.len()));
         }
         let (contents, trailing) = after_len.split_at(len);
         (contents.to_vec(), trailing, None)
@@ -150,9 +141,7 @@ pub fn parse(input: &[u8]) -> Result<(Ber, &[u8]), String> {
 }
 
 fn read_length(input: &[u8]) -> Result<(usize, &[u8]), String> {
-    let (first, rest) = input
-        .split_first()
-        .ok_or_else(|| "missing length octet".to_string())?;
+    let (first, rest) = input.split_first().ok_or_else(|| "missing length octet".to_string())?;
     if *first < 0x80 {
         return Ok(((*first) as usize, rest));
     }
@@ -164,11 +153,7 @@ fn read_length(input: &[u8]) -> Result<(usize, &[u8]), String> {
         return Err("reserved length form (0x80 | 0)".to_string());
     }
     if rest.len() < n {
-        return Err(format!(
-            "truncated long-form length: need {} bytes, have {}",
-            n,
-            rest.len()
-        ));
+        return Err(format!("truncated long-form length: need {} bytes, have {}", n, rest.len()));
     }
     let (len_bytes, after) = rest.split_at(n);
     let mut len: usize = 0;
@@ -313,17 +298,12 @@ mod tests {
         //   4    = 0x04
         //   3    = 0x03
         //   2    = 0x02
-        let bytes = [
-            0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02,
-        ];
+        let bytes = [0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02];
         let (node, rest) = parse(&bytes).expect("parse");
         assert!(rest.is_empty());
         assert_eq!(node.tag, 0x06);
         // Decoded value bytes must equal the wire form.
-        assert_eq!(
-            node.value,
-            vec![0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02]
-        );
+        assert_eq!(node.value, vec![0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02]);
     }
 
     #[test]
@@ -453,9 +433,7 @@ mod tests {
     #[test]
     fn parse_ia5_string() {
         // IA5String "[email protected]"
-        let bytes = [
-            0x16, 0x0A, b'a', b'@', b'b', b'.', b'c', b'o', b'm', 0x00, 0x01, 0x02,
-        ];
+        let bytes = [0x16, 0x0A, b'a', b'@', b'b', b'.', b'c', b'o', b'm', 0x00, 0x01, 0x02];
         let (node, _) = parse(&bytes).expect("parse");
         assert_eq!(node.tag, 0x16);
         assert_eq!(node.value, b"a@b.com\x00\x01\x02");

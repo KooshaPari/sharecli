@@ -304,8 +304,8 @@ mod tests {
         // (scriptPubKey 0x0014751e76e8...bd6). The 5-bit data groups
         // are the first 33 symbols of the payload.
         let data: Vec<u8> = vec![
-            0, 14, 20, 15, 7, 13, 26, 0, 25, 18, 6, 11, 13, 8, 21, 4,
-            20, 3, 17, 2, 29, 3, 12, 29, 3, 4, 15, 24, 20, 6, 14, 30, 22,
+            0, 14, 20, 15, 7, 13, 26, 0, 25, 18, 6, 11, 13, 8, 21, 4, 20, 3, 17, 2, 29, 3, 12, 29,
+            3, 4, 15, 24, 20, 6, 14, 30, 22,
         ];
         let s = encode("bc", &data, Variant::Bech32).expect("encode");
         assert_eq!(s, "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
@@ -317,16 +317,12 @@ mod tests {
         //   BC1PW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KT5ND6Y
         // 5-bit data is the first 65 groups of the 71-char payload.
         let data: Vec<u8> = vec![
-            1, 14, 20, 15, 7, 13, 26, 0, 25, 18, 6, 11, 13, 8, 21, 4, 20, 3, 17, 2,
-            29, 3, 12, 29, 3, 4, 15, 24, 20, 6, 14, 30, 22, 14, 20, 15, 7, 13, 26, 0,
-            25, 18, 6, 11, 13, 8, 21, 4, 20, 3, 17, 2, 29, 3, 12, 29, 3, 4, 15, 24,
-            20, 6, 14, 30, 22,
+            1, 14, 20, 15, 7, 13, 26, 0, 25, 18, 6, 11, 13, 8, 21, 4, 20, 3, 17, 2, 29, 3, 12, 29,
+            3, 4, 15, 24, 20, 6, 14, 30, 22, 14, 20, 15, 7, 13, 26, 0, 25, 18, 6, 11, 13, 8, 21, 4,
+            20, 3, 17, 2, 29, 3, 12, 29, 3, 4, 15, 24, 20, 6, 14, 30, 22,
         ];
         let s = encode("bc", &data, Variant::Bech32m).expect("encode");
-        assert_eq!(
-            s,
-            "bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y"
-        );
+        assert_eq!(s, "bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y");
     }
 
     // ---------- decode tests (BIP-173 / BIP-350 vectors) ----------
@@ -336,8 +332,7 @@ mod tests {
         // BIP-173 reference: BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4
         // (the canonical uppercase form, all-lowercase also valid).
         let (hrp, data, variant) =
-            decode("BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4")
-                .expect("decode");
+            decode("BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4").expect("decode");
         assert_eq!(hrp, "bc");
         assert_eq!(variant, Variant::Bech32);
         // The first 5-bit group is the witness version (0); the
@@ -356,10 +351,9 @@ mod tests {
         // but that string uses 'b' which is NOT in the BIP-173 alphabet,
         // so it is not a valid bech32/bech32m string. We use the actual
         // BIP-350 reference vector instead.
-        let (hrp, _data, variant) = decode(
-            "BC1PW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KT5ND6Y",
-        )
-        .expect("decode");
+        let (hrp, _data, variant) =
+            decode("BC1PW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KT5ND6Y")
+                .expect("decode");
         assert_eq!(hrp, "bc");
         assert_eq!(variant, Variant::Bech32m);
     }
@@ -367,10 +361,9 @@ mod tests {
     #[test]
     fn decode_bip350_uppercase() {
         // All-uppercase Bech32m is also valid input per BIP-173/350.
-        let (hrp, _data, variant) = decode(
-            "BC1PW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KT5ND6Y",
-        )
-        .expect("decode");
+        let (hrp, _data, variant) =
+            decode("BC1PW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KT5ND6Y")
+                .expect("decode");
         assert_eq!(hrp, "bc");
         assert_eq!(variant, Variant::Bech32m);
     }
@@ -438,8 +431,7 @@ mod tests {
         // 'i' is NOT in the BIP-173 base32 alphabet (only 32 chars:
         // qpzry9x8gf2tvdw0s3jn54khce6mua7l). Use it to test rejection
         // of non-base32 characters.
-        let err = decode("bc1qix508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4")
-            .expect_err("should reject");
+        let err = decode("bc1qix508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4").expect_err("should reject");
         assert!(err.contains("base32"), "got: {}", err);
     }
 

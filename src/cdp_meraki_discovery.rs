@@ -93,11 +93,7 @@ pub fn maybe_ascii(value: &[u8]) -> Option<&str> {
         return None;
     }
     // Trim trailing NUL if present (very common in CDP string TLVs).
-    let trimmed = if value.last() == Some(&0) {
-        &value[..value.len() - 1]
-    } else {
-        value
-    };
+    let trimmed = if value.last() == Some(&0) { &value[..value.len() - 1] } else { value };
     if trimmed.is_empty() {
         return None;
     }

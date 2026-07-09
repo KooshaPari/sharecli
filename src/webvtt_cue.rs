@@ -101,14 +101,19 @@ fn parse_block(block: &[String]) -> Result<Cue, String> {
     parse_cue(identifier, timing_line, &block[timing_idx + 1..])
 }
 
-fn parse_cue(identifier: String, timing_line: &str, payload_lines: &[String]) -> Result<Cue, String> {
+fn parse_cue(
+    identifier: String,
+    timing_line: &str,
+    payload_lines: &[String],
+) -> Result<Cue, String> {
     let arrow = timing_line.find("-->").ok_or("missing --> arrow")?;
     let start = timing_line[..arrow].trim();
     let rest = timing_line[arrow + 3..].trim_start();
     let end_split = rest.find(char::is_whitespace).unwrap_or(rest.len());
     let end = rest[..end_split].trim();
     let settings = rest[end_split..].trim().to_string();
-    let start_ms = parse_timestamp(start).ok_or_else(|| format!("bad start timestamp: {start:?}"))?;
+    let start_ms =
+        parse_timestamp(start).ok_or_else(|| format!("bad start timestamp: {start:?}"))?;
     let end_ms = parse_timestamp(end).ok_or_else(|| format!("bad end timestamp: {end:?}"))?;
     if end_ms < start_ms {
         return Err(format!("end before start: {start_ms}..{end_ms}"));
@@ -127,7 +132,9 @@ pub fn parse(input: &str) -> Result<WebVtt, String> {
             None => return Err("missing WEBVTT header".into()),
             Some(l) => l.strip_suffix('\r').unwrap_or(l).to_string(),
         };
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         break line;
     };
     let first_token = header.split_whitespace().next().unwrap_or("");
@@ -214,7 +221,8 @@ mod tests {
 
     #[test]
     fn parse_multiple_cues() {
-        let input = "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\none\n\n00:00:02.500 --> 00:00:03.000\ntwo\n";
+        let input =
+            "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\none\n\n00:00:02.500 --> 00:00:03.000\ntwo\n";
         let v = parse(input).unwrap();
         assert_eq!(v.cues.len(), 2);
         assert_eq!(v.cues[0].payload, "one");

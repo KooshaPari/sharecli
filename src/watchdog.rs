@@ -53,12 +53,7 @@ impl WatchdogEntry {
     /// Create a fresh entry in the [`WatchdogState::Running`] state with
     /// `restart_count = 0`.
     pub fn new(name: impl Into<String>, max_restarts: u32) -> Self {
-        Self {
-            name: name.into(),
-            restart_count: 0,
-            max_restarts,
-            state: WatchdogState::Running,
-        }
+        Self { name: name.into(), restart_count: 0, max_restarts, state: WatchdogState::Running }
     }
 
     /// Record an exit for this single entry and return the new state.
@@ -104,11 +99,8 @@ impl Watchdog {
     /// initial state).
     pub fn register(&mut self, name: impl Into<String>, max_restarts: u32) -> &WatchdogEntry {
         let name = name.into();
-        self.entries
-            .insert(name.clone(), WatchdogEntry::new(name.clone(), max_restarts));
-        self.entries
-            .get(&name)
-            .expect("entry was just inserted and must be present")
+        self.entries.insert(name.clone(), WatchdogEntry::new(name.clone(), max_restarts));
+        self.entries.get(&name).expect("entry was just inserted and must be present")
     }
 
     /// Record an exit for the named entry. Returns:
@@ -184,14 +176,8 @@ mod tests {
         assert_eq!(wd.on_exit("svc"), Some(WatchdogState::Running));
 
         // Third exit → restart_count (2) >= max_restarts (2) → gate trips.
-        assert_eq!(
-            wd.on_exit("svc"),
-            Some(WatchdogState::MaxRestartsExceeded)
-        );
-        assert_eq!(
-            wd.state("svc"),
-            Some(&WatchdogState::MaxRestartsExceeded)
-        );
+        assert_eq!(wd.on_exit("svc"), Some(WatchdogState::MaxRestartsExceeded));
+        assert_eq!(wd.state("svc"), Some(&WatchdogState::MaxRestartsExceeded));
         assert!(!wd.entry("svc").unwrap().can_restart());
         // Counter must NOT advance once the gate has tripped.
         let count_after_trip = wd.entry("svc").unwrap().restart_count;
@@ -216,10 +202,7 @@ mod tests {
 
         // "a" exhausts its cap on the first exit.
         assert_eq!(wd.on_exit("a"), Some(WatchdogState::Running));
-        assert_eq!(
-            wd.on_exit("a"),
-            Some(WatchdogState::MaxRestartsExceeded)
-        );
+        assert_eq!(wd.on_exit("a"), Some(WatchdogState::MaxRestartsExceeded));
 
         // "b" still has plenty of headroom.
         for _ in 0..3 {

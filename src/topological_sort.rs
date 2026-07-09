@@ -232,9 +232,7 @@ mod tests {
 
     #[test]
     fn kahn_and_dfs_agree_on_acyclic() {
-        let edges = [
-            (0, 2), (0, 3), (1, 3), (1, 4), (2, 5), (3, 5), (4, 5),
-        ];
+        let edges = [(0, 2), (0, 3), (1, 3), (1, 4), (2, 5), (3, 5), (4, 5)];
         let k = kahn_sort(6, &edges).unwrap();
         let d = dfs_sort(6, &edges).unwrap();
         assert!(validate_topo(6, &edges, &k));

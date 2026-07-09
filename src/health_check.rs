@@ -82,6 +82,7 @@ pub struct HealthCheckScheduler {
 
 impl HealthCheckScheduler {
     /// Create a scheduler backed by the given store (no notifications).
+    #[allow(dead_code)] // used by unit tests; serve path uses `with_notifier`
     pub fn new(store: HealthCheckStore) -> Self {
         Self { store, notifier: None }
     }
@@ -275,9 +276,11 @@ pub async fn probe_http(url: &str, timeout: Duration) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Arc;
+
     use tokio::sync::Mutex;
+
+    use super::*;
 
     /// Helper: build a fresh store with a single entry.
     fn make_store(name: &str) -> HealthCheckStore {

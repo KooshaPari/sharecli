@@ -181,9 +181,11 @@ pub fn print_status(defs: &[ProcessDef]) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io::Write as _;
+
     use tempfile::NamedTempFile;
+
+    use super::*;
 
     fn write_yaml(content: &str) -> NamedTempFile {
         let mut f = NamedTempFile::new().unwrap();

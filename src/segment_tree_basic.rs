@@ -62,11 +62,7 @@ impl Fenwick {
             return 0;
         }
         let mut j = 0usize;
-        let mut bit = if self.n == 0 {
-            0
-        } else {
-            1usize << (63 - self.n.leading_zeros())
-        };
+        let mut bit = if self.n == 0 { 0 } else { 1usize << (63 - self.n.leading_zeros()) };
         let mut sum = 0u64;
         while bit > 0 {
             let next = j + bit;
@@ -96,10 +92,7 @@ pub struct SegTree<T> {
 
 impl<T: Copy + Ord + Default + std::fmt::Debug> std::fmt::Debug for SegTree<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SegTree")
-            .field("n", &self.n)
-            .field("tree", &self.tree)
-            .finish()
+        f.debug_struct("SegTree").field("n", &self.n).field("tree", &self.tree).finish()
     }
 }
 

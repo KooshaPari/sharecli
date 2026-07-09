@@ -107,8 +107,12 @@ mod tests {
             if s < u64::MAX {
                 assert!(s * s <= n, "isqrt({})^2 = {} > n", n, s * s);
                 if s + 1 <= (u64::MAX >> 1) {
-                    assert!((s + 1) * (s + 1) > n || s + 1 > s,
-                        "isqrt({})={} should be maximal", n, s);
+                    assert!(
+                        (s + 1) * (s + 1) > n || s + 1 > s,
+                        "isqrt({})={} should be maximal",
+                        n,
+                        s
+                    );
                 }
             }
         }

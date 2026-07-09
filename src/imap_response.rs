@@ -93,9 +93,7 @@ pub fn parse(input: &str) -> Result<(Vec<FetchItem>, Status), String> {
                 if STATUS_WORDS.contains(&word) {
                     final_status = Some(Status {
                         tagged: "*".into(),
-                        message: format!("{} {}", word, after.trim())
-                            .trim()
-                            .to_string(),
+                        message: format!("{} {}", word, after.trim()).trim().to_string(),
                     });
                     offset = line_end;
                     continue;
@@ -104,18 +102,12 @@ pub fn parse(input: &str) -> Result<(Vec<FetchItem>, Status), String> {
             // Otherwise it's an untagged response of some other shape
             // (FETCH, LIST, ...). We only care about FETCH here.
             if let Some((seq, after_seq)) = read_u32(rest) {
-                let after_seq = after_seq
-                    .trim_end_matches('\n')
-                    .trim_end_matches('\r')
-                    .trim_start();
+                let after_seq =
+                    after_seq.trim_end_matches('\n').trim_end_matches('\r').trim_start();
                 if let Some(after_fetch) = strip_keyword(after_seq, "FETCH") {
-                    let body = after_fetch
-                        .trim_end_matches('\n')
-                        .trim_end_matches('\r')
-                        .trim_start();
-                    if let Some(item) =
-                        parse_fetch_block(seq, body, &input[line_end..])
-                    {
+                    let body =
+                        after_fetch.trim_end_matches('\n').trim_end_matches('\r').trim_start();
+                    if let Some(item) = parse_fetch_block(seq, body, &input[line_end..]) {
                         items.push(item);
                     }
                 }
@@ -133,9 +125,7 @@ pub fn parse(input: &str) -> Result<(Vec<FetchItem>, Status), String> {
                     if STATUS_WORDS.contains(&word) {
                         final_status = Some(Status {
                             tagged: tag.to_string(),
-                            message: format!("{} {}", word, after.trim())
-                                .trim()
-                                .to_string(),
+                            message: format!("{} {}", word, after.trim()).trim().to_string(),
                         });
                         offset = line_end;
                         continue;
@@ -147,10 +137,7 @@ pub fn parse(input: &str) -> Result<(Vec<FetchItem>, Status), String> {
         offset = line_end;
     }
 
-    let status = final_status.unwrap_or(Status {
-        tagged: String::new(),
-        message: String::new(),
-    });
+    let status = final_status.unwrap_or(Status { tagged: String::new(), message: String::new() });
     Ok((items, status))
 }
 
@@ -285,12 +272,7 @@ fn parse_fetch_block(seq: u32, body: &str, rest: &str) -> Option<FetchItem> {
     // Build the inner text from lines[body_start_line..=body_end_line],
     // dropping the outer parens.
     let mut buf = String::new();
-    for (idx, l) in lines
-        .iter()
-        .enumerate()
-        .take(body_end_line + 1)
-        .skip(body_start_line)
-    {
+    for (idx, l) in lines.iter().enumerate().take(body_end_line + 1).skip(body_start_line) {
         let mut s: &str = l;
         if idx == body_start_line {
             // Drop the opening `(`.
@@ -401,9 +383,7 @@ fn parse_fetch_block(seq: u32, body: &str, rest: &str) -> Option<FetchItem> {
                 i += 2;
             }
             Tok::Word(w) if w.starts_with("BODY[") => {
-                let kind = w
-                    .trim_start_matches("BODY[")
-                    .trim_end_matches(']');
+                let kind = w.trim_start_matches("BODY[").trim_end_matches(']');
                 let mut payload = String::new();
                 if i + 1 < toks.len() {
                     payload = token_to_string(&toks[i + 1]);
@@ -562,16 +542,12 @@ mod tests {
 
     #[test]
     fn fetch_with_flags_and_uid() {
-        let input =
-            "* 5 FETCH (UID 1042 FLAGS (\\Seen \\Answered) ENVELOPE \"x\")\r\nA3 OK\r\n";
+        let input = "* 5 FETCH (UID 1042 FLAGS (\\Seen \\Answered) ENVELOPE \"x\")\r\nA3 OK\r\n";
         let (items, status) = parse(input).expect("parse");
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].seq, 5);
         assert_eq!(items[0].uid, Some(1042));
-        assert_eq!(
-            items[0].flags,
-            vec!["\\Seen".to_string(), "\\Answered".to_string()]
-        );
+        assert_eq!(items[0].flags, vec!["\\Seen".to_string(), "\\Answered".to_string()]);
         assert_eq!(status.tagged, "A3");
     }
 
@@ -584,8 +560,7 @@ mod tests {
 
     #[test]
     fn fetch_body_text_quoted() {
-        let input =
-            "* 1 FETCH (BODY[TEXT] \"hi there\")\r\nA1 OK\r\n";
+        let input = "* 1 FETCH (BODY[TEXT] \"hi there\")\r\nA1 OK\r\n";
         let (items, _) = parse(input).expect("parse");
         assert_eq!(items[0].body_text, "hi there");
     }

@@ -61,10 +61,7 @@ pub fn decode(input: &[u8]) -> Result<QoiImage, String> {
         ));
     }
     if &input[0..4] != b"qoif" {
-        return Err(format!(
-            "bad QOI magic: expected 'qoif', got {:?}",
-            &input[0..4]
-        ));
+        return Err(format!("bad QOI magic: expected 'qoif', got {:?}", &input[0..4]));
     }
 
     let width = u32::from_be_bytes([input[4], input[5], input[6], input[7]]);
@@ -73,10 +70,7 @@ pub fn decode(input: &[u8]) -> Result<QoiImage, String> {
     let colorspace = input[13];
 
     if width == 0 || height == 0 {
-        return Err(format!(
-            "invalid QOI dimensions: {}x{}",
-            width, height
-        ));
+        return Err(format!("invalid QOI dimensions: {}x{}", width, height));
     }
     if channels != 3 && channels != 4 {
         return Err(format!("invalid QOI channels: {}", channels));
@@ -103,12 +97,7 @@ pub fn decode(input: &[u8]) -> Result<QoiImage, String> {
     let mut index: [QoiPixel; 64] = [QoiPixel::default(); 64];
     // Initialize index slot 0 to the all-rgba-zero EXCEPT alpha=255, which
     // is the spec-defined "previous pixel" state before any chunks are read.
-    let initial = QoiPixel {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 255,
-    };
+    let initial = QoiPixel { r: 0, g: 0, b: 0, a: 255 };
     index[0] = initial;
     let mut prev = initial;
     let mut prev_written = initial;
@@ -124,12 +113,7 @@ pub fn decode(input: &[u8]) -> Result<QoiImage, String> {
             if i + 4 > data_end {
                 return Err("truncated QOI_OP_RGB chunk".to_string());
             }
-            prev = QoiPixel {
-                r: input[i + 1],
-                g: input[i + 2],
-                b: input[i + 3],
-                a: prev.a,
-            };
+            prev = QoiPixel { r: input[i + 1], g: input[i + 2], b: input[i + 3], a: prev.a };
             write_pixel(&mut pixels, prev, channels);
             index[hash_pixel(prev) as usize] = prev;
             prev_written = prev;
@@ -139,12 +123,7 @@ pub fn decode(input: &[u8]) -> Result<QoiImage, String> {
             if i + 5 > data_end {
                 return Err("truncated QOI_OP_RGBA chunk".to_string());
             }
-            prev = QoiPixel {
-                r: input[i + 1],
-                g: input[i + 2],
-                b: input[i + 3],
-                a: input[i + 4],
-            };
+            prev = QoiPixel { r: input[i + 1], g: input[i + 2], b: input[i + 3], a: input[i + 4] };
             write_pixel(&mut pixels, prev, channels);
             index[hash_pixel(prev) as usize] = prev;
             prev_written = prev;
@@ -215,13 +194,7 @@ pub fn decode(input: &[u8]) -> Result<QoiImage, String> {
         ));
     }
 
-    Ok(QoiImage {
-        width,
-        height,
-        channels,
-        colorspace,
-        pixels,
-    })
+    Ok(QoiImage { width, height, channels, colorspace, pixels })
 }
 
 fn write_pixel(buf: &mut Vec<u8>, p: QoiPixel, channels: u8) {
@@ -249,8 +222,8 @@ mod tests {
         out.extend_from_slice(&height.to_be_bytes());
         out.push(channels);
         out.push(0); // sRGB colorspace
-        // All pixels stay at (0,0,0,a=255) by default — index 0 used throughout.
-        // One QOI_OP_INDEX for each pixel (62 max per spec).
+                     // All pixels stay at (0,0,0,a=255) by default — index 0 used throughout.
+                     // One QOI_OP_INDEX for each pixel (62 max per spec).
         for _ in 0..(width as usize * height as usize) {
             out.push(0b00_000000); // QOI_OP_INDEX 0 (the initial prev pixel)
         }
@@ -500,7 +473,7 @@ mod tests {
         bytes.push(0b0111_0111);
         // pixels 4,5,6: run of 3 -> 0xC2 (since (b1 & 0x3F) + 1 = 3 -> run = 3)
         bytes.push(0b11_000000 | 0b00_000010); // 0xC2
-        // pixel 7: rgb literal
+                                               // pixel 7: rgb literal
         bytes.push(QOI_OP_RGB);
         bytes.extend_from_slice(&[40, 50, 60]);
         // pixel 8: index 0 -> initial prev pixel (0,0,0,255)
@@ -520,7 +493,7 @@ mod tests {
                 11, 19, 30, 255, // pixel 5 (run)
                 11, 19, 30, 255, // pixel 6 (run)
                 40, 50, 60, 255, // pixel 7 (RGB literal)
-                0, 0, 0, 255,    // pixel 8 (INDEX 0 = initial prev)
+                0, 0, 0, 255, // pixel 8 (INDEX 0 = initial prev)
             ]
         );
     }

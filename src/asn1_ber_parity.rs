@@ -202,11 +202,7 @@ pub fn parity_report(a: &[u8], b: &[u8]) -> Result<String, String> {
     ));
     out.push_str(&format!(
         "  constructed:   {}\n",
-        if score.constructed_match {
-            "match"
-        } else {
-            "DIFFER"
-        }
+        if score.constructed_match { "match" } else { "DIFFER" }
     ));
     out.push_str(&format!(
         "  length:        {}\n",
@@ -216,10 +212,7 @@ pub fn parity_report(a: &[u8], b: &[u8]) -> Result<String, String> {
         "  value:         {}\n",
         if score.value_match { "match" } else { "DIFFER" }
     ));
-    out.push_str(&format!(
-        "  score:         {}\n",
-        score.score()
-    ));
+    out.push_str(&format!("  score:         {}\n", score.score()));
     Ok(out)
 }
 
@@ -277,7 +270,7 @@ mod tests {
         // 200-byte OCTET STRING with 2-byte long-form length (0x81 0xC8).
         let mut a = vec![0x04, 0x81, 0xC8];
         a.extend(std::iter::repeat(0xAAu8).take(200));
-        let mut b = a.clone();
+        let b = a.clone();
         let s = parity_score(&a, &b).expect("score");
         assert!(s.is_perfect());
         assert!(s.length_match);

@@ -240,9 +240,11 @@ mod hex {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
+
     use tempfile::TempDir;
+
+    use super::*;
 
     // -----------------------------------------------------------------------
     // (a) command_key is stable and differs on differing argv

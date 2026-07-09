@@ -58,7 +58,8 @@ pub fn parse(input: &str) -> Result<Filter, String> {
     if !p.is_eof() {
         return Err(format!(
             "trailing content after filter at position {}: {:?}",
-            p.pos, p.input[p.pos..].chars().take(16).collect::<String>()
+            p.pos,
+            p.input[p.pos..].chars().take(16).collect::<String>()
         ));
     }
     Ok(f)
@@ -151,14 +152,8 @@ impl<'a> Parser<'a> {
                 self.pos += ch.len_utf8();
                 Ok(())
             }
-            Some(c) => Err(format!(
-                "expected {:?} at position {}, got {:?}",
-                ch, self.pos, c
-            )),
-            None => Err(format!(
-                "expected {:?} at position {}, got EOF",
-                ch, self.pos
-            )),
+            Some(c) => Err(format!("expected {:?} at position {}, got {:?}", ch, self.pos, c)),
+            None => Err(format!("expected {:?} at position {}, got EOF", ch, self.pos)),
         }
     }
 
@@ -233,10 +228,7 @@ impl<'a> Parser<'a> {
                 ));
             }
             None => {
-                return Err(format!(
-                    "expected filter operator at position {}, got EOF",
-                    self.pos
-                ));
+                return Err(format!("expected filter operator at position {}, got EOF", self.pos));
             }
         };
         self.pos += op.len_utf8();
@@ -265,10 +257,7 @@ impl<'a> Parser<'a> {
             self.pos += c.len_utf8();
         }
         if self.pos == start {
-            return Err(format!(
-                "expected attribute name at position {}",
-                self.pos
-            ));
+            return Err(format!("expected attribute name at position {}", self.pos));
         }
         Ok(self.input[start..self.pos].trim().to_string())
     }
@@ -365,18 +354,14 @@ mod tests {
     #[test]
     fn not_filter() {
         let f = parse("(!(cn=Admin))").expect("parse");
-        assert_eq!(
-            f,
-            Filter::Not(Box::new(Filter::Equal("cn".into(), "Admin".into())))
-        );
+        assert_eq!(f, Filter::Not(Box::new(Filter::Equal("cn".into(), "Admin".into()))));
         assert_eq!(to_string(&f), "(!(cn=Admin))");
     }
 
     #[test]
     fn nested_not_and_or() {
         // !(|(cn=A)(&(sn=B)(!(uid=C))))
-        let f =
-            parse("(!(|(cn=A)(&(sn=B)(!(uid=C)))))").expect("parse");
+        let f = parse("(!(|(cn=A)(&(sn=B)(!(uid=C)))))").expect("parse");
         let expected = Filter::Not(Box::new(Filter::Or(vec![
             Filter::Equal("cn".into(), "A".into()),
             Filter::And(vec![
@@ -411,8 +396,7 @@ mod tests {
     #[test]
     fn round_trip_complex() {
         // (&(objectClass=*)(cn=A*)(|(sn=B)(!(uid=C))))
-        let original =
-            "(&(objectClass=*)(cn=A*)(|(sn=B)(!(uid=C))))";
+        let original = "(&(objectClass=*)(cn=A*)(|(sn=B)(!(uid=C))))";
         let f = parse(original).expect("parse");
         assert_eq!(to_string(&f), original);
     }

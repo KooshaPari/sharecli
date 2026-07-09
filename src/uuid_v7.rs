@@ -189,9 +189,7 @@ mod tests {
         }
         fn next_byte(&mut self) -> u8 {
             // Numerical Recipes LCG constants; deterministic and well-distributed.
-            self.state = self.state
-                .wrapping_mul(1_664_525)
-                .wrapping_add(1_013_904_223);
+            self.state = self.state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
             (self.state >> 16) as u8
         }
     }

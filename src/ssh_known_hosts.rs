@@ -32,9 +32,7 @@ pub fn parse(input: &str) -> Result<Vec<Entry>, String> {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let entry = parse_line(line).map_err(|e| {
-            format!("line {}: {}", lineno + 1, e)
-        })?;
+        let entry = parse_line(line).map_err(|e| format!("line {}: {}", lineno + 1, e))?;
         out.push(entry);
     }
     Ok(out)
@@ -43,18 +41,13 @@ pub fn parse(input: &str) -> Result<Vec<Entry>, String> {
 fn parse_line(line: &str) -> Result<Entry, String> {
     let tokens: Vec<&str> = line.split_whitespace().collect();
     if tokens.len() < 3 {
-        return Err(format!(
-            "expected at least 3 fields, got {}",
-            tokens.len()
-        ));
+        return Err(format!("expected at least 3 fields, got {}", tokens.len()));
     }
 
     // The last two tokens are always key-type and key-bytes (base64).
     let key_type = tokens[tokens.len() - 2].to_string();
     let key_b64 = tokens[tokens.len() - 1];
-    let key_bytes = base64_decode(key_b64).map_err(|e| {
-        format!("invalid base64 for key: {}", e)
-    })?;
+    let key_bytes = base64_decode(key_b64).map_err(|e| format!("invalid base64 for key: {}", e))?;
 
     // Everything before the last two tokens is the host portion. The host
     // portion may itself be space-separated if there are multiple patterns
@@ -71,12 +64,7 @@ fn parse_line(line: &str) -> Result<Entry, String> {
         return Err("empty hostname pattern".into());
     }
 
-    Ok(Entry {
-        markers,
-        pattern,
-        key_type,
-        key_bytes,
-    })
+    Ok(Entry { markers, pattern, key_type, key_bytes })
 }
 
 fn split_host_portion(s: &str) -> Result<(Vec<String>, String), String> {
@@ -97,8 +85,7 @@ fn split_host_portion(s: &str) -> Result<(Vec<String>, String), String> {
 fn base64_decode(s: &str) -> Result<Vec<u8>, String> {
     // OpenSSH key bytes use standard base64. We use a tiny in-house decoder
     // to avoid a dependency; the alphabet matches RFC 4648.
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut table = [255u8; 256];
     for (i, &c) in ALPHABET.iter().enumerate() {
         table[c as usize] = i as u8;
@@ -250,7 +237,8 @@ mod tests {
 
     // A known valid ed25519 host key (test fixture from OpenSSH test suite
     // style — synthetic for unit test purposes).
-    const ED25519_KEY: &str = "AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
+    const ED25519_KEY: &str =
+        "AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
 
     #[test]
     fn parses_simple_entry() {
@@ -265,10 +253,7 @@ mod tests {
 
     #[test]
     fn parses_marker_entry() {
-        let input = format!(
-            "@revoked example.com ssh-rsa {}\n",
-            ED25519_KEY
-        );
+        let input = format!("@revoked example.com ssh-rsa {}\n", ED25519_KEY);
         let entries = parse(&input).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].markers, vec!["@revoked".to_string()]);
@@ -277,10 +262,7 @@ mod tests {
 
     #[test]
     fn parses_cert_authority_marker() {
-        let input = format!(
-            "@cert-authority *.example.com ssh-ed25519 {}\n",
-            ED25519_KEY
-        );
+        let input = format!("@cert-authority *.example.com ssh-ed25519 {}\n", ED25519_KEY);
         let entries = parse(&input).unwrap();
         assert_eq!(entries[0].markers, vec!["@cert-authority".to_string()]);
         assert_eq!(entries[0].pattern, "*.example.com");

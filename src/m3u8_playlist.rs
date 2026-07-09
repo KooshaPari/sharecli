@@ -109,10 +109,9 @@ pub fn parse(input: &str) -> Result<Playlist, String> {
                 Some(c) => (&rest[..c], rest[c + 1..].to_string()),
                 None => (rest, String::new()),
             };
-            let dur: f64 = dur_str
-                .trim()
-                .parse()
-                .map_err(|e| format!("line {}: bad EXTINF duration {:?}: {}", idx + 1, dur_str, e))?;
+            let dur: f64 = dur_str.trim().parse().map_err(|e| {
+                format!("line {}: bad EXTINF duration {:?}: {}", idx + 1, dur_str, e)
+            })?;
             if !dur.is_finite() || dur < 0.0 {
                 return Err(format!(
                     "line {}: EXTINF duration must be finite and non-negative",

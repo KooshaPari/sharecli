@@ -73,18 +73,12 @@ pub const CFB_V4_SECTOR_SHIFT: u16 = 12;
 /// document-level encryption must read the document summary stream.
 pub fn parse(input: &[u8]) -> Result<PresHeader, String> {
     if input.len() < 512 {
-        return Err(format!(
-            "PPT header requires 512 bytes, got {}",
-            input.len()
-        ));
+        return Err(format!("PPT header requires 512 bytes, got {}", input.len()));
     }
     let mut magic = [0u8; 8];
     magic.copy_from_slice(&input[0..8]);
     if magic != CFB_MAGIC {
-        return Err(format!(
-            "invalid CFB magic: expected {:02X?}, got {:02X?}",
-            CFB_MAGIC, magic
-        ));
+        return Err(format!("invalid CFB magic: expected {:02X?}, got {:02X?}", CFB_MAGIC, magic));
     }
     // CFB header fields, all little-endian per [MS-CFB] 2.2.
     let major_version = u16::from_le_bytes([input[26], input[27]]);
@@ -157,10 +151,7 @@ mod tests {
     #[test]
     fn cfb_magic_matches_ms_cfb_spec() {
         // [MS-CFB] 2.2 specifies the 8-byte signature.
-        assert_eq!(
-            CFB_MAGIC,
-            [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]
-        );
+        assert_eq!(CFB_MAGIC, [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]);
     }
 
     // ---- parse ----

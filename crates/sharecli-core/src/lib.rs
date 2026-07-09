@@ -519,8 +519,9 @@ impl ThermalGate for FakeThermalGate {
 mod tests {
     use std::sync::atomic::{AtomicU32, Ordering};
 
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     fn echo_argv(msg: &str) -> Vec<String> {
         // Use a portable shell-free echo: `echo` is available on both unix and Windows.

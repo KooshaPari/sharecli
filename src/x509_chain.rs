@@ -234,10 +234,7 @@ impl<'a> Parser<'a> {
         }
         let start = self.pos;
         self.pos += len;
-        Ok(Tlv {
-            tag,
-            content: &self.src[start..start + len],
-        })
+        Ok(Tlv { tag, content: &self.src[start..start + len] })
     }
 }
 
@@ -343,11 +340,9 @@ fn read_name(p: &mut Parser) -> Result<DistinguishedName, ParseError> {
         // IA5String 0x16, BMPString 0x1e, UniversalString 0x1c. We accept any
         // human-readable tag and fall back to hex for unknown ones.
         let value_str = match value_tlv.tag {
-            0x0c | 0x13 | 0x16 | 0x1e | 0x1c | 0x14 => {
-                std::str::from_utf8(value_tlv.content)
-                    .map_err(|_| ParseError::InvalidUtf8)?
-                    .to_string()
-            }
+            0x0c | 0x13 | 0x16 | 0x1e | 0x1c | 0x14 => std::str::from_utf8(value_tlv.content)
+                .map_err(|_| ParseError::InvalidUtf8)?
+                .to_string(),
             _ => format!("0x{}", hex_lower(value_tlv.content)),
         };
         let key = oid_to_name(&oid);
@@ -370,10 +365,7 @@ fn read_validity(p: &mut Parser) -> Result<Validity, ParseError> {
     let na = inner.read_tlv()?;
     let not_before = read_time(nb.tag, nb.content)?;
     let not_after = read_time(na.tag, na.content)?;
-    Ok(Validity {
-        not_before,
-        not_after,
-    })
+    Ok(Validity { not_before, not_after })
 }
 
 fn read_time(tag: u8, content: &[u8]) -> Result<String, ParseError> {
@@ -562,7 +554,8 @@ mod tests {
     #[test]
     fn version_v3_with_extensions() {
         // Build a v3 cert with two no-op extensions.
-        let mut cert = minimal_v1_cert();
+        // (minimal_v1_cert is a reference shape; this test hand-encodes v3 below.)
+        let _ = minimal_v1_cert();
         // We need to inject the [0] version tag + [3] extensions into the TBS.
         // Simplest path: parse v1, then re-encode with version + extensions.
         // For test simplicity, hand-encode a v3 variant.
@@ -836,10 +829,7 @@ mod tests {
         let parsed = parse_der(&cert).expect("parse should succeed");
         assert_eq!(parsed.issuer.parts.get("CN").map(|s| s.as_str()), Some("My CA"));
         assert_eq!(parsed.issuer.parts.get("O").map(|s| s.as_str()), Some("Org"));
-        assert_eq!(
-            parsed.subject.parts.get("CN").map(|s| s.as_str()),
-            Some("leaf.example.com")
-        );
+        assert_eq!(parsed.subject.parts.get("CN").map(|s| s.as_str()), Some("leaf.example.com"));
         assert_eq!(parsed.serial, vec![0x42]);
         assert!(parsed.issuer.raw.contains("CN=My CA"));
         assert!(parsed.issuer.raw.contains("O=Org"));

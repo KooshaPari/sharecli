@@ -14,24 +14,57 @@ pub fn encode(input: &[u8]) -> String {
         let idx3 = if c.len() > 2 { (n & 0x3f) as usize } else { 64 };
         out.push(ALPHABET[idx0] as char);
         out.push(ALPHABET[idx1] as char);
-        if c.len() > 1 { out.push(ALPHABET[idx2] as char); } else { out.push('='); }
-        if c.len() > 2 { out.push(ALPHABET[idx3] as char); } else { out.push('='); }
+        if c.len() > 1 {
+            out.push(ALPHABET[idx2] as char);
+        } else {
+            out.push('=');
+        }
+        if c.len() > 2 {
+            out.push(ALPHABET[idx3] as char);
+        } else {
+            out.push('=');
+        }
     }
     out
 }
 
 pub fn is_valid(s: &str) -> bool {
-    if s.len() % 4 != 0 { return false; }
+    if s.len() % 4 != 0 {
+        return false;
+    }
     s.chars().all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn encode_empty() { assert_eq!(encode(b""), ""); }
-    #[test] fn encode_hello() { assert_eq!(encode(b"hi"), "aGk="); }
-    #[test] fn encode_3bytes() { assert_eq!(encode(b"abc"), "YWJj"); }
-    #[test] fn encode_padding() { assert_eq!(encode(b"a"), "YQ=="); assert_eq!(encode(b"ab"), "YWI="); }
-    #[test] fn valid_check() { assert!(is_valid("aGk=")); assert!(is_valid("YWJj")); }
-    #[test] fn invalid_length() { assert!(!is_valid("abc")); }
-    #[test] fn invalid_chars() { assert!(!is_valid("hello world!!!")); }
+    #[test]
+    fn encode_empty() {
+        assert_eq!(encode(b""), "");
+    }
+    #[test]
+    fn encode_hello() {
+        assert_eq!(encode(b"hi"), "aGk=");
+    }
+    #[test]
+    fn encode_3bytes() {
+        assert_eq!(encode(b"abc"), "YWJj");
+    }
+    #[test]
+    fn encode_padding() {
+        assert_eq!(encode(b"a"), "YQ==");
+        assert_eq!(encode(b"ab"), "YWI=");
+    }
+    #[test]
+    fn valid_check() {
+        assert!(is_valid("aGk="));
+        assert!(is_valid("YWJj"));
+    }
+    #[test]
+    fn invalid_length() {
+        assert!(!is_valid("abc"));
+    }
+    #[test]
+    fn invalid_chars() {
+        assert!(!is_valid("hello world!!!"));
+    }
 }

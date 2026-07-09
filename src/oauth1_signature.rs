@@ -104,12 +104,8 @@ fn sha1_compress(state: &mut [u32; 5], block: &[u8; 64]) {
             40..=59 => ((b & c) | (b & d) | (c & d), 0x8f1bbcdcu32),
             _ => (b ^ c ^ d, 0xca62c1d6u32),
         };
-        let temp = a
-            .rotate_left(5)
-            .wrapping_add(f)
-            .wrapping_add(e)
-            .wrapping_add(k)
-            .wrapping_add(w[i]);
+        let temp =
+            a.rotate_left(5).wrapping_add(f).wrapping_add(e).wrapping_add(k).wrapping_add(w[i]);
         e = d;
         d = c;
         c = b.rotate_left(30);
@@ -176,8 +172,7 @@ pub(crate) fn hmac_sha1(key: &[u8], msg: &[u8]) -> [u8; SHA1_DIGEST] {
 
 // ---- Base64 (standard, RFC 4648 §4) ----
 
-const BASE64_CHARS: &[u8; 64] =
-    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 fn base64_encode(input: &[u8]) -> String {
     let mut out = String::with_capacity(((input.len() + 2) / 3) * 4);
@@ -293,11 +288,8 @@ pub fn normalize_url(url: &str) -> String {
         "https://" => "443",
         _ => "",
     };
-    let port_part = if !port.is_empty() && port != default_port {
-        format!(":{}", port)
-    } else {
-        String::new()
-    };
+    let port_part =
+        if !port.is_empty() && port != default_port { format!(":{}", port) } else { String::new() };
     format!("{}{}{}{}", scheme, host_lc, port_part, path)
 }
 
@@ -347,16 +339,11 @@ fn build_signature_base_string(req: &Request) -> String {
         }
     }
 
-    let mut encoded: Vec<(String, String)> = combined
-        .iter()
-        .map(|(k, v)| (percent_encode(k), percent_encode(v)))
-        .collect();
+    let mut encoded: Vec<(String, String)> =
+        combined.iter().map(|(k, v)| (percent_encode(k), percent_encode(v))).collect();
     encoded.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
-    let normalized_params = encoded
-        .iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect::<Vec<_>>()
-        .join("&");
+    let normalized_params =
+        encoded.iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join("&");
     format!(
         "{}&{}&{}",
         req.method.to_ascii_uppercase(),
@@ -366,11 +353,7 @@ fn build_signature_base_string(req: &Request) -> String {
 }
 
 fn build_signing_key(consumer_secret: &str, token_secret: &str) -> String {
-    format!(
-        "{}&{}",
-        percent_encode(consumer_secret),
-        percent_encode(token_secret),
-    )
+    format!("{}&{}", percent_encode(consumer_secret), percent_encode(token_secret),)
 }
 
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
@@ -393,10 +376,7 @@ mod tests {
         params.insert("status".into(), "Hello Ladies + Gentlemen, a signed OAuth request!".into());
         params.insert("include_entities".into(), "true".into());
         params.insert("oauth_consumer_key".into(), "xvz1evFS4wEEPTGEFPHBog".into());
-        params.insert(
-            "oauth_nonce".into(),
-            "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg".into(),
-        );
+        params.insert("oauth_nonce".into(), "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg".into());
         params.insert("oauth_signature_method".into(), "HMAC-SHA1".into());
         params.insert("oauth_timestamp".into(), "1318622958".into());
         params.insert(
@@ -453,17 +433,8 @@ mod tests {
     fn plaintext_mode_no_hashing() {
         let mut params = BTreeMap::new();
         params.insert("a".into(), "1".into());
-        let req = Request {
-            method: "GET".into(),
-            url: "https://example.com/p".into(),
-            params,
-        };
-        let sig = build_signature(
-            &req,
-            "consumer",
-            Some("token"),
-            SignatureMethod::Plaintext,
-        );
+        let req = Request { method: "GET".into(), url: "https://example.com/p".into(), params };
+        let sig = build_signature(&req, "consumer", Some("token"), SignatureMethod::Plaintext);
         assert_eq!(sig, "consumer&token");
         // Two-legged: token_secret None -> empty second segment.
         let sig2 = build_signature(&req, "consumer", None, SignatureMethod::Plaintext);
@@ -503,22 +474,12 @@ mod tests {
     fn verify_rejects_tampered_signature() {
         let mut params = BTreeMap::new();
         params.insert("a".into(), "1".into());
-        let req = Request {
-            method: "GET".into(),
-            url: "https://example.com/p".into(),
-            params,
-        };
+        let req = Request { method: "GET".into(), url: "https://example.com/p".into(), params };
         let sig = build_signature(&req, "cs", Some("ts"), SignatureMethod::HmacSha1);
         let mut bad: Vec<u8> = sig.into_bytes();
         bad[0] = if bad[0] == b'A' { b'B' } else { b'A' };
         let bad_str = String::from_utf8(bad).unwrap();
-        assert!(!verify_signature(
-            &req,
-            "cs",
-            Some("ts"),
-            SignatureMethod::HmacSha1,
-            &bad_str,
-        ));
+        assert!(!verify_signature(&req, "cs", Some("ts"), SignatureMethod::HmacSha1, &bad_str,));
     }
 
     #[test]
@@ -526,11 +487,7 @@ mod tests {
         // A signature with non-base64 characters cannot match a real signature.
         let mut params = BTreeMap::new();
         params.insert("a".into(), "1".into());
-        let req = Request {
-            method: "GET".into(),
-            url: "https://example.com/p".into(),
-            params,
-        };
+        let req = Request { method: "GET".into(), url: "https://example.com/p".into(), params };
         let sig = build_signature(&req, "cs", Some("ts"), SignatureMethod::HmacSha1);
         // Tamper beyond just flipping a bit — corrupt a char that is normally
         // a valid base64 char but in this position it produces a different
@@ -543,21 +500,9 @@ mod tests {
             "not!base64$"
         ));
         // Wrong-length string is also rejected.
-        assert!(!verify_signature(
-            &req,
-            "cs",
-            Some("ts"),
-            SignatureMethod::HmacSha1,
-            "abc"
-        ));
+        assert!(!verify_signature(&req, "cs", Some("ts"), SignatureMethod::HmacSha1, "abc"));
         // Re-confirm original still verifies.
-        assert!(verify_signature(
-            &req,
-            "cs",
-            Some("ts"),
-            SignatureMethod::HmacSha1,
-            &sig
-        ));
+        assert!(verify_signature(&req, "cs", Some("ts"), SignatureMethod::HmacSha1, &sig));
     }
 
     #[test]
@@ -572,16 +517,8 @@ mod tests {
         p2.insert("a".into(), "2".into());
         p2.insert("m".into(), "3".into());
         p2.insert("z".into(), "1".into());
-        let req1 = Request {
-            method: "GET".into(),
-            url: "https://example.com/".into(),
-            params: p1,
-        };
-        let req2 = Request {
-            method: "GET".into(),
-            url: "https://example.com/".into(),
-            params: p2,
-        };
+        let req1 = Request { method: "GET".into(), url: "https://example.com/".into(), params: p1 };
+        let req2 = Request { method: "GET".into(), url: "https://example.com/".into(), params: p2 };
         let s1 = build_signature(&req1, "cs", Some("ts"), SignatureMethod::HmacSha1);
         let s2 = build_signature(&req2, "cs", Some("ts"), SignatureMethod::HmacSha1);
         assert_eq!(s1, s2);
@@ -596,11 +533,7 @@ mod tests {
             url: "https://Example.com/p".into(),
             params: params.clone(),
         };
-        let req2 = Request {
-            method: "GET".into(),
-            url: "https://example.com/p".into(),
-            params,
-        };
+        let req2 = Request { method: "GET".into(), url: "https://example.com/p".into(), params };
         let s1 = build_signature(&req1, "cs", Some("ts"), SignatureMethod::HmacSha1);
         let s2 = build_signature(&req2, "cs", Some("ts"), SignatureMethod::HmacSha1);
         assert_eq!(s1, s2);
@@ -615,11 +548,7 @@ mod tests {
             url: "https://example.com:443/p".into(),
             params: params.clone(),
         };
-        let req2 = Request {
-            method: "GET".into(),
-            url: "https://example.com/p".into(),
-            params,
-        };
+        let req2 = Request { method: "GET".into(), url: "https://example.com/p".into(), params };
         let s1 = build_signature(&req1, "cs", Some("ts"), SignatureMethod::HmacSha1);
         let s2 = build_signature(&req2, "cs", Some("ts"), SignatureMethod::HmacSha1);
         assert_eq!(s1, s2);
@@ -634,11 +563,7 @@ mod tests {
             url: "https://example.com/p".into(),
             params: params.clone(),
         };
-        let req2 = Request {
-            method: "GET".into(),
-            url: "https://example.com/p".into(),
-            params,
-        };
+        let req2 = Request { method: "GET".into(), url: "https://example.com/p".into(), params };
         let s1 = build_signature(&req1, "cs", Some("ts"), SignatureMethod::HmacSha1);
         let s2 = build_signature(&req2, "cs", Some("ts"), SignatureMethod::HmacSha1);
         assert_eq!(s1, s2);

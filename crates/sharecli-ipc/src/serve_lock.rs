@@ -31,7 +31,7 @@
 //! double-serving — fail loud, never silently collide.
 
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -132,8 +132,17 @@ pub fn pidfile_path(service: &str) -> PathBuf {
 /// error checking without sending a signal — `Ok` (or `EPERM`) means the process
 /// exists; `ESRCH` means it does not.
 fn pid_alive(pid: u32) -> bool {
+    // Reject sentinels / values that do not fit a positive `pid_t`. Casting
+    // `u32::MAX` to `pid_t` yields `-1`, and `kill(-1, 0)` means "every process
+    // we can signal" — which falsely reports the sentinel as alive.
+    let Ok(pid_i) = libc::pid_t::try_from(pid) else {
+        return false;
+    };
+    if pid_i <= 0 {
+        return false;
+    }
     // SAFETY: `kill` with signal 0 sends no signal; it only probes existence.
-    let rc = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    let rc = unsafe { libc::kill(pid_i, 0) };
     if rc == 0 {
         return true;
     }
@@ -219,8 +228,28 @@ impl ServeLock {
             .with_context(|| format!("open pidfile {}", path.display()))?;
 
         // Non-blocking exclusive lock: if a live server holds it, this fails fast.
+        // Note: Linux `flock` can still succeed for a *second* open in the same
+        // process while the first fd holds the lock — detect that below.
         if file.try_lock_exclusive().is_err() {
             return Ok(None);
+        }
+
+        let mut f = file;
+
+        // If the pidfile already names a live owner, do not double-serve.
+        // Covers (1) same-process flock re-acquire and (2) races where the
+        // exclusive lock was obtained over a still-valid deploy record.
+        {
+            let mut existing = String::new();
+            let _ = f.seek(SeekFrom::Start(0));
+            if f.read_to_string(&mut existing).is_ok() {
+                if let Ok(prev) = serde_json::from_str::<ServeInfo>(existing.trim()) {
+                    if pid_alive(prev.pid) {
+                        let _ = f.unlock();
+                        return Ok(None);
+                    }
+                }
+            }
         }
 
         // We hold the lock. Anything previously written is a stale owner's info —
@@ -231,7 +260,6 @@ impl ServeLock {
             url: url.into(),
             started_at_unix: now_unix(),
         };
-        let mut f = file;
         f.set_len(0).with_context(|| format!("truncate pidfile {}", path.display()))?;
         let bytes = serde_json::to_vec(&info).context("serialize ServeInfo")?;
         f.write_all(&bytes).with_context(|| format!("write pidfile {}", path.display()))?;

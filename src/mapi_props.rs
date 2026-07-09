@@ -294,7 +294,7 @@ mod tests {
         bytes.extend_from_slice(&pack_tag(0x001f, 0x0037).to_le_bytes());
         bytes.extend_from_slice(&0u16.to_le_bytes());
         bytes.extend_from_slice(&10u32.to_le_bytes()); // claims 10 bytes
-        // No payload bytes.
+                                                       // No payload bytes.
         let err = parse(&bytes, false).unwrap_err();
         assert!(err.contains("truncated"), "got error: {}", err);
     }

@@ -54,10 +54,7 @@ pub fn parse(input: &str) -> Result<Vec<PemBlock>, String> {
         let label = match begin_label(begin_trim) {
             Some(l) => l,
             None => {
-                return Err(format!(
-                    "expected PEM BEGIN marker, got: {:?}",
-                    begin_trim
-                ));
+                return Err(format!("expected PEM BEGIN marker, got: {:?}", begin_trim));
             }
         };
 
@@ -80,10 +77,7 @@ pub fn parse(input: &str) -> Result<Vec<PemBlock>, String> {
                     let end_l = match rest.strip_suffix("-----") {
                         Some(s) => s.trim().to_string(),
                         None => {
-                            return Err(format!(
-                                "malformed END marker: {:?}",
-                                trimmed
-                            ));
+                            return Err(format!("malformed END marker: {:?}", trimmed));
                         }
                     };
                     end_label = Some(end_l);
@@ -103,10 +97,7 @@ pub fn parse(input: &str) -> Result<Vec<PemBlock>, String> {
                     let end_l = match rest.strip_suffix("-----") {
                         Some(s) => s.trim().to_string(),
                         None => {
-                            return Err(format!(
-                                "malformed END marker: {:?}",
-                                trimmed
-                            ));
+                            return Err(format!("malformed END marker: {:?}", trimmed));
                         }
                     };
                     end_label = Some(end_l);
@@ -119,10 +110,7 @@ pub fn parse(input: &str) -> Result<Vec<PemBlock>, String> {
         let end_label = match end_label {
             Some(l) => l,
             None => {
-                return Err(format!(
-                    "PEM block with label {:?} has no END marker",
-                    label
-                ));
+                return Err(format!("PEM block with label {:?} has no END marker", label));
             }
         };
 
@@ -138,11 +126,7 @@ pub fn parse(input: &str) -> Result<Vec<PemBlock>, String> {
         // handled per RFC 7468 §2).
         let joined: String = body_lines.join(" ");
         let base64_str: String = joined.split_whitespace().collect::<Vec<_>>().join("");
-        let data = if base64_str.is_empty() {
-            Vec::new()
-        } else {
-            base64_decode(&base64_str)?
-        };
+        let data = if base64_str.is_empty() { Vec::new() } else { base64_decode(&base64_str)? };
 
         // RFC 1421 §4.6.1 step 4 (Proc-Type 4,ENCRYPTED) and RFC 1423
         // §1.1 (DEK-Info header) indicate the body is encrypted. We set
@@ -155,12 +139,7 @@ pub fn parse(input: &str) -> Result<Vec<PemBlock>, String> {
         let dek_info = headers.contains_key("DEK-Info");
         let encrypted = proc_encrypted || dek_info;
 
-        blocks.push(PemBlock {
-            label,
-            headers,
-            data,
-            encrypted,
-        });
+        blocks.push(PemBlock { label, headers, data, encrypted });
     }
 
     Ok(blocks)
@@ -179,8 +158,7 @@ fn begin_label(line: &str) -> Option<String> {
 /// by the caller. Returns an error for invalid characters or malformed
 /// padding.
 pub(crate) fn base64_decode(s: &str) -> Result<Vec<u8>, String> {
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     let mut lookup = [255u8; 256];
     for (i, &c) in ALPHABET.iter().enumerate() {
@@ -198,10 +176,7 @@ pub(crate) fn base64_decode(s: &str) -> Result<Vec<u8>, String> {
     // when total length mod 4 == 0 (after stripping).
     let len = cleaned.len();
     if len % 4 != 0 {
-        return Err(format!(
-            "base64 input length {} is not a multiple of 4",
-            len
-        ));
+        return Err(format!("base64 input length {} is not a multiple of 4", len));
     }
     let pad_count = cleaned.iter().rev().take_while(|&&b| b == b'=').count();
     if pad_count > 2 {
@@ -223,10 +198,7 @@ pub(crate) fn base64_decode(s: &str) -> Result<Vec<u8>, String> {
         }
         let v = lookup[b as usize];
         if v == 255 {
-            return Err(format!(
-                "invalid base64 character: {:?}",
-                b as char
-            ));
+            return Err(format!("invalid base64 character: {:?}", b as char));
         }
         buf = (buf << 6) | (v as u32);
         bits += 6;
@@ -293,10 +265,7 @@ mod tests {
         let blocks = parse(pem).expect("parse");
         assert_eq!(blocks.len(), 1);
         assert!(blocks[0].encrypted);
-        assert_eq!(
-            blocks[0].headers.get("Proc-Type").map(|s| s.as_str()),
-            Some("4,ENCRYPTED")
-        );
+        assert_eq!(blocks[0].headers.get("Proc-Type").map(|s| s.as_str()), Some("4,ENCRYPTED"));
         assert_eq!(
             blocks[0].headers.get("DEK-Info").map(|s| s.as_str()),
             Some("AES-256-CBC,0011223344556677")
@@ -346,7 +315,7 @@ mod tests {
         let decoded = base64_decode("Zm9vYmFy").expect("decode");
         assert_eq!(decoded, b"foobar");
         // And the inverse: encode back to known form.
-        let again = base64_decode(&decoded.iter().fold(String::new(), |mut s, b| {
+        let _again = base64_decode(&decoded.iter().fold(String::new(), |mut s, b| {
             s.push_str(match b {
                 b'f' => "Zg==",
                 b'o' => "bw==",

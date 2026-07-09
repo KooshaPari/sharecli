@@ -221,16 +221,8 @@ mod tests {
     #[test]
     fn stream_round_trip_two_entries() {
         let entries: &[(u32, u16, &[u8])] = &[
-            (
-                crate::mapi_props::pack_tag(0x001f, 0x0037),
-                0,
-                b"hello".as_slice(),
-            ),
-            (
-                crate::mapi_props::pack_tag(0x0003, 0x0e08),
-                1,
-                &42i32.to_le_bytes(),
-            ),
+            (crate::mapi_props::pack_tag(0x001f, 0x0037), 0, b"hello".as_slice()),
+            (crate::mapi_props::pack_tag(0x0003, 0x0e08), 1, &42i32.to_le_bytes()),
         ];
         assert_stream_round_trip(entries);
     }
@@ -240,7 +232,8 @@ mod tests {
         let a = crate::mapi_props::pack_tag(0x001f, 0x0037);
         let b = crate::mapi_props::pack_tag(0x0102, 0x0002);
         let c = crate::mapi_props::pack_tag(0x000b, 0x0001);
-        let entries: &[(u32, u16, &[u8])] = &[(a, 0, b"a".as_slice()), (b, 1, &[0xFFu8]), (c, 2, &[1u8])];
+        let entries: &[(u32, u16, &[u8])] =
+            &[(a, 0, b"a".as_slice()), (b, 1, &[0xFFu8]), (c, 2, &[1u8])];
         assert_stream_round_trip_32bit(entries);
     }
 

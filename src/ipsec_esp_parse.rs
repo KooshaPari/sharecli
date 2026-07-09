@@ -38,7 +38,10 @@ pub fn parse(input: &[u8], has_iv: bool, icv_len: usize) -> Result<EspPacket, St
     // 4 (SPI) + 4 (Seq) = 8 bytes fixed header.
     let mut offset = 0usize;
     if input.len() < 8 {
-        return Err(format!("packet too short for ESP header: got {} bytes, need at least 8", input.len()));
+        return Err(format!(
+            "packet too short for ESP header: got {} bytes, need at least 8",
+            input.len()
+        ));
     }
 
     let spi = u32::from_be_bytes([input[0], input[1], input[2], input[3]]);
@@ -58,11 +61,13 @@ pub fn parse(input: &[u8], has_iv: bool, icv_len: usize) -> Result<EspPacket, St
     };
 
     // Total fixed tail = pad_len (1) + next_header (1) + icv.
-    let tail_len = 2usize.checked_add(icv_len)
-        .ok_or_else(|| "icv_len overflow".to_string())?;
+    let tail_len = 2usize.checked_add(icv_len).ok_or_else(|| "icv_len overflow".to_string())?;
     if input.len() < offset + tail_len {
-        return Err(format!("packet too short for ESP trailer+ICV: need {} more bytes, have {}",
-            tail_len, input.len() - offset));
+        return Err(format!(
+            "packet too short for ESP trailer+ICV: need {} more bytes, have {}",
+            tail_len,
+            input.len() - offset
+        ));
     }
 
     // The trailing 2 bytes (pad length, next header) live at the very end of
@@ -115,7 +120,14 @@ pub fn encode(pkt: &EspPacket) -> Vec<u8> {
 mod tests {
     use super::*;
 
-    fn build(spi: u32, seq: u32, payload: &[u8], pad_len: u8, next_header: u8, icv_len: usize) -> Vec<u8> {
+    fn build(
+        spi: u32,
+        seq: u32,
+        payload: &[u8],
+        pad_len: u8,
+        next_header: u8,
+        icv_len: usize,
+    ) -> Vec<u8> {
         let mut v = Vec::new();
         v.extend_from_slice(&spi.to_be_bytes());
         v.extend_from_slice(&seq.to_be_bytes());
@@ -203,8 +215,8 @@ mod tests {
         bytes.extend_from_slice(&1u32.to_be_bytes());
         bytes.extend_from_slice(&2u32.to_be_bytes());
         bytes.push(0xAA); // one byte of "payload"
-        bytes.push(100);  // pad_len = 100 (impossible)
-        bytes.push(59);   // next_header
+        bytes.push(100); // pad_len = 100 (impossible)
+        bytes.push(59); // next_header
         let err = parse(&bytes, false, 0).unwrap_err();
         assert!(err.contains("pad_len") || err.contains("truncated"));
     }
