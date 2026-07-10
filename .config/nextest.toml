@@ -63,6 +63,13 @@ filter = 'test(/_e2e_/)'
 retries = 2
 slow-timeout = { period = "300s" }
 
+# Quarantined flakes — see docs/testing/flake-policy.md.
+# Prefer #[ignore = "flake: #N"] first; use this override only when a test must
+# still run in CI with extra retries while a fix is in flight.
+[[profile.ci.overrides]]
+filter = 'test(/_quarantine_/)'
+retries = { backoff = "exponential", count = 4, delay = "1s", max-delay = "8s" }
+
 # Platform-specific settings
 [profile.ci.platform]
 darwin = { test-threads = 4 }

@@ -1,0 +1,21 @@
+[package]
+name = "sharecli-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.sharecli]
+path = ".."
+
+[[bin]]
+name = "toml_lite"
+path = "fuzz_targets/toml_lite.rs"
+test = false
+doc = false
+bench = false
