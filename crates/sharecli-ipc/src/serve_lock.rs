@@ -290,10 +290,11 @@ impl Drop for ServeLock {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Mutex;
     use std::thread;
     use std::time::{Duration, Instant};
+
+    use super::*;
 
     /// Serialize tests that mutate `$XDG_RUNTIME_DIR` (process-global). Without
     /// this, parallel `#[test]`s race and `probe` can see another test's empty
@@ -375,11 +376,7 @@ mod tests {
 
             let mut child =
                 std::process::Command::new(std::env::current_exe().expect("current_exe"))
-                    .args([
-                        "--exact",
-                        "serve_lock::tests::child_hold_serve_lock",
-                        "--nocapture",
-                    ])
+                    .args(["--exact", "serve_lock::tests::child_hold_serve_lock", "--nocapture"])
                     .env("SHARECLI_IPC_SERVE_LOCK_CHILD", "1")
                     .env("SHARECLI_IPC_SERVE_LOCK_SERVICE", service)
                     .env("SHARECLI_IPC_SERVE_LOCK_READY", &ready_path)
