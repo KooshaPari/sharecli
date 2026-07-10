@@ -45,15 +45,10 @@ impl Rgb {
 }
 
 /// Backbone-2 family. Variant naming follows tokens.css exactly.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum ThemeVariant {
+    #[default]
     Backbone2,
-}
-
-impl Default for ThemeVariant {
-    fn default() -> Self {
-        ThemeVariant::Backbone2
-    }
 }
 
 /// Palette + derived decorations.

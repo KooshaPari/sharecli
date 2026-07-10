@@ -148,10 +148,7 @@ pub fn find_config(start: &Path) -> Option<PathBuf> {
                 return Some(candidate);
             }
         }
-        match dir.parent() {
-            Some(parent) => dir = parent.to_path_buf(),
-            None => return None,
-        }
+        dir = dir.parent()?.to_path_buf();
     }
 }
 
