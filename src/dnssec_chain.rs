@@ -171,7 +171,9 @@ impl fmt::Display for ChainStatus {
 
 /// Build the canonical digest input per RFC 4034 §5.1.4:
 ///
-///     digest = hash( canonical_owner_name || DNSKEY_RDATA )
+/// ```text
+/// digest = hash( canonical_owner_name || DNSKEY_RDATA )
+/// ```
 fn canonical_dnskey_digest_input(owner_name: &[u8], key: &DnsKey) -> Vec<u8> {
     let mut out = Vec::with_capacity(owner_name.len() + 4 + key.public_key.len());
     out.extend_from_slice(owner_name);
