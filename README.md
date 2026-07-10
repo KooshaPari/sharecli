@@ -28,10 +28,51 @@ cargo install sharecli
 cargo binstall sharecli
 ```
 
-Homebrew (formula stub — `sha256` and `version` to be filled in at release time):
+Homebrew formula lives at `Formula/sharecli.rb` (version tracks `Cargo.toml` /
+latest tag `v0.3.0`). The `sha256` remains `PLACEHOLDER` until a darwin
+release asset is published — see [`docs/deploy.md`](docs/deploy.md).
 
 ```bash
+# After the formula is published to a tap with a real sha256:
 brew install sharecli
+```
+
+Container (non-root + `/healthz` healthcheck):
+
+```bash
+podman build -f Containerfile -t sharecli .
+podman run --rm -p 9000:9000 sharecli
+```
+
+Deploy surface matrix: [`docs/deploy.md`](docs/deploy.md).
+
+## Uninstall
+
+Remove the binary for your install method, then optionally delete local data:
+
+```bash
+# crates.io / cargo-binstall
+cargo uninstall sharecli
+
+# Homebrew (once tapped)
+brew uninstall sharecli
+
+# Manual / from-source install
+rm -f "$(command -v sharecli)"
+# or: rm -f /usr/local/bin/sharecli ~/.local/bin/sharecli ~/.cargo/bin/sharecli
+```
+
+Optional data cleanup (config, pane map, runtime lock):
+
+| Path | Contents |
+| ---- | -------- |
+| `~/.config/sharecli/` (Linux/macOS XDG) | `config.toml`, `pane-map.toml` |
+| `%APPDATA%\sharecli\` (Windows) | same |
+| `$XDG_RUNTIME_DIR/sharecli*` or temp dir | serve lock files |
+
+```bash
+rm -rf ~/.config/sharecli
+# Windows PowerShell: Remove-Item -Recurse -Force "$env:APPDATA\sharecli"
 ```
 
 ## Features
@@ -56,7 +97,7 @@ brew install sharecli
   that extend `sharecli` with new subcommands (see
   `sharecli plugin`).
 
-## Install
+## Install (details)
 
 ### From source (recommended)
 
@@ -73,9 +114,13 @@ Download a release archive from the
 extract the binary somewhere on your `PATH`:
 
 ```bash
-tar -xzf sharecli-<version>-<target>.tar.gz
+tar -xzf sharecli-<target>.tar.gz
 sudo install -m 0755 sharecli /usr/local/bin/sharecli
 ```
+
+> Note: tags `v0.1.0`–`v0.3.0` currently have no attached assets. The
+> release workflow matrix builds `sharecli-x86_64-unknown-linux-gnu.tar.gz`
+> and `sharecli-aarch64-apple-darwin.tar.gz` for future publishes.
 
 ### Build from a git checkout
 
