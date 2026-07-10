@@ -46,3 +46,22 @@ Numbers are starting targets for local/daemon ops; tighten once scrape history e
 - OpenTelemetry / W3C `traceparent` export
 - PagerDuty / Alertmanager burn-rate multi-window alerts
 - Formal error-budget policy signed by on-call
+
+## Bench-linked targets (C08)
+
+Draft performance budgets tied to Criterion benches and load scripts.
+Reproduce via [`docs/eval/REPRO.md`](../eval/REPRO.md). Harbor/SWE-bench remain
+out of scope per [`docs/adr/0001-eval-surface-out-of-scope.md`](../adr/0001-eval-surface-out-of-scope.md).
+
+| ID | Surface | Budget | Harness |
+|----|---------|--------|---------|
+| BENCH-1 | `config_toml_from_str` | p95 < 1 ms | `benches/config_parse.rs` |
+| BENCH-2 | `pool_new_and_list_empty` | p95 < 50 ms | `benches/pool_list.rs` |
+| BENCH-3 | `prometheus_render_32` | p95 < 500 µs | `benches/prometheus_render.rs` |
+| LOAD-1 | `GET /healthz` burst | ≥ 99% success over N=200 | `scripts/load/healthz_burst.sh` |
+
+### Measurement log (append-only)
+
+| Date | SHA | Surface | Observed | Host |
+|------|-----|---------|----------|------|
+| 2026-07-10 | _(pending first soft bench.yml run)_ | BENCH-1..3 + LOAD-1 | budgets declared; no baseline yet | ubuntu-latest (CI) |

@@ -1,0 +1,53 @@
+name: Bench (advisory)
+
+# Soft perf surface for C08 — does not gate merge. Failures are visible but
+# non-blocking (continue-on-error). Hard regression gates are a follow-up.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: bench-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  SHARECLI_BENCH_SEED: "42"
+
+jobs:
+  criterion:
+    name: cargo bench (soft)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Record pins
+        run: |
+          echo "sha=$(git rev-parse HEAD)"
+          echo "rustc=$(rustc --version)"
+          echo "seed=${SHARECLI_BENCH_SEED}"
+
+      - name: Run Criterion benches
+        run: |
+          cargo bench --locked --bench config_parse -- --sample-size 10 --warm-up-time 1 --measurement-time 2
+          cargo bench --locked --bench pool_list -- --sample-size 10 --warm-up-time 1 --measurement-time 2
+          cargo bench --locked --bench prometheus_render -- --sample-size 10 --warm-up-time 1 --measurement-time 2
