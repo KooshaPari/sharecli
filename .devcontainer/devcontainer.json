@@ -1,0 +1,34 @@
+{
+  "name": "sharecli",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": false
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "skellock.just",
+        "ziglang.vscode-zig"
+      ],
+      "settings": {
+        "[rust]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        },
+        "rust-analyzer.check.command": "clippy",
+        "zig.initialSetupDone": true,
+        "zig.path": "zig",
+        "zig.zls.enabled": "off"
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}

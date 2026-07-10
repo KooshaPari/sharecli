@@ -166,3 +166,25 @@ changelog:
 publish: build-release
     @echo ">> cargo publish --dry-run to {{ registry }}"
     @cargo publish --dry-run --locked
+
+# -------- C07 DevEx (append-only) --------
+[group: 'devex']
+dev: install-tools
+    @echo ">> one-command local bootstrap (Rust + Zig + smoke)"
+    @command -v zig >/dev/null 2>&1 || { echo "error: zig 0.14.1 required (see .devcontainer/post-create.sh)"; exit 1; }
+    @cargo build --locked --all-features
+    @cargo run --locked --quiet -- --help >/dev/null
+    @echo ">> ready — next: just test-nextest | just gate"
+
+[group: 'devex']
+mutants:
+    @echo ">> cargo-mutants smoke (not a CI gate yet)"
+    @command -v cargo-mutants >/dev/null 2>&1 || cargo install --locked cargo-mutants
+    @cargo mutants --timeout 60 --jobs 2 -- --locked --all-features
+
+[group: 'devex']
+fuzz:
+    @echo ">> cargo fuzz toml_lite (30s; requires nightly + cargo-fuzz)"
+    @command -v cargo-fuzz >/dev/null 2>&1 || cargo install --locked cargo-fuzz
+    @rustup toolchain install nightly --profile minimal
+    @cargo +nightly fuzz run toml_lite -- -max_total_time=30
