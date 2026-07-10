@@ -143,7 +143,7 @@ pub fn parse_segment(
 
     // Strip trailing terminator if present (some producers emit it
     // on every segment; some omit it on the last one).
-    let trimmed = line.trim_end_matches(|c: char| c == '~' || c == '\n' || c == '\r');
+    let trimmed = line.trim_end_matches(['~', '\n', '\r']);
     if trimmed.is_empty() {
         return Err("segment line is only a terminator".to_string());
     }
@@ -207,7 +207,7 @@ pub fn parse_interchange(input: &str) -> Result<Vec<Segment>, String> {
 
     for raw_line in rest.split(seps.segment) {
         // Strip CR/LF padding around each segment.
-        let line = raw_line.trim_matches(|c: char| c == '\n' || c == '\r' || c == ' ');
+        let line = raw_line.trim_matches(['\n', '\r', ' ']);
         if line.is_empty() {
             continue;
         }
