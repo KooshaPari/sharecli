@@ -1,0 +1,66 @@
+# sharecli
+
+> Shared CLI process manager for multi-project agent orchestration (Rust).
+
+## Start here
+
+- [AGENTS.md](AGENTS.md): agent contract — build/test/lint, key files, forbidden ops
+- [CLAUDE.md](CLAUDE.md): short stack + phenotype worktree rules
+- [README.md](README.md): install, quick start, feature overview
+- [llms.txt](llms.txt): this file — LLM/agent index
+
+## Specs & requirements
+
+- [FUNCTIONAL_REQUIREMENTS.md](FUNCTIONAL_REQUIREMENTS.md): root FR-NNN index (role stories)
+- [docs/specs/FR.md](docs/specs/FR.md): canonical FR-001..FR-005 + acceptance criteria
+- [docs/specs/TRACEABILITY.md](docs/specs/TRACEABILITY.md): FR ↔ source ↔ test matrix
+- [SPEC.md](SPEC.md): product/design notes
+- [PRD.md](PRD.md): product requirements summary
+- [BOUNDARY.md](BOUNDARY.md): repo boundary vs archived thegent-sharecli
+
+## Plans & backlog
+
+- [WORK_DAG.md](WORK_DAG.md): claimable S/M tasks with FR refs and predecessors
+- [PLAN.md](PLAN.md): human roadmap (points at WORK_DAG)
+- [TEST_COVERAGE_MATRIX.md](TEST_COVERAGE_MATRIX.md): FR → test coverage status
+
+## Journeys & friction
+
+- [docs/journeys/index.md](docs/journeys/index.md): user journey index
+- [docs/journeys/quick-start.md](docs/journeys/quick-start.md): install → configure → run
+- [docs/friction-log.md](docs/friction-log.md): known UX friction linked to FRs
+
+## Code layout
+
+- [src/](src/): CLI binary + library (`main`, `commands`, `runtime`, `config`, `monitoring`)
+- [crates/](crates/): workspace crates (core, ipc, ffi, thermal-tui, fleet, …)
+- [tests/](tests/): acceptance + integration (`fr001_*`, `cast_*`, `integration_cli`)
+- [desktop/](desktop/): desktop companion surfaces
+- [config/](config/): sample / schema config assets
+
+## Build & verify
+
+```bash
+# toolchain pinned by rust-toolchain.toml (stable + rustfmt + clippy)
+cargo build --locked --all-features
+just test          # or: cargo test --locked --all-features --all-targets
+just lint          # clippy -D warnings
+just fmt-check
+```
+
+## CI & governance
+
+- [.github/workflows/ci.yml](.github/workflows/ci.yml): fmt, clippy, test
+- [.github/workflows/pr-lint.yml](.github/workflows/pr-lint.yml): require FR- in PR body
+- [.github/pull_request_template.md](.github/pull_request_template.md): PR sections
+- [CONTRIBUTING.md](CONTRIBUTING.md): contributor guide
+- [SECURITY.md](SECURITY.md): security policy
+- [audit/SCORECARD-v38.md](audit/SCORECARD-v38.md): audit-v38 scorecard (C03 = Agent Readiness)
+
+## Optional deeper context
+
+- [docs/ops/SLO.md](docs/ops/SLO.md): operational SLOs
+- [docs/stories/](docs/stories/): narrative stories
+- [CHANGELOG.md](CHANGELOG.md): Keep a Changelog
+- [justfile](justfile): local task runner recipes
+- [mise.toml](mise.toml): format/lint/test/build/audit tasks
