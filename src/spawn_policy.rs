@@ -11,15 +11,17 @@
 //! └──────────────┬───────────────────────────────┘
 //!                │  extern "C"  (C ABI static lib)
 //! ┌──────────────▼───────────────────────────────┐
-//! │  Zig (hot core — crates/spawn-core/)         │
+//! │  Unix: Zig hot core (crates/spawn-core/)     │
 //! │  spc_semaphore_*  POSIX mutex + condvar      │
 //! │  spc_spawn        posix_spawn / fork+exec    │
 //! │                   setpriority(PRIO_DARWIN_BG)│
 //! │  spc_waitpid      waitpid(2)                 │
+//! │  Windows: spawn-core-sys Rust stub           │
+//! │  (semaphore works; spawn/waitpid Unsupported)│
 //! └──────────────────────────────────────────────┘
 //! ```
 //!
-//! # Why Zig for the hot core
+//! # Why Zig for the hot core (Unix)
 //!
 //! * `posix_spawn`, `setpriority`, `waitpid`, and POSIX mutex/condvar are
 //!   single `std.c` calls in Zig — no abstraction penalty, no hidden runtime.
@@ -28,14 +30,15 @@
 //! * Explicit allocator (`std.heap.c_allocator`) — allocation failure is a
 //!   return value, not a panic.
 //! * No bindgen needed: the Zig `export fn` symbols are consumed directly via
-//!   `extern "C"` in `spawn-core-sys/src/lib.rs`.
+//!   `extern "C"` in `spawn-core-sys` (Unix). On Windows the same public API
+//!   is a Rust stub — see `crates/spawn-core-sys/README.md`.
 //!
 //! # Rust role
 //!
 //! Rust owns everything above the FFI boundary: config parsing
 //! (`SpawnPolicyConfig`), harness classification (`is_build_harness`), the
-//! async tokio integration (`acquire_build_permit` bridges the blocking Zig
-//! `spc_semaphore_acquire` via `spawn_blocking`), `RUSTC_WRAPPER` wiring for
+//! async tokio integration (`acquire_build_permit` bridges the blocking
+//! semaphore acquire via `spawn_blocking`), `RUSTC_WRAPPER` wiring for
 //! sccache, and the `ProcessPool` integration.
 
 use std::sync::Arc;
