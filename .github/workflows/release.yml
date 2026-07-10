@@ -1,20 +1,15 @@
 # ============================================================================
-# Release Pipeline — cargo-dist + platform tray clients
+# Release Pipeline — linux + mac artifact matrix + crates.io publish
 # ============================================================================
-# Triggered by any tag matching `v*`.  Builds:
-#   Linux  · sharecli CLI + sharecli-tray (ksni) + sharecli-ipc daemon → .tar.gz
-#   macOS  · sharecli CLI + sharecli-ipc daemon + ShareCLITray.app     → .tar.gz
-#   Windows· sharecli CLI + sharecli-ipc daemon + ShareCLITray.exe     → .zip
+# Builds release archives for the cargo-dist targets declared in Cargo.toml:
+#   Linux  · x86_64-unknown-linux-gnu  → sharecli-*-unknown-linux-gnu.tar.gz
+#   macOS  · aarch64-apple-darwin      → sharecli-*-apple-darwin.tar.gz
 #
-# The Rust binaries use the standard release profile (LTO, stripped).
-# For the tray clients that live outside Cargo (Swift .app, WinUI 3 .exe)
-# separate build steps run after the Rust workspace finishes.
+# Triggered by workflow_dispatch or a `chore(release): ...` commit on main.
+# Tag-driven GitHub Release asset upload can be layered on once signing lands.
 # ============================================================================
 
 name: Release
-
-# Manual release pipeline. Triggered by a `chore(release): ...` commit on main
-# or via workflow_dispatch. Builds, signs, and publishes to crates.io.
 
 on:
   push:
@@ -39,104 +34,80 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
 
-# ---------------------------------------------------------------------------
-# Reusable composite action: build Rust workspace for a given target triple
-# ---------------------------------------------------------------------------
 jobs:
   build:
-    name: Build + Test (release)
-    runs-on: ubuntu-latest
+    name: Build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: tar.gz
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
       - name: Determine version
         id: version
+        shell: bash
         run: |
           VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Releasing version: ${VERSION}"
-      - name: Build release artifacts
-        run: cargo build --release --locked --all-targets
-      - name: Test release build
-        run: cargo test --release --locked --all-features
 
-  attest:
-    name: SLSA Build Attestation (L2)
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Stage artifacts
+      - name: Build release binary
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p release-artifacts
-          find target/release -maxdepth 1 -type f -executable \
-            -exec cp -t release-artifacts/ {} + 2>/dev/null || true
-          ls -la release-artifacts/
-      - name: Upload artifacts
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861c4a24d9c5d28 # v4.4.0
-        with:
-          name: release-artifacts
-          path: release-artifacts/
-          retention-days: 90
-          if-no-files-found: warn
-      - name: Attest build provenance
-        uses: slsa-framework/slsa-github-generator/attest-build-provenance@ed8a9d96c023b81521c9c9fb6c2a6e3edff257d7 # v1.9.0
-        with:
-          artifact-name: release-artifacts
+          cargo build --release --locked --bin sharecli --target ${{ matrix.target }}
 
-  publish:
-    name: Publish to crates.io
-    needs: build
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'chore(release)')
-    runs-on: ubuntu-latest
-    environment: release
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-      - name: Publish (uses CARGO_REGISTRY_TOKEN from environment)
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Package archive
+        id: package
+        shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo ">> DRY RUN — running cargo publish --dry-run"
-            cargo publish --dry-run --locked
-          else
-            echo ">> LIVE PUBLISH"
-            cargo publish --locked
+          VERSION="${{ steps.version.outputs.version }}"
+          TARGET="${{ matrix.target }}"
+          STAGE="sharecli-${VERSION}-${TARGET}"
+          mkdir -p "${STAGE}"
+          BIN="target/${TARGET}/release/sharecli"
+          if [[ ! -f "${BIN}" ]]; then
+            BIN="target/${TARGET}/release/sharecli.exe"
           fi
-    name: Build + Test (release)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+          cp "${BIN}" "${STAGE}/sharecli"
+          ARCHIVE="sharecli-${TARGET}.tar.gz"
+          tar -czf "${ARCHIVE}" -C "${STAGE}" sharecli
+          shasum -a 256 "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload platform artifact
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861c4a24d9c5d28 # v4.4.0
         with:
-          fetch-depth: 0
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-      - name: Determine version
-        id: version
-        run: |
-          VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Releasing version: ${VERSION}"
-      - name: Build release artifacts
-        run: cargo build --release --locked --all-targets
-      - name: Test release build
+          name: sharecli-${{ matrix.target }}
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.archive }}.sha256
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Test release build (host)
+        if: matrix.os == 'ubuntu-latest'
         run: cargo test --release --locked --all-features
 
   attest:
@@ -149,20 +120,28 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Stage artifacts
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          pattern: sharecli-*
+          merge-multiple: false
+
+      - name: Flatten artifact tree
         run: |
           set -euo pipefail
-          mkdir -p release-artifacts
-          find target/release -maxdepth 1 -type f -executable \
-            -exec cp -t release-artifacts/ {} + 2>/dev/null || true
-          ls -la release-artifacts/
-      - name: Upload artifacts
+          find release-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' \) -print
+          ls -laR release-artifacts/
+
+      - name: Upload combined artifacts
         uses: actions/upload-artifact@5d5d22a31266ced268874388b861c4a24d9c5d28 # v4.4.0
         with:
           name: release-artifacts
           path: release-artifacts/
           retention-days: 90
           if-no-files-found: warn
+
       - name: Attest build provenance
         uses: slsa-framework/slsa-github-generator/attest-build-provenance@ed8a9d96c023b81521c9c9fb6c2a6e3edff257d7 # v1.9.0
         with:
