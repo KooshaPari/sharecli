@@ -71,6 +71,19 @@ notifications-http = ["reqwest"]
 
 [dev-dependencies]
 tempfile = "3"
+criterion = { version = "0.5", features = ["async_tokio", "html_reports"] }
+
+[[bench]]
+name = "config_parse"
+harness = false
+
+[[bench]]
+name = "pool_list"
+harness = false
+
+[[bench]]
+name = "prometheus_render"
+harness = false
 
 # Temporary clippy allow-list so CI `RUSTFLAGS=-D warnings` + `clippy -D warnings`
 # can pass while style/pedantic debt is paid down (see audit/CI_TRUTH_FINDINGS.md).
