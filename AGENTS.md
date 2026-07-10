@@ -62,3 +62,11 @@ Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`
 - Use language-appropriate error handling patterns
 - Never use unwrap/expect in production code
 - Log all errors with structured logging
+
+## Windows + Zig spawn-core
+
+Zig `crates/spawn-core` uses POSIX `fork` / `waitpid` / pthread and does **not**
+build on Windows. `spawn-core-sys` skips Zig when
+`CARGO_CFG_TARGET_OS=windows` and uses a Rust stub (working semaphore;
+`zig_spawn`/`zig_waitpid` → `Unsupported`). See
+`crates/spawn-core-sys/README.md` and `build.rs`.
