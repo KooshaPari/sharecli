@@ -231,10 +231,7 @@ fn validate_defaults(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{
-        CastConfig, Config, DefaultHarnessConfig, MonitoringConfig, PathsConfig, PoolConfig,
-        PortConfig, ProjectLimitsConfig, SpawnConfig, SpawnPolicyConfig,
-    };
+    use crate::config::{Config, DefaultHarnessConfig, PortConfig};
 
     fn valid_config() -> Config {
         Config::default()
