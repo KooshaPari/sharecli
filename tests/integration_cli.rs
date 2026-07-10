@@ -1,4 +1,5 @@
 //! Integration tests for the sharecli CLI binary.
+//! FR: FR-001
 //!
 //! These tests exercise the `sharecli` binary end-to-end via
 //! `env!("CARGO_BIN_EXE_sharecli")`, which cargo provides automatically when a
