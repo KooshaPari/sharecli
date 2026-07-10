@@ -1,4 +1,5 @@
 //! Integration tests for the sharecli CLI binary.
+//! FR: FR-001
 //!
 //! These tests exercise the `sharecli` binary end-to-end via
 //! `env!("CARGO_BIN_EXE_sharecli")`, which cargo provides automatically when a
@@ -33,21 +34,14 @@ fn stderr(out: &std::process::Output) -> String {
 #[test]
 fn cli_help_exits_zero_and_prints_usage() {
     let out = bin().arg("--help").output().expect("spawn sharecli --help");
-    assert!(
-        out.status.success(),
-        "--help should exit 0; stderr: {}",
-        stderr(&out)
-    );
+    assert!(out.status.success(), "--help should exit 0; stderr: {}", stderr(&out));
     let s = stdout(&out);
     assert!(
         s.contains("Usage:") || s.contains("Usage "),
         "--help output should mention Usage; got: {s}"
     );
     // The binary is named `sharecli` and should advertise itself in help.
-    assert!(
-        s.contains("sharecli"),
-        "--help output should reference the sharecli name; got: {s}"
-    );
+    assert!(s.contains("sharecli"), "--help output should reference the sharecli name; got: {s}");
 }
 
 #[test]
@@ -65,11 +59,7 @@ fn cli_short_version_flag_prints_version() {
 #[test]
 fn cli_version_subcommand_prints_splash_and_version() {
     let out = bin().arg("version").output().expect("spawn sharecli version");
-    assert!(
-        out.status.success(),
-        "`version` should exit 0; stderr: {}",
-        stderr(&out)
-    );
+    assert!(out.status.success(), "`version` should exit 0; stderr: {}", stderr(&out));
     let s = stdout(&out);
     // ASCII-art splash contains the brand letters; the version string follows.
     assert!(s.contains("sharecli"), "version output should mention sharecli; got: {s}");
@@ -96,11 +86,7 @@ fn cli_list_enumerates_surfaces_and_is_nonempty() {
 #[test]
 fn cli_list_help_explains_subcommands() {
     let out = bin().args(["list", "--help"]).output().expect("spawn sharecli list --help");
-    assert!(
-        out.status.success(),
-        "`list --help` should exit 0; stderr: {}",
-        stderr(&out)
-    );
+    assert!(out.status.success(), "`list --help` should exit 0; stderr: {}", stderr(&out));
     let s = stdout(&out);
     assert!(
         s.to_lowercase().contains("cast") || s.to_lowercase().contains("util"),
@@ -111,11 +97,7 @@ fn cli_list_help_explains_subcommands() {
 #[test]
 fn cli_util_help_lists_at_least_one_utility() {
     let out = bin().args(["util", "--help"]).output().expect("spawn sharecli util --help");
-    assert!(
-        out.status.success(),
-        "`util --help` should exit 0; stderr: {}",
-        stderr(&out)
-    );
+    assert!(out.status.success(), "`util --help` should exit 0; stderr: {}", stderr(&out));
     let s = stdout(&out);
     // The util menu groups bundled modules; any of base85/csv/crc/hash is enough.
     let known = ["base85", "csv", "crc", "hash", "json", "uuid"];
@@ -133,15 +115,13 @@ fn cli_ps_runs_and_prints_table_header() {
     let s = stdout(&out);
     // The header row from `ps` includes `PID` and `MEM(MB)`.
     assert!(s.contains("PID"), "`ps` output should include the PID column header; got: {s}");
-    assert!(
-        s.contains("MEM"),
-        "`ps` output should include the MEM column header; got: {s}"
-    );
+    assert!(s.contains("MEM"), "`ps` output should include the MEM column header; got: {s}");
 }
 
 #[test]
 fn cli_unknown_subcommand_exits_nonzero() {
-    let out = bin().arg("definitely-not-a-real-subcommand-xyz").output().expect("spawn sharecli <bad>");
+    let out =
+        bin().arg("definitely-not-a-real-subcommand-xyz").output().expect("spawn sharecli <bad>");
     assert!(
         !out.status.success(),
         "unknown subcommand should exit non-zero; got exit 0 and stdout: {}",
@@ -157,19 +137,10 @@ fn cli_unknown_subcommand_exits_nonzero() {
 
 #[test]
 fn cli_completions_bash_outputs_function_definitions() {
-    let out = bin()
-        .args(["completions", "bash"])
-        .output()
-        .expect("spawn sharecli completions bash");
-    assert!(
-        out.status.success(),
-        "`completions bash` should exit 0; stderr: {}",
-        stderr(&out)
-    );
+    let out =
+        bin().args(["completions", "bash"]).output().expect("spawn sharecli completions bash");
+    assert!(out.status.success(), "`completions bash` should exit 0; stderr: {}", stderr(&out));
     let s = stdout(&out);
     // The bash completion script defines a function named `_sharecli`.
-    assert!(
-        s.contains("_sharecli"),
-        "`completions bash` should define _sharecli(); got: {s}"
-    );
+    assert!(s.contains("_sharecli"), "`completions bash` should define _sharecli(); got: {s}");
 }

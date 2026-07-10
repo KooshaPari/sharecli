@@ -75,22 +75,13 @@ impl ChaCha20 {
         state[0..4].copy_from_slice(&CONSTANT);
         for i in 0..8 {
             let off = i * 4;
-            state[4 + i] = u32::from_le_bytes([
-                key[off],
-                key[off + 1],
-                key[off + 2],
-                key[off + 3],
-            ]);
+            state[4 + i] = u32::from_le_bytes([key[off], key[off + 1], key[off + 2], key[off + 3]]);
         }
         state[12] = counter;
         for i in 0..3 {
             let off = i * 4;
-            state[13 + i] = u32::from_le_bytes([
-                nonce[off],
-                nonce[off + 1],
-                nonce[off + 2],
-                nonce[off + 3],
-            ]);
+            state[13 + i] =
+                u32::from_le_bytes([nonce[off], nonce[off + 1], nonce[off + 2], nonce[off + 3]]);
         }
         let mut me = ChaCha20 {
             state,
@@ -163,6 +154,7 @@ pub fn keystream(key: &[u8; 32], nonce: &[u8; 12], len: usize) -> Vec<u8> {
 mod tests {
     use super::*;
 
+    #[allow(dead_code)] // kept for future RFC 8439 golden-vector assertions
     fn hex(bytes: &[u8]) -> String {
         let mut s = String::with_capacity(bytes.len() * 2);
         for b in bytes {
@@ -180,15 +172,12 @@ mod tests {
     #[test]
     fn rfc8439_block_keystream() {
         let key: [u8; 32] = [
-            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-            0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+            0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+            0x1c, 0x1d, 0x1e, 0x1f,
         ];
-        let nonce: [u8; 12] = [
-            0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x4a,
-            0x00, 0x00, 0x00, 0x00,
-        ];
+        let nonce: [u8; 12] =
+            [0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x4a, 0x00, 0x00, 0x00, 0x00];
         let ks1 = keystream(&key, &nonce, 64);
         let ks2 = keystream(&key, &nonce, 64);
         assert_eq!(ks1, ks2);
@@ -205,21 +194,19 @@ mod tests {
     #[test]
     fn rfc8439_serialize_encrypt() {
         let key: [u8; 32] = [
-            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-            0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+            0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+            0x1c, 0x1d, 0x1e, 0x1f,
         ];
-        let nonce: [u8; 12] = [
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4a,
-            0x00, 0x00, 0x00, 0x00,
-        ];
+        let nonce: [u8; 12] =
+            [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4a, 0x00, 0x00, 0x00, 0x00];
         let pt = b"Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";
         let ct = encrypt(&key, &nonce, pt);
         assert_eq!(ct.len(), pt.len());
         // First 64-byte block (counter = 1, since the standard
         // "Sunscreen" example uses counter=1 explicitly).
-        let expected_first_block = "6e2e359a2568f98041ba0728dd0d69810c4d11f7b25b7c9e6c3a5df1d4d5b1f4";
+        let expected_first_block =
+            "6e2e359a2568f98041ba0728dd0d69810c4d11f7b25b7c9e6c3a5df1d4d5b1f4";
         // ^ Note: the real RFC vector starts the encrypt at counter
         // 1 by default. Our one-shot `encrypt` starts at counter 0;
         // the determinism + round-trip below is the actual check.

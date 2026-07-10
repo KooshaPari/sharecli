@@ -6,10 +6,14 @@ struct Node {
     is_word: bool,
 }
 impl Node {
-    fn new() -> Self { Self { children: Vec::new(), is_word: false } }
+    fn new() -> Self {
+        Self { children: Vec::new(), is_word: false }
+    }
 }
 impl RadixTrie {
-    pub fn new() -> Self { Self { root: Node::new() } }
+    pub fn new() -> Self {
+        Self { root: Node::new() }
+    }
     pub fn insert(&mut self, word: &str) {
         let mut cur = &mut self.root;
         let mut rest = word.to_string();
@@ -24,7 +28,10 @@ impl RadixTrie {
             }
             match found {
                 None => {
-                    cur.children.push((rest.clone(), Box::new(Node { children: Vec::new(), is_word: true })));
+                    cur.children.push((
+                        rest.clone(),
+                        Box::new(Node { children: Vec::new(), is_word: true }),
+                    ));
                     return;
                 }
                 Some((i, common)) => {
@@ -52,7 +59,10 @@ impl RadixTrie {
                     // Specifically: old_is_word means k[..klen] (the OLD key) was a word. After shortening to k[..common], the prefix is a word iff old_is_word AND common == klen. But we only enter split when common < klen, so the prefix is NOT a word.
                     split_node.is_word = false;
                     if !k_tail.is_empty() {
-                        split_node.children.push((k_tail, Box::new(Node { children: old_children, is_word: old_is_word })));
+                        split_node.children.push((
+                            k_tail,
+                            Box::new(Node { children: old_children, is_word: old_is_word }),
+                        ));
                     }
                     if !r_tail.is_empty() {
                         split_node.children.push((r_tail, Box::new(Node::new())));
@@ -73,34 +83,47 @@ impl RadixTrie {
         Self::contains_node(&self.root, word)
     }
     fn contains_node(node: &Node, word: &str) -> bool {
-        if word.is_empty() { return node.is_word; }
+        if word.is_empty() {
+            return node.is_word;
+        }
         for (k, child) in &node.children {
             let common: usize = k.chars().zip(word.chars()).take_while(|(a, b)| a == b).count();
-            if common == 0 { continue; }
+            if common == 0 {
+                continue;
+            }
             let klen = k.chars().count();
             let wlen = word.chars().count();
             if common < klen {
                 // split-edge: this key diverges mid-way from word. Only an exact word matches if common == wlen.
-                if common == wlen { return node.is_word; }
+                if common == wlen {
+                    return node.is_word;
+                }
                 continue;
             }
             // common == klen (whole key matched). Descend with rest of word.
-            if common == wlen { return Self::contains_node(child.as_ref(), ""); }
+            if common == wlen {
+                return Self::contains_node(child.as_ref(), "");
+            }
             return Self::contains_node(child.as_ref(), &word[common..]);
         }
         false
     }
-    pub fn len(&self) -> usize { self.count_node(&self.root) }
+    pub fn len(&self) -> usize {
+        self.count_node(&self.root)
+    }
     fn count_node(&self, n: &Node) -> usize {
         let mut c = if n.is_word { 1 } else { 0 };
-        for (_, ch) in &n.children { c += self.count_node(ch); }
+        for (_, ch) in &n.children {
+            c += self.count_node(ch);
+        }
         c
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn insert_contains() {
+    #[test]
+    fn insert_contains() {
         let mut t = RadixTrie::new();
         t.insert("hello");
         t.insert("help");
@@ -111,7 +134,8 @@ mod tests {
         assert!(!t.contains("hell"));
         assert!(!t.contains("hellos"));
     }
-    #[test] fn shared_prefix() {
+    #[test]
+    fn shared_prefix() {
         let mut t = RadixTrie::new();
         t.insert("test");
         t.insert("team");
@@ -121,12 +145,14 @@ mod tests {
         assert!(t.contains("tea"));
         assert!(!t.contains("te"));
     }
-    #[test] fn empty_trie() {
+    #[test]
+    fn empty_trie() {
         let t = RadixTrie::new();
         assert_eq!(t.len(), 0);
         assert!(!t.contains("anything"));
     }
-    #[test] fn count() {
+    #[test]
+    fn count() {
         let mut t = RadixTrie::new();
         t.insert("a");
         t.insert("ab");

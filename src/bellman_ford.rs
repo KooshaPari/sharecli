@@ -82,12 +82,8 @@ mod tests {
     #[test]
     fn basic_shortest() {
         // 0 -> 1 (w=4), 0 -> 2 (w=5), 1 -> 2 (w=-3), 2 -> 3 (w=2)
-        let edges = [
-            Edge::new(0, 1, 4),
-            Edge::new(0, 2, 5),
-            Edge::new(1, 2, -3),
-            Edge::new(2, 3, 2),
-        ];
+        let edges =
+            [Edge::new(0, 1, 4), Edge::new(0, 2, 5), Edge::new(1, 2, -3), Edge::new(2, 3, 2)];
         let result = bellman_ford(4, &edges, 0);
         let dists = match result {
             BFResult::Distances(d) => d,

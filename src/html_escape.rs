@@ -26,11 +26,31 @@ pub fn unescape(input: &str) -> String {
         if b == b'&' {
             // try named entities first
             let rest = &bytes[i..];
-            if rest.starts_with(b"&amp;") { out.push('&'); i += 5; continue; }
-            if rest.starts_with(b"&lt;") { out.push('<'); i += 4; continue; }
-            if rest.starts_with(b"&gt;") { out.push('>'); i += 4; continue; }
-            if rest.starts_with(b"&quot;") { out.push('"'); i += 6; continue; }
-            if rest.starts_with(b"&#39;") { out.push('\''); i += 5; continue; }
+            if rest.starts_with(b"&amp;") {
+                out.push('&');
+                i += 5;
+                continue;
+            }
+            if rest.starts_with(b"&lt;") {
+                out.push('<');
+                i += 4;
+                continue;
+            }
+            if rest.starts_with(b"&gt;") {
+                out.push('>');
+                i += 4;
+                continue;
+            }
+            if rest.starts_with(b"&quot;") {
+                out.push('"');
+                i += 6;
+                continue;
+            }
+            if rest.starts_with(b"&#39;") {
+                out.push('\'');
+                i += 5;
+                continue;
+            }
             if rest.starts_with(b"&#") {
                 // numeric entity: &#NN; or &#xHH;
                 let semi = rest.iter().position(|&c| c == b';');
@@ -39,13 +59,21 @@ pub fn unescape(input: &str) -> String {
                     if let Some(s2) = rest.get(s) {
                         if *s2 == b';' {
                             if num_str.first() == Some(&b'x') || num_str.first() == Some(&b'X') {
-                                if let Ok(n) = std::str::from_utf8(&num_str[1..]).unwrap_or("").parse::<u32>() {
-                                    if let Some(c) = char::from_u32(n) { out.push(c); }
+                                if let Ok(n) =
+                                    std::str::from_utf8(&num_str[1..]).unwrap_or("").parse::<u32>()
+                                {
+                                    if let Some(c) = char::from_u32(n) {
+                                        out.push(c);
+                                    }
                                     i += 2 + num_str.len() + 1;
                                     continue;
                                 }
-                            } else if let Ok(n) = std::str::from_utf8(num_str).unwrap_or("").parse::<u32>() {
-                                if let Some(c) = char::from_u32(n) { out.push(c); }
+                            } else if let Ok(n) =
+                                std::str::from_utf8(num_str).unwrap_or("").parse::<u32>()
+                            {
+                                if let Some(c) = char::from_u32(n) {
+                                    out.push(c);
+                                }
                                 i += 2 + num_str.len() + 1;
                                 continue;
                             }
@@ -57,7 +85,7 @@ pub fn unescape(input: &str) -> String {
             i += 1;
         } else {
             // safe to push byte as char (UTF-8 boundary safety: assume input is valid UTF-8)
-            let s = std::str::from_utf8(&bytes[i..i+1]).unwrap_or("?");
+            let s = std::str::from_utf8(&bytes[i..i + 1]).unwrap_or("?");
             out.push_str(s);
             i += 1;
         }
@@ -66,5 +94,8 @@ pub fn unescape(input: &str) -> String {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
+    #[test]
+    fn escape_ampersand() {
+        assert!(super::escape("a&b").contains("&amp;"));
+    }
 }

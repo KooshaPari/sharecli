@@ -31,7 +31,7 @@
 //! double-serving — fail loud, never silently collide.
 
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -132,8 +132,17 @@ pub fn pidfile_path(service: &str) -> PathBuf {
 /// error checking without sending a signal — `Ok` (or `EPERM`) means the process
 /// exists; `ESRCH` means it does not.
 fn pid_alive(pid: u32) -> bool {
+    // Reject sentinels / values that do not fit a positive `pid_t`. Casting
+    // `u32::MAX` to `pid_t` yields `-1`, and `kill(-1, 0)` means "every process
+    // we can signal" — which falsely reports the sentinel as alive.
+    let Ok(pid_i) = libc::pid_t::try_from(pid) else {
+        return false;
+    };
+    if pid_i <= 0 {
+        return false;
+    }
     // SAFETY: `kill` with signal 0 sends no signal; it only probes existence.
-    let rc = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    let rc = unsafe { libc::kill(pid_i, 0) };
     if rc == 0 {
         return true;
     }
@@ -219,8 +228,28 @@ impl ServeLock {
             .with_context(|| format!("open pidfile {}", path.display()))?;
 
         // Non-blocking exclusive lock: if a live server holds it, this fails fast.
+        // Note: Linux `flock` can still succeed for a *second* open in the same
+        // process while the first fd holds the lock — detect that below.
         if file.try_lock_exclusive().is_err() {
             return Ok(None);
+        }
+
+        let mut f = file;
+
+        // If the pidfile already names a live owner, do not double-serve.
+        // Covers (1) same-process flock re-acquire and (2) races where the
+        // exclusive lock was obtained over a still-valid deploy record.
+        {
+            let mut existing = String::new();
+            let _ = f.seek(SeekFrom::Start(0));
+            if f.read_to_string(&mut existing).is_ok() {
+                if let Ok(prev) = serde_json::from_str::<ServeInfo>(existing.trim()) {
+                    if pid_alive(prev.pid) {
+                        let _ = f.unlock();
+                        return Ok(None);
+                    }
+                }
+            }
         }
 
         // We hold the lock. Anything previously written is a stale owner's info —
@@ -231,7 +260,6 @@ impl ServeLock {
             url: url.into(),
             started_at_unix: now_unix(),
         };
-        let mut f = file;
         f.set_len(0).with_context(|| format!("truncate pidfile {}", path.display()))?;
         let bytes = serde_json::to_vec(&info).context("serialize ServeInfo")?;
         f.write_all(&bytes).with_context(|| format!("write pidfile {}", path.display()))?;
@@ -262,29 +290,129 @@ impl Drop for ServeLock {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+    use std::thread;
+    use std::time::{Duration, Instant};
+
     use super::*;
+
+    /// Serialize tests that mutate `$XDG_RUNTIME_DIR` (process-global). Without
+    /// this, parallel `#[test]`s race and `probe` can see another test's empty
+    /// dir → false `Free` while a lock is held.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Dead-but-plausible pid: positive `pid_t`, above typical pid_max, and not
+    /// `u32::MAX` (which truncates to `-1` and makes `kill(-1, 0)` look alive).
+    const DEAD_PID: u32 = 2_000_000;
 
     /// Isolate each test's lock dir via a tempdir bound to $XDG_RUNTIME_DIR.
     struct LockEnv {
         _dir: tempfile::TempDir,
         prev: Option<std::ffi::OsString>,
+        _guard: std::sync::MutexGuard<'static, ()>,
     }
 
     impl LockEnv {
         fn new() -> Self {
+            let guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
             let dir = tempfile::tempdir().expect("tempdir");
             let prev = std::env::var_os("XDG_RUNTIME_DIR");
-            std::env::set_var("XDG_RUNTIME_DIR", dir.path());
-            Self { _dir: dir, prev }
+            // SAFETY: serialized by ENV_LOCK; only one LockEnv alive at a time.
+            unsafe { std::env::set_var("XDG_RUNTIME_DIR", dir.path()) };
+            Self { _dir: dir, prev, _guard: guard }
+        }
+
+        fn runtime_dir(&self) -> PathBuf {
+            self._dir.path().to_path_buf()
         }
     }
 
     impl Drop for LockEnv {
         fn drop(&mut self) {
+            // SAFETY: serialized by `_guard`; no concurrent set_var/remove_var.
             match &self.prev {
-                Some(v) => std::env::set_var("XDG_RUNTIME_DIR", v),
-                None => std::env::remove_var("XDG_RUNTIME_DIR"),
+                Some(v) => unsafe { std::env::set_var("XDG_RUNTIME_DIR", v) },
+                None => unsafe { std::env::remove_var("XDG_RUNTIME_DIR") },
             }
+        }
+    }
+
+    /// Child entry: hold a serve-lock until the hold-file is removed.
+    ///
+    /// Spawned via `current_exe() --exact …::child_hold_serve_lock` so flock
+    /// contention is truly cross-process (Linux same-process flock is not a
+    /// reliable stand-in for two `serve` actors).
+    #[test]
+    fn child_hold_serve_lock() {
+        if std::env::var_os("SHARECLI_IPC_SERVE_LOCK_CHILD").is_none() {
+            return;
+        }
+        let service = std::env::var("SHARECLI_IPC_SERVE_LOCK_SERVICE").expect("service");
+        let ready = PathBuf::from(std::env::var("SHARECLI_IPC_SERVE_LOCK_READY").expect("ready"));
+        let hold = PathBuf::from(std::env::var("SHARECLI_IPC_SERVE_LOCK_HOLD").expect("hold"));
+        let url = std::env::var("SHARECLI_IPC_SERVE_LOCK_URL").unwrap_or_else(|_| "child".into());
+        let _lock = ServeLock::try_acquire(&service, url)
+            .expect("child acquire io")
+            .expect("child acquire free");
+        fs::write(&ready, b"1").expect("ready");
+        while hold.exists() {
+            thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    struct ChildLock {
+        child: std::process::Child,
+        hold_path: PathBuf,
+        ready_path: PathBuf,
+    }
+
+    impl ChildLock {
+        fn spawn(env: &LockEnv, service: &str, url: &str) -> Self {
+            let runtime = env.runtime_dir();
+            let ready_path = runtime.join(format!("{service}.ready"));
+            let hold_path = runtime.join(format!("{service}.hold"));
+            let _ = fs::remove_file(&ready_path);
+            fs::write(&hold_path, b"1").expect("hold file");
+
+            let mut child =
+                std::process::Command::new(std::env::current_exe().expect("current_exe"))
+                    .args(["--exact", "serve_lock::tests::child_hold_serve_lock", "--nocapture"])
+                    .env("SHARECLI_IPC_SERVE_LOCK_CHILD", "1")
+                    .env("SHARECLI_IPC_SERVE_LOCK_SERVICE", service)
+                    .env("SHARECLI_IPC_SERVE_LOCK_READY", &ready_path)
+                    .env("SHARECLI_IPC_SERVE_LOCK_HOLD", &hold_path)
+                    .env("SHARECLI_IPC_SERVE_LOCK_URL", url)
+                    .env("XDG_RUNTIME_DIR", &runtime)
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn()
+                    .expect("spawn serve-lock child");
+
+            let start = Instant::now();
+            while !ready_path.exists() {
+                assert!(
+                    start.elapsed() < Duration::from_secs(10),
+                    "timed out waiting for child lock holder"
+                );
+                if let Some(status) = child.try_wait().expect("try_wait") {
+                    panic!("lock-holder child exited early: {status}");
+                }
+                thread::sleep(Duration::from_millis(20));
+            }
+
+            Self { child, hold_path, ready_path }
+        }
+
+        fn pid(&self) -> u32 {
+            self.child.id()
+        }
+    }
+
+    impl Drop for ChildLock {
+        fn drop(&mut self) {
+            let _ = fs::remove_file(&self.hold_path);
+            let _ = fs::remove_file(&self.ready_path);
+            let _ = self.child.wait();
         }
     }
 
@@ -296,17 +424,26 @@ mod tests {
 
     #[test]
     fn acquire_when_free_then_probe_running() {
-        let _env = LockEnv::new();
-        let lock = ServeLock::try_acquire("svc-a", "http://127.0.0.1:9001")
-            .unwrap()
-            .expect("free → acquired");
-        assert_eq!(lock.info().pid, process::id());
-        assert_eq!(lock.info().url, "http://127.0.0.1:9001");
+        let env = LockEnv::new();
 
+        // In-process acquire still writes identity correctly.
+        {
+            let lock = ServeLock::try_acquire("svc-a-local", "http://127.0.0.1:9001")
+                .unwrap()
+                .expect("free → acquired");
+            assert_eq!(lock.info().pid, process::id());
+            assert_eq!(lock.info().url, "http://127.0.0.1:9001");
+        }
+
+        // Probe a lock held by another process — the real multi-actor path.
+        // Same-process probe can race with `$XDG_RUNTIME_DIR` and is a weak
+        // stand-in for Linux flock ownership across serve actors.
+        let holder = ChildLock::spawn(&env, "svc-a", "http://127.0.0.1:9001");
         match probe("svc-a").unwrap() {
             ServeState::Running { info, stale } => {
-                assert_eq!(info.pid, process::id());
-                assert!(!stale, "live self-held lock must not be stale");
+                assert_eq!(info.pid, holder.pid());
+                assert_eq!(info.url, "http://127.0.0.1:9001");
+                assert!(!stale, "live child-held lock must not be stale");
             }
             ServeState::Free => panic!("expected Running while lock held"),
         }
@@ -314,8 +451,10 @@ mod tests {
 
     #[test]
     fn second_acquire_blocks_while_first_held() {
-        let _env = LockEnv::new();
-        let _first = ServeLock::try_acquire("svc-b", "u1").unwrap().unwrap();
+        let env = LockEnv::new();
+        // Cross-process: Linux flock may allow same-process re-acquire on a
+        // second fd; two serve actors are always separate processes.
+        let _holder = ChildLock::spawn(&env, "svc-b", "u1");
         let second = ServeLock::try_acquire("svc-b", "u2").unwrap();
         assert!(second.is_none(), "second acquire must fail while first held");
     }
@@ -338,7 +477,7 @@ mod tests {
         // Hand-write a pidfile owned by an impossible/dead pid, unlocked.
         let path = pidfile_path("svc-d");
         let dead = ServeInfo {
-            pid: u32::MAX, // never a live pid
+            pid: DEAD_PID,
             service: "svc-d".into(),
             url: "u".into(),
             started_at_unix: 1,
@@ -349,7 +488,7 @@ mod tests {
         match probe("svc-d").unwrap() {
             ServeState::Running { stale, info } => {
                 assert!(stale, "dead-pid pidfile must be stale");
-                assert_eq!(info.pid, u32::MAX);
+                assert_eq!(info.pid, DEAD_PID);
             }
             ServeState::Free => panic!("expected Running{{stale}}"),
         }
@@ -386,7 +525,7 @@ mod tests {
     fn decide_running_stale_serves_regardless_of_policy() {
         let stale = ServeState::Running {
             info: ServeInfo {
-                pid: u32::MAX,
+                pid: DEAD_PID,
                 service: "s".into(),
                 url: "u".into(),
                 started_at_unix: 1,

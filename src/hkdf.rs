@@ -40,7 +40,8 @@ impl Sha256 {
     fn new() -> Self {
         Sha256 {
             h: [
-                0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+                0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+                0x5be0cd19,
             ],
             buf: [0; SHA256_BLOCK],
             buf_len: 0,
@@ -100,10 +101,7 @@ impl Sha256 {
         for i in 16..64 {
             let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
             let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
-            w[i] = w[i - 16]
-                .wrapping_add(s0)
-                .wrapping_add(w[i - 7])
-                .wrapping_add(s1);
+            w[i] = w[i - 16].wrapping_add(s0).wrapping_add(w[i - 7]).wrapping_add(s1);
         }
         let mut a = self.h[0];
         let mut b = self.h[1];
@@ -116,11 +114,7 @@ impl Sha256 {
         for i in 0..64 {
             let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ ((!e) & g);
-            let t1 = h
-                .wrapping_add(s1)
-                .wrapping_add(ch)
-                .wrapping_add(K[i])
-                .wrapping_add(w[i]);
+            let t1 = h.wrapping_add(s1).wrapping_add(ch).wrapping_add(K[i]).wrapping_add(w[i]);
             let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let mj = (a & b) ^ (a & c) ^ (b & c);
             let t2 = s0.wrapping_add(mj);
@@ -180,11 +174,8 @@ fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; SHA256_OUT] {
 /// `HashLen` zero bytes is then used internally). `ikm` is the input
 /// keying material. Returns the PRK of `HashLen` bytes (32 for SHA-256).
 pub fn extract(salt: &[u8], ikm: &[u8]) -> [u8; SHA256_OUT] {
-    let effective_salt: Vec<u8> = if salt.is_empty() {
-        vec![0u8; SHA256_OUT]
-    } else {
-        salt.to_vec()
-    };
+    let effective_salt: Vec<u8> =
+        if salt.is_empty() { vec![0u8; SHA256_OUT] } else { salt.to_vec() };
     hmac_sha256(&effective_salt, ikm)
 }
 
@@ -237,7 +228,8 @@ mod tests {
         let salt = hex_to_bytes("000102030405060708090a0b0c").unwrap();
         let info = hex_to_bytes("f0f1f2f3f4f5f6f7f8f9").unwrap();
         let prk_expected = "077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5";
-        let okm_expected = "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865";
+        let okm_expected =
+            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865";
 
         let prk = extract(&salt, &ikm);
         assert_eq!(hex(&prk), prk_expected);
@@ -284,7 +276,8 @@ mod tests {
     fn rfc5869_a3_empty() {
         let ikm = hex_to_bytes("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b").unwrap();
         let prk_expected = "19ef24a32c717b167f33a91d6f648bdf96596776afdb6377ac434c1c293ccb04";
-        let okm_expected = "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8";
+        let okm_expected =
+            "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8";
 
         let prk = extract(&[], &ikm);
         assert_eq!(hex(&prk), prk_expected);

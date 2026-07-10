@@ -90,10 +90,7 @@ pub fn parse_blocks(input: &[u8]) -> Result<Vec<MetaBlock>, String> {
             return Err(format!("invalid block type 127 at offset {}", offset));
         }
         if block_type >= BLOCK_TYPE_RESERVED_MIN && block_type <= BLOCK_TYPE_RESERVED_MAX {
-            return Err(format!(
-                "reserved block type {} at offset {}",
-                block_type, offset
-            ));
+            return Err(format!("reserved block type {} at offset {}", block_type, offset));
         }
 
         let data_start = offset + HEADER_SIZE;
@@ -110,11 +107,7 @@ pub fn parse_blocks(input: &[u8]) -> Result<Vec<MetaBlock>, String> {
         }
         let data = input[data_start..data_end].to_vec();
 
-        out.push(MetaBlock {
-            is_last,
-            block_type,
-            data,
-        });
+        out.push(MetaBlock { is_last, block_type, data });
         offset = data_end;
 
         if is_last {
@@ -128,11 +121,7 @@ pub fn parse_blocks(input: &[u8]) -> Result<Vec<MetaBlock>, String> {
 /// Parse a STREAMINFO payload (exactly 34 bytes).
 pub fn parse_streaminfo(data: &[u8]) -> Result<StreamInfo, String> {
     if data.len() != STREAMINFO_SIZE {
-        return Err(format!(
-            "STREAMINFO must be {} bytes, got {}",
-            STREAMINFO_SIZE,
-            data.len()
-        ));
+        return Err(format!("STREAMINFO must be {} bytes, got {}", STREAMINFO_SIZE, data.len()));
     }
     let min_block_size = u16::from_be_bytes([data[0], data[1]]);
     let max_block_size = u16::from_be_bytes([data[2], data[3]]);
@@ -202,7 +191,7 @@ mod tests {
         packed |= (44100u32 & 0x000F_FFFF) << 12; // sample_rate in top 20 bits
         packed |= (1u32 & 0x07) << 9; // channels-1 in next 3 bits
         packed |= (15u32 & 0x1F) << 4; // bps-1 in next 5 bits
-        // total_samples high 4 bits = 0
+                                       // total_samples high 4 bits = 0
         v.extend_from_slice(&packed.to_be_bytes()); // 4 bytes
         v.extend_from_slice(&0u32.to_be_bytes()); // total_low 4 bytes
         v.extend_from_slice(&[0u8; 16]); // md5
@@ -341,7 +330,7 @@ mod tests {
         packed |= (48000u32 & 0x000F_FFFF) << 12; // sample_rate (top 20)
         packed |= (0u32 & 0x07) << 9; // channels-1
         packed |= (23u32 & 0x1F) << 4; // bps-1
-        // total_samples high nibble = 0 (48000 fits in 36 bits)
+                                       // total_samples high nibble = 0 (48000 fits in 36 bits)
         bytes.extend_from_slice(&packed.to_be_bytes()); // bytes 10..=13
         bytes.extend_from_slice(&48000u32.to_be_bytes()); // bytes 14..=17 total_low
         for i in 1..=16u8 {

@@ -3,12 +3,11 @@
 pub mod cast;
 pub mod report;
 pub mod serve;
-pub use serve::run as serve_run;
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
+pub use serve::run as serve_run;
 
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
 use crate::runtime::{

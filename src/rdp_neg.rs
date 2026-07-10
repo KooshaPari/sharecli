@@ -119,31 +119,19 @@ pub fn parse_request(input: &[u8]) -> Result<(RdpNegReq, &[u8]), String> {
     }
     let req_type = rest[0];
     if req_type != TYPE_RDP_NEG_REQ {
-        return Err(format!(
-            "rdp_neg: expected TYPE_RDP_NEG_REQ (0x01), got 0x{:02X}",
-            req_type
-        ));
+        return Err(format!("rdp_neg: expected TYPE_RDP_NEG_REQ (0x01), got 0x{:02X}", req_type));
     }
     // rest[1] is `flags` per spec; we do not enforce a particular value
     // here because there are known clients that set it non-zero.
     let _flags = rest[1];
     let req_len = u16::from_le_bytes([rest[2], rest[3]]) as usize;
     if req_len != 8 {
-        return Err(format!(
-            "rdp_neg: RDPNEG_REQ length must be 8, got {}",
-            req_len
-        ));
+        return Err(format!("rdp_neg: RDPNEG_REQ length must be 8, got {}", req_len));
     }
     let rdp_protocols = u32::from_le_bytes([rest[4], rest[5], rest[6], rest[7]]);
     let tail = &rest[8..];
 
-    Ok((
-        RdpNegReq {
-            rdp_protocols,
-            cookie,
-        },
-        tail,
-    ))
+    Ok((RdpNegReq { rdp_protocols, cookie }, tail))
 }
 
 /// Parse a raw frame starting with the TPKT header. Returns the same
@@ -151,24 +139,15 @@ pub fn parse_request(input: &[u8]) -> Result<(RdpNegReq, &[u8]), String> {
 /// payload (still inside the TPDU).
 pub fn parse_frame(input: &[u8]) -> Result<(RdpNegReq, &[u8]), String> {
     if input.len() < 4 {
-        return Err(format!(
-            "rdp_neg: TPKT header too short (need 4 bytes, got {})",
-            input.len()
-        ));
+        return Err(format!("rdp_neg: TPKT header too short (need 4 bytes, got {})", input.len()));
     }
     let tpkt_version = input[0];
     if tpkt_version != 0x03 {
-        return Err(format!(
-            "rdp_neg: bad TPKT version (want 0x03, got 0x{:02X})",
-            tpkt_version
-        ));
+        return Err(format!("rdp_neg: bad TPKT version (want 0x03, got 0x{:02X})", tpkt_version));
     }
     let tpkt_length = u16::from_be_bytes([input[2], input[3]]) as usize;
     if tpkt_length < 4 {
-        return Err(format!(
-            "rdp_neg: bad TPKT length ({} < 4)",
-            tpkt_length
-        ));
+        return Err(format!("rdp_neg: bad TPKT length ({} < 4)", tpkt_length));
     }
     let tpkt_end = std::cmp::min(tpkt_length, input.len());
     let payload = &input[4..tpkt_end];

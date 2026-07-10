@@ -1,0 +1,9 @@
+/* Backbone-2 design tokens — CSS source of truth; Rust mirror: src/theme.rs */
+
+:root {
+  --bb2-graphite: #0a0d12;
+  --bb2-panel: #161b22;
+  --bb2-pulse-green: #3fb950;
+  --bb2-sync-violet: #a371f7;
+  --bb2-warm-amber: #d29922;
+}

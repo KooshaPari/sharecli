@@ -58,13 +58,7 @@ pub struct CueSheet {
     pub tracks: Vec<CueTrack>,
 }
 
-const VALID_MODES: &[&str] = &[
-    "AUDIO",
-    "MODE1/2048",
-    "MODE1/2352",
-    "MODE2/2336",
-    "MODE2/2352",
-];
+const VALID_MODES: &[&str] = &["AUDIO", "MODE1/2048", "MODE1/2352", "MODE2/2336", "MODE2/2352"];
 
 /// Parse a cue sheet from `input`. Returns an error for:
 ///   * malformed `MM:SS:FF` timestamps,
@@ -117,12 +111,7 @@ pub fn parse(input: &str) -> Result<CueSheet, String> {
             }
             let val = parse_quoted(rest, lineno)?;
             // Strip trailing mode token (WAVE / MP3 / BINARY) if present.
-            sheet.file = val
-                .split_whitespace()
-                .next()
-                .unwrap_or("")
-                .trim_matches('"')
-                .to_string();
+            sheet.file = val.split_whitespace().next().unwrap_or("").trim_matches('"').to_string();
             continue;
         }
 
@@ -132,21 +121,15 @@ pub fn parse(input: &str) -> Result<CueSheet, String> {
                 sheet.tracks.push(t);
             }
             let mut parts = rest.split_whitespace();
-            let num_str = parts
-                .next()
-                .ok_or_else(|| format!("line {}: TRACK missing number", lineno))?;
-            let num: u8 = num_str
-                .parse()
-                .map_err(|e| format!("line {}: invalid TRACK number '{}': {}", lineno, num_str, e))?;
-            let mode = parts
-                .collect::<Vec<_>>()
-                .join(" ");
+            let num_str =
+                parts.next().ok_or_else(|| format!("line {}: TRACK missing number", lineno))?;
+            let num: u8 = num_str.parse().map_err(|e| {
+                format!("line {}: invalid TRACK number '{}': {}", lineno, num_str, e)
+            })?;
+            let mode = parts.collect::<Vec<_>>().join(" ");
             let mode = mode.trim().to_string();
             if !VALID_MODES.contains(&mode.as_str()) {
-                return Err(format!(
-                    "line {}: unknown TRACK mode '{}'",
-                    lineno, mode
-                ));
+                return Err(format!("line {}: unknown TRACK mode '{}'", lineno, mode));
             }
             current = Some(CueTrack {
                 number: num,
@@ -163,15 +146,13 @@ pub fn parse(input: &str) -> Result<CueSheet, String> {
                 .as_mut()
                 .ok_or_else(|| format!("line {}: INDEX outside of TRACK", lineno))?;
             let mut parts = rest.split_whitespace();
-            let id_str = parts
-                .next()
-                .ok_or_else(|| format!("line {}: INDEX missing id", lineno))?;
+            let id_str =
+                parts.next().ok_or_else(|| format!("line {}: INDEX missing id", lineno))?;
             let id: u8 = id_str
                 .parse()
                 .map_err(|e| format!("line {}: invalid INDEX id '{}': {}", lineno, id_str, e))?;
-            let stamp = parts
-                .next()
-                .ok_or_else(|| format!("line {}: INDEX missing timestamp", lineno))?;
+            let stamp =
+                parts.next().ok_or_else(|| format!("line {}: INDEX missing timestamp", lineno))?;
             let (mm, ss, ff) = parse_msf(stamp, lineno)?;
             t.indices.push((id, mm, ss, ff));
             continue;
@@ -208,10 +189,7 @@ pub fn parse(input: &str) -> Result<CueSheet, String> {
     }
     for t in &sheet.tracks {
         if !t.indices.iter().any(|(id, _, _, _)| *id == 1) {
-            return Err(format!(
-                "track {} is missing INDEX 01",
-                t.number
-            ));
+            return Err(format!("track {} is missing INDEX 01", t.number));
         }
     }
 
@@ -233,10 +211,7 @@ fn parse_quoted(rest: &str, lineno: usize) -> Result<String, String> {
 fn parse_msf(s: &str, lineno: usize) -> Result<(u8, u8, u8), String> {
     let parts: Vec<&str> = s.split(':').collect();
     if parts.len() != 3 {
-        return Err(format!(
-            "line {}: expected MM:SS:FF, got '{}'",
-            lineno, s
-        ));
+        return Err(format!("line {}: expected MM:SS:FF, got '{}'", lineno, s));
     }
     let mm: u8 = parts[0]
         .parse()
@@ -248,10 +223,7 @@ fn parse_msf(s: &str, lineno: usize) -> Result<(u8, u8, u8), String> {
         .parse()
         .map_err(|e| format!("line {}: invalid frames '{}': {}", lineno, parts[2], e))?;
     if ss >= 60 || ff >= 75 {
-        return Err(format!(
-            "line {}: out-of-range time '{}' (seconds<60, frames<75)",
-            lineno, s
-        ));
+        return Err(format!("line {}: out-of-range time '{}' (seconds<60, frames<75)", lineno, s));
     }
     Ok((mm, ss, ff))
 }
@@ -370,19 +342,10 @@ FILE \"a.wav\" WAVE
 
     #[test]
     fn parse_all_supported_modes_accepted() {
-        for mode in &[
-            "AUDIO",
-            "MODE1/2048",
-            "MODE1/2352",
-            "MODE2/2336",
-            "MODE2/2352",
-        ] {
-            let input = format!(
-                "FILE \"x.wav\" WAVE\n  TRACK 01 {}\n    INDEX 01 00:00:00\n",
-                mode
-            );
-            let sheet = parse(&input)
-                .unwrap_or_else(|e| panic!("mode {} failed: {}", mode, e));
+        for mode in &["AUDIO", "MODE1/2048", "MODE1/2352", "MODE2/2336", "MODE2/2352"] {
+            let input =
+                format!("FILE \"x.wav\" WAVE\n  TRACK 01 {}\n    INDEX 01 00:00:00\n", mode);
+            let sheet = parse(&input).unwrap_or_else(|e| panic!("mode {} failed: {}", mode, e));
             assert_eq!(sheet.tracks[0].mode, *mode);
         }
     }

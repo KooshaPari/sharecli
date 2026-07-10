@@ -24,3 +24,7 @@ desktop/ShareCLITray/.build/
 
 # Git worktrees (embedded repos)
 worktrees/
+
+# Zig build cache
+**/.zig-cache/
+

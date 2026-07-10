@@ -5,42 +5,197 @@
 #[derive(Debug, PartialEq, Eq)]
 pub enum Mnemonic {
     // Control
-    Unreachable, Nop, Block, Loop, If, Else, End, Br, BrIf, BrTable, Return, Call, CallIndirect,
+    Unreachable,
+    Nop,
+    Block,
+    Loop,
+    If,
+    Else,
+    End,
+    Br,
+    BrIf,
+    BrTable,
+    Return,
+    Call,
+    CallIndirect,
     // Parametric
-    Drop, Select, SelectT,
+    Drop,
+    Select,
+    SelectT,
     // Variable
-    LocalGet, LocalSet, LocalTee, GlobalGet, GlobalSet,
+    LocalGet,
+    LocalSet,
+    LocalTee,
+    GlobalGet,
+    GlobalSet,
     // Table
-    TableGet, TableSet,
+    TableGet,
+    TableSet,
     // Memory
-    I32Load, I64Load, F32Load, F64Load,
-    I32Load8S, I32Load8U, I32Load16S, I32Load16U,
-    I64Load8S, I64Load8U, I64Load16S, I64Load16U, I64Load32S, I64Load32U,
-    I32Store, I64Store, F32Store, F64Store,
-    I32Store8, I32Store16, I64Store8, I64Store16, I64Store32,
-    MemorySize, MemoryGrow,
+    I32Load,
+    I64Load,
+    F32Load,
+    F64Load,
+    I32Load8S,
+    I32Load8U,
+    I32Load16S,
+    I32Load16U,
+    I64Load8S,
+    I64Load8U,
+    I64Load16S,
+    I64Load16U,
+    I64Load32S,
+    I64Load32U,
+    I32Store,
+    I64Store,
+    F32Store,
+    F64Store,
+    I32Store8,
+    I32Store16,
+    I64Store8,
+    I64Store16,
+    I64Store32,
+    MemorySize,
+    MemoryGrow,
     // Constants
-    I32Const, I64Const, F32Const, F64Const,
+    I32Const,
+    I64Const,
+    F32Const,
+    F64Const,
     // Numeric
-    I32Eqz, I32Eq, I32Ne, I32LtS, I32LtU, I32GtS, I32GtU, I32LeS, I32LeU, I32GeS, I32GeU,
-    I64Eqz, I64Eq, I64Ne, I64LtS, I64LtU, I64GtS, I64GtU, I64LeS, I64LeU, I64GeS, I64GeU,
-    F32Eq, F32Ne, F32Lt, F32Gt, F32Le, F32Ge,
-    F64Eq, F64Ne, F64Lt, F64Gt, F64Le, F64Ge,
-    I32Clz, I32Ctz, I32Popcnt, I32Add, I32Sub, I32Mul, I32DivS, I32DivU, I32RemS, I32RemU,
-    I32And, I32Or, I32Xor, I32Shl, I32ShrS, I32ShrU, I32Rotl, I32Rotr,
-    I64Clz, I64Ctz, I64Popcnt, I64Add, I64Sub, I64Mul, I64DivS, I64DivU, I64RemS, I64RemU,
-    I64And, I64Or, I64Xor, I64Shl, I64ShrS, I64ShrU, I64Rotl, I64Rotr,
-    F32Abs, F32Neg, F32Ceil, F32Floor, F32Trunc, F32Nearest, F32Sqrt, F32Add, F32Sub, F32Mul, F32Div, F32Min, F32Max, F32Copysign,
-    F64Abs, F64Neg, F64Ceil, F64Floor, F64Trunc, F64Nearest, F64Sqrt, F64Add, F64Sub, F64Mul, F64Div, F64Min, F64Max, F64Copysign,
-    I32WrapI64, I32TruncF32S, I32TruncF32U, I32TruncF64S, I32TruncF64U,
-    I64ExtendI32S, I64ExtendI32U, I64TruncF32S, I64TruncF32U, I64TruncF64S, I64TruncF64U,
-    F32ConvertI32S, F32ConvertI32U, F32ConvertI64S, F32ConvertI64U, F32DemoteF64,
-    F64ConvertI32S, F64ConvertI32U, F64ConvertI64S, F64ConvertI64U, F64PromoteF32,
-    I32ReinterpretF32, I64ReinterpretF64, F32ReinterpretI32, F64ReinterpretI64,
+    I32Eqz,
+    I32Eq,
+    I32Ne,
+    I32LtS,
+    I32LtU,
+    I32GtS,
+    I32GtU,
+    I32LeS,
+    I32LeU,
+    I32GeS,
+    I32GeU,
+    I64Eqz,
+    I64Eq,
+    I64Ne,
+    I64LtS,
+    I64LtU,
+    I64GtS,
+    I64GtU,
+    I64LeS,
+    I64LeU,
+    I64GeS,
+    I64GeU,
+    F32Eq,
+    F32Ne,
+    F32Lt,
+    F32Gt,
+    F32Le,
+    F32Ge,
+    F64Eq,
+    F64Ne,
+    F64Lt,
+    F64Gt,
+    F64Le,
+    F64Ge,
+    I32Clz,
+    I32Ctz,
+    I32Popcnt,
+    I32Add,
+    I32Sub,
+    I32Mul,
+    I32DivS,
+    I32DivU,
+    I32RemS,
+    I32RemU,
+    I32And,
+    I32Or,
+    I32Xor,
+    I32Shl,
+    I32ShrS,
+    I32ShrU,
+    I32Rotl,
+    I32Rotr,
+    I64Clz,
+    I64Ctz,
+    I64Popcnt,
+    I64Add,
+    I64Sub,
+    I64Mul,
+    I64DivS,
+    I64DivU,
+    I64RemS,
+    I64RemU,
+    I64And,
+    I64Or,
+    I64Xor,
+    I64Shl,
+    I64ShrS,
+    I64ShrU,
+    I64Rotl,
+    I64Rotr,
+    F32Abs,
+    F32Neg,
+    F32Ceil,
+    F32Floor,
+    F32Trunc,
+    F32Nearest,
+    F32Sqrt,
+    F32Add,
+    F32Sub,
+    F32Mul,
+    F32Div,
+    F32Min,
+    F32Max,
+    F32Copysign,
+    F64Abs,
+    F64Neg,
+    F64Ceil,
+    F64Floor,
+    F64Trunc,
+    F64Nearest,
+    F64Sqrt,
+    F64Add,
+    F64Sub,
+    F64Mul,
+    F64Div,
+    F64Min,
+    F64Max,
+    F64Copysign,
+    I32WrapI64,
+    I32TruncF32S,
+    I32TruncF32U,
+    I32TruncF64S,
+    I32TruncF64U,
+    I64ExtendI32S,
+    I64ExtendI32U,
+    I64TruncF32S,
+    I64TruncF32U,
+    I64TruncF64S,
+    I64TruncF64U,
+    F32ConvertI32S,
+    F32ConvertI32U,
+    F32ConvertI64S,
+    F32ConvertI64U,
+    F32DemoteF64,
+    F64ConvertI32S,
+    F64ConvertI32U,
+    F64ConvertI64S,
+    F64ConvertI64U,
+    F64PromoteF32,
+    I32ReinterpretF32,
+    I64ReinterpretF64,
+    F32ReinterpretI32,
+    F64ReinterpretI64,
     // Sign-extending loads
-    I32Extend8S, I32Extend16S, I64Extend8S, I64Extend16S, I64Extend32S,
+    I32Extend8S,
+    I32Extend16S,
+    I64Extend8S,
+    I64Extend16S,
+    I64Extend32S,
     // Reference types
-    RefNull, RefIsNull, RefFunc,
+    RefNull,
+    RefIsNull,
+    RefFunc,
     Unknown(u8),
 }
 
@@ -425,14 +580,22 @@ pub fn as_str(m: &Mnemonic) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn unreachable() { assert_eq!(decode(0x00), Mnemonic::Unreachable); }
-    #[test] fn nop() { assert_eq!(decode(0x01), Mnemonic::Nop); }
-    #[test] fn block_loop_if() {
+    #[test]
+    fn unreachable() {
+        assert_eq!(decode(0x00), Mnemonic::Unreachable);
+    }
+    #[test]
+    fn nop() {
+        assert_eq!(decode(0x01), Mnemonic::Nop);
+    }
+    #[test]
+    fn block_loop_if() {
         assert_eq!(decode(0x02), Mnemonic::Block);
         assert_eq!(decode(0x03), Mnemonic::Loop);
         assert_eq!(decode(0x04), Mnemonic::If);
     }
-    #[test] fn control_flow() {
+    #[test]
+    fn control_flow() {
         assert_eq!(decode(0x0c), Mnemonic::Br);
         assert_eq!(decode(0x0d), Mnemonic::BrIf);
         assert_eq!(decode(0x0e), Mnemonic::BrTable);
@@ -440,40 +603,50 @@ mod tests {
         assert_eq!(decode(0x10), Mnemonic::Call);
         assert_eq!(decode(0x11), Mnemonic::CallIndirect);
     }
-    #[test] fn locals() {
+    #[test]
+    fn locals() {
         assert_eq!(decode(0x20), Mnemonic::LocalGet);
         assert_eq!(decode(0x21), Mnemonic::LocalSet);
         assert_eq!(decode(0x22), Mnemonic::LocalTee);
         assert_eq!(decode(0x23), Mnemonic::GlobalGet);
         assert_eq!(decode(0x24), Mnemonic::GlobalSet);
     }
-    #[test] fn memory_load() {
+    #[test]
+    fn memory_load() {
         assert_eq!(decode(0x28), Mnemonic::I32Load);
         assert_eq!(decode(0x35), Mnemonic::I64Load32U);
         assert_eq!(decode(0x3f), Mnemonic::MemorySize);
     }
-    #[test] fn memory_store() {
+    #[test]
+    fn memory_store() {
         assert_eq!(decode(0x36), Mnemonic::I32Store);
         assert_eq!(decode(0x3e), Mnemonic::I64Store32);
     }
-    #[test] fn numeric() {
+    #[test]
+    fn numeric() {
         assert_eq!(decode(0x6a), Mnemonic::I32Add);
         assert_eq!(decode(0x7c), Mnemonic::I64Add);
         assert_eq!(decode(0x92), Mnemonic::F32Add);
         assert_eq!(decode(0xa0), Mnemonic::F64Add);
     }
-    #[test] fn conversions() {
+    #[test]
+    fn conversions() {
         assert_eq!(decode(0xa7), Mnemonic::I32WrapI64);
         assert_eq!(decode(0xac), Mnemonic::I64ExtendI32S);
         assert_eq!(decode(0xbb), Mnemonic::F64PromoteF32);
     }
-    #[test] fn unknown() { assert_eq!(decode(0xee), Mnemonic::Unknown(0xee)); }
-    #[test] fn strings() {
+    #[test]
+    fn unknown() {
+        assert_eq!(decode(0xee), Mnemonic::Unknown(0xee));
+    }
+    #[test]
+    fn strings() {
         assert_eq!(as_str(&Mnemonic::I32Add), "i32.add");
         assert_eq!(as_str(&Mnemonic::F64PromoteF32), "f64.promote_f32");
         assert_eq!(as_str(&Mnemonic::Unknown(0xee)), "unknown");
     }
-    #[test] fn round_trip_first_ten() {
+    #[test]
+    fn round_trip_first_ten() {
         for b in 0x00..=0x09 {
             let m = decode(b);
             let s = as_str(&m);

@@ -206,8 +206,8 @@ mod tests {
         let r = a.mul(&b).unwrap();
         assert_eq!(r.rows, 2);
         assert_eq!(r.cols, 2);
-        assert!(approx_eq(r.get(0, 0), 58.0));  // 1*7+2*9+3*11
-        assert!(approx_eq(r.get(0, 1), 64.0));  // 1*8+2*10+3*12
+        assert!(approx_eq(r.get(0, 0), 58.0)); // 1*7+2*9+3*11
+        assert!(approx_eq(r.get(0, 1), 64.0)); // 1*8+2*10+3*12
         assert!(approx_eq(r.get(1, 0), 139.0)); // 4*7+5*9+6*11
         assert!(approx_eq(r.get(1, 1), 154.0));
     }
@@ -223,11 +223,7 @@ mod tests {
 
     #[test]
     fn det_3x3() {
-        let a = Matrix::from_vec(
-            3,
-            3,
-            vec![6.0, 1.0, 1.0, 4.0, -2.0, 5.0, 2.0, 8.0, 7.0],
-        );
+        let a = Matrix::from_vec(3, 3, vec![6.0, 1.0, 1.0, 4.0, -2.0, 5.0, 2.0, 8.0, 7.0]);
         // det = 6*(-2*7 - 5*8) - 1*(4*7 - 5*2) + 1*(4*8 - (-2)*2)
         //     = 6*(-54) - 1*18 + 1*36 = -324 - 18 + 36 = -306
         assert!(approx_eq(a.det().unwrap(), -306.0));

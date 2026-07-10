@@ -58,9 +58,7 @@ pub fn parse_address(s: &str) -> Result<Address, String> {
         return Err("empty address".to_string());
     }
     let inner = if let Some(stripped) = s.strip_prefix('<') {
-        let end = stripped
-            .find('>')
-            .ok_or_else(|| "missing closing '>'".to_string())?;
+        let end = stripped.find('>').ok_or_else(|| "missing closing '>'".to_string())?;
         &stripped[..end]
     } else if s.ends_with('>') {
         return Err("address has '>' but no '<'".to_string());
@@ -70,11 +68,7 @@ pub fn parse_address(s: &str) -> Result<Address, String> {
 
     if inner.is_empty() {
         // Empty sender.
-        return Ok(Address {
-            local: String::new(),
-            domain: String::new(),
-            source_route: None,
-        });
+        return Ok(Address { local: String::new(), domain: String::new(), source_route: None });
     }
 
     // Source route: `@a,@b:user@dom`
@@ -89,9 +83,7 @@ pub fn parse_address(s: &str) -> Result<Address, String> {
         (None, inner)
     };
 
-    let at = addr_part
-        .rfind('@')
-        .ok_or_else(|| "address has no '@'".to_string())?;
+    let at = addr_part.rfind('@').ok_or_else(|| "address has no '@'".to_string())?;
     let local = addr_part[..at].to_string();
     let domain = addr_part[at + 1..].to_ascii_lowercase();
     if local.is_empty() {
@@ -100,11 +92,7 @@ pub fn parse_address(s: &str) -> Result<Address, String> {
     if domain.is_empty() {
         return Err("empty domain".to_string());
     }
-    Ok(Address {
-        local,
-        domain,
-        source_route,
-    })
+    Ok(Address { local, domain, source_route })
 }
 
 /// Parse an EHLO/HELO response.
@@ -129,10 +117,7 @@ pub fn parse_ehlo_response(s: &str) -> Result<Vec<(String, String)>, String> {
             return Err(format!("non-numeric reply code: {:?}", code));
         }
         let body = rest.trim_start();
-        let body = body
-            .strip_prefix('-')
-            .unwrap_or(body)
-            .trim_start();
+        let body = body.strip_prefix('-').unwrap_or(body).trim_start();
         if body.is_empty() {
             continue;
         }
@@ -167,8 +152,7 @@ mod tests {
 
     #[test]
     fn source_routed_address() {
-        let a = parse_address("<@relay1,@relay2:carol@dest.example>")
-            .expect("parse");
+        let a = parse_address("<@relay1,@relay2:carol@dest.example>").expect("parse");
         assert_eq!(a.local, "carol");
         assert_eq!(a.domain, "dest.example");
         assert_eq!(a.source_route.as_deref(), Some("@relay1,@relay2"));
@@ -189,7 +173,8 @@ mod tests {
 
     #[test]
     fn ehlo_response_parsed() {
-        let input = "250-server.example Hello\r\n250-SIZE 10240000\r\n250-8BITMIME\r\n250 SMTPUTF8\r\n";
+        let input =
+            "250-server.example Hello\r\n250-SIZE 10240000\r\n250-8BITMIME\r\n250 SMTPUTF8\r\n";
         let v = parse_ehlo_response(input).expect("parse");
         assert_eq!(v.len(), 4);
         assert_eq!(v[0], ("server.example".to_string(), "Hello".to_string()));

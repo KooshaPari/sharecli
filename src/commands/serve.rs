@@ -1,16 +1,14 @@
 //! `sharecli serve` -- lock-guarded HTTP + WebSocket dashboard server.
 //!
 //! GET  /healthz  -- liveness probe (JSON)
+//! GET  /readyz   -- readiness probe (JSON; 503 if shutdown requested)
 //! WS   /ws       -- streams periodic ProcessSummary snapshots as JSON,
 //!                   plus thermal pressure events when pressure changes.
 
-use crate::config::Config;
-use crate::config_watcher::ConfigWatcher;
-use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
-use crate::notifier::Notifier;
-use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
+use std::sync::Arc;
+
 use anyhow::Result;
-use axum::http::header;
+use axum::http::{header, StatusCode};
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -21,13 +19,16 @@ use axum::{
     Router,
 };
 use serde_json::json;
-use std::sync::Arc;
-use tokio::sync::{broadcast, watch, RwLock};
-use tracing::{info, warn};
-
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use tokio::sync::{broadcast, watch, RwLock};
+use tracing::{info, instrument, warn};
 
+use crate::config::Config;
+use crate::config_watcher::ConfigWatcher;
+use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
+use crate::notifier::Notifier;
 use crate::runtime::ProcessPool;
+use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 
 // ---------------------------------------------------------------------------
 // Pressure parsing (pure; tested without I/O)
@@ -78,6 +79,7 @@ struct AppState {
 // ---------------------------------------------------------------------------
 
 /// Entry point for `sharecli serve`.
+#[instrument(skip(on_conflict), fields(bind = %bind))]
 pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     let state = probe("sharecli")?;
 
@@ -87,6 +89,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
                 ServeState::Running { info, .. } => info.url.clone(),
                 ServeState::Free => unreachable!(),
             };
+            info!(%url, "sharecli serve: attaching to existing instance");
             println!("sharecli serve already running at {url}");
             return Ok(());
         }
@@ -105,6 +108,8 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         crate::serve_lock::ServeLock::try_acquire("sharecli", url.clone())?.ok_or_else(|| {
             anyhow::anyhow!("could not acquire serve lock -- another instance is running")
         })?;
+
+    info!(%url, %bind, "sharecli serve: starting HTTP listener");
 
     // Log current thermal level on startup.
     let gov = ThermalGovernor::new();
@@ -170,6 +175,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     let app = Router::new()
         .route("/", get(dashboard))
         .route("/healthz", get(healthz))
+        .route("/readyz", get(readyz))
         .route("/config", get(config_handler))
         .route("/health/processes", get(health_processes_handler))
         .route("/metrics/prometheus", get(metrics_prometheus_handler))
@@ -183,15 +189,18 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
             result?;
         }
         _ = tokio::signal::ctrl_c() => {
+            info!("sharecli serve: shutdown requested (Ctrl-C)");
             println!("sharecli serve shutting down (Ctrl-C)");
         }
         _ = wait_for_shutdown(shutdown_rx) => {
+            info!("sharecli serve: shutdown requested (thermal critical)");
             println!("sharecli serve shutting down (thermal critical)");
         }
     }
 
     // Explicit drop for clarity; drop order would handle it anyway.
     drop(lock);
+    info!("sharecli serve: stopped");
     Ok(())
 }
 
@@ -267,18 +276,42 @@ async fn thermal_poll_task(
 
 const DASHBOARD_HTML: &str = include_str!("../dashboard.html");
 
+#[instrument]
 async fn dashboard() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], DASHBOARD_HTML)
 }
 
+/// Pure liveness JSON body (unit-tested without spinning the HTTP server).
+pub fn healthz_json() -> serde_json::Value {
+    json!({"status": "ok"})
+}
+
+/// Pure readiness decision: `(status, body)` from the shutdown flag.
+pub fn readyz_response(shutdown_requested: bool) -> (StatusCode, serde_json::Value) {
+    if shutdown_requested {
+        (StatusCode::SERVICE_UNAVAILABLE, json!({"status": "unavailable"}))
+    } else {
+        (StatusCode::OK, json!({"status": "ok"}))
+    }
+}
+
+#[instrument]
 async fn healthz() -> impl IntoResponse {
-    Json(json!({"status": "ok"}))
+    Json(healthz_json())
+}
+
+/// `GET /readyz` — readiness probe; 200 while serving, 503 once shutdown is requested.
+#[instrument(skip(state))]
+async fn readyz(State(state): State<AppState>) -> impl IntoResponse {
+    let (status, body) = readyz_response(*state.shutdown_tx.borrow());
+    (status, Json(body))
 }
 
 /// `GET /config` — returns the current live config as JSON.
 ///
 /// The value here reflects the last successful hot-reload; it updates
 /// in-place whenever the config file is saved with valid TOML.
+#[instrument(skip(state))]
 async fn config_handler(State(state): State<AppState>) -> impl IntoResponse {
     let cfg = state.config.read().await.clone();
     Json(serde_json::to_value(cfg).unwrap_or_else(|_| json!({"error": "serialization failed"})))
@@ -339,6 +372,7 @@ async fn handle_ws(mut socket: WebSocket, state: AppState) {
 }
 
 /// `GET /health/processes` — returns health status of all monitored processes.
+#[instrument(skip(state))]
 async fn health_processes_handler(State(state): State<AppState>) -> impl IntoResponse {
     use std::collections::HashMap;
 
@@ -365,6 +399,7 @@ async fn health_processes_handler(State(state): State<AppState>) -> impl IntoRes
 // ---------------------------------------------------------------------------
 
 /// `GET /metrics/prometheus` — Prometheus text-format metrics for all tracked processes.
+#[instrument(skip(state))]
 async fn metrics_prometheus_handler(State(state): State<AppState>) -> impl IntoResponse {
     let pool = ProcessPool::new();
     let processes = pool.list().await;
@@ -468,9 +503,10 @@ async fn build_snapshot() -> serde_json::Value {
 
 #[cfg(test)]
 mod tests {
+    use sharecli_fleet::thermal::ThermalLevel;
+
     use super::*;
     use crate::serve_lock::{decide, Decision, OnConflict, ServeInfo, ServeState};
-    use sharecli_fleet::thermal::ThermalLevel;
 
     // --- serve_lock decision tests ---
 
@@ -573,6 +609,28 @@ mod tests {
         let s = serde_json::to_string(&evt).unwrap();
         assert!(s.contains("\"event\":\"thermal_critical\""));
         assert!(s.contains("\"pressure\":4"));
+    }
+
+    // --- healthz / readyz JSON contract (no full server spin) ---
+
+    #[test]
+    fn healthz_json_is_ok() {
+        let v = healthz_json();
+        assert_eq!(v["status"], "ok");
+    }
+
+    #[test]
+    fn readyz_ok_while_serving() {
+        let (status, body) = readyz_response(false);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "ok");
+    }
+
+    #[test]
+    fn readyz_unavailable_after_shutdown() {
+        let (status, body) = readyz_response(true);
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body["status"], "unavailable");
     }
 
     // --- render_prometheus_metrics unit tests ---

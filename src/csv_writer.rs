@@ -2,12 +2,17 @@
 pub fn write_row(fields: &[&str]) -> String {
     let mut out = String::new();
     for (i, field) in fields.iter().enumerate() {
-        if i > 0 { out.push(','); }
+        if i > 0 {
+            out.push(',');
+        }
         if needs_quoting(field) {
             out.push('"');
             for c in field.chars() {
-                if c == '"' { out.push_str("\"\""); }
-                else { out.push(c); }
+                if c == '"' {
+                    out.push_str("\"\"");
+                } else {
+                    out.push(c);
+                }
             }
             out.push('"');
         } else {
@@ -19,7 +24,9 @@ pub fn write_row(fields: &[&str]) -> String {
 }
 pub fn write_rows<'a, I: IntoIterator<Item = &'a [&'a str]>>(rows: I) -> String {
     let mut out = String::new();
-    for row in rows { out.push_str(&write_row(row)); }
+    for row in rows {
+        out.push_str(&write_row(row));
+    }
     out
 }
 fn needs_quoting(s: &str) -> bool {
@@ -29,8 +36,11 @@ pub fn escape_field(s: &str) -> String {
     let mut out = String::new();
     out.push('"');
     for c in s.chars() {
-        if c == '"' { out.push_str("\"\""); }
-        else { out.push(c); }
+        if c == '"' {
+            out.push_str("\"\"");
+        } else {
+            out.push(c);
+        }
     }
     out.push('"');
     out
@@ -64,11 +74,7 @@ mod tests {
     }
     #[test]
     fn multi_row() {
-        let rows: Vec<&[&str]> = vec![
-            &["name", "age"],
-            &["alice", "30"],
-            &["bob", "25"],
-        ];
+        let rows: Vec<&[&str]> = vec![&["name", "age"], &["alice", "30"], &["bob", "25"]];
         let s = write_rows(rows);
         assert_eq!(s, "name,age\nalice,30\nbob,25\n");
     }

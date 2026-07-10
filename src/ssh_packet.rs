@@ -55,36 +55,23 @@ const MAX_PACKET_LENGTH: u32 = 256 * 1024;
 ///   - input shorter than 4 + packet_length bytes
 pub fn parse(input: &[u8]) -> Result<Packet, String> {
     if input.len() < 4 {
-        return Err(format!(
-            "input too short for packet_length: {} < 4",
-            input.len()
-        ));
+        return Err(format!("input too short for packet_length: {} < 4", input.len()));
     }
 
     // packet_length is big-endian uint32.
     let packet_length = u32::from_be_bytes([input[0], input[1], input[2], input[3]]);
 
     if packet_length < MIN_PACKET_LENGTH {
-        return Err(format!(
-            "packet_length too small: {} < {}",
-            packet_length, MIN_PACKET_LENGTH
-        ));
+        return Err(format!("packet_length too small: {} < {}", packet_length, MIN_PACKET_LENGTH));
     }
     if packet_length > MAX_PACKET_LENGTH {
-        return Err(format!(
-            "packet_length too large: {} > {}",
-            packet_length, MAX_PACKET_LENGTH
-        ));
+        return Err(format!("packet_length too large: {} > {}", packet_length, MAX_PACKET_LENGTH));
     }
 
     // Need the entire packet present in the input.
     let total = (4u64 + packet_length as u64) as usize;
     if input.len() < total {
-        return Err(format!(
-            "truncated packet: have {} bytes, need {}",
-            input.len(),
-            total
-        ));
+        return Err(format!("truncated packet: have {} bytes, need {}", input.len(), total));
     }
 
     let padding_length = input[4];
@@ -98,18 +85,12 @@ pub fn parse(input: &[u8]) -> Result<Packet, String> {
         ));
     }
     if padding_length < 4 {
-        return Err(format!(
-            "padding_length {} < 4 (RFC 4253 minimum)",
-            padding_length
-        ));
+        return Err(format!("padding_length {} < 4 (RFC 4253 minimum)", padding_length));
     }
 
     let payload_len = (packet_length - padding_length as u32 - 1) as usize;
     let payload = input[5..5 + payload_len].to_vec();
-    Ok(Packet {
-        payload,
-        padding_len: padding_length,
-    })
+    Ok(Packet { payload, padding_len: padding_length })
 }
 
 /// Build a packet with random padding that aligns the total length
@@ -149,18 +130,13 @@ pub fn build(payload: &[u8], block_size: u8) -> Result<Vec<u8>, String> {
     let padding = if p0 < 4 { p0 + bs } else { p0 };
     let packet_length = (body_fixed + padding) as u32;
     if packet_length > MAX_PACKET_LENGTH {
-        return Err(format!(
-            "packet_length {} > {}",
-            packet_length, MAX_PACKET_LENGTH
-        ));
+        return Err(format!("packet_length {} > {}", packet_length, MAX_PACKET_LENGTH));
     }
 
     // Deterministic LCG for padding bytes.
     let mut state: u32 = 0x9E3779B9;
     let mut next_byte = || -> u8 {
-        state = state
-            .wrapping_mul(1664525)
-            .wrapping_add(1013904223);
+        state = state.wrapping_mul(1664525).wrapping_add(1013904223);
         (state >> 16) as u8
     };
 

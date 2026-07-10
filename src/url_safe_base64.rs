@@ -8,15 +8,15 @@
 //! ## Examples
 //!
 //! ```
-//! use sharecli::url_safe_base64::{encode, decode, decode_unchecked};
+//! use sharecli::url_safe_base64::{encode, encode_unpadded, decode, decode_unchecked};
 //!
-//! assert_eq!(encode(b"hello world"), "aGVsbG8gd29ybGQ");
+//! assert_eq!(encode(b"hello world"), "aGVsbG8gd29ybGQ=");
+//! assert_eq!(encode_unpadded(b"hello world"), "aGVsbG8gd29ybGQ");
 //! assert_eq!(decode("aGVsbG8gd29ybGQ").unwrap(), b"hello world");
 //! assert_eq!(decode_unchecked("aGVsbG8gd29ybGQ").unwrap(), b"hello world");
 //! ```
 
-const ALPHABET: &[u8; 64] =
-    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 /// Reverse alphabet for fast lookup. Value 64 is the "padding / invalid" sentinel.
 const DECODE_TABLE: [u8; 256] = build_decode_table();

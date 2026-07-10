@@ -43,7 +43,7 @@ pub const ERR_NOT_V7: &str = "uuid is not a version 7 UUID";
 /// # Examples
 ///
 /// ```
-/// use crate::uuid_v7::{generate, is_v7};
+/// use sharecli::uuid_v7::{generate, is_v7};
 ///
 /// let mut byte = 0u8;
 /// let mut src = || -> u8 { byte = byte.wrapping_add(0xA5); byte };
@@ -94,7 +94,7 @@ pub fn generate(timestamp_ms: u64, rand: &mut impl FnMut() -> u8) -> [u8; 16] {
 /// # Examples
 ///
 /// ```
-/// use crate::uuid_v7::{generate, parse};
+/// use sharecli::uuid_v7::{generate, parse};
 ///
 /// let mut state = 0u8;
 /// let mut src = || -> u8 { state = state.wrapping_add(7); state };
@@ -131,7 +131,7 @@ pub fn parse(uuid: &[u8; 16]) -> Result<(u64, [u8; 10]), String> {
 /// # Examples
 ///
 /// ```
-/// use crate::uuid_v7::{generate, timestamp_ms};
+/// use sharecli::uuid_v7::{generate, timestamp_ms};
 ///
 /// let mut s = 0u8;
 /// let mut src = || -> u8 { s = s.wrapping_add(1); s };
@@ -152,7 +152,7 @@ pub fn timestamp_ms(uuid: &[u8; 16]) -> u64 {
 /// # Examples
 ///
 /// ```
-/// use crate::uuid_v7::{generate, is_v7};
+/// use sharecli::uuid_v7::{generate, is_v7};
 ///
 /// let mut s = 0u8;
 /// let mut src = || -> u8 { s = s.wrapping_add(1); s };
@@ -189,9 +189,7 @@ mod tests {
         }
         fn next_byte(&mut self) -> u8 {
             // Numerical Recipes LCG constants; deterministic and well-distributed.
-            self.state = self.state
-                .wrapping_mul(1_664_525)
-                .wrapping_add(1_013_904_223);
+            self.state = self.state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
             (self.state >> 16) as u8
         }
     }

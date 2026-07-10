@@ -19,7 +19,7 @@
 //! # Examples
 //!
 //! ```
-//! use crate::levenshtein::{distance, distance_with_cap, suggest_within};
+//! use sharecli::levenshtein::{distance, distance_with_cap, suggest_within};
 //!
 //! assert_eq!(distance("kitten", "sitting"), 3);
 //! assert_eq!(distance("ab", "ba"), 2); // pure transpose, classic Levenshtein
@@ -44,7 +44,7 @@
 /// # Examples
 ///
 /// ```
-/// use crate::levenshtein::distance;
+/// use sharecli::levenshtein::distance;
 ///
 /// assert_eq!(distance("", ""), 0);
 /// assert_eq!(distance("abc", ""), 3);
@@ -74,9 +74,9 @@ pub fn distance(a: &str, b: &str) -> usize {
         curr[0] = i; // cost of deleting a's first i chars to reach empty b
         for j in 1..=n {
             let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
-            curr[j] = (prev[j] + 1)          // deletion
-                .min(curr[j - 1] + 1)         // insertion
-                .min(prev[j - 1] + cost);     // substitution
+            curr[j] = (prev[j] + 1) // deletion
+                .min(curr[j - 1] + 1) // insertion
+                .min(prev[j - 1] + cost); // substitution
         }
         std::mem::swap(&mut prev, &mut curr);
     }
@@ -105,7 +105,7 @@ pub fn distance(a: &str, b: &str) -> usize {
 /// # Examples
 ///
 /// ```
-/// use crate::levenshtein::distance_with_cap;
+/// use sharecli::levenshtein::distance_with_cap;
 ///
 /// assert_eq!(distance_with_cap("abc", "abc", 0), 0); // identical, cap 0
 /// assert_eq!(distance_with_cap("abc", "abd", 1), 1); // within cap
@@ -132,11 +132,7 @@ pub fn distance_with_cap(a: &str, b: &str, cap: usize) -> usize {
     }
 
     // Ensure `a` is the shorter one so the DP band stays narrow.
-    let (a_chars, b_chars) = if alen <= blen {
-        (a_chars, b_chars)
-    } else {
-        (b_chars, a_chars)
-    };
+    let (a_chars, b_chars) = if alen <= blen { (a_chars, b_chars) } else { (b_chars, a_chars) };
     let (m, n) = (a_chars.len(), b_chars.len());
 
     // Sentinel for "this cell already exceeds cap".
@@ -145,9 +141,7 @@ pub fn distance_with_cap(a: &str, b: &str, cap: usize) -> usize {
     // Row 0: cost of inserting each prefix of b into the empty string,
     // but clamped to `inf` once it exceeds `cap` (we only care if the
     // row's minimum is <= cap).
-    let mut prev: Vec<usize> = (0..=n)
-        .map(|j| if j > cap { inf } else { j })
-        .collect();
+    let mut prev: Vec<usize> = (0..=n).map(|j| if j > cap { inf } else { j }).collect();
     let mut curr: Vec<usize> = vec![inf; n + 1];
 
     for i in 1..=m {
@@ -158,7 +152,11 @@ pub fn distance_with_cap(a: &str, b: &str, cap: usize) -> usize {
         let j_lo: usize = if i > cap { i - cap } else { 1 };
         let j_hi: usize = {
             let upper = i + cap;
-            if upper < n { upper } else { n }
+            if upper < n {
+                upper
+            } else {
+                n
+            }
         };
 
         let mut row_min = curr[0];
@@ -206,7 +204,7 @@ pub fn distance_with_cap(a: &str, b: &str, cap: usize) -> usize {
 /// # Examples
 ///
 /// ```
-/// use crate::levenshtein::suggest_within;
+/// use sharecli::levenshtein::suggest_within;
 ///
 /// let sugg = suggest_within("apple", &["apply", "aple", "banana"], 2);
 /// assert_eq!(sugg.len(), 2);

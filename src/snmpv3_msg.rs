@@ -93,8 +93,7 @@ pub fn parse(input: &[u8]) -> Result<V3Msg, String> {
 
     // ---- msgID [INTEGER] -----------------------------------------------------
     // Tag=0x02, length=0x01..0x04, then value bytes (we accept 1..4 bytes)
-    let (msg_id_len, _msg_id_value_len, _msg_id_bytes) =
-        read_int_tlv(input, &mut i, "msgID")?;
+    let (msg_id_len, _msg_id_value_len, _msg_id_bytes) = read_int_tlv(input, &mut i, "msgID")?;
 
     // ---- msgMaxSize [INTEGER] (optional but ubiquitous) ----------------------
     // Tag=0x02, length=0x01..0x04, then value bytes.
@@ -119,10 +118,7 @@ pub fn parse(input: &[u8]) -> Result<V3Msg, String> {
         return Err("truncated msgSecurityModel".into());
     }
     if input[i] != 0x02 {
-        return Err(format!(
-            "msgSecurityModel tag mismatch: expected 0x02 got 0x{:02X}",
-            input[i]
-        ));
+        return Err(format!("msgSecurityModel tag mismatch: expected 0x02 got 0x{:02X}", input[i]));
     }
     if input[i + 1] != 0x01 {
         return Err(format!(
@@ -198,7 +194,11 @@ pub fn parse(input: &[u8]) -> Result<V3Msg, String> {
 }
 
 /// Read an INTEGER TLV at `i`, advance `i`, return (header_len, value_len, value_bytes).
-fn read_int_tlv(input: &[u8], i: &mut usize, name: &str) -> Result<(usize, usize, Vec<u8>), String> {
+fn read_int_tlv(
+    input: &[u8],
+    i: &mut usize,
+    name: &str,
+) -> Result<(usize, usize, Vec<u8>), String> {
     if *i + 2 > input.len() {
         return Err(format!("truncated {} header", name));
     }
@@ -218,7 +218,11 @@ fn read_int_tlv(input: &[u8], i: &mut usize, name: &str) -> Result<(usize, usize
 }
 
 /// Read an OCTET STRING TLV at `i`, advance `i`, return (header_len, value_len).
-fn read_octet_string_tlv(input: &[u8], i: &mut usize, name: &str) -> Result<(usize, usize), String> {
+fn read_octet_string_tlv(
+    input: &[u8],
+    i: &mut usize,
+    name: &str,
+) -> Result<(usize, usize), String> {
     if *i + 2 > input.len() {
         return Err(format!("truncated {} header", name));
     }
@@ -359,8 +363,7 @@ mod tests {
     #[test]
     fn flags_zero_is_noauth_no_report() {
         // All-zero flags: no reportable, no auth, no priv, security_level=1.
-        let m = parse(&build_msg(0x00, 0x03, &[], &[0xA0, 0x02, 0x05, 0x00]))
-            .expect("parse ok");
+        let m = parse(&build_msg(0x00, 0x03, &[], &[0xA0, 0x02, 0x05, 0x00])).expect("parse ok");
         assert_eq!(m.security_level, 1);
         assert!(!m.reportable);
     }
@@ -368,8 +371,10 @@ mod tests {
     #[test]
     fn wrong_version_is_error() {
         // msgVersion value != 0x03 -> error
-        let bytes = vec![0x02, 0x01, 0x02, 0x02, 0x01, 0x01, 0x02, 0x02, 0x05, 0xDC,
-                         0x04, 0x01, 0x00, 0x02, 0x01, 0x03, 0x04, 0x00, 0x30, 0x00];
+        let bytes = vec![
+            0x02, 0x01, 0x02, 0x02, 0x01, 0x01, 0x02, 0x02, 0x05, 0xDC, 0x04, 0x01, 0x00, 0x02,
+            0x01, 0x03, 0x04, 0x00, 0x30, 0x00,
+        ];
         assert!(parse(&bytes).is_err());
     }
 

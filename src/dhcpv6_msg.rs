@@ -120,10 +120,7 @@ pub fn msg_type_name(t: u8) -> Option<&'static str> {
 /// the caller to size buffers exactly).
 pub fn parse(input: &[u8]) -> Result<(Dhcp6Msg, &[u8]), String> {
     if input.len() < 4 {
-        return Err(format!(
-            "dhcpv6: header too short (need 4 bytes, got {})",
-            input.len()
-        ));
+        return Err(format!("dhcpv6: header too short (need 4 bytes, got {})", input.len()));
     }
     let msg_type = input[0];
     let transaction_id = [input[1], input[2], input[3]];
@@ -149,21 +146,11 @@ pub fn parse(input: &[u8]) -> Result<(Dhcp6Msg, &[u8]), String> {
             ));
         }
         let (value, after_option) = after_header.split_at(len);
-        options.push(Dhcp6Option {
-            code,
-            value: value.to_vec(),
-        });
+        options.push(Dhcp6Option { code, value: value.to_vec() });
         rest = after_option;
     }
 
-    Ok((
-        Dhcp6Msg {
-            msg_type,
-            transaction_id,
-            options,
-        },
-        rest,
-    ))
+    Ok((Dhcp6Msg { msg_type, transaction_id, options }, rest))
 }
 
 #[cfg(test)]
@@ -193,10 +180,8 @@ mod tests {
         // Option 1 (CLIENTID) length=4 value=0xDEADBEEF.
         // Option 6 (ORO)     length=4 value=[0x00,0x17,0x00,0x18] (DNS_SERVERS, DOMAIN_LIST).
         let bytes = [
-            0x01, 0xAB, 0xCD, 0xEF,
-            // CLIENTID
-            0x00, 0x01, 0x00, 0x04, 0xDE, 0xAD, 0xBE, 0xEF,
-            // ORO
+            0x01, 0xAB, 0xCD, 0xEF, // CLIENTID
+            0x00, 0x01, 0x00, 0x04, 0xDE, 0xAD, 0xBE, 0xEF, // ORO
             0x00, 0x06, 0x00, 0x04, 0x00, 0x17, 0x00, 0x18,
         ];
         let (msg, rest) = parse(&bytes).expect("parse");
@@ -216,15 +201,12 @@ mod tests {
         // Reply (7), xid = 0x000002, DNS_SERVERS option 23 with two addresses
         // (32 bytes total payload).
         let bytes = [
-            0x07, 0x00, 0x00, 0x02,
-            // DNS_SERVERS option header
-            0x00, 0x17, 0x00, 0x20,
-            // IPv6 2001:db8::1
-            0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-            // IPv6 2001:db8::2
-            0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
+            0x07, 0x00, 0x00, 0x02, // DNS_SERVERS option header
+            0x00, 0x17, 0x00, 0x20, // IPv6 2001:db8::1
+            0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x01, // IPv6 2001:db8::2
+            0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x02,
         ];
         let (msg, rest) = parse(&bytes).expect("parse");
         assert!(rest.is_empty());
@@ -247,10 +229,7 @@ mod tests {
     #[test]
     fn truncated_option_length_rejected() {
         // Header ok, then an option that says length=8 with only 3 bytes of value.
-        let bytes = [
-            0x01, 0x00, 0x00, 0x01,
-            0x00, 0x01, 0x00, 0x08, 0xAA, 0xBB, 0xCC,
-        ];
+        let bytes = [0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x08, 0xAA, 0xBB, 0xCC];
         let err = parse(&bytes).expect_err("must reject");
         assert!(err.contains("truncated"), "got: {}", err);
     }

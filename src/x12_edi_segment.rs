@@ -86,11 +86,7 @@ pub struct Separators {
 
 impl Separators {
     /// Default HIPAA / 5010 separators.
-    pub const HIPAA_DEFAULT: Self = Self {
-        component: ':',
-        element: '*',
-        segment: '~',
-    };
+    pub const HIPAA_DEFAULT: Self = Self { component: ':', element: '*', segment: '~' };
 }
 
 impl Default for Separators {
@@ -112,10 +108,7 @@ impl Default for Separators {
 /// ISA id at byte 0..3 is not `"ISA"`.
 pub fn separators_from_isa(isa: &str) -> Result<Separators, String> {
     if isa.len() < 106 {
-        return Err(format!(
-            "ISA header too short: {} bytes (need 106)",
-            isa.len()
-        ));
+        return Err(format!("ISA header too short: {} bytes (need 106)", isa.len()));
     }
     if !isa.starts_with("ISA") {
         return Err(format!(
@@ -126,11 +119,7 @@ pub fn separators_from_isa(isa: &str) -> Result<Separators, String> {
     let elem = isa.as_bytes()[3] as char;
     let comp = isa.as_bytes()[104] as char;
     let term = isa.as_bytes()[105] as char;
-    Ok(Separators {
-        component: comp,
-        element: elem,
-        segment: term,
-    })
+    Ok(Separators { component: comp, element: elem, segment: term })
 }
 
 /// Parse a single segment line given resolved separators.
@@ -154,9 +143,7 @@ pub fn parse_segment(
 
     // Strip trailing terminator if present (some producers emit it
     // on every segment; some omit it on the last one).
-    let trimmed = line.trim_end_matches(|c: char| {
-        c == '~' || c == '\n' || c == '\r'
-    });
+    let trimmed = line.trim_end_matches(['~', '\n', '\r']);
     if trimmed.is_empty() {
         return Err("segment line is only a terminator".to_string());
     }
@@ -170,31 +157,19 @@ pub fn parse_segment(
     if id.is_empty() {
         return Err("segment ID is empty".to_string());
     }
-    if !id
-        .chars()
-        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
-    {
-        return Err(format!(
-            "segment ID {:?} must be uppercase ASCII letters/digits",
-            id
-        ));
+    if !id.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()) {
+        return Err(format!("segment ID {:?} must be uppercase ASCII letters/digits", id));
     }
 
     let mut elements: Vec<Vec<String>> = Vec::with_capacity(tokens.len() - 1);
     for raw in &tokens[1..] {
         // ISA segment values are exactly two characters and never
         // contain the component separator, so the split still works.
-        let parts: Vec<String> = raw
-            .split(component_sep)
-            .map(|s| s.to_string())
-            .collect();
+        let parts: Vec<String> = raw.split(component_sep).map(|s| s.to_string()).collect();
         elements.push(parts);
     }
 
-    Ok(Segment {
-        id: id.to_string(),
-        elements,
-    })
+    Ok(Segment { id: id.to_string(), elements })
 }
 
 /// Discover separators from the leading ISA header and parse the
@@ -217,10 +192,7 @@ pub fn parse_interchange(input: &str) -> Result<Vec<Segment>, String> {
         return Err("interchange does not begin with ISA".to_string());
     }
     if input.len() < 106 {
-        return Err(format!(
-            "interchange shorter than one ISA header: {} bytes",
-            input.len()
-        ));
+        return Err(format!("interchange shorter than one ISA header: {} bytes", input.len()));
     }
 
     let seps = separators_from_isa(&input[..106])?;
@@ -230,17 +202,12 @@ pub fn parse_interchange(input: &str) -> Result<Vec<Segment>, String> {
     // Reserve the ISA segment itself.
     segments.push(Segment {
         id: "ISA".to_string(),
-        elements: parse_isa_elements(
-            &input[..106],
-            seps.element,
-            seps.component,
-            seps.segment,
-        )?,
+        elements: parse_isa_elements(&input[..106], seps.element, seps.component, seps.segment)?,
     });
 
     for raw_line in rest.split(seps.segment) {
         // Strip CR/LF padding around each segment.
-        let line = raw_line.trim_matches(|c: char| c == '\n' || c == '\r' || c == ' ');
+        let line = raw_line.trim_matches(['\n', '\r', ' ']);
         if line.is_empty() {
             continue;
         }
@@ -274,22 +241,14 @@ fn parse_isa_elements(
         return Err("ISA header too short".to_string());
     }
     let body_bytes = &bytes[3..106]; // include the segment terminator
-    let body = std::str::from_utf8(body_bytes)
-        .map_err(|e| format!("ISA body not UTF-8: {}", e))?;
+    let body = std::str::from_utf8(body_bytes).map_err(|e| format!("ISA body not UTF-8: {}", e))?;
 
     let mut out = Vec::new();
     for raw in body.split(element_sep) {
         // Strip a trailing segment terminator from the very last
         // token only (since the last token is `ISA16 + segment_term`).
-        let cleaned = if raw.ends_with(segment_term) {
-            &raw[..raw.len() - 1]
-        } else {
-            raw
-        };
-        let parts: Vec<String> = cleaned
-            .split(component_sep)
-            .map(|s| s.to_string())
-            .collect();
+        let cleaned = if raw.ends_with(segment_term) { &raw[..raw.len() - 1] } else { raw };
+        let parts: Vec<String> = cleaned.split(component_sep).map(|s| s.to_string()).collect();
         out.push(parts);
     }
     // Drop the leading empty token (the gap before ISA01, caused
@@ -314,22 +273,22 @@ mod tests {
         // the segment terminator. There is no trailing element
         // separator after ISA16.
         let fields = [
-            "00",                    // ISA01
-            "          ",            // ISA02 (10 spaces)
-            "00",                    // ISA03
-            "          ",            // ISA04
-            "ZZ",                    // ISA05
-            "SUBMITTERID    ",       // ISA06 (15 chars)
-            "ZZ",                    // ISA07
-            "RECEIVERID     ",       // ISA08
-            "250101",                // ISA09
-            "1200",                  // ISA10
-            "^",                     // ISA11 repetition separator
-            "00501",                 // ISA12
-            "000000001",             // ISA13
-            "0",                     // ISA14
-            "P",                     // ISA15
-            ":",                     // ISA16 = component separator
+            "00",              // ISA01
+            "          ",      // ISA02 (10 spaces)
+            "00",              // ISA03
+            "          ",      // ISA04
+            "ZZ",              // ISA05
+            "SUBMITTERID    ", // ISA06 (15 chars)
+            "ZZ",              // ISA07
+            "RECEIVERID     ", // ISA08
+            "250101",          // ISA09
+            "1200",            // ISA10
+            "^",               // ISA11 repetition separator
+            "00501",           // ISA12
+            "000000001",       // ISA13
+            "0",               // ISA14
+            "P",               // ISA15
+            ":",               // ISA16 = component separator
         ];
         assert_eq!(fields.len(), 16);
         let mut s = String::with_capacity(106);
@@ -458,10 +417,7 @@ mod tests {
         );
         let segs = parse_interchange(&body).unwrap();
         let ids: Vec<&str> = segs.iter().map(|s| s.id.as_str()).collect();
-        assert_eq!(
-            ids,
-            vec!["ISA", "GS", "ST", "BHT", "NM1", "SE", "GE", "IEA"]
-        );
+        assert_eq!(ids, vec!["ISA", "GS", "ST", "BHT", "NM1", "SE", "GE", "IEA"]);
 
         let nm1 = &segs[4];
         assert_eq!(nm1.id, "NM1");
@@ -510,22 +466,22 @@ mod tests {
     /// separator between ISA16 and the segment terminator.
     fn build_test_isa() -> String {
         let fields = [
-            "00",                    // ISA01
-            "          ",            // ISA02 (10 spaces)
-            "00",                    // ISA03
-            "          ",            // ISA04
-            "ZZ",                    // ISA05
-            "SUBMITTERID    ",       // ISA06 (15 chars)
-            "ZZ",                    // ISA07
-            "RECEIVERID     ",       // ISA08
-            "250101",                // ISA09
-            "1200",                  // ISA10
-            "^",                     // ISA11
-            "00501",                 // ISA12
-            "000000001",             // ISA13
-            "0",                     // ISA14
-            "P",                     // ISA15
-            ":",                     // ISA16 = component separator
+            "00",              // ISA01
+            "          ",      // ISA02 (10 spaces)
+            "00",              // ISA03
+            "          ",      // ISA04
+            "ZZ",              // ISA05
+            "SUBMITTERID    ", // ISA06 (15 chars)
+            "ZZ",              // ISA07
+            "RECEIVERID     ", // ISA08
+            "250101",          // ISA09
+            "1200",            // ISA10
+            "^",               // ISA11
+            "00501",           // ISA12
+            "000000001",       // ISA13
+            "0",               // ISA14
+            "P",               // ISA15
+            ":",               // ISA16 = component separator
         ];
         let mut s = String::with_capacity(106);
         s.push_str("ISA");

@@ -3,8 +3,8 @@ use anyhow::Result;
 use clap::{Args, Subcommand};
 
 use crate::{
-    apfs_uuid, base85, crc64, csv_writer, hash_util, jsonschema_subset, md_table,
-    radix_trie, skiplist, xxhash3, xxtea, xml_escape,
+    apfs_uuid, base85, crc64, csv_writer, hash_util, jsonschema_subset, md_table, radix_trie,
+    skiplist, xml_escape, xxhash3, xxtea,
 };
 
 fn line(label: &str, value: impl std::fmt::Display) {
@@ -134,9 +134,13 @@ fn run_csv(c: &CsvCmd) -> Result<()> {
     if c.rows.is_empty() {
         anyhow::bail!("csv: pass at least one --row a b c");
     }
-    for row in &c.rows {
-        let fields: Vec<&str> = row.split_whitespace().collect();
-        print!("{}", csv_writer::write_row(&fields));
+    let parsed: Vec<Vec<&str>> =
+        c.rows.iter().map(|row| row.split_whitespace().collect()).collect();
+    let refs: Vec<&[&str]> = parsed.iter().map(|r| r.as_slice()).collect();
+    print!("{}", csv_writer::write_rows(refs));
+    // Keep escape_field reachable from the binary (used by tests + CLI demos).
+    if let Some(first) = c.rows.first() {
+        let _ = csv_writer::escape_field(first);
     }
     Ok(())
 }
@@ -170,9 +174,30 @@ fn run_hash(c: &HashCmd) -> Result<()> {
             xxtea::xxtea_decrypt(&mut out, &key);
             println!("xxtea-dec: 0x{}", hex_block(&out));
         }
+        "xxtea-bytes" => {
+            let key16 = parse_key16(c.key_hex.as_deref())?;
+            let ct = xxtea::encrypt_bytes(c.input.as_bytes(), &key16);
+            let pt = xxtea::decrypt_bytes(&ct, &key16)
+                .map_err(|e| anyhow::anyhow!("xxtea decrypt: {e}"))?;
+            println!("xxtea-bytes-ct-len: {}", ct.len());
+            println!("xxtea-bytes-pt: {}", String::from_utf8_lossy(&pt));
+        }
         other => anyhow::bail!("unknown hash algo '{other}'"),
     }
     Ok(())
+}
+
+fn parse_key16(hex: Option<&str>) -> Result<[u8; 16]> {
+    let h = hex.ok_or_else(|| anyhow::anyhow!("--key-hex required for xxtea-bytes"))?;
+    if h.len() != 32 {
+        anyhow::bail!("--key-hex must be 32 hex chars (16 bytes), got {}", h.len());
+    }
+    let mut out = [0u8; 16];
+    for i in 0..16 {
+        out[i] = u8::from_str_radix(&h[i * 2..i * 2 + 2], 16)
+            .map_err(|_| anyhow::anyhow!("bad hex at byte {}", i))?;
+    }
+    Ok(out)
 }
 
 fn parse_key(hex: Option<&str>) -> Result<[u32; 4]> {
@@ -197,12 +222,7 @@ fn block_from_str(s: &str) -> [u32; 4] {
     }
     let mut block = [0u32; 4];
     for i in 0..4 {
-        block[i] = u32::from_le_bytes([
-            buf[i * 4],
-            buf[i * 4 + 1],
-            buf[i * 4 + 2],
-            buf[i * 4 + 3],
-        ]);
+        block[i] = u32::from_le_bytes([buf[i * 4], buf[i * 4 + 1], buf[i * 4 + 2], buf[i * 4 + 3]]);
     }
     block
 }
@@ -217,7 +237,15 @@ fn hex_block(b: &[u32; 4]) -> String {
 
 fn run_json(c: &JsonCmd) -> Result<()> {
     match jsonschema_subset::JsValue::from_json(&c.input) {
-        Ok(v) => println!("ok: {:?}", v),
+        Ok(v) => {
+            // Exercise validate/type_name so binary builds keep the API live.
+            let schema = jsonschema_subset::JsValue::from_json(r#"{"type":"object"}"#)
+                .unwrap_or(jsonschema_subset::JsValue::Null);
+            match v.validate(&schema) {
+                Ok(()) => println!("ok: {:?}", v),
+                Err(e) => println!("ok(value) schema_warn: {e} value={v:?}"),
+            }
+        }
         Err(e) => anyhow::bail!("invalid JSON: {e}"),
     }
     Ok(())
@@ -231,12 +259,19 @@ fn run_sha(c: &ShaCmd) -> Result<()> {
 
 fn run_uuid(c: &UuidCmd) -> Result<()> {
     let u = match &c.input {
-        Some(s) if !s.is_empty() => apfs_uuid::Uuid::from_hex(s)
-            .map_err(|e| anyhow::anyhow!("uuid parse: {e}"))?,
-        _ => apfs_uuid::Uuid::nil(),
+        Some(s) if !s.is_empty() => {
+            if s.contains('-') {
+                apfs_uuid::Uuid::from_hyphenated(s)
+                    .map_err(|e| anyhow::anyhow!("uuid parse: {e}"))?
+            } else {
+                apfs_uuid::Uuid::from_hex(s).map_err(|e| anyhow::anyhow!("uuid parse: {e}"))?
+            }
+        }
+        _ => apfs_uuid::Uuid::from_bytes(*apfs_uuid::Uuid::nil().as_bytes()),
     };
     println!("hex: {}", u.to_hex_string());
     println!("hyp: {}", u.to_hyphenated());
+    println!("nil: {}", u.is_nil());
     Ok(())
 }
 
@@ -253,16 +288,9 @@ fn run_markdown(c: &MarkdownCmd) -> Result<()> {
     if c.rows.is_empty() {
         anyhow::bail!("markdown: pass at least one row like 'name|role|'");
     }
-    let parsed: Vec<Vec<&str>> = c
-        .rows
-        .iter()
-        .map(|r| r.split('|').filter(|s| !s.is_empty()).collect())
-        .collect();
-    let headers: Vec<&str> = if !parsed.is_empty() {
-        parsed[0].clone()
-    } else {
-        Vec::new()
-    };
+    let parsed: Vec<Vec<&str>> =
+        c.rows.iter().map(|r| r.split('|').filter(|s| !s.is_empty()).collect()).collect();
+    let headers: Vec<&str> = if !parsed.is_empty() { parsed[0].clone() } else { Vec::new() };
     let body: Vec<Vec<&str>> = parsed.iter().skip(1).cloned().collect();
     println!("{}", md_table::render(&headers, &body));
     Ok(())
@@ -282,11 +310,13 @@ fn run_rng(c: &RngCmd) -> Result<()> {
         }
         "skiplist" => {
             let mut s = skiplist::SkipList::<u64, String>::new();
+            println!("skip_empty: {}", s.is_empty());
             for (i, w) in c.words.iter().enumerate() {
                 s.insert(i as u64, w.clone());
             }
             println!("skip_len: {}", s.len());
             for (i, w) in c.words.iter().enumerate() {
+                println!("contains({i}): {}", s.contains(&(i as u64)));
                 match s.get(&(i as u64)) {
                     Some(v) if v == *w => println!("get({i}): ok"),
                     Some(_) => println!("get({i}): mismatch"),
@@ -305,46 +335,32 @@ mod tests {
 
     #[test]
     fn base85_encode_decode_roundtrip() {
-        let c = Base85Cmd {
-            action: "encode".into(),
-            input: "hello".into(),
-        };
+        let c = Base85Cmd { action: "encode".into(), input: "hello".into() };
         assert!(run_base85(&c).is_ok());
     }
 
     #[test]
     fn base85_decode_action_does_not_panic() {
-        let c = Base85Cmd {
-            action: "decode".into(),
-            input: "@@@".into(),
-        };
+        let c = Base85Cmd { action: "decode".into(), input: "@@@".into() };
         let r = run_base85(&c);
         assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn csv_row_writes_quoted_field() {
-        let c = CsvCmd {
-            rows: vec!["hello world".to_string()],
-        };
+        let c = CsvCmd { rows: vec!["hello world".to_string()] };
         assert!(run_csv(&c).is_ok());
     }
 
     #[test]
     fn crc_returns_consistent_value() {
-        let c = CrcCmd {
-            input: "sharecli".into(),
-        };
+        let c = CrcCmd { input: "sharecli".into() };
         assert!(run_crc(&c).is_ok());
     }
 
     #[test]
     fn hash_xxhash3_algo() {
-        let c = HashCmd {
-            algo: "xxhash3".into(),
-            input: "abc".into(),
-            key_hex: None,
-        };
+        let c = HashCmd { algo: "xxhash3".into(), input: "abc".into(), key_hex: None };
         assert!(run_hash(&c).is_ok());
     }
 
@@ -367,23 +383,15 @@ mod tests {
 
     #[test]
     fn json_parses_well_formed() {
-        let c = JsonCmd {
-            input: r#"{"a":1,"b":[true,null]}"#.into(),
-        };
+        let c = JsonCmd { input: r#"{"a":1,"b":[true,null]}"#.into() };
         assert!(run_json(&c).is_ok());
     }
 
     #[test]
     fn xml_escape_and_unescape() {
-        let e = XmlCmd {
-            action: "escape".into(),
-            input: "<a>&\"b\"</a>".into(),
-        };
+        let e = XmlCmd { action: "escape".into(), input: "<a>&\"b\"</a>".into() };
         assert!(run_xml(&e).is_ok());
-        let u = XmlCmd {
-            action: "unescape".into(),
-            input: "&lt;a&gt;&amp;b&lt;/a&gt;".into(),
-        };
+        let u = XmlCmd { action: "unescape".into(), input: "&lt;a&gt;&amp;b&lt;/a&gt;".into() };
         assert!(run_xml(&u).is_ok());
     }
 
@@ -391,23 +399,16 @@ mod tests {
     fn uuid_nil_and_from_hex() {
         let c = UuidCmd { input: None };
         assert!(run_uuid(&c).is_ok());
-        let c = UuidCmd {
-            input: Some("00112233445566778899aabbccddeeff".into()),
-        };
+        let c = UuidCmd { input: Some("00112233445566778899aabbccddeeff".into()) };
         assert!(run_uuid(&c).is_ok());
     }
 
     #[test]
     fn rng_trie_and_skiplist() {
-        let t = RngCmd {
-            kind: "trie".into(),
-            words: vec!["foo".into(), "bar".into(), "baz".into()],
-        };
+        let t =
+            RngCmd { kind: "trie".into(), words: vec!["foo".into(), "bar".into(), "baz".into()] };
         assert!(run_rng(&t).is_ok());
-        let s = RngCmd {
-            kind: "skiplist".into(),
-            words: vec!["foo".into(), "bar".into()],
-        };
+        let s = RngCmd { kind: "skiplist".into(), words: vec!["foo".into(), "bar".into()] };
         assert!(run_rng(&s).is_ok());
     }
 }

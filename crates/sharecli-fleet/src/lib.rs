@@ -6,10 +6,9 @@
 pub mod registry;
 pub mod thermal;
 
+use async_nats::Client;
 pub use registry::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
 pub use thermal::{ThermalGovernor, ThermalLevel};
-
-use async_nats::Client;
 
 /// Default NATS coordinator URL used when none is specified.
 pub const DEFAULT_COORDINATOR: &str = "nats://localhost:4222";

@@ -25,29 +25,39 @@ pub fn crc32(data: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn empty() { assert_eq!(crc32(&[]), 0); }
-    #[test] fn known_abc() {
+    #[test]
+    fn empty() {
+        assert_eq!(crc32(&[]), 0);
+    }
+    #[test]
+    fn known_abc() {
         // CRC32 of "abc" is 0x352441c2
         assert_eq!(crc32(b"abc"), 0x352441c2);
     }
-    #[test] fn known_123456789() {
+    #[test]
+    fn known_123456789() {
         assert_eq!(crc32(b"123456789"), 0xcbf43926);
     }
-    #[test] fn zero_bytes() {
+    #[test]
+    fn zero_bytes() {
         assert_eq!(crc32(&[0u8; 4]), 0x2144df1c);
     }
-    #[test] fn deterministic() {
+    #[test]
+    fn deterministic() {
         let a = crc32(b"hello world");
         let b = crc32(b"hello world");
         assert_eq!(a, b);
     }
-    #[test] fn different() {
+    #[test]
+    fn different() {
         assert_ne!(crc32(b"hello"), crc32(b"world"));
     }
-    #[test] fn one_byte() {
+    #[test]
+    fn one_byte() {
         assert_eq!(crc32(&[0x61]), 0xe8b7be43);
     }
-    #[test] fn long_buffer() {
+    #[test]
+    fn long_buffer() {
         let data: Vec<u8> = (0..=255u8).collect();
         let h = crc32(&data);
         // Just verify it's non-zero and deterministic

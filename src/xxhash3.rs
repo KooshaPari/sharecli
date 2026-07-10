@@ -14,7 +14,12 @@ pub struct XxHash64 {
 impl XxHash64 {
     pub fn new(seed: u64) -> Self {
         Self {
-            acc: [seed.wrapping_add(P1).wrapping_add(P2), seed.wrapping_add(P2), seed.wrapping_add(0), seed.wrapping_sub(P1)],
+            acc: [
+                seed.wrapping_add(P1).wrapping_add(P2),
+                seed.wrapping_add(P2),
+                seed.wrapping_add(0),
+                seed.wrapping_sub(P1),
+            ],
             buf: [0u8; 32],
             buf_len: 0,
             total_len: 0,
@@ -37,7 +42,7 @@ impl XxHash64 {
     }
     fn consume_stripe(&mut self) {
         for n in 0..4 {
-            let v = read_u64(&self.buf[n*8..n*8+8]);
+            let v = read_u64(&self.buf[n * 8..n * 8 + 8]);
             self.acc[n] = round(self.acc[n], v);
         }
     }
@@ -51,7 +56,10 @@ impl XxHash64 {
             }
             return avalanche(h);
         }
-        let mut h = rotl(self.acc[0], 1).wrapping_add(rotl(self.acc[1], 7)).wrapping_add(rotl(self.acc[2], 12)).wrapping_add(rotl(self.acc[3], 18));
+        let mut h = rotl(self.acc[0], 1)
+            .wrapping_add(rotl(self.acc[1], 7))
+            .wrapping_add(rotl(self.acc[2], 12))
+            .wrapping_add(rotl(self.acc[3], 18));
         for n in 0..4 {
             h ^= round(0, self.acc[n]);
         }
@@ -59,12 +67,17 @@ impl XxHash64 {
         // incorporate remaining buf
         let mut off = 0;
         while off + 8 <= self.buf_len {
-            let k = read_u64(&self.buf[off..off+8]);
+            let k = read_u64(&self.buf[off..off + 8]);
             h ^= round(0, k);
             off += 8;
         }
         if off + 4 <= self.buf_len {
-            let k = u32::from_le_bytes([self.buf[off], self.buf[off+1], self.buf[off+2], self.buf[off+3]]) as u64;
+            let k = u32::from_le_bytes([
+                self.buf[off],
+                self.buf[off + 1],
+                self.buf[off + 2],
+                self.buf[off + 3],
+            ]) as u64;
             h ^= round(0, k);
             off += 4;
         }
@@ -81,7 +94,9 @@ fn round(acc: u64, input: u64) -> u64 {
     let acc = acc.rotate_left(31);
     acc.wrapping_mul(P1)
 }
-fn rotl(x: u64, r: u32) -> u64 { (x << r) | (x >> (64 - r)) }
+fn rotl(x: u64, r: u32) -> u64 {
+    (x << r) | (x >> (64 - r))
+}
 fn avalanche(mut x: u64) -> u64 {
     x ^= x >> 33;
     x = x.wrapping_mul(P2);
@@ -90,9 +105,15 @@ fn avalanche(mut x: u64) -> u64 {
     x ^= x >> 32;
     x
 }
-fn read_u64(b: &[u8]) -> u64 { u64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]) }
-fn p4() -> u64 { 0x85ebca6b2a5e3a3d }
-fn p5() -> u64 { 0xc2b2ae3d27d4eb4f }
+fn read_u64(b: &[u8]) -> u64 {
+    u64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]])
+}
+fn p4() -> u64 {
+    0x85ebca6b2a5e3a3d
+}
+fn p5() -> u64 {
+    0xc2b2ae3d27d4eb4f
+}
 
 pub fn hash(data: &[u8]) -> u64 {
     let mut h = XxHash64::new(0);
@@ -102,34 +123,44 @@ pub fn hash(data: &[u8]) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn empty() {
+    #[test]
+    fn empty() {
         let h = XxHash64::new(0).finalize();
         // not asserting exact value (this is a non-canonical xxh3 impl), just determinism
         assert_eq!(h, XxHash64::new(0).finalize());
     }
-    #[test] fn deterministic() {
+    #[test]
+    fn deterministic() {
         let a = hash(b"hello world");
         let b = hash(b"hello world");
         assert_eq!(a, b);
     }
-    #[test] fn different_inputs_differ() {
+    #[test]
+    fn different_inputs_differ() {
         let a = hash(b"hello");
         let b = hash(b"world");
         assert_ne!(a, b);
     }
-    #[test] fn seed_affects_output() {
-        let mut a = XxHash64::new(0); a.update(b"x");
-        let mut b = XxHash64::new(42); b.update(b"x");
+    #[test]
+    fn seed_affects_output() {
+        let mut a = XxHash64::new(0);
+        a.update(b"x");
+        let mut b = XxHash64::new(42);
+        b.update(b"x");
         assert_ne!(a.finalize(), b.finalize());
     }
-    #[test] fn streaming_matches_one_shot() {
+    #[test]
+    fn streaming_matches_one_shot() {
         let data = b"the quick brown fox jumps over the lazy dog";
         let one_shot = hash(data);
         let mut st = XxHash64::new(0);
-        for chunk in data.chunks(7) { st.update(chunk); }
+        for chunk in data.chunks(7) {
+            st.update(chunk);
+        }
         assert_eq!(one_shot, st.finalize());
     }
-    #[test] fn different_lengths_differ() {
+    #[test]
+    fn different_lengths_differ() {
         assert_ne!(hash(b"a"), hash(b"ab"));
         assert_ne!(hash(b"ab"), hash(b"abc"));
     }
