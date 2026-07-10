@@ -27,11 +27,11 @@
 //! ```
 //! use sharecli::dns_zone::{parse, RecordType};
 //!
-//! let zone = "$TTL 60\n@ IN A 192.0.2.1\n";
-//! let records = parse(zone).unwrap();
-//! assert_eq!(records[0].rdata, "192.0.2.1");
-//! assert_eq!(records[0].ttl, 60);
-//! assert_eq!(records[0].record_type, RecordType::A);
+//! let zone_text = "$TTL 60\n@ IN A 192.0.2.1\n";
+//! let zone = parse(zone_text).unwrap();
+//! assert_eq!(zone.records[0].rdata, "192.0.2.1");
+//! assert_eq!(zone.records[0].ttl, 60);
+//! assert_eq!(zone.records[0].record_type, RecordType::A);
 //! ```
 
 #[derive(Debug, Clone, PartialEq, Eq)]

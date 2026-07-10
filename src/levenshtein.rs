@@ -19,7 +19,7 @@
 //! # Examples
 //!
 //! ```
-//! use crate::levenshtein::{distance, distance_with_cap, suggest_within};
+//! use sharecli::levenshtein::{distance, distance_with_cap, suggest_within};
 //!
 //! assert_eq!(distance("kitten", "sitting"), 3);
 //! assert_eq!(distance("ab", "ba"), 2); // pure transpose, classic Levenshtein
@@ -44,7 +44,7 @@
 /// # Examples
 ///
 /// ```
-/// use crate::levenshtein::distance;
+/// use sharecli::levenshtein::distance;
 ///
 /// assert_eq!(distance("", ""), 0);
 /// assert_eq!(distance("abc", ""), 3);
@@ -105,7 +105,7 @@ pub fn distance(a: &str, b: &str) -> usize {
 /// # Examples
 ///
 /// ```
-/// use crate::levenshtein::distance_with_cap;
+/// use sharecli::levenshtein::distance_with_cap;
 ///
 /// assert_eq!(distance_with_cap("abc", "abc", 0), 0); // identical, cap 0
 /// assert_eq!(distance_with_cap("abc", "abd", 1), 1); // within cap
@@ -204,7 +204,7 @@ pub fn distance_with_cap(a: &str, b: &str, cap: usize) -> usize {
 /// # Examples
 ///
 /// ```
-/// use crate::levenshtein::suggest_within;
+/// use sharecli::levenshtein::suggest_within;
 ///
 /// let sugg = suggest_within("apple", &["apply", "aple", "banana"], 2);
 /// assert_eq!(sugg.len(), 2);
