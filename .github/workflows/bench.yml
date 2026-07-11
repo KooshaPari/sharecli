@@ -3,6 +3,7 @@ name: Bench
 # C08 perf surface:
 #   - criterion (soft): advisory; continue-on-error
 #   - bench-gate (hard-ish): fails on >50% mean regression vs committed baseline
+# Bench flake quarantine: docs/testing/flake-policy.md § Bench / Criterion flakes
 
 on:
   push:

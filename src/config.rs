@@ -57,6 +57,9 @@ pub struct Config {
 
     /// Notification channels (desktop + webhooks).
     pub notifications: crate::notifier::NotifierConfig,
+
+    /// HTTP serve AuthN / bind policy.
+    pub serve: ServeConfig,
 }
 
 impl Default for Config {
@@ -75,8 +78,18 @@ impl Default for Config {
             cast: CastConfig::default(),
             health_checks: HashMap::new(),
             notifications: crate::notifier::NotifierConfig::default(),
+            serve: ServeConfig::default(),
         }
     }
+}
+
+/// `sharecli serve` AuthN settings.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ServeConfig {
+    /// Optional Bearer token. Prefer env `SHARECLI_SERVE_TOKEN` in production.
+    /// When empty/absent, serve stays open (loopback trust model).
+    pub bearer_token: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

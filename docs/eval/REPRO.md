@@ -20,6 +20,7 @@ Harbor / SWE-bench are **out of scope** — see
 |------|------|------------|
 | Micro (Criterion) | `benches/*.rs` | `cargo bench --locked --bench pool_list` (etc.) |
 | Macro / load | `scripts/load/healthz_burst.sh` | Start `sharecli serve`, then run script |
+| Hyperfine | `scripts/bench/hyperfine-healthz.sh` | Live `/healthz` latency JSON export |
 | Soft CI | `.github/workflows/bench.yml` (`criterion`) | Advisory; `continue-on-error: true` |
 | Gate CI | `.github/workflows/bench.yml` (`bench-gate`) | Hard-ish; fails if mean > 1.5× committed baseline |
 | SLO link | `docs/ops/SLO.md` § Bench-linked targets | Append-only measurement rows |
@@ -33,11 +34,13 @@ cargo bench --locked --bench pool_list
 cargo bench --locked --bench prometheus_render
 ```
 
-Optional wall-clock CLI latency (second toolbelt entry alongside Criterion):
+Optional wall-clock CLI / HTTP latency (second toolbelt entry alongside Criterion):
 
 ```bash
 # requires hyperfine: https://github.com/sharkdp/hyperfine
 hyperfine --warmup 3 'cargo run --locked --quiet -- --help'
+# live serve probe:
+./scripts/bench/hyperfine-healthz.sh
 ```
 
 ## Reproduce load burst
