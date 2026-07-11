@@ -8,7 +8,9 @@ surface gains proof (release asset, deploy URL, or CI log).
 | crates.io (`cargo install sharecli`) | **shipped** | Publish via `.github/workflows/release.yml` `publish` job | Package version tracks `Cargo.toml` (`0.3.0`) |
 | cargo-binstall | **configured** | `[package.metadata.dist]` in `Cargo.toml` | Targets: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu` |
 | GitHub Releases (prebuilt binaries) | **partial** | Tag `v*` → release workflow artifact matrix | Releases `v0.1.0`–`v0.3.0` exist; **no assets attached yet** — matrix in `release.yml` builds linux+mac tarballs for future tags |
-| Homebrew (`Formula/sharecli.rb`) | **stub** | Formula version `0.3.0` matches Cargo.toml | `sha256` is `PLACEHOLDER` until a darwin tarball is published (see formula header) |
+| Homebrew (`Formula/sharecli.rb`) | **partial** | Bottle URL still PLACEHOLDER; `brew install --HEAD` builds from git | `head do` + `depends_on "rust"`; replace sha when darwin tarball ships |
+| OpenAPI (`docs/openapi/serve.yaml`) | **stub** | Committed paths for `/healthz` `/readyz` `/metrics/prometheus` `/config` | Mirrors `sharecli serve` HTTP surface |
+| SBOM (CycloneDX) | **CI** | `.github/workflows/sbom.yml` on `main` + `workflow_dispatch` | Uploads `sharecli-sbom` artifact (`sharecli.cdx.json`) |
 | OCI container (`Containerfile`) | **ready** | Multi-stage build, non-root `USER sharecli`, `HEALTHCHECK` → `/healthz` | `podman build -f Containerfile -t sharecli .` then `podman run --rm -p 9000:9000 sharecli` |
 | Self-hosted / reverse proxy | **documented** | Bind `sharecli serve --bind 0.0.0.0:9000` behind nginx/Caddy | Probe `GET /healthz` and `GET /readyz` (see `docs/ops/SLO.md`) |
 | Cross-device fleet | **in progress** | `sharecli fleet register` / `status` over NATS | See `docs/CROSS_DEVICE_DEPLOY.md` |
@@ -26,6 +28,12 @@ curl -fsS http://127.0.0.1:9000/healthz
 
 ## Homebrew PLACEHOLDER removal
 
+Until release assets exist, build from git:
+
+```bash
+brew install --HEAD Formula/sharecli.rb
+```
+
 When the next release attaches `sharecli-aarch64-apple-darwin.tar.gz`:
 
 ```bash
@@ -33,3 +41,8 @@ gh release download vX.Y.Z -p 'sharecli-aarch64-apple-darwin.tar.gz'
 shasum -a 256 sharecli-aarch64-apple-darwin.tar.gz
 # paste into Formula/sharecli.rb sha256, bump version + url
 ```
+
+## SBOM + OpenAPI stubs
+
+- CycloneDX SBOM: `.github/workflows/sbom.yml` (push `main` / `workflow_dispatch`) uploads `sharecli-sbom`.
+- Serve HTTP contract stub: [`docs/openapi/serve.yaml`](openapi/serve.yaml).

@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: sharecli serve
+  description: |
+    Minimal OpenAPI stub for the `sharecli serve` HTTP surface.
+    Paths mirror `src/commands/serve.rs` (liveness, readiness, Prometheus, config).
+  version: 0.3.0
+servers:
+  - url: http://127.0.0.1:9000
+    description: Default local bind (`sharecli serve --bind 127.0.0.1:9000`)
+paths:
+  /healthz:
+    get:
+      operationId: healthz
+      summary: Liveness probe
+      description: Always returns 200 while the process is up.
+      responses:
+        "200":
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusOk"
+              example:
+                status: ok
+  /readyz:
+    get:
+      operationId: readyz
+      summary: Readiness probe
+      description: |
+        Returns 200 while serving; 503 once shutdown has been requested
+        (Ctrl-C or thermal critical).
+      responses:
+        "200":
+          description: Ready to accept traffic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusOk"
+              example:
+                status: ok
+        "503":
+          description: Shutdown requested; not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusUnavailable"
+              example:
+                status: unavailable
+  /metrics/prometheus:
+    get:
+      operationId: metricsPrometheus
+      summary: Prometheus text metrics
+      description: |
+        Prometheus exposition format (`text/plain; version=0.0.4`) for
+        tracked process gauges (memory, up, etc.).
+      responses:
+        "200":
+          description: Metrics payload
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP sharecli_process_memory_mb Resident memory usage in MiB per process
+                  # TYPE sharecli_process_memory_mb gauge
+  /config:
+    get:
+      operationId: getConfig
+      summary: Live configuration snapshot
+      description: |
+        Returns the current in-memory config as JSON (last successful
+        hot-reload of `~/.config/sharecli/config.toml`).
+      responses:
+        "200":
+          description: Current config object
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Serialized `Config` (projects, runtime, pool, monitoring, …)
+components:
+  schemas:
+    StatusOk:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    StatusUnavailable:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [unavailable]
