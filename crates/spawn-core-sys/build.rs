@@ -73,14 +73,8 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Re-run if any Zig source changes.
-    println!(
-        "cargo:rerun-if-changed={}/src/spawn_core.zig",
-        spawn_core_dir.display()
-    );
-    println!(
-        "cargo:rerun-if-changed={}/build.zig",
-        spawn_core_dir.display()
-    );
+    println!("cargo:rerun-if-changed={}/src/spawn_core.zig", spawn_core_dir.display());
+    println!("cargo:rerun-if-changed={}/build.zig", spawn_core_dir.display());
 
     Ok(())
 }
@@ -109,15 +103,9 @@ fn build_macos_archive(spawn_core_dir: &Path, lib_out: &Path) -> anyhow::Result<
     let archive = lib_out.join("libspawn_core.a");
 
     let mut cmd = Command::new("zig");
-    cmd.args([
-        "build-obj",
-        "src/spawn_core.zig",
-        "-OReleaseSafe",
-        "-lc",
-        "-fno-stack-check",
-    ])
-    .arg(format!("-femit-bin={}", obj.display()))
-    .current_dir(spawn_core_dir);
+    cmd.args(["build-obj", "src/spawn_core.zig", "-OReleaseSafe", "-lc", "-fno-stack-check"])
+        .arg(format!("-femit-bin={}", obj.display()))
+        .current_dir(spawn_core_dir);
 
     if let Ok(sdk) = env::var("SDKROOT") {
         if !sdk.is_empty() {
