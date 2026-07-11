@@ -53,12 +53,16 @@ mod tests {
     }
     #[test]
     fn best_lap() {
+        // Avoid absolute wall-clock bounds — macOS CI schedulers routinely
+        // stretch a 5ms sleep past 15ms, which made this flake under nextest.
         let mut s = Stopwatch::new();
-        sleep(Duration::from_millis(5));
-        s.lap();
-        sleep(Duration::from_millis(20));
-        s.lap();
-        assert!(s.best_lap().unwrap() < Duration::from_millis(15));
+        sleep(Duration::from_millis(2));
+        let short = s.lap();
+        sleep(Duration::from_millis(30));
+        let long = s.lap();
+        let best = s.best_lap().unwrap();
+        assert_eq!(best, short.min(long));
+        assert!(best <= short && best <= long);
     }
     #[test]
     fn reset() {
