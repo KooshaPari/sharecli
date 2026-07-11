@@ -24,6 +24,7 @@ env:
   RUST_BACKTRACE: short
 
 jobs:
+  # Formatting is OS-independent — keep Ubuntu-only to save macOS minutes.
   fmt:
     name: cargo fmt
     runs-on: ubuntu-latest
@@ -38,9 +39,18 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
+  # Linux + macOS matrix (Windows deferred — Zig spawn-core stub exists but
+  # PR CI stays unix-only until a dedicated Windows lane lands).
   clippy:
-    name: cargo clippy
-    runs-on: ubuntu-latest
+    name: cargo clippy (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    # macOS stays in the matrix for portability signal; do not block merge if
+    # Zig Darwin static-lib tooling regresses (Linux remains the required gate).
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Rust (stable + clippy)
@@ -51,14 +61,22 @@ jobs:
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
         with:
           version: 0.14.1
+      - name: Export macOS SDK for Zig libc
+        if: runner.os == 'macOS'
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
       - name: Run clippy (deny warnings)
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
   test:
-    name: cargo nextest
-    runs-on: ubuntu-latest
+    name: cargo nextest (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Rust (stable)
@@ -67,6 +85,9 @@ jobs:
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
         with:
           version: 0.14.1
+      - name: Export macOS SDK for Zig libc
+        if: runner.os == 'macOS'
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
       - name: Install nextest
@@ -81,8 +102,13 @@ jobs:
         run: cargo test --doc --locked --all-features
 
   build:
-    name: cargo build
-    runs-on: ubuntu-latest
+    name: cargo build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Rust (stable)
@@ -91,6 +117,9 @@ jobs:
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
         with:
           version: 0.14.1
+      - name: Export macOS SDK for Zig libc
+        if: runner.os == 'macOS'
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
       - name: Build (debug)
