@@ -37,10 +37,7 @@ fn default_seconds() -> u64 {
 /// (route is not public).
 pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
     if !pprof_enabled() {
-        return (
-            StatusCode::NOT_FOUND,
-            "profiling disabled; set SHARECLI_PPROF=1 to enable",
-        )
+        return (StatusCode::NOT_FOUND, "profiling disabled; set SHARECLI_PPROF=1 to enable")
             .into_response();
     }
 
@@ -49,14 +46,13 @@ pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
     #[cfg(unix)]
     {
         match capture_flamegraph(seconds).await {
-            Ok(svg) => (
-                StatusCode::OK,
-                [(header::CONTENT_TYPE, "image/svg+xml; charset=utf-8")],
-                svg,
-            )
-                .into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("pprof failed: {err}"))
-                .into_response(),
+            Ok(svg) => {
+                (StatusCode::OK, [(header::CONTENT_TYPE, "image/svg+xml; charset=utf-8")], svg)
+                    .into_response()
+            }
+            Err(err) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("pprof failed: {err}")).into_response()
+            }
         }
     }
 
