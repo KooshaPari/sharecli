@@ -369,11 +369,7 @@ async fn main() -> Result<()> {
 
         crate::otel::ensure_trace_context_propagator();
 
-        let level = if cli.verbose {
-            tracing::Level::DEBUG
-        } else {
-            tracing::Level::INFO
-        };
+        let level = if cli.verbose { tracing::Level::DEBUG } else { tracing::Level::INFO };
         let fmt_layer = tracing_subscriber::fmt::layer()
             .with_ansi(!is_no_color())
             .with_filter(tracing_subscriber::filter::LevelFilter::from_level(level));
