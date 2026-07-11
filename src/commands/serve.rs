@@ -6,9 +6,14 @@
 //!                   plus thermal pressure events when pressure changes.
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use anyhow::Result;
-use axum::http::{header, StatusCode};
+use axum::body::Body;
+use axum::extract::Request;
+use axum::http::{header, HeaderName, HeaderValue, StatusCode};
+use axum::middleware::{self, Next};
+use axum::response::Response;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -21,11 +26,12 @@ use axum::{
 use serde_json::json;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use tokio::sync::{broadcast, watch, RwLock};
-use tracing::{info, instrument, warn};
+use tracing::{info, instrument, warn, Instrument};
 
 use crate::config::Config;
 use crate::config_watcher::ConfigWatcher;
 use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
+use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
 use crate::notifier::Notifier;
 use crate::runtime::ProcessPool;
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
@@ -72,6 +78,8 @@ struct AppState {
     config: Arc<RwLock<Config>>,
     /// Shared health-check status for all monitored processes.
     health_store: HealthCheckStore,
+    /// In-process HTTP RED metrics (Rate / Errors / Duration).
+    http_red: Arc<HttpRedMetrics>,
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +173,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         shutdown_tx: Arc::new(shutdown_tx),
         config: config_arc,
         health_store,
+        http_red: Arc::new(HttpRedMetrics::default()),
     };
 
     // Spawn background thermal poller (uses parse_pressure_level as the canonical parser).
@@ -180,6 +189,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         .route("/health/processes", get(health_processes_handler))
         .route("/metrics/prometheus", get(metrics_prometheus_handler))
         .route("/ws", get(ws_handler))
+        .layer(middleware::from_fn_with_state(state.clone(), http_observability_middleware))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(bind).await?;
@@ -201,6 +211,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     // Explicit drop for clarity; drop order would handle it anyway.
     drop(lock);
     info!("sharecli serve: stopped");
+    crate::otel::shutdown();
     Ok(())
 }
 
@@ -273,6 +284,47 @@ async fn thermal_poll_task(
 // ---------------------------------------------------------------------------
 // HTTP handlers
 // ---------------------------------------------------------------------------
+
+/// Observability middleware: W3C `traceparent` extract/inject + HTTP RED metrics.
+async fn http_observability_middleware(
+    State(state): State<AppState>,
+    req: Request<Body>,
+    next: Next,
+) -> Response {
+    let start = Instant::now();
+    let method = req.method().as_str().to_owned();
+    let path = req.uri().path().to_owned();
+    let incoming =
+        req.headers().get("traceparent").and_then(|v| v.to_str().ok()).map(str::to_owned);
+
+    let span = tracing::info_span!(
+        "http.request",
+        http.method = %method,
+        http.route = %path,
+        otel.kind = "server",
+        traceparent = incoming.as_deref().unwrap_or(""),
+    );
+
+    let mut response = next.run(req).instrument(span).await;
+    let status = response.status().as_u16();
+    state.http_red.record(status, start.elapsed());
+
+    let outgoing = incoming.unwrap_or_else(synthesize_traceparent);
+    if let Ok(val) = HeaderValue::from_str(&outgoing) {
+        response.headers_mut().insert(HeaderName::from_static("traceparent"), val);
+    }
+    response
+}
+
+/// Best-effort W3C traceparent when the client did not send one.
+fn synthesize_traceparent() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let pid = u128::from(std::process::id());
+    let trace_id = format!("{:032x}", nanos ^ (pid << 64));
+    let span_id = format!("{:016x}", (nanos as u64) ^ (pid as u64));
+    format!("00-{trace_id}-{span_id}-01")
+}
 
 const DASHBOARD_HTML: &str = include_str!("../dashboard.html");
 
@@ -404,7 +456,8 @@ async fn metrics_prometheus_handler(State(state): State<AppState>) -> impl IntoR
     let pool = ProcessPool::new();
     let processes = pool.list().await;
     let health_map = state.health_store.lock().await;
-    let body = render_prometheus_metrics(&processes, &health_map);
+    let mut body = render_prometheus_metrics(&processes, &health_map);
+    render_http_red_metrics(&mut body, &state.http_red.snapshot());
     ([(header::CONTENT_TYPE, "text/plain; version=0.0.4; charset=utf-8")], body)
 }
 

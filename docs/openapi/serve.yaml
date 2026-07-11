@@ -53,10 +53,19 @@ paths:
       summary: Prometheus text metrics
       description: |
         Prometheus exposition format (`text/plain; version=0.0.4`) for
-        tracked process gauges (memory, up, etc.).
+        tracked process gauges plus HTTP RED series
+        (`sharecli_http_requests_total`, `sharecli_http_errors_total`,
+        `sharecli_http_request_duration_ms_*`).
+      parameters:
+        - $ref: "#/components/parameters/Traceparent"
       responses:
         "200":
           description: Metrics payload
+          headers:
+            traceparent:
+              schema:
+                type: string
+              description: W3C trace context (echoed or synthesized)
           content:
             text/plain:
               schema:
@@ -64,6 +73,9 @@ paths:
                 example: |
                   # HELP sharecli_process_memory_mb Resident memory usage in MiB per process
                   # TYPE sharecli_process_memory_mb gauge
+                  # HELP sharecli_http_requests_total Total HTTP requests handled by sharecli serve
+                  # TYPE sharecli_http_requests_total counter
+                  sharecli_http_requests_total 0
   /config:
     get:
       operationId: getConfig
@@ -81,6 +93,15 @@ paths:
                 additionalProperties: true
                 description: Serialized `Config` (projects, runtime, pool, monitoring, …)
 components:
+  parameters:
+    Traceparent:
+      name: traceparent
+      in: header
+      required: false
+      schema:
+        type: string
+        example: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
+      description: W3C Trace Context; extracted into the `http.request` span and echoed on the response.
   schemas:
     StatusOk:
       type: object
