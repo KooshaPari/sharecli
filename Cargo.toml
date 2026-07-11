@@ -64,14 +64,21 @@ reqwest = { version = "0.13", features = ["json"], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
 sha2 = "0.11"
-opentelemetry = { version = "0.30", features = ["trace"] }
-opentelemetry_sdk = { version = "0.30", features = ["rt-tokio", "trace"] }
-opentelemetry-otlp = { version = "0.30", features = ["http-proto", "reqwest-rustls", "trace"] }
-tracing-opentelemetry = "0.31"
+opentelemetry = { version = "0.32", features = ["trace"] }
+# 0.32.1+ patches RustSec RUSTSEC-2026-* unbounded W3C Baggage allocation.
+opentelemetry_sdk = { version = "0.32.1", features = ["rt-tokio", "trace"] }
+opentelemetry-otlp = { version = "0.32", features = ["http-proto", "reqwest-rustls", "trace"] }
+tracing-opentelemetry = "0.33"
 
 [features]
 desktop-notifications = ["notify-rust"]
 notifications-http = ["reqwest"]
+
+# Continuous CPU profiling (audit-v38 L45). Unix-only; Windows builds omit it.
+# Protobuf profile output (not flamegraph/inferno) to avoid vulnerable quick-xml.
+[target.'cfg(unix)'.dependencies]
+pprof = { version = "0.15", features = ["protobuf", "prost-codec"] }
+prost = "0.12"
 
 [dev-dependencies]
 tempfile = "3"

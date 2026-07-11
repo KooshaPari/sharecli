@@ -32,10 +32,7 @@ pub fn emit_to(path: &Path, event: &str, fields: Value) {
         }
     }
 
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs_f64())
-        .unwrap_or(0.0);
+    let ts = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
 
     let mut record = json!({
         "ts": ts,

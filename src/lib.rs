@@ -17,6 +17,7 @@ pub mod http_red;
 pub mod monitoring;
 pub mod notifier;
 pub mod otel;
+pub mod pprof_http;
 pub mod runtime;
 pub mod serve_auth;
 pub mod serve_lock;

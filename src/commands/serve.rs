@@ -200,6 +200,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         .route("/config", get(config_handler))
         .route("/health/processes", get(health_processes_handler))
         .route("/metrics/prometheus", get(metrics_prometheus_handler))
+        .route("/debug/pprof/profile", get(crate::pprof_http::profile_handler))
         .route("/ws", get(ws_handler))
         .layer(middleware::from_fn_with_state(state.clone(), http_observability_middleware))
         .layer(middleware::from_fn_with_state(auth, serve_auth::require_bearer))

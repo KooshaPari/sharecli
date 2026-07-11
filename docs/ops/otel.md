@@ -36,6 +36,11 @@ middleware continues to extract/inject W3C `traceparent` on every request.
 Plus existing process/health gauges. Import `docs/ops/grafana/sharecli-serve.json`
 into Grafana against a Prometheus scrape of that endpoint.
 
+## Continuous profiling
+
+Opt-in CPU flamegraphs: set `SHARECLI_PPROF=1` and hit
+`GET /debug/pprof/profile?seconds=10`. See `docs/ops/profiling.md`.
+
 ## Collector smoke
 
 ```bash
