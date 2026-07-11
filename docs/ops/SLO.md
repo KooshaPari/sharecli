@@ -43,9 +43,12 @@ Numbers are starting targets for local/daemon ops; tighten once scrape history e
 
 ## Out of scope (for now)
 
-- Continuous profiling (pprof / Pyroscope)
-- PagerDuty / Alertmanager burn-rate multi-window alerts
-- Formal error-budget policy signed by on-call
+- Continuous profiling push agent (Pyroscope); opt-in pprof HTTP is in `docs/ops/profiling.md`
+- Live PagerDuty routing keys committed to git (use env / secret store)
+- Formal signed on-call roster
+
+Alert **rule pack + severity routing + runbooks** ship in
+`docs/ops/alertmanager/sharecli.yml` and `docs/ops/alerting.md`.
 
 ## Bench-linked targets (C08)
 
