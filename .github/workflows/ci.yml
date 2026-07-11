@@ -98,13 +98,28 @@ jobs:
         with:
           tool: nextest
       # taiki-e/install-action can fail on Windows GHA bash startup
-      # (actions/partner-runner-images#169); use the official nextest installer.
+      # (actions/partner-runner-images#169); get.nexte.st PS installer also
+      # breaks under pwsh 7 ("empty pipe"). Install from GitHub release zip.
       - name: Install nextest (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          Invoke-Expression (Invoke-RestMethod -Uri https://get.nexte.st/latest/windows)
+          $dest = Join-Path $env:USERPROFILE '.cargo\bin'
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          $asset = 'cargo-nextest-x86_64-pc-windows-msvc.zip'
+          $url = "https://get.nexte.st/latest/windows-x86_64-msvc.zip"
+          # Fallback to GitHub releases API if the short URL shape changes.
+          try {
+            Invoke-WebRequest -Uri $url -OutFile $asset
+          } catch {
+            $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/nextest-rs/nextest/releases/latest'
+            $dl = ($rel.assets | Where-Object { $_.name -like '*windows-msvc.zip' } | Select-Object -First 1).browser_download_url
+            if (-not $dl) { throw 'No Windows nextest zip in latest release' }
+            Invoke-WebRequest -Uri $dl -OutFile $asset
+          }
+          Expand-Archive -Path $asset -DestinationPath $dest -Force
+          cargo nextest --version
       - name: Run tests (nextest ci profile)
         # Uses .config/nextest.toml [profile.ci] — retries + fail-fast=false.
         # See docs/testing/flake-policy.md. Doctests are not run by nextest.
