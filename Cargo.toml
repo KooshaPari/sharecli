@@ -75,9 +75,10 @@ desktop-notifications = ["notify-rust"]
 notifications-http = ["reqwest"]
 
 # Continuous CPU profiling (audit-v38 L45). Unix-only; Windows builds omit it.
-# Use protobuf profile output (not flamegraph/inferno) to avoid vulnerable quick-xml.
+# Protobuf profile output (not flamegraph/inferno) to avoid vulnerable quick-xml.
 [target.'cfg(unix)'.dependencies]
 pprof = { version = "0.15", features = ["protobuf", "prost-codec"] }
+prost = "0.12"
 
 [dev-dependencies]
 tempfile = "3"
