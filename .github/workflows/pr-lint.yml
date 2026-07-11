@@ -1,0 +1,53 @@
+# PR lint — require FR reference in PR body
+
+# Soft gate for L30.8 (Autonomous PR Quality): agent/human PRs must cite at
+# least one FR-NNN (or FR-CAST-*) so changes stay traceable.
+
+name: PR Lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-lint-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fr-in-body:
+    name: FR reference in PR body
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Require FR- ID in pull request body
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || "";
+            const labels = (context.payload.pull_request.labels || []).map((l) => l.name);
+            const skip =
+              labels.includes("skip-fr-lint") ||
+              labels.includes("dependencies") ||
+              labels.includes("chore");
+
+            if (skip) {
+              core.info("Skipping FR lint due to label: " + labels.join(", "));
+              return;
+            }
+
+            // Match FR-001, FR-CAST-003, FR-PROC-001 (legacy), etc.
+            const frPattern = /\bFR-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/;
+            if (!frPattern.test(body)) {
+              core.setFailed(
+                "PR body must reference at least one FR ID (e.g. FR-001). " +
+                  "See FUNCTIONAL_REQUIREMENTS.md / docs/specs/FR.md. " +
+                  "Docs-only chores may use label skip-fr-lint."
+              );
+              return;
+            }
+
+            core.info("FR reference found in PR body.");

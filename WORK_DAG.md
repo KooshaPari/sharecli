@@ -1,0 +1,64 @@
+# sharecli Work DAG
+
+Atomic, FR-linked tasks agents can claim independently (effort ≤ M ≈ 4h).
+
+```mermaid
+flowchart TD
+  T100[T-100 FR-NNN root index] --> T110[T-110 WORK_DAG + PLAN]
+  T100 --> T120[T-120 llms.txt + AGENTS]
+  T110 --> T130[T-130 TEST_COVERAGE_MATRIX]
+  T120 --> T140[T-140 rust-toolchain.toml]
+  T130 --> T150[T-150 pr-lint FR body]
+  T140 --> T150
+  T150 --> T200[T-200 FR-002 acceptance tests]
+  T200 --> T210[T-210 FR-003 acceptance tests]
+  T210 --> T220[T-220 FR-004 acceptance tests]
+  T220 --> T230[T-230 FR-005 acceptance tests]
+  T230 --> T300[T-300 journey friction assertions]
+  T300 --> T310[T-310 C03 re-score]
+```
+
+## Claim protocol
+
+1. Pick a task with **Status = READY** whose predecessors are **DONE**.
+2. Branch `feat/sharecli-t<id>-<slug>` (or claim on the active lane branch).
+3. Cite the FR ID in the PR body (`FR-NNN` section).
+4. Done when: acceptance tests listed pass locally (`just test`) and CI is green.
+
+## Ready / in-flight
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-100 | Rewrite root FRs to FR-NNN + role stories | L30.1 / FR-001..005 | — | S | THIS PR | `FUNCTIONAL_REQUIREMENTS.md` uses FR-NNN + Acceptance refs |
+| T-110 | Replace phase PLAN with claimable WORK_DAG | L30.2 | T-100 | S | THIS PR | `WORK_DAG.md` has ≥5 S/M tasks with FR refs |
+| T-120 | Add `llms.txt` + expand `AGENTS.md` entrypoint | L30.4 / L30.11 | — | S | THIS PR | Build/test/lint/key-files/forbidden present |
+| T-130 | Fill `TEST_COVERAGE_MATRIX.md` TBDs from tree | L30.3 | T-100 | S | THIS PR | No TBD in FR mapping rows for FR-001..005 |
+| T-140 | Pin `rust-toolchain.toml` (stable + components) | L30.5 | — | S | THIS PR | File present; matches CI `dtolnay/rust-toolchain@stable` |
+| T-150 | PR lint: require `FR-` in PR body | L30.8 | T-100 | S | THIS PR | `.github/workflows/pr-lint.yml` fails empty FR section |
+| T-160 | Friction log + journey FR map (quick) | L30.6 / L30.12 | T-100 | S | THIS PR | `docs/friction-log.md` + journey index cites FRs |
+
+## Backlog (claimable next)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-200 | Land `tests/fr002_*.rs` acceptance suite | FR-002 | T-130 | M | READY | TRACEABILITY AC-002.* functions exist & pass |
+| T-210 | Land `tests/fr003_*.rs` acceptance suite | FR-003 | T-200 | M | READY | TRACEABILITY AC-003.* functions exist & pass |
+| T-220 | Land `tests/fr004_*.rs` acceptance suite | FR-004 | T-210 | M | READY | TRACEABILITY AC-004.* functions exist & pass |
+| T-230 | Land `tests/fr005_*.rs` acceptance suite | FR-005 | T-220 | M | READY | TRACEABILITY AC-005.* functions exist & pass |
+| T-240 | Outside-in journey test (`*_journey_*`) | FR-001..003 / L30.6 | T-160 | M | READY | One CLI journey test maps steps → FR IDs |
+| T-250 | Golden CLI/TUI snapshot fixtures | L30.7 | T-240 | M | READY | `tests/golden/` has ≥3 committed fixtures |
+| T-260 | Multi-agent file ownership protocol in AGENTS | L30.9 | T-120 | S | READY | Explicit claim-lock section for shared paths |
+| T-270 | Publish local loop timing budgets | L30.10 | T-140 | S | READY | `docs/ops/` or AGENTS lists measured `just test` budget |
+| T-300 | Unhappy-path friction tests (`_invalid_` / `_missing_`) | L30.12 | T-230 | M | READY | ≥1 unhappy-path test per FR-001..005 |
+| T-310 | Re-score C03 in `audit/.lane-c03/C03.md` | audit | T-150,T-230 | S | BLOCKED | Cluster ≥ C (≥60% with L30.1–.5 at ≥2) |
+
+## Completed
+
+| ID | Task | Status |
+|----|------|--------|
+| — | Phase roadmap in `PLAN.md` (weeks 1–8) | superseded by this DAG |
+
+## Ownership notes
+
+- Do **not** claim tasks that touch `release.yml`, `Containerfile`, fuzz, benches, or `spawn-core` from this C03 lane.
+- Prefer worktrees: `git worktree add ../sharecli-wtrees/<lane> -b feat/sharecli-<lane>`.
