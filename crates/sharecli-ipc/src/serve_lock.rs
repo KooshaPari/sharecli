@@ -202,7 +202,21 @@ pub fn probe(service: &str) -> Result<ServeState> {
     }
 
     let mut buf = String::new();
-    file.read_to_string(&mut buf).with_context(|| format!("read pidfile {}", path.display()))?;
+    match file.read_to_string(&mut buf) {
+        Ok(_) => {}
+        Err(e) if exclusively_held => {
+            // Windows mandatory locks block readers; use unlocked sidecar.
+            buf = fs::read_to_string(info_sidecar_path(&path)).with_context(|| {
+                format!(
+                    "read pidfile {} (locked) and sidecar {}",
+                    path.display(),
+                    info_sidecar_path(&path).display()
+                )
+            })?;
+            let _ = e;
+        }
+        Err(e) => return Err(e).with_context(|| format!("read pidfile {}", path.display())),
+    }
 
     // Empty or malformed pidfile with no live holder → treat as Free.
     let info: ServeInfo = match serde_json::from_str(buf.trim()) {
@@ -218,6 +232,10 @@ pub fn probe(service: &str) -> Result<ServeState> {
     // stale entry from a crashed server that never cleaned up.
     let alive = exclusively_held || pid_alive(info.pid);
     Ok(ServeState::Running { info, stale: !alive })
+}
+
+fn info_sidecar_path(lock_path: &Path) -> PathBuf {
+    lock_path.with_extension("info")
 }
 
 /// RAII holder of an exclusive serve-lock. While alive, this process owns the
@@ -288,6 +306,7 @@ impl ServeLock {
         let bytes = serde_json::to_vec(&info).context("serialize ServeInfo")?;
         f.write_all(&bytes).with_context(|| format!("write pidfile {}", path.display()))?;
         f.flush().ok();
+        let _ = fs::write(info_sidecar_path(&path), &bytes);
 
         Ok(Some(Self { path, file: f, info }))
     }
@@ -308,6 +327,8 @@ impl Drop for ServeLock {
         // Best-effort: release the advisory lock and remove the pidfile so the
         // next actor sees `Free` rather than a stale entry.
         let _ = self.file.unlock();
+        let sidecar = info_sidecar_path(&self.path);
+        let _ = fs::remove_file(&sidecar);
         let _ = fs::remove_file(&self.path);
     }
 }
