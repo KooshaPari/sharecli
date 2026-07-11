@@ -79,14 +79,8 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Re-run if any Zig source changes.
-    println!(
-        "cargo:rerun-if-changed={}/src/spawn_core.zig",
-        spawn_core_dir.display()
-    );
-    println!(
-        "cargo:rerun-if-changed={}/build.zig",
-        spawn_core_dir.display()
-    );
+    println!("cargo:rerun-if-changed={}/src/spawn_core.zig", spawn_core_dir.display());
+    println!("cargo:rerun-if-changed={}/build.zig", spawn_core_dir.display());
 
     Ok(())
 }

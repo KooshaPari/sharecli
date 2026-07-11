@@ -43,13 +43,7 @@ pub struct ZigSemaphore {
 impl ZigSemaphore {
     pub fn new(max: usize) -> Self {
         let max = max.max(1);
-        Self {
-            inner: Mutex::new(SemInner {
-                available: max,
-                max,
-            }),
-            cond: Condvar::new(),
-        }
+        Self { inner: Mutex::new(SemInner { available: max, max }), cond: Condvar::new() }
     }
 
     pub fn acquire(&self) -> Result<(), Error> {
@@ -92,10 +86,7 @@ impl ZigSemaphore {
     }
 
     pub fn available(&self) -> usize {
-        self.inner
-            .lock()
-            .map(|g| g.available)
-            .unwrap_or(0)
+        self.inner.lock().map(|g| g.available).unwrap_or(0)
     }
 }
 
