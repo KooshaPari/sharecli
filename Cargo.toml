@@ -28,7 +28,7 @@ fs2 = "0.4"
 libc = "0.2"
 anyhow = "1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 tracing-appender = "0.2"
 
 # Config
@@ -64,6 +64,10 @@ reqwest = { version = "0.13", features = ["json"], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
 sha2 = "0.11"
+opentelemetry = { version = "0.30", features = ["trace"] }
+opentelemetry_sdk = { version = "0.30", features = ["rt-tokio", "trace"] }
+opentelemetry-otlp = { version = "0.30", features = ["http-proto", "reqwest-rustls", "trace"] }
+tracing-opentelemetry = "0.31"
 
 [features]
 desktop-notifications = ["notify-rust"]

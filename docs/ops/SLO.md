@@ -31,7 +31,7 @@ Numbers are starting targets for local/daemon ops; tighten once scrape history e
 | **Target** | ≥ 99% successful scrapes at ≤ 60s scrape interval |
 | **Probe** | Prometheus (or equivalent) scrape job against `/metrics/prometheus` |
 | **Error budget** | ~7 failed scrapes / day at 1/min cadence |
-| **Notes** | Gauges today; RED/USE histograms are a follow-up, not part of this draft SLO. |
+| **Notes** | Includes process/health gauges and HTTP RED series (`sharecli_http_requests_total`, `sharecli_http_errors_total`, `sharecli_http_request_duration_ms_*`). See `docs/ops/otel.md` and Grafana `docs/ops/grafana/sharecli-serve.json`. |
 
 ## Mapping to probes
 
@@ -43,7 +43,7 @@ Numbers are starting targets for local/daemon ops; tighten once scrape history e
 
 ## Out of scope (for now)
 
-- OpenTelemetry / W3C `traceparent` export
+- Continuous profiling (pprof / Pyroscope)
 - PagerDuty / Alertmanager burn-rate multi-window alerts
 - Formal error-budget policy signed by on-call
 

@@ -17,10 +17,12 @@ mod crc64;
 mod csv_writer;
 mod hash_util;
 mod health_check;
+mod http_red;
 mod jsonschema_subset;
 mod md_table;
 mod monitoring;
 mod notifier;
+mod otel;
 mod proc_compose;
 mod radix_trie;
 mod runtime;
@@ -363,18 +365,27 @@ async fn main() -> Result<()> {
     }
 
     if !cli.quiet {
-        let builder = tracing_subscriber::fmt().with_max_level(if cli.verbose {
+        use tracing_subscriber::prelude::*;
+
+        crate::otel::ensure_trace_context_propagator();
+
+        let level = if cli.verbose {
             tracing::Level::DEBUG
         } else {
             tracing::Level::INFO
-        });
+        };
+        let fmt_layer = tracing_subscriber::fmt::layer()
+            .with_ansi(!is_no_color())
+            .with_filter(tracing_subscriber::filter::LevelFilter::from_level(level));
 
-        // Respect NO_COLOR (audit L36)
-        if is_no_color() {
-            builder.with_ansi(false).init();
+        let registry = tracing_subscriber::registry().with(fmt_layer);
+        if let Some(otel_layer) = crate::otel::try_otel_layer() {
+            registry.with(otel_layer).init();
         } else {
-            builder.init();
+            registry.init();
         }
+    } else {
+        crate::otel::ensure_trace_context_propagator();
     }
 
     match &cli.command {

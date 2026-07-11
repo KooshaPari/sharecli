@@ -3,8 +3,8 @@
 **Repo:** KooshaPari/sharecli
 **Date:** 2026-07-11
 **Repo-type profile:** CLI+daemon
-**Auditor:** cursor-agent cluster-fleet (C00–C11); Wave2 + Windows CI lane re-score C07
-**Commit audited:** (pending merge of feat/sharecli-windows-ci-lane)
+**Auditor:** cursor-agent cluster-fleet (C00–C11); C05 OTel/RED/Grafana re-score
+**Commit audited:** (pending merge of feat/sharecli-c05-otel-red)
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
@@ -19,7 +19,7 @@
 | C02 | Error handling, API, Governance | L20–L29 | 15/30 | 50% | D | serve AuthN; audit log; SLOs |
 | C03 | Agent Readiness | L30 | 30/36 | 83% | B | FR-002..005 tests; journey e2e; golden fixtures |
 | C04 | Security | L31–L40 | 16/30 | 53% | D | SBOM in-tarball; residual auth/threat gaps |
-| C05 | Observability (deep) | L41–L50 | 12/30 | 40% | D | OTel/traces; RED/USE; ops dashboards |
+| C05 | Observability (deep) | L41–L50 | 18/30 | 60% | C | profiling; multi-hop traces; on-call alerts |
 | C06 | Supply Chain | L51–L60 | 17/30 | 57% | D | provenance upgrade; lock/deny gaps |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 14/30 | 47% | D | measured baselines; hyperfine scripts; Harbor N/A by ADR |
@@ -29,11 +29,11 @@
 
 ## Overall
 
-**Weighted overall score:** 58% · **Overall grade:** D
+**Weighted overall score:** 60% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+50+83+53+40+57+63+47+58+67+60)/12 = 701/12 = **58.42%** → **58%**.)
+(Unweighted mean of cluster pcts: (60+63+50+83+53+60+57+63+47+58+67+60)/12 = 721/12 = **60.08%** → **60%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+50+83)×2 + (53+40+57+63+47+58+67+60) = 512 + 445 = 957 / (4×2 + 8) = 957/16 ≈ **59.8%** (still D).
+**Tier-1 double-weight (C00–C03):** (60+63+50+83)×2 + (53+60+57+63+47+58+67+60) = 512 + 465 = 977 / 16 ≈ **61.1%** (C).
 
 ## Headline Findings
 
@@ -41,7 +41,7 @@
 - **Wave2 lifts:** C00 50%→60% C (OpenAPI stub + Criterion/bench-gate); C04 47%→53% D (CycloneDX SBOM CI); C08 40%→47% D (per-PR hard-ish gate + baselines).
 - **Evidence-only (no pct change):** C07 L69 now PR-matrix ubuntu+macos (rubric score-1 bar; Windows still needed for 2); C11 Formula `head do` + OpenAPI deploy row (brew sha still PLACEHOLDER).
 - **SBOM scored under C04 L32** (not C06 — supply-chain pillars have no SBOM slot).
-- **Highest-leverage remaining:** brew digest + signing (C11), measured (not SLO-ceiling) baselines (C08), AuthN (C02), OTel (C05).
+- **Highest-leverage remaining:** brew digest + signing (C11), measured Criterion baselines (C08), AuthN (C02), continuous profiling (C05 L45).
 - **Agent-readiness verdict (C03):** Agents can claim WORK_DAG tasks with FR refs; FR-002..005 acceptance suites still open.
 - **Time-2 verdict (C11):** OCI+uninstall+mobile decision + brew --HEAD solid; bottle PLACEHOLDER and unsigned archives remain.
 
@@ -75,7 +75,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-11 (Windows CI lane)
 - **C07 18/30 (60% C) → 19/30 (63% C):** L69 1→2 — PR CI matrix adds `windows-latest` (Zig skipped; spawn-core-sys Rust stub).
 - Wave2 macOS Zig path: `zig build-obj` + `ar` on Darwin; stopwatch `best_lap` de-flaked.
-## Spine links
+
+### 2026-07-11 (C05 OTel + RED + Grafana)
+- **C05 12/30 (40% D) → 18/30 (60% C):** L42 0→2 (OTLP/HTTP + tracing-opentelemetry), L44 0→2 (`traceparent` middleware), L43 2→3 (HTTP RED series), L49 1→2 (Grafana JSON).
+- **Overall 58% D → 60% C.**
+- Docs: `docs/ops/otel.md`, `docs/ops/grafana/sharecli-serve.json`.## Spine links
 
 - Rubric: [phenotype-org-audits/audit-v38](https://github.com/KooshaPari/phenotype-org-audits/tree/main/audit-v38)
 - Spine index: [docs/SPINE-INDEX.md](https://github.com/KooshaPari/phenotype-org-audits/blob/main/docs/SPINE-INDEX.md)
