@@ -51,13 +51,21 @@ fn main() -> anyhow::Result<()> {
     let lib_out = spawn_core_dir.join("zig-out").join("lib");
 
     // --- Run `zig build` to compile the static library ---
-    let status = Command::new("zig")
-        .args(["build", "-Doptimize=ReleaseSafe"])
-        .current_dir(&spawn_core_dir)
-        .status()
-        .map_err(|e| {
-            anyhow::anyhow!("failed to run `zig build`: {e}\nIs zig installed and on PATH?")
-        })?;
+    // On macOS, prefer the system SDK so Zig can resolve libSystem when
+    // link_libc is set (avoids undefined _getcwd/_fork during archive link).
+    let mut cmd = Command::new("zig");
+    cmd.args(["build", "-Doptimize=ReleaseSafe"])
+        .current_dir(&spawn_core_dir);
+    if target_os == "macos" {
+        if let Ok(sdk) = env::var("SDKROOT") {
+            if !sdk.is_empty() {
+                cmd.env("SDKROOT", sdk);
+            }
+        }
+    }
+    let status = cmd.status().map_err(|e| {
+        anyhow::anyhow!("failed to run `zig build`: {e}\nIs zig installed and on PATH?")
+    })?;
 
     if !status.success() {
         anyhow::bail!("`zig build` exited with status {status}");
