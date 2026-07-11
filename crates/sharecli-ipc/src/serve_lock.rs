@@ -128,9 +128,11 @@ pub fn pidfile_path(service: &str) -> PathBuf {
     lock_dir().join(format!("{safe}.serve.lock"))
 }
 
-/// Is `pid` a live process? Uses `kill(pid, 0)` semantics: signal 0 performs
-/// error checking without sending a signal — `Ok` (or `EPERM`) means the process
-/// exists; `ESRCH` means it does not.
+/// Is `pid` a live process?
+///
+/// Unix: `kill(pid, 0)` — signal 0 probes existence (`Ok`/`EPERM` ⇒ alive, `ESRCH` ⇒ gone).
+/// Windows: `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` — handle open ⇒ alive.
+#[cfg(unix)]
 fn pid_alive(pid: u32) -> bool {
     // Reject sentinels / values that do not fit a positive `pid_t`. Casting
     // `u32::MAX` to `pid_t` yields `-1`, and `kill(-1, 0)` means "every process
@@ -148,6 +150,28 @@ fn pid_alive(pid: u32) -> bool {
     }
     // errno == EPERM => process exists but we can't signal it (still "alive").
     std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+}
+
+#[cfg(windows)]
+fn pid_alive(pid: u32) -> bool {
+    if pid == 0 {
+        return false;
+    }
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut std::ffi::c_void;
+        fn CloseHandle(handle: *mut std::ffi::c_void) -> i32;
+    }
+    // SAFETY: OpenProcess/CloseHandle are standard Win32; null handle means gone.
+    let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+    if handle.is_null() {
+        return false;
+    }
+    unsafe {
+        let _ = CloseHandle(handle);
+    }
+    true
 }
 
 /// Seconds since the Unix epoch (best-effort; 0 if the clock is before epoch).

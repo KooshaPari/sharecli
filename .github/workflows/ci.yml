@@ -93,9 +93,18 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
       - name: Install nextest
+        if: runner.os != 'Windows'
         uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # v2.83.0
         with:
           tool: nextest
+      # taiki-e/install-action can fail on Windows GHA bash startup
+      # (actions/partner-runner-images#169); use the official nextest installer.
+      - name: Install nextest (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-Expression (Invoke-RestMethod -Uri https://get.nexte.st/latest/windows)
       - name: Run tests (nextest ci profile)
         # Uses .config/nextest.toml [profile.ci] — retries + fail-fast=false.
         # See docs/testing/flake-policy.md. Doctests are not run by nextest.
