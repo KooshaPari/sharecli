@@ -24,6 +24,7 @@ mod md_table;
 mod monitoring;
 mod notifier;
 mod otel;
+mod pprof_http;
 mod proc_compose;
 mod radix_trie;
 mod runtime;
