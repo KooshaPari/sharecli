@@ -43,4 +43,4 @@ How sharecli treats intermittent test failures (C07 / L68).
 | `just test` | Plain `cargo test` (no nextest retries) |
 | `just test-doc` | Doctests (nextest does not run these) |
 
-Windows CI matrix expansion is deferred; flake triage on Windows remains manual until that matrix lands.
+PR CI runs nextest/clippy/build on **linux + macOS** (`.github/workflows/ci.yml`). Windows matrix expansion is still deferred; flake triage on Windows remains manual until that lane lands.
