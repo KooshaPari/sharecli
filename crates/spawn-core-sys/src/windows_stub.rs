@@ -47,25 +47,17 @@ impl ZigSemaphore {
     }
 
     pub fn acquire(&self) -> Result<(), Error> {
-        let mut guard = self
-            .inner
-            .lock()
-            .map_err(|_| Error::new(ErrorKind::Other, "semaphore mutex poisoned"))?;
+        let mut guard = self.inner.lock().map_err(|_| Error::other("semaphore mutex poisoned"))?;
         while guard.available == 0 {
-            guard = self
-                .cond
-                .wait(guard)
-                .map_err(|_| Error::new(ErrorKind::Other, "semaphore condvar poisoned"))?;
+            guard =
+                self.cond.wait(guard).map_err(|_| Error::other("semaphore condvar poisoned"))?;
         }
         guard.available -= 1;
         Ok(())
     }
 
     pub fn try_acquire(&self) -> Result<bool, Error> {
-        let mut guard = self
-            .inner
-            .lock()
-            .map_err(|_| Error::new(ErrorKind::Other, "semaphore mutex poisoned"))?;
+        let mut guard = self.inner.lock().map_err(|_| Error::other("semaphore mutex poisoned"))?;
         if guard.available == 0 {
             return Ok(false);
         }
@@ -74,10 +66,7 @@ impl ZigSemaphore {
     }
 
     pub fn release(&self) -> Result<(), Error> {
-        let mut guard = self
-            .inner
-            .lock()
-            .map_err(|_| Error::new(ErrorKind::Other, "semaphore mutex poisoned"))?;
+        let mut guard = self.inner.lock().map_err(|_| Error::other("semaphore mutex poisoned"))?;
         if guard.available < guard.max {
             guard.available += 1;
         }

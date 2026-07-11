@@ -128,9 +128,11 @@ pub fn pidfile_path(service: &str) -> PathBuf {
     lock_dir().join(format!("{safe}.serve.lock"))
 }
 
-/// Is `pid` a live process? Uses `kill(pid, 0)` semantics: signal 0 performs
-/// error checking without sending a signal — `Ok` (or `EPERM`) means the process
-/// exists; `ESRCH` means it does not.
+/// Is `pid` a live process?
+///
+/// Unix: `kill(pid, 0)` — signal 0 probes existence (`Ok`/`EPERM` ⇒ alive, `ESRCH` ⇒ gone).
+/// Windows: `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` — handle open ⇒ alive.
+#[cfg(unix)]
 fn pid_alive(pid: u32) -> bool {
     // Reject sentinels / values that do not fit a positive `pid_t`. Casting
     // `u32::MAX` to `pid_t` yields `-1`, and `kill(-1, 0)` means "every process
@@ -148,6 +150,28 @@ fn pid_alive(pid: u32) -> bool {
     }
     // errno == EPERM => process exists but we can't signal it (still "alive").
     std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+}
+
+#[cfg(windows)]
+fn pid_alive(pid: u32) -> bool {
+    if pid == 0 {
+        return false;
+    }
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut std::ffi::c_void;
+        fn CloseHandle(handle: *mut std::ffi::c_void) -> i32;
+    }
+    // SAFETY: OpenProcess/CloseHandle are standard Win32; null handle means gone.
+    let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+    if handle.is_null() {
+        return false;
+    }
+    unsafe {
+        let _ = CloseHandle(handle);
+    }
+    true
 }
 
 /// Seconds since the Unix epoch (best-effort; 0 if the clock is before epoch).
@@ -178,7 +202,21 @@ pub fn probe(service: &str) -> Result<ServeState> {
     }
 
     let mut buf = String::new();
-    file.read_to_string(&mut buf).with_context(|| format!("read pidfile {}", path.display()))?;
+    match file.read_to_string(&mut buf) {
+        Ok(_) => {}
+        Err(e) if exclusively_held => {
+            // Windows mandatory locks block readers; use unlocked sidecar.
+            buf = fs::read_to_string(info_sidecar_path(&path)).with_context(|| {
+                format!(
+                    "read pidfile {} (locked) and sidecar {}",
+                    path.display(),
+                    info_sidecar_path(&path).display()
+                )
+            })?;
+            let _ = e;
+        }
+        Err(e) => return Err(e).with_context(|| format!("read pidfile {}", path.display())),
+    }
 
     // Empty or malformed pidfile with no live holder → treat as Free.
     let info: ServeInfo = match serde_json::from_str(buf.trim()) {
@@ -194,6 +232,10 @@ pub fn probe(service: &str) -> Result<ServeState> {
     // stale entry from a crashed server that never cleaned up.
     let alive = exclusively_held || pid_alive(info.pid);
     Ok(ServeState::Running { info, stale: !alive })
+}
+
+fn info_sidecar_path(lock_path: &Path) -> PathBuf {
+    lock_path.with_extension("info")
 }
 
 /// RAII holder of an exclusive serve-lock. While alive, this process owns the
@@ -264,6 +306,7 @@ impl ServeLock {
         let bytes = serde_json::to_vec(&info).context("serialize ServeInfo")?;
         f.write_all(&bytes).with_context(|| format!("write pidfile {}", path.display()))?;
         f.flush().ok();
+        let _ = fs::write(info_sidecar_path(&path), &bytes);
 
         Ok(Some(Self { path, file: f, info }))
     }
@@ -284,6 +327,8 @@ impl Drop for ServeLock {
         // Best-effort: release the advisory lock and remove the pidfile so the
         // next actor sees `Free` rather than a stale entry.
         let _ = self.file.unlock();
+        let sidecar = info_sidecar_path(&self.path);
+        let _ = fs::remove_file(&sidecar);
         let _ = fs::remove_file(&self.path);
     }
 }
