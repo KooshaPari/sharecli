@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "description": "Seeded Criterion mean baselines for the hard-ish C08 perf gate. Values are nanoseconds (Criterion point estimates). Seeded from draft SLO budgets in docs/ops/SLO.md so CI stays non-flaky; refresh via scripts/seed-bench-baseline.py after a clean cargo bench on ubuntu-latest.",
+  "unit": "ns",
+  "default_max_regression": 0.5,
+  "runner": "ubuntu-latest",
+  "sample_args": "--sample-size 10 --warm-up-time 1 --measurement-time 2",
+  "benches": {
+    "config_toml_from_str": {
+      "mean_ns": 1000000,
+      "slo_id": "BENCH-1",
+      "notes": "Seeded at SLO p95 budget (1 ms); gate fails above mean_ns * (1 + max_regression)."
+    },
+    "pool_new_and_list_empty": {
+      "mean_ns": 50000000,
+      "slo_id": "BENCH-2",
+      "notes": "Seeded at SLO p95 budget (50 ms)."
+    },
+    "prometheus_render_32": {
+      "mean_ns": 500000,
+      "slo_id": "BENCH-3",
+      "notes": "Seeded at SLO p95 budget (500 µs)."
+    }
+  }
+}

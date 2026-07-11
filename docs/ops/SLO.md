@@ -65,3 +65,17 @@ out of scope per [`docs/adr/0001-eval-surface-out-of-scope.md`](../adr/0001-eval
 | Date | SHA | Surface | Observed | Host |
 |------|-----|---------|----------|------|
 | 2026-07-10 | _(pending first soft bench.yml run)_ | BENCH-1..3 + LOAD-1 | budgets declared; no baseline yet | ubuntu-latest (CI) |
+| 2026-07-10 | _(feat/sharecli-w2-perf-gate)_ | BENCH-1..3 gate | seeded baseline JSON = SLO p95 budgets; `bench-gate` fails if mean > 1.5× baseline (50% regression); soft `criterion` job retained | ubuntu-latest (CI) |
+
+### Baseline gate notes (append-only)
+
+- **2026-07-10:** Hard-ish per-PR gate added as job `bench-gate` in
+  `.github/workflows/bench.yml`. Compares Criterion
+  `target/criterion/<bench>/new/estimates.json` means to
+  `docs/eval/baselines/criterion-baseline.json` via
+  `scripts/check-bench-baseline.py`. Default max regression **50%**.
+  Seeded means equal draft SLO p95 budgets (BENCH-1..3) so the gate is
+  non-flaky until real CI means are re-seeded with
+  `scripts/seed-bench-baseline.py`. Criterion `--save-baseline ci-gate`
+  is used in CI for local HTML compare artifacts; exit status comes from
+  the Python checker, not Criterion itself.

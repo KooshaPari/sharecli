@@ -1,7 +1,8 @@
-name: Bench (advisory)
+name: Bench
 
-# Soft perf surface for C08 — does not gate merge. Failures are visible but
-# non-blocking (continue-on-error). Hard regression gates are a follow-up.
+# C08 perf surface:
+#   - criterion (soft): advisory; continue-on-error
+#   - bench-gate (hard-ish): fails on >50% mean regression vs committed baseline
 
 on:
   push:
@@ -51,3 +52,43 @@ jobs:
           cargo bench --locked --bench config_parse -- --sample-size 10 --warm-up-time 1 --measurement-time 2
           cargo bench --locked --bench pool_list -- --sample-size 10 --warm-up-time 1 --measurement-time 2
           cargo bench --locked --bench prometheus_render -- --sample-size 10 --warm-up-time 1 --measurement-time 2
+
+  bench-gate:
+    name: cargo bench (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: bench-gate
+
+      - name: Record pins
+        run: |
+          echo "sha=$(git rev-parse HEAD)"
+          echo "rustc=$(rustc --version)"
+          echo "seed=${SHARECLI_BENCH_SEED}"
+          echo "baseline=docs/eval/baselines/criterion-baseline.json"
+          echo "threshold=50%"
+
+      - name: Run Criterion benches
+        run: |
+          cargo bench --locked --bench config_parse -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
+          cargo bench --locked --bench pool_list -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
+          cargo bench --locked --bench prometheus_render -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
+
+      - name: Compare against committed baseline (50% max regression)
+        run: |
+          python3 scripts/check-bench-baseline.py \
+            --baseline docs/eval/baselines/criterion-baseline.json \
+            --criterion-dir target/criterion \
+            --threshold 0.5
