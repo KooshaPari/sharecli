@@ -9,7 +9,7 @@
 
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -20,7 +20,11 @@ static WRITE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Emit one audit event (`event` + arbitrary JSON fields).
 pub fn emit(event: &str, fields: Value) {
-    let path = audit_log_path();
+    emit_to(&audit_log_path(), event, fields);
+}
+
+/// Emit to an explicit path (tests + callers that already resolved the path).
+pub fn emit_to(path: &Path, event: &str, fields: Value) {
     if let Some(parent) = path.parent() {
         if let Err(e) = std::fs::create_dir_all(parent) {
             warn!(error = %e, path = %path.display(), "audit log: create_dir_all failed");
@@ -28,7 +32,10 @@ pub fn emit(event: &str, fields: Value) {
         }
     }
 
-    let ts = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0);
 
     let mut record = json!({
         "ts": ts,
@@ -50,7 +57,7 @@ pub fn emit(event: &str, fields: Value) {
     };
 
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    match OpenOptions::new().create(true).append(true).open(&path) {
+    match OpenOptions::new().create(true).append(true).open(path) {
         Ok(mut f) => {
             if let Err(e) = writeln!(f, "{line}") {
                 warn!(error = %e, path = %path.display(), "audit log: write failed");
@@ -100,25 +107,20 @@ mod tests {
     fn emit_appends_json_line() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("audit.jsonl");
-        unsafe {
-            std::env::set_var("SHARECLI_AUDIT_LOG", &path);
-        }
-        emit("test_event", json!({ "k": 1 }));
-        emit("test_event", json!({ "k": 2 }));
+        emit_to(&path, "test_event", json!({ "k": 1 }));
+        emit_to(&path, "test_event", json!({ "k": 2 }));
         let body = fs::read_to_string(&path).unwrap();
         let lines: Vec<_> = body.lines().collect();
         assert_eq!(lines.len(), 2);
         assert!(lines[0].contains("\"event\":\"test_event\""));
         assert!(lines[0].contains("\"k\":1"));
-        unsafe {
-            std::env::remove_var("SHARECLI_AUDIT_LOG");
-        }
     }
 
     #[test]
     fn path_respects_env_override() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("custom.jsonl");
+        let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::set_var("SHARECLI_AUDIT_LOG", &path);
         }
