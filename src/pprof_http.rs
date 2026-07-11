@@ -2,6 +2,9 @@
 //!
 //! Enable with `SHARECLI_PPROF=1`. Profile capture is Unix-only (`pprof` crate);
 //! Windows returns 501 so the route still appears in OpenAPI / ops docs.
+//!
+//! Output is Google `profile.proto` (pprof protobuf), not SVG flamegraphs — the
+//! `flamegraph` feature pulls `inferno` → vulnerable `quick-xml` < 0.41.
 
 use axum::extract::Query;
 #[cfg(unix)]
@@ -31,7 +34,7 @@ fn default_seconds() -> u64 {
     10
 }
 
-/// `GET /debug/pprof/profile` — flamegraph SVG of a short CPU sample.
+/// `GET /debug/pprof/profile` — protobuf CPU profile of a short sample.
 ///
 /// Requires `SHARECLI_PPROF=1`. Honors serve Bearer auth when configured
 /// (route is not public).
@@ -45,9 +48,9 @@ pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
 
     #[cfg(unix)]
     {
-        match capture_flamegraph(seconds).await {
-            Ok(svg) => {
-                (StatusCode::OK, [(header::CONTENT_TYPE, "image/svg+xml; charset=utf-8")], svg)
+        match capture_pprof_protobuf(seconds).await {
+            Ok(bytes) => {
+                (StatusCode::OK, [(header::CONTENT_TYPE, "application/vnd.google.protobuf")], bytes)
                     .into_response()
             }
             Err(err) => {
@@ -68,7 +71,9 @@ pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
 }
 
 #[cfg(unix)]
-async fn capture_flamegraph(seconds: u64) -> Result<Vec<u8>, String> {
+async fn capture_pprof_protobuf(seconds: u64) -> Result<Vec<u8>, String> {
+    use prost::Message;
+
     let guard = pprof::ProfilerGuardBuilder::default()
         .frequency(1000)
         .blocklist(&["libc", "libgcc", "pthread", "vdso"])
@@ -79,8 +84,9 @@ async fn capture_flamegraph(seconds: u64) -> Result<Vec<u8>, String> {
 
     tokio::task::spawn_blocking(move || {
         let report = guard.report().build().map_err(|e| e.to_string())?;
+        let profile = report.pprof().map_err(|e| e.to_string())?;
         let mut body = Vec::new();
-        report.flamegraph(&mut body).map_err(|e| e.to_string())?;
+        profile.encode(&mut body).map_err(|e| e.to_string())?;
         Ok(body)
     })
     .await

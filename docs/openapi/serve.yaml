@@ -79,10 +79,10 @@ paths:
   /debug/pprof/profile:
     get:
       operationId: pprofProfile
-      summary: CPU flamegraph sample (opt-in)
+      summary: CPU pprof protobuf sample (opt-in)
       description: |
         Continuous-profiling surface (audit-v38 L45). Requires `SHARECLI_PPROF=1`.
-        Unix builds return an SVG flamegraph; Windows returns 501 (use samply/perf).
+        Unix builds return Google profile.proto bytes; Windows returns 501 (use samply/perf).
         Not a public path — Bearer required when AuthN is enabled.
       security:
         - bearerAuth: []
@@ -99,9 +99,9 @@ paths:
         - $ref: "#/components/parameters/Traceparent"
       responses:
         "200":
-          description: Flamegraph SVG
+          description: pprof protobuf profile
           content:
-            image/svg+xml:
+            application/vnd.google.protobuf:
               schema:
                 type: string
                 format: binary
