@@ -1,0 +1,69 @@
+# sharecli — Prometheus alert rules (Alertmanager-ready)
+#
+# Load with Prometheus rule_files / Grafana Alloy / kube-prometheus.
+# Route via Alertmanager (see docs/ops/alerting.md). Severity labels:
+#   critical → page on-call, warning → Slack/ticket, info → dashboard only.
+
+groups:
+  - name: sharecli-serve-slo
+    interval: 30s
+    rules:
+      - alert: SharecliHealthzDown
+        expr: up{job="sharecli-serve"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: sharecli
+          slo: SLO-1
+        annotations:
+          summary: "sharecli serve scrape target down"
+          description: "Prometheus cannot scrape sharecli serve for >2m (SLO-1 liveness)."
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#shareclihealthzdown"
+
+      - alert: SharecliHttpErrorBudgetBurn
+        expr: |
+          (
+            sum(rate(sharecli_http_errors_total[5m]))
+            /
+            clamp_min(sum(rate(sharecli_http_requests_total[5m])), 1e-9)
+          ) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          service: sharecli
+          slo: SLO-3
+        annotations:
+          summary: "sharecli HTTP 5xx error rate >5% (5m)"
+          description: "RED error burn elevated for 10m. Check /metrics/prometheus and recent audit log."
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#shareclihttperrorbudgetburn"
+
+      - alert: SharecliHttpLatencyP99High
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le) (rate(sharecli_http_request_duration_ms_bucket[5m]))
+          ) > 500
+        for: 15m
+        labels:
+          severity: warning
+          service: sharecli
+          slo: BENCH
+        annotations:
+          summary: "sharecli HTTP p99 latency >500ms"
+          description: "Sustained high latency on serve handlers. Capture /debug/pprof/profile if SHARECLI_PPROF=1."
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#shareclihttplatencyp99high"
+
+      - alert: SharecliReadyzDrainingStorm
+        expr: |
+          changes(sharecli_readyz_unavailable_total[1h]) > 3
+        for: 0m
+        labels:
+          severity: info
+          service: sharecli
+          slo: SLO-2
+        annotations:
+          summary: "sharecli readiness flipped unavailable often"
+          description: |
+            Optional counter; if absent, use process restart metrics / notifier webhook
+            storm detection instead (SLO-2 ≤2 unplanned restarts / day).
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#slo-2"

@@ -10,6 +10,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Nightly trend store (C08 L74) — UTC 06:00
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -93,3 +96,47 @@ jobs:
             --baseline docs/eval/baselines/criterion-baseline.json \
             --criterion-dir target/criterion \
             --threshold 0.5
+
+  # Longitudinal trend store (does not gate merges). Runs on cron + manual.
+  bench-nightly:
+    name: cargo bench (nightly trends)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: bench-nightly
+
+      - name: Run Criterion benches
+        run: |
+          cargo bench --locked --bench config_parse -- --sample-size 25 --warm-up-time 1 --measurement-time 3
+          cargo bench --locked --bench pool_list -- --sample-size 25 --warm-up-time 1 --measurement-time 3
+          cargo bench --locked --bench prometheus_render -- --sample-size 25 --warm-up-time 1 --measurement-time 3
+
+      - name: Export trend JSON
+        run: |
+          python3 scripts/bench/export-trend.py \
+            --criterion-dir target/criterion \
+            --out "bench-trend-${GITHUB_SHA}.json" \
+            --sha "${GITHUB_SHA}"
+
+      - name: Upload trend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-trend-${{ github.sha }}
+          path: bench-trend-*.json
+          if-no-files-found: error
+          retention-days: 90
