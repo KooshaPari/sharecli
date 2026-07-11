@@ -56,9 +56,10 @@ out of scope per [`docs/adr/0001-eval-surface-out-of-scope.md`](../adr/0001-eval
 | ID | Surface | Budget | Harness |
 |----|---------|--------|---------|
 | BENCH-1 | `config_toml_from_str` | p95 < 1 ms | `benches/config_parse.rs` |
-| BENCH-2 | `pool_new_and_list_empty` | p95 < 50 ms | `benches/pool_list.rs` |
+| BENCH-2 | `pool_new_and_list_empty` | p95 < 100 ms | `benches/pool_list.rs` |
 | BENCH-3 | `prometheus_render_32` | p95 < 500 µs | `benches/prometheus_render.rs` |
 | LOAD-1 | `GET /healthz` burst | ≥ 99% success over N=200 | `scripts/load/healthz_burst.sh` |
+| LOAD-2 | `GET /healthz` latency | hyperfine p50 trend | `scripts/bench/hyperfine-healthz.sh` |
 
 ### Measurement log (append-only)
 

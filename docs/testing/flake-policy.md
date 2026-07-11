@@ -35,6 +35,17 @@ How sharecli treats intermittent test failures (C07 / L68).
 - Do not skip the entire integration suite because one test is flaky.
 - Do not disable `RUSTFLAGS=-D warnings` or quality gates to “make green.”
 
+## Bench / Criterion flakes (C08 / L74)
+
+Perf jobs use short Criterion samples (`--sample-size 10`). Treat a gate failure as:
+
+1. Re-run `bench-gate` on the same SHA (Actions → Re-run failed jobs).
+2. If it flips, open `flake: bench <name>` and temporarily raise that bench's
+   `mean_ns` headroom in `docs/eval/baselines/criterion-baseline.json` **with a
+   measured note** — never disable `bench-gate`.
+3. Soft `criterion` job stays `continue-on-error: true` so advisory noise does
+   not block merges; the hard gate is the quarantine surface.
+
 ## Related recipes
 
 | Command | Role |

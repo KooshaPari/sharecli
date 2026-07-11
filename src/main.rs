@@ -7,6 +7,7 @@ use clap_complete::Shell;
 use sharecli_thermal_tui as thermal_tui;
 
 mod apfs_uuid;
+mod audit_log;
 mod base85;
 mod cast;
 mod commands;
@@ -26,6 +27,7 @@ mod otel;
 mod proc_compose;
 mod radix_trie;
 mod runtime;
+mod serve_auth;
 mod serve_lock;
 mod skiplist;
 mod spawn_policy;

@@ -93,6 +93,13 @@ paths:
                 additionalProperties: true
                 description: Serialized `Config` (projects, runtime, pool, monitoring, …)
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Optional. When `SHARECLI_SERVE_TOKEN` (or `config.serve.bearer_token`) is
+        set, required on all paths except `/healthz` and `/readyz`.
   parameters:
     Traceparent:
       name: traceparent

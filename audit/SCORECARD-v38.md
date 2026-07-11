@@ -3,8 +3,8 @@
 **Repo:** KooshaPari/sharecli
 **Date:** 2026-07-11
 **Repo-type profile:** CLI+daemon
-**Auditor:** cursor-agent cluster-fleet (C00–C11); C05 OTel/RED/Grafana re-score
-**Commit audited:** (pending merge of feat/sharecli-c05-otel-red)
+**Auditor:** cursor-agent cluster-fleet (C00–C11); C02 AuthN + C08 measured baselines
+**Commit audited:** (pending merge of feat/sharecli-c02-authn-c08-baselines)
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
@@ -16,24 +16,24 @@
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 18/30 | 60% | C | lib.rs sprawl; OpenAPI drift CI; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 19/30 | 63% | C | echo coverage; i18n; action SHA pins |
-| C02 | Error handling, API, Governance | L20–L29 | 15/30 | 50% | D | serve AuthN; audit log; SLOs |
+| C02 | Error handling, API, Governance | L20–L29 | 20/30 | 67% | C | federated IdP; audit retention; burn alerts |
 | C03 | Agent Readiness | L30 | 30/36 | 83% | B | FR-002..005 tests; journey e2e; golden fixtures |
 | C04 | Security | L31–L40 | 16/30 | 53% | D | SBOM in-tarball; residual auth/threat gaps |
 | C05 | Observability (deep) | L41–L50 | 18/30 | 60% | C | profiling; multi-hop traces; on-call alerts |
 | C06 | Supply Chain | L51–L60 | 17/30 | 57% | D | provenance upgrade; lock/deny gaps |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 14/30 | 47% | D | measured baselines; hyperfine scripts; Harbor N/A by ADR |
+| C08 | Eval Coverage | L71–L80 | 16/30 | 53% | D | Harbor N/A by ADR; nightly bench trends |
 | C09 | Accessibility + UX | L81–L95 | 26/45 | 58% | D | degraded-mode AX; recovery docs |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 27/45 | 60% | C | Homebrew sha; signing; native installers |
 
 ## Overall
 
-**Weighted overall score:** 60% · **Overall grade:** C
+**Weighted overall score:** 62% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+50+83+53+60+57+63+47+58+67+60)/12 = 721/12 = **60.08%** → **60%**.)
+(Unweighted mean of cluster pcts: (60+63+67+83+53+60+57+63+53+58+67+60)/12 = 744/12 = **62%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+50+83)×2 + (53+60+57+63+47+58+67+60) = 512 + 465 = 977 / 16 ≈ **61.1%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+67+83)×2 + (53+60+57+63+53+58+67+60) = 546 + 471 = 1017 / 16 ≈ **63.6%** (C).
 
 ## Headline Findings
 
@@ -41,7 +41,7 @@
 - **Wave2 lifts:** C00 50%→60% C (OpenAPI stub + Criterion/bench-gate); C04 47%→53% D (CycloneDX SBOM CI); C08 40%→47% D (per-PR hard-ish gate + baselines).
 - **Evidence-only (no pct change):** C07 L69 now PR-matrix ubuntu+macos (rubric score-1 bar; Windows still needed for 2); C11 Formula `head do` + OpenAPI deploy row (brew sha still PLACEHOLDER).
 - **SBOM scored under C04 L32** (not C06 — supply-chain pillars have no SBOM slot).
-- **Highest-leverage remaining:** brew digest + signing (C11), measured Criterion baselines (C08), AuthN (C02), continuous profiling (C05 L45).
+- **Highest-leverage remaining:** brew digest + signing (C11), continuous profiling (C05 L45), federated AuthN, C08 nightly trends.
 - **Agent-readiness verdict (C03):** Agents can claim WORK_DAG tasks with FR refs; FR-002..005 acceptance suites still open.
 - **Time-2 verdict (C11):** OCI+uninstall+mobile decision + brew --HEAD solid; bottle PLACEHOLDER and unsigned archives remain.
 
@@ -79,7 +79,14 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-11 (C05 OTel + RED + Grafana)
 - **C05 12/30 (40% D) → 18/30 (60% C):** L42 0→2 (OTLP/HTTP + tracing-opentelemetry), L44 0→2 (`traceparent` middleware), L43 2→3 (HTTP RED series), L49 1→2 (Grafana JSON).
 - **Overall 58% D → 60% C.**
-- Docs: `docs/ops/otel.md`, `docs/ops/grafana/sharecli-serve.json`.## Spine links
+- Docs: `docs/ops/otel.md`, `docs/ops/grafana/sharecli-serve.json`.
+
+### 2026-07-11 (C02 AuthN + C08 measured baselines)
+- **C02 15/30 (50% D) → 20/30 (67% C):** L21 Bearer AuthN, L23 JSONL audit log, L27 SLO/AUTH docs.
+- **C08 14/30 (47% D) → 16/30 (53% D):** measured Criterion baselines, hyperfine script, bench flake quarantine.
+- **Overall 60% C → 62% C.**
+
+## Spine links
 
 - Rubric: [phenotype-org-audits/audit-v38](https://github.com/KooshaPari/phenotype-org-audits/tree/main/audit-v38)
 - Spine index: [docs/SPINE-INDEX.md](https://github.com/KooshaPari/phenotype-org-audits/blob/main/docs/SPINE-INDEX.md)

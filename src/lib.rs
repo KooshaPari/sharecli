@@ -6,6 +6,7 @@
 //! - Process management via local runtime types
 //! - Multi-project orchestration
 
+pub mod audit_log;
 pub mod cast;
 pub mod commands;
 pub mod config;
@@ -17,6 +18,7 @@ pub mod monitoring;
 pub mod notifier;
 pub mod otel;
 pub mod runtime;
+pub mod serve_auth;
 pub mod serve_lock;
 pub mod spawn_policy;
 pub mod watchdog;

@@ -28,12 +28,14 @@ use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use tokio::sync::{broadcast, watch, RwLock};
 use tracing::{info, instrument, warn, Instrument};
 
+use crate::audit_log;
 use crate::config::Config;
 use crate::config_watcher::ConfigWatcher;
 use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
 use crate::notifier::Notifier;
 use crate::runtime::ProcessPool;
+use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 
 // ---------------------------------------------------------------------------
@@ -168,6 +170,16 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         scheduler.start(initial_config.health_checks.clone());
     }
 
+    let auth = ServeAuth::from_env_or_config(initial_config.serve.bearer_token.as_deref());
+    if auth.enabled() {
+        info!("sharecli serve: Bearer AuthN enabled (probes /healthz /readyz remain public)");
+        audit_log::emit("auth_enabled", json!({ "mode": "bearer" }));
+    } else {
+        info!("sharecli serve: AuthN disabled (set SHARECLI_SERVE_TOKEN to require Bearer)");
+        audit_log::emit("auth_disabled", json!({ "mode": "open" }));
+    }
+    audit_log::emit("serve_start", json!({ "url": url, "bind": bind }));
+
     let state = AppState {
         thermal_tx: Arc::new(thermal_tx),
         shutdown_tx: Arc::new(shutdown_tx),
@@ -190,6 +202,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         .route("/metrics/prometheus", get(metrics_prometheus_handler))
         .route("/ws", get(ws_handler))
         .layer(middleware::from_fn_with_state(state.clone(), http_observability_middleware))
+        .layer(middleware::from_fn_with_state(auth, serve_auth::require_bearer))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(bind).await?;
@@ -211,6 +224,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     // Explicit drop for clarity; drop order would handle it anyway.
     drop(lock);
     info!("sharecli serve: stopped");
+    audit_log::emit("serve_stop", json!({ "bind": bind }));
     crate::otel::shutdown();
     Ok(())
 }
