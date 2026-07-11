@@ -20,7 +20,8 @@ Harbor / SWE-bench are **out of scope** — see
 |------|------|------------|
 | Micro (Criterion) | `benches/*.rs` | `cargo bench --locked --bench pool_list` (etc.) |
 | Macro / load | `scripts/load/healthz_burst.sh` | Start `sharecli serve`, then run script |
-| Soft CI | `.github/workflows/bench.yml` | Advisory; `continue-on-error: true` |
+| Soft CI | `.github/workflows/bench.yml` (`criterion`) | Advisory; `continue-on-error: true` |
+| Gate CI | `.github/workflows/bench.yml` (`bench-gate`) | Hard-ish; fails if mean > 1.5× committed baseline |
 | SLO link | `docs/ops/SLO.md` § Bench-linked targets | Append-only measurement rows |
 
 ## Reproduce Criterion locally
@@ -62,3 +63,29 @@ Append a row under **Bench-linked targets** in `docs/ops/SLO.md` with:
 5. Host OS / runner label  
 
 Do not rewrite historical rows.
+
+## Baseline gate (C08 hard-ish)
+
+Committed means live in
+[`baselines/criterion-baseline.json`](baselines/criterion-baseline.json).
+The soft `criterion` job stays advisory; the `bench-gate` job in
+`.github/workflows/bench.yml` fails the workflow when any Criterion
+`mean.point_estimate` exceeds `baseline_mean * (1 + threshold)`.
+
+| Pin | Value |
+|-----|-------|
+| **Baseline file** | `docs/eval/baselines/criterion-baseline.json` |
+| **Threshold** | `0.5` (50% regression) — generous for shared `ubuntu-latest` |
+| **Checker** | `python3 scripts/check-bench-baseline.py` |
+| **Seeder** | `python3 scripts/seed-bench-baseline.py` (after local/CI `cargo bench`) |
+
+Local Criterion HTML compare (does **not** fail the process; gate still uses JSON):
+
+```bash
+cargo bench --locked --bench config_parse -- --save-baseline ci
+cargo bench --locked --bench config_parse -- --baseline ci --noise-threshold 0.5
+python3 scripts/check-bench-baseline.py --threshold 0.5
+```
+
+Refresh committed means only after a clean ubuntu-latest (or matching) run, then
+append an SLO measurement row — do not rewrite older rows.
