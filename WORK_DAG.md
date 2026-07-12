@@ -29,19 +29,19 @@ flowchart TD
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
-| T-100 | Rewrite root FRs to FR-NNN + role stories | L30.1 / FR-001..005 | — | S | THIS PR | `FUNCTIONAL_REQUIREMENTS.md` uses FR-NNN + Acceptance refs |
-| T-110 | Replace phase PLAN with claimable WORK_DAG | L30.2 | T-100 | S | THIS PR | `WORK_DAG.md` has ≥5 S/M tasks with FR refs |
-| T-120 | Add `llms.txt` + expand `AGENTS.md` entrypoint | L30.4 / L30.11 | — | S | THIS PR | Build/test/lint/key-files/forbidden present |
-| T-130 | Fill `TEST_COVERAGE_MATRIX.md` TBDs from tree | L30.3 | T-100 | S | THIS PR | No TBD in FR mapping rows for FR-001..005 |
-| T-140 | Pin `rust-toolchain.toml` (stable + components) | L30.5 | — | S | THIS PR | File present; matches CI `dtolnay/rust-toolchain@stable` |
-| T-150 | PR lint: require `FR-` in PR body | L30.8 | T-100 | S | THIS PR | `.github/workflows/pr-lint.yml` fails empty FR section |
-| T-160 | Friction log + journey FR map (quick) | L30.6 / L30.12 | T-100 | S | THIS PR | `docs/friction-log.md` + journey index cites FRs |
+| T-100 | Rewrite root FRs to FR-NNN + role stories | L30.1 / FR-001..005 | — | S | DONE | `FUNCTIONAL_REQUIREMENTS.md` uses FR-NNN + Acceptance refs |
+| T-110 | Replace phase PLAN with claimable WORK_DAG | L30.2 | T-100 | S | DONE | `WORK_DAG.md` has ≥5 S/M tasks with FR refs |
+| T-120 | Add `llms.txt` + expand `AGENTS.md` entrypoint | L30.4 / L30.11 | — | S | DONE | Build/test/lint/key-files/forbidden present |
+| T-130 | Fill `TEST_COVERAGE_MATRIX.md` TBDs from tree | L30.3 | T-100 | S | DONE | No TBD in FR mapping rows for FR-001..005 |
+| T-140 | Pin `rust-toolchain.toml` (stable + components) | L30.5 | — | S | DONE | File present; matches CI `dtolnay/rust-toolchain@stable` |
+| T-150 | PR lint: require `FR-` in PR body | L30.8 | T-100 | S | DONE | `.github/workflows/pr-lint.yml` fails empty FR section |
+| T-160 | Friction log + journey FR map (quick) | L30.6 / L30.12 | T-100 | S | DONE | `docs/friction-log.md` + journey index cites FRs |
 
 ## Backlog (claimable next)
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
-| T-200 | Land `tests/fr002_*.rs` acceptance suite | FR-002 | T-130 | M | READY | TRACEABILITY AC-002.* functions exist & pass |
+| T-200 | Land `tests/fr002_*.rs` acceptance suite | FR-002 | T-130 | M | DONE | TRACEABILITY AC-002.* functions exist & pass |
 | T-210 | Land `tests/fr003_*.rs` acceptance suite | FR-003 | T-200 | M | READY | TRACEABILITY AC-003.* functions exist & pass |
 | T-220 | Land `tests/fr004_*.rs` acceptance suite | FR-004 | T-210 | M | READY | TRACEABILITY AC-004.* functions exist & pass |
 | T-230 | Land `tests/fr005_*.rs` acceptance suite | FR-005 | T-220 | M | READY | TRACEABILITY AC-005.* functions exist & pass |
@@ -56,9 +56,14 @@ flowchart TD
 
 | ID | Task | Status |
 |----|------|--------|
+| T-100..T-160 | Wave1 agent-readiness scaffolding | DONE (2026-07-10) |
+| T-200 | FR-002 acceptance (`tests/fr002_*.rs`) | DONE (2026-07-12) |
 | — | Phase roadmap in `PLAN.md` (weeks 1–8) | superseded by this DAG |
+| — | Phased org+project WBS | `docs/ops/governance/WBS-PHASED.md` |
+| — | Gap/QA matrix | `docs/ops/governance/GAP-QA-MATRIX.md` |
 
 ## Ownership notes
 
-- Do **not** claim tasks that touch `release.yml`, `Containerfile`, fuzz, benches, or `spawn-core` from this C03 lane.
+- Do **not** claim tasks that touch `release.yml`, `Containerfile`, fuzz, benches, or `spawn-core` from the C03 FR-test lane alone — package those under Wave4 WBS IDs.
 - Prefer worktrees: `git worktree add ../sharecli-wtrees/<lane> -b feat/sharecli-<lane>`.
+- Always update Status tokens in this file + GAP-QA-MATRIX + TRACEABILITY when Done-when passes.

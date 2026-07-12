@@ -96,6 +96,9 @@ justifications are all defined there.
 
 ## Threat Model (Summary)
 
+Full STRIDE + attack-surface inventory: **[`THREAT_MODEL.md`](THREAT_MODEL.md)**  
+(reviewed yearly; last reviewed 2026-07-12).
+
 | In-scope | Out-of-scope |
 |----------|--------------|
 | Configuration injection via `~/.config/sharecli/config.toml` | Attacks requiring local code execution |
@@ -104,6 +107,7 @@ justifications are all defined there.
 | process-compose YAML generation correctness | Security of the `substrate` SDK internals (tracked upstream) |
 | Path / argument injection into spawned commands | Kernel-level sandbox escapes |
 | Tmpfile / state-file races (`sharecli status` cache, etc.) | — |
+| `sharecli serve` HTTP/WS (AuthN, metrics, pprof) | Federated IdP / multi-tenant AuthZ (future) |
 
 ---
 
