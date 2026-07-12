@@ -28,3 +28,7 @@ worktrees/
 # Zig build cache
 **/.zig-cache/
 
+
+# Local AgilePlus SQLite (machine ops; not source of truth)
+agileplus.db
+*.db-journal
