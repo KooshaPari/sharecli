@@ -36,14 +36,20 @@ fn fr002_show_prints_projects_and_runtime() {
 /// `projects` map and `RuntimeConfig` fields.
 #[test]
 fn fr002_load_roundtrips_projects_map() {
-    let mut cfg = Config::default();
-    cfg.projects = HashMap::new();
-    cfg.projects.insert("demo".to_string(), r"C:\Users\example\demo".to_string());
-    cfg.projects.insert("other".to_string(), "/tmp/other".to_string());
-    cfg.runtime.node_path = Some("node".to_string());
-    cfg.runtime.bun_path = Some("bun".to_string());
-    cfg.runtime.max_memory_mb = Some(2048);
-    cfg.runtime.max_processes = Some(42);
+    let mut projects = HashMap::new();
+    projects.insert("demo".to_string(), r"C:\Users\example\demo".to_string());
+    projects.insert("other".to_string(), "/tmp/other".to_string());
+
+    let cfg = Config {
+        projects,
+        runtime: RuntimeConfig {
+            node_path: Some("node".to_string()),
+            bun_path: Some("bun".to_string()),
+            max_memory_mb: Some(2048),
+            max_processes: Some(42),
+        },
+        ..Config::default()
+    };
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("config.toml");
