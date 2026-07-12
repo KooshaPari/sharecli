@@ -5,8 +5,9 @@
 #   Linux  · x86_64-unknown-linux-gnu  → sharecli-*-unknown-linux-gnu.tar.gz
 #   macOS  · aarch64-apple-darwin      → sharecli-*-apple-darwin.tar.gz
 #
-# Triggered by workflow_dispatch or a `chore(release): ...` commit on main.
-# Tag-driven GitHub Release asset upload can be layered on once signing lands.
+# Triggered by workflow_dispatch, `chore(release): ...` on main, or `v*` tags.
+# Tag/dispatch path attaches UNSIGNED tarballs + sha256 (+ SBOM) to a GitHub Release.
+# Codesign/notarization (L112) remains deferred — assets are checksummed, not signed.
 # ============================================================================
 
 name: Release
@@ -14,10 +15,16 @@ name: Release
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run (do not publish)'
+        description: 'Dry run (do not publish crates.io / skip GH Release attach)'
+        required: false
+        default: 'true'
+        type: boolean
+      attach_github_release:
+        description: 'Attach unsigned archives to a GitHub Release (tag or v{Cargo.toml version})'
         required: false
         default: 'true'
         type: boolean
@@ -77,6 +84,9 @@ jobs:
           set -euo pipefail
           cargo build --release --locked --bin sharecli --target ${{ matrix.target }}
 
+      - name: Install cargo-cyclonedx
+        run: cargo install --locked cargo-cyclonedx
+
       - name: Package archive
         id: package
         shell: bash
@@ -91,8 +101,10 @@ jobs:
             BIN="target/${TARGET}/release/sharecli.exe"
           fi
           cp "${BIN}" "${STAGE}/sharecli"
+          cargo cyclonedx --format json --spec-version 1.5 --override-filename sharecli
+          cp sharecli.cdx.json "${STAGE}/sharecli.cdx.json"
           ARCHIVE="sharecli-${TARGET}.tar.gz"
-          tar -czf "${ARCHIVE}" -C "${STAGE}" sharecli
+          tar -czf "${ARCHIVE}" -C "${STAGE}" .
           shasum -a 256 "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
           echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
 
@@ -170,4 +182,55 @@ jobs:
           else
             echo ">> LIVE PUBLISH"
             cargo publish --locked
+          fi
+
+  # Unsigned GitHub Release attach (L118). Uses GITHUB_TOKEN only — no Apple secrets.
+  github-release:
+    name: Attach unsigned assets to GitHub Release
+    needs: [build, attest]
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.attach_github_release == 'true' && github.event.inputs.dry_run != 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          pattern: sharecli-*
+          merge-multiple: true
+
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
+            TAG="v${VERSION}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Attaching UNSIGNED assets to ${TAG}"
+
+      - name: Create or update GitHub Release (UNSIGNED)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          NOTES=$'## UNSIGNED release assets\n\nThese archives include `.sha256` digests and optional CycloneDX SBOM.\n**Not** Apple-notarized / codesigned (C11 L112 still open).\nAfter attach, fill Homebrew `sha256` from the darwin tarball digest.\n'
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" release-artifacts/*.tar.gz release-artifacts/*.sha256 --clobber
+          else
+            gh release create "${TAG}" release-artifacts/*.tar.gz release-artifacts/*.sha256 \
+              --title "${TAG}" \
+              --notes "${NOTES}" \
+              --latest=false
           fi

@@ -3,75 +3,29 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "8aa2df12441c0aa14b9407615e6e363ddbc1d0c2",
-  "date": "2026-07-10",
-  "overall_pct": 56.25,
-  "grade": "D",
-  "wave1_rescore": {
-    "clusters": ["C03", "C07", "C08", "C11"],
-    "note": "Re-scored after feat/sharecli-wave1-lift merges (c03-agent, c07-devex, c08-eval, c11-ship)."
-  },
+  "commit": "pending-feat-t200-fr002-threat-release",
+  "date": "2026-07-12",
+  "overall_pct": 64,
+  "grade": "C",
+  "wave_note": "T-200 FR-002 + THREAT_MODEL + unsigned GH Release + MSRV; C04→60% C, C02→70% C, C11→64% C.",
   "clusters": {
-    "C00": {
-      "pct": 50,
-      "grade": "D",
-      "score": "15/30"
-    },
-    "C01": {
-      "pct": 63,
-      "grade": "C",
-      "score": "19/30"
-    },
-    "C02": {
-      "pct": 50,
-      "grade": "D",
-      "score": "15/30"
-    },
-    "C03": {
-      "pct": 83,
-      "grade": "B",
-      "score": "30/36"
-    },
-    "C04": {
-      "pct": 47,
-      "grade": "D",
-      "score": "14/30"
-    },
-    "C05": {
-      "grade": "D",
-      "pct": 40,
-      "score": "12/30"
-    },
-    "C06": {
-      "pct": 57,
-      "grade": "D",
-      "score": "17/30"
-    },
-    "C07": {
-      "pct": 60,
-      "grade": "C",
-      "score": "18/30"
-    },
-    "C08": {
-      "pct": 40,
-      "grade": "D",
-      "score": "12/30"
-    },
-    "C09": {
-      "pct": 58,
-      "grade": "D",
-      "score": "26/45"
-    },
-    "C10": {
-      "grade": "C",
-      "pct": 67,
-      "score": "24/36"
-    },
-    "C11": {
-      "pct": 60,
-      "grade": "C",
-      "score": "27/45"
-    }
+    "C00": { "pct": 60, "grade": "C", "score": "18/30" },
+    "C01": { "pct": 63, "grade": "C", "score": "19/30" },
+    "C02": { "pct": 70, "grade": "C", "score": "21/30" },
+    "C03": { "pct": 83, "grade": "B", "score": "30/36" },
+    "C04": { "pct": 60, "grade": "C", "score": "18/30" },
+    "C05": { "pct": 70, "grade": "C", "score": "21/30" },
+    "C06": { "pct": 57, "grade": "D", "score": "17/30" },
+    "C07": { "pct": 63, "grade": "C", "score": "19/30" },
+    "C08": { "pct": 53, "grade": "D", "score": "16/30" },
+    "C09": { "pct": 58, "grade": "D", "score": "26/45" },
+    "C10": { "pct": 67, "grade": "C", "score": "24/36" },
+    "C11": { "pct": 64, "grade": "C", "score": "29/45" }
   },
-  "scorecard_md": "audit/SCORECARD-v38.md"
+  "governance": {
+    "wbs": "docs/ops/governance/WBS-PHASED.md",
+    "gap_qa": "docs/ops/governance/GAP-QA-MATRIX.md",
+    "work_dag": "WORK_DAG.md",
+    "traceability": "docs/specs/TRACEABILITY.md"
+  }
 }

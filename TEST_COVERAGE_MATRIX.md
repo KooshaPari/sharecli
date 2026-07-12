@@ -1,8 +1,8 @@
 # Test Coverage Matrix
 
 **Project**: sharecli  
-**Document Version**: 1.1  
-**Last Updated**: 2026-07-10
+**Document Version**: 1.2  
+**Last Updated**: 2026-07-12
 
 ---
 
@@ -11,9 +11,9 @@
 | Metric | Value |
 |--------|-------|
 | Functional Requirements (Phase 3) | 5 (`FR-001`..`FR-005`) |
-| FR acceptance test files on disk | 2 (`fr001_*`) + 1 CLI smoke |
+| FR acceptance test files on disk | 4 (`fr001_*`, `fr002_*`) + 1 CLI smoke |
 | Integration / cast / coordination test files | 7 |
-| Test functions in `tests/` | 57 (`#[test]` / `#[tokio::test]`) |
+| Test functions in `tests/` | 62 (`#[test]` / `#[tokio::test]`) |
 | Unit-ish tests in `src/` + `crates/` | ~1500+ (includes generated/large suites) |
 | Coverage Target | 85% (see `.github/workflows/quality-gate.yml` `COVERAGE_THRESHOLD`) |
 | Current Coverage | Measured in CI (`coverage.yml` / llvm-cov); not pinned in-repo — run `just coverage` |
@@ -44,7 +44,7 @@
 | FR ID | Description | Test Files | Coverage Status |
 |-------|-------------|------------|-----------------|
 | FR-001 | Managed Process Lifecycle | `tests/fr001_process_lifecycle.rs` (4), `tests/fr001_stop_filter.rs` (2), `tests/integration_cli.rs` (9, smoke) | **Covered** |
-| FR-002 | TOML Configuration Management | Target: `tests/fr002_config_load.rs`, `tests/fr002_config_init.rs` | **Gap** — listed in TRACEABILITY; files not in tree (claim T-200) |
+| FR-002 | TOML Configuration Management | `tests/fr002_config_init.rs` (2), `tests/fr002_config_load.rs` (3) | **Covered** (T-200 DONE) |
 | FR-003 | Project Registry | Target: `tests/fr003_project_registry.rs`, `tests/fr003_project_discover.rs` | **Gap** (claim T-210) |
 | FR-004 | Process & Pool Health Status | Target: `tests/fr004_status_health.rs`, `tests/fr004_pool_status.rs` | **Gap** (claim T-220) |
 | FR-005 | Per-Project Resource Limits | Target: `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs` | **Gap** (claim T-230) |
@@ -63,7 +63,7 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ## Coverage Gaps
 
 ### Critical Gaps
-1. **FR-002..FR-005** acceptance files referenced by TRACEABILITY are missing on disk — highest agent-readiness risk for autonomous FR closure.
+1. **FR-003..FR-005** acceptance files still missing on disk (FR-002 Covered 2026-07-12).
 2. No outside-in `*_journey_*` test mapping user journeys → FR IDs yet (see `WORK_DAG.md` T-240).
 
 ### Partial Coverage
@@ -75,8 +75,9 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ## Recommendations
 
 ### Immediate Actions
-1. Claim `T-200..T-230` in `WORK_DAG.md` to land FR-002..005 acceptance suites.
+1. Claim `T-210..T-230` in `WORK_DAG.md` to land FR-003..005 acceptance suites.
 2. Keep FR annotations (`//! FR: FR-NNN`) on every new acceptance test.
+3. Sync status tokens in `docs/ops/governance/GAP-QA-MATRIX.md` + `WBS-PHASED.md`.
 
 ### Short-term Actions
 1. Add journey + unhappy-path tests (`T-240`, `T-300`).
