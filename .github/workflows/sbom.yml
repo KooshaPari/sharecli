@@ -34,7 +34,10 @@ jobs:
       - name: Generate CycloneDX SBOM
         run: |
           cargo cyclonedx --format json --spec-version 1.5 --override-filename sharecli
-          # cargo-cyclonedx writes sharecli.cdx.json
+          # cargo-cyclonedx ≥0.5 writes `sharecli.json` (not `sharecli.cdx.json`).
+          if [[ -f sharecli.json ]]; then
+            mv -f sharecli.json sharecli.cdx.json
+          fi
           test -f sharecli.cdx.json
 
       - name: Upload SBOM artifact
