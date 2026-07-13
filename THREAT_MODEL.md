@@ -15,7 +15,7 @@ Standalone STRIDE + attack-surface inventory for audit-v38 **L39** / **L20**.
 | Local `sharecli serve` HTTP/WS bind | Kernel / hypervisor escape |
 | Process spawn / stop / limits | Supply-chain compromise of GitHub Actions runners |
 | Config TOML under XDG / known folders | Physical access to unlocked workstation |
-| Bearer token AuthN when configured | Federated IdP (future) |
+| Bearer token AuthN when configured | JWT/JWKS federated IdP (`auth_mode=jwt`) |
 
 See `BOUNDARY.md` for ownership of process-orchestration vs host OS.
 
@@ -49,7 +49,7 @@ See `BOUNDARY.md` for ownership of process-orchestration vs host OS.
 
 ## Mitigations (current)
 
-- Optional Bearer (`SHARECLI_SERVE_TOKEN` / `config.serve.bearer_token`) — `docs/ops/AUTH.md`  
+- Optional Bearer (`SHARECLI_SERVE_TOKEN` / `config.serve.bearer_token`) or JWT/JWKS (`[serve.jwt]`) — `docs/ops/AUTH.md`  
 - Audit JSONL — `src/audit_log.rs`  
 - Non-root Containerfile `USER` + HEALTHCHECK  
 - cargo audit / deny / Dependabot on CI  
@@ -59,7 +59,7 @@ See `BOUNDARY.md` for ownership of process-orchestration vs host OS.
 
 - Open loopback serve without token (localhost trust model) — document, do not bind `0.0.0.0` without token  
 - Unsigned GitHub Release archives until signing/notarization lands (C11 L112)  
-- No federated AuthN yet (C02 L21 gap)  
+- Residual: OAuth code-flow / SAML SP / unix peer creds; AuthZ still coarse  
 
 ## Review checklist
 

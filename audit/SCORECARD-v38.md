@@ -16,7 +16,7 @@
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 18/30 | 60% | C | lib.rs sprawl; OpenAPI drift CI; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 19/30 | 63% | C | echo coverage; i18n; action SHA pins |
-| C02 | Error handling, API, Governance | L20–L29 | 21/30 | 70% | C | federated IdP; audit retention; burn alerts |
+| C02 | Error handling, API, Governance | L20–L29 | 22/30 | 73% | C | audit retention; burn alerts; residual OAuth/SAML |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
@@ -29,22 +29,20 @@
 
 ## Overall
 
-**Weighted overall score:** 65% · **Overall grade:** C
+**Weighted overall score:** 66% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+70+92+60+70+60+63+53+58+67+67)/12 = 783/12 = **65%**.)
+(Unweighted mean of cluster pcts: (60+63+73+92+60+70+60+63+53+58+67+67)/12 = 786/12 = **65.5% ≈ 66%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+70+92)×2 + (60+70+60+63+53+58+67+67) = 570 + 498 = 1068 / 16 = **66.75%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+73+92)×2 + (60+70+60+63+53+58+67+67) = 576 + 498 = 1074 / 16 = **67.125%** (C).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A) — FR suites + journey + goldens + unhappy-path + WORK_DAG.
-- **Wave2 lifts:** C00 50%→60% C (OpenAPI stub + Criterion/bench-gate); C04 47%→53% D (CycloneDX SBOM CI); C08 40%→47% D (per-PR hard-ish gate + baselines).
-- **Evidence-only (no pct change):** C07 L69 now PR-matrix ubuntu+macos (rubric score-1 bar; Windows still needed for 2); C11 Formula `head do` + OpenAPI deploy row (brew sha still PLACEHOLDER).
-- **SBOM scored under C04 L32** (not C06 — supply-chain pillars have no SBOM slot).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), federated AuthN (W5.1), SLSA L3 / cosign (C06).
+- **W5.1:** C02 L21 federated JWT AuthN — C02 **70%→73% C**; FR-012 + JWKS resource-server.
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), audit retention (W5.2), SLSA L3 / cosign (C06).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` (machine Status tokens) + `WORK_DAG.md`.
 - **Agent-readiness verdict (C03):** Wave3 FR/journey/golden/friction complete; C03 at A.
-- **Time-2 verdict (C11):** OCI+uninstall+mobile decision + brew --HEAD solid; bottle PLACEHOLDER and unsigned archives remain.
+- **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
 ## Supersedes
 

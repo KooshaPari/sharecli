@@ -41,7 +41,7 @@
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
 | C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `audit/.lane-c05/C05.md` | agent-c05 |
-| C02 | L21 | Federated IdP (beyond Bearer) | High | W5.1 | Status: Gap | `docs/ops/AUTH.md` | maintainer |
+| C02 | L21 | Federated IdP (beyond Bearer) | High | W5.1 | Status: Closed | `src/serve_auth.rs` + `docs/ops/AUTH.md` + `tests/fr012_serve_jwt_auth.rs` | maintainer |
 | C08 | L74 | Tighter bench thresholds | Low | Wave2 | Status: READY | `docs/eval/TRENDS.md` | agent-c08 |
 | C06 | L51–L60 | Provenance / deny lock gaps | Med | backlog | Status: Gap | SCORECARD C06 | agent-c06 |
 

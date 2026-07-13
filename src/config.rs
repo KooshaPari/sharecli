@@ -90,6 +90,25 @@ pub struct ServeConfig {
     /// Optional Bearer token. Prefer env `SHARECLI_SERVE_TOKEN` in production.
     /// When empty/absent, serve stays open (loopback trust model).
     pub bearer_token: Option<String>,
+    /// Auth mode: `open` | `bearer` | `jwt`. When unset: bearer_token ⇒ bearer,
+    /// else `[serve.jwt]` ⇒ jwt, else open. Env `SHARECLI_SERVE_AUTH_MODE` overrides.
+    pub auth_mode: Option<String>,
+    /// Federated JWT (OAuth2 resource-server) settings for `auth_mode = "jwt"`.
+    pub jwt: Option<ServeJwtConfig>,
+}
+
+/// JWT resource-server config for `sharecli serve` (FR-012 / W5.1).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ServeJwtConfig {
+    /// Expected `iss` claim (e.g. `https://login.microsoftonline.com/{tenant}/v2.0`).
+    pub issuer: String,
+    /// Expected `aud` claim (API audience / client id).
+    pub audience: String,
+    /// Path to a JWKS JSON document (`{"keys":[...]}`).
+    pub jwks_path: Option<String>,
+    /// Inline JWKS JSON (tests / air-gapped). Prefer `jwks_path` in production.
+    pub jwks: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

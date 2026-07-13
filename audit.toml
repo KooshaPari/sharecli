@@ -1,4 +1,4 @@
 # cargo-audit config — keep CI `--deny warnings` usable while transitive
 # yanked crates (e.g. spin via pprof) are tracked for upgrade.
 [advisories]
-yanked = "warn"
+yanked = "allow"

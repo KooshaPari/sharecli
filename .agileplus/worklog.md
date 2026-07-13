@@ -2,6 +2,12 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (W5.1 JWT AuthN)
+
+- Status: DONE — FR-012 JWT/JWKS for `serve`; L21 2→3
+- Score: C02 → 73% C; overall → 66% C
+- Next: W5.2 audit retention; W5.3 threat review; C08/C09 lifts
+
 ## 2026-07-13 (W4.2 brew)
 
 - Status: DONE — v0.3.0 darwin/linux assets attached; Formula sha256 filled

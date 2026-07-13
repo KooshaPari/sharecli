@@ -172,7 +172,33 @@ project are within those limits.
 
 ---
 
-## NFR Notes (out of scope for FR-001..FR-005)
+## FR-012 — Serve HTTP Federated AuthN
+
+**Statement:** When `sharecli serve` is configured with `auth_mode = "jwt"` (or an
+equivalent `[serve.jwt]` block), non-probe HTTP routes MUST reject requests whose
+`Authorization: Bearer` JWT fails signature or `iss` / `aud` / `exp` validation
+against the configured JWKS. `/healthz` and `/readyz` MUST remain public.
+
+**Source:**
+
+- `src/serve_auth.rs` — JWT / JWKS validation middleware
+- `src/config.rs` — `ServeConfig` / `ServeJwtConfig`
+- `src/commands/serve.rs` — AuthN wiring at serve startup
+- `docs/ops/AUTH.md` — operator guide
+
+**Acceptance Criteria:**
+
+- **AC-012.1:** Valid RS256 JWT with matching `iss`/`aud` is authorized (returns
+  `sub` from claims).
+- **AC-012.2:** Expired JWT is rejected with reason `jwt_expired`.
+- **AC-012.3:** Wrong `aud` / `iss` are rejected; probe paths stay public
+  (see unit tests for `/healthz` `/readyz`).
+
+**Test refs:** `tests/fr012_serve_jwt_auth.rs`, `src/serve_auth.rs` unit tests
+
+---
+
+## NFR Notes (out of scope for FR-001..FR-005 / FR-012)
 
 - **NFR-001 Platform Support:** The CLI MUST build and run on Linux, macOS,
   and Windows. Process-pool tests are gated with `#[cfg(unix)]` /
