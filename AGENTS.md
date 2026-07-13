@@ -36,6 +36,8 @@ the verify loop after behavioral changes.
 | `WORK_DAG.md` | Claimable S/M tasks with FR refs |
 | `PLAN.md` | Human roadmap (points at WORK_DAG) |
 | `TEST_COVERAGE_MATRIX.md` | FR → test coverage status |
+| `docs/ops/governance/*` | Status tokens | WBS / GAP-QA |
+| `docs/ops/LOCAL_LOOP_BUDGETS.md` | Soft wall-clock budgets for agent loops | T-270 |
 | `llms.txt` | LLM/agent file index |
 | `src/main.rs` | CLI entry |
 | `src/commands/` | Subcommand implementations |
@@ -81,6 +83,27 @@ There is no code or dependency relationship between the two repos.
   without coordinating (see active `WORK_DAG.md` / parent dispatch).
 - Never commit agent scratch dirs: `.claude/`, `.codex/`, `.gemini/`, `.cursor/`.
 
+### Claim-lock protocol (L30.9 / T-260)
+
+Before editing a shared path, claim it in the PR/branch description and in
+`WORK_DAG.md` / GAP-QA Owner(machine) cell. Hold the claim until merge or
+explicit handoff.
+
+| Shared path | Default owner lane | Notes |
+|-------------|-------------------|-------|
+| `WORK_DAG.md`, `TEST_COVERAGE_MATRIX.md`, `docs/specs/*` | agent-c03 | FR acceptance chain |
+| `audit/SCORECARD-v38.md`, `audit/.lane-*` | scorecard lane | Re-score with evidence |
+| `docs/ops/governance/*` | any (Status tokens only) | Flip `Status:` + Evidence; keep keys |
+| `.github/workflows/release.yml`, `Containerfile`, `Formula/*` | agent-c11 | Packaging / Wave4 |
+| `src/commands/serve.rs`, `src/otel.rs`, `src/pprof_http.rs` | agent-c05 | Observability |
+| `src/serve_auth.rs`, `src/audit_log.rs`, `THREAT_MODEL.md` | agent-c04 / C02 | AuthN / threat |
+| `benches/`, `scripts/bench/*`, `docs/eval/*` | agent-c08 | Eval / perf gate |
+| `crates/spawn-core*`, fuzz | spawn lane | Do not claim from C03 FR lane |
+
+Conflict rule: if two agents need the same path, serialize (merge first claim)
+or split into sequential WORK_DAG tasks. Do not dual-edit without a named
+handoff in `.agileplus/worklog.md`.
+
 ## Forbidden operations
 
 - Do not force-push `main` / `master`.
@@ -95,8 +118,8 @@ There is no code or dependency relationship between the two repos.
 
 - CI uses `RUSTFLAGS=-D warnings` — local clippy must be clean.
 - Process-pool tests are often `#[cfg(unix)]` / `#[cfg(windows)]` gated.
-- TRACEABILITY lists FR-002..005 test files that may still be missing; claim
-  `T-200..T-230` in `WORK_DAG.md` rather than inventing alternate names.
+- TRACEABILITY lists FR-003..005 test files that may still be missing; claim
+  `T-210..T-230` in `WORK_DAG.md` rather than inventing alternate names.
 - UTF-8 only in text files (no Windows-1252 smart quotes).
 - Prefer `just` recipes over ad-hoc cargo flags so CI and local match.
 

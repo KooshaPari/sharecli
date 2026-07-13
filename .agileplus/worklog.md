@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-12 (T-210)
+
+- Status: DONE — T-210 FR-003 acceptance (`tests/fr003_*.rs`)
+- Status: DONE — T-260 claim-lock protocol in AGENTS.md
+- Status: DONE — T-270 local loop budgets (`docs/ops/LOCAL_LOOP_BUDGETS.md`)
+- Next READY: T-220 FR-004; W4.2 brew sha still Blocked
+
 ## 2026-07-12
 
 - Status: DONE — T-200 FR-002 acceptance tests (`tests/fr002_*.rs`)
