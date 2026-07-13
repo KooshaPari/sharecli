@@ -7,7 +7,7 @@
   "date": "2026-07-12",
   "overall_pct": 65,
   "grade": "C",
-  "wave_note": "C06→60% C (L60); release upload-artifact pin fixed; C03 92% A; overall 65% C.",
+  "wave_note": "W4.2 brew sha; C11→67% C; C06 60% C; C03 92% A; overall 65% C.",
   "clusters": {
     "C00": { "pct": 60, "grade": "C", "score": "18/30" },
     "C01": { "pct": 63, "grade": "C", "score": "19/30" },
@@ -16,6 +16,11 @@
     "C04": { "pct": 60, "grade": "C", "score": "18/30" },
     "C05": { "pct": 70, "grade": "C", "score": "21/30" },
     "C06": { "pct": 60, "grade": "C", "score": "18/30" },
+    "C07": { "pct": 63, "grade": "C", "score": "19/30" },
+    "C08": { "pct": 53, "grade": "D", "score": "16/30" },
+    "C09": { "pct": 58, "grade": "D", "score": "26/45" },
+    "C10": { "pct": 67, "grade": "C", "score": "24/36" },
+    "C11": { "pct": 67, "grade": "C", "score": "30/45" }
     "C07": { "pct": 63, "grade": "C", "score": "19/30" },
     "C08": { "pct": 53, "grade": "D", "score": "16/30" },
     "C09": { "pct": 58, "grade": "D", "score": "26/45" },

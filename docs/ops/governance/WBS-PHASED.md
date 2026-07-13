@@ -34,7 +34,7 @@
 | C08 | Eval Coverage | 53% | D | Wave1–2 | Status: READY |
 | C09 | Accessibility + UX | 58% | D | backlog | Status: READY |
 | C10 | Visual Identity | 67% | C | Wave1 | Status: DONE |
-| C11 | Packaging + Distribution | 64% | C | Wave4 | Status: IN_PROGRESS |
+| C11 | Packaging + Distribution | 67% | C | Wave4 | Status: IN_PROGRESS |
 
 ## Phased WBS
 
@@ -61,7 +61,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
 | W4.1 | Unsigned GH Release attach + SBOM in-archive | C11 L118 · C04 L32 · `release.yml` | Status: DONE |
-| W4.2 | Homebrew bottle sha (replace PLACEHOLDER) | C11 · `Formula/sharecli.rb` | Status: BLOCKED |
+| W4.2 | Homebrew bottle sha (replace PLACEHOLDER) | C11 · `Formula/sharecli.rb` | Status: DONE |
 | W4.3 | Codesign / notarize | C11 L112 | Status: BLOCKED |
 | W4.4 | Declare MSRV (`rust-version`) | C11 L119 | Status: DONE |
 
