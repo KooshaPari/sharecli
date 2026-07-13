@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](../../../WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](../../../TEST_COVERAGE_MATRIX.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-13 (C06 60% C; release pin fixed; T-300 Covered; brew attach pending)
+**Last sync:** 2026-07-13 (W4.2 brew sha Closed; v0.3.0 assets attached; C06 60% C)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -33,7 +33,7 @@
 | C02 | L20 | STRIDE attack surface | Med | L20 | Status: Closed | `THREAT_MODEL.md` · `SECURITY.md` | agent-c04 |
 | C11 | L118 | GH Release asset attach | High | W4.1 · L118 | Status: Closed | `release.yml` `github-release` job | agent-c11 |
 | C11 | L119 | MSRV rust-version | Med | W4.4 · L119 | Status: Closed | `Cargo.toml` `rust-version = "1.89"` | agent-c11 |
-| C11 | L108/L120 | Homebrew bottle sha PLACEHOLDER | High | W4.2 | Status: Blocked | `Formula/sharecli.rb` | agent-c11 |
+| C11 | L108/L120 | Homebrew bottle sha PLACEHOLDER | High | W4.2 | Status: Closed | `Formula/sharecli.rb` sha256 from v0.3.0 darwin | agent-c11 |
 | C11 | L112 | Codesign / notarize | High | W4.3 | Status: Blocked | Apple secrets | maintainer |
 
 ## Cluster residual gaps

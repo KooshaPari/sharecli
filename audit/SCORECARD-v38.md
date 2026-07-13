@@ -25,15 +25,15 @@
 | C08 | Eval Coverage | L71–L80 | 16/30 | 53% | D | Harbor N/A by ADR; tighter bench thresholds |
 | C09 | Accessibility + UX | L81–L95 | 26/45 | 58% | D | degraded-mode AX; recovery docs |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
-| C11 | Packaging + Distribution | L108–L122 | 29/45 | 64% | C | Homebrew sha; signing; native installers |
+| C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
 ## Overall
 
 **Weighted overall score:** 65% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+70+92+60+70+60+63+53+58+67+64)/12 = 780/12 = **65%**.)
+(Unweighted mean of cluster pcts: (60+63+70+92+60+70+60+63+53+58+67+67)/12 = 783/12 = **65%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+70+92)×2 + (60+70+60+63+53+58+67+64) = 570 + 495 = 1065 / 16 = **66.5625%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+70+92)×2 + (60+70+60+63+53+58+67+67) = 570 + 498 = 1068 / 16 = **66.75%** (C).
 
 ## Headline Findings
 
@@ -41,7 +41,7 @@
 - **Wave2 lifts:** C00 50%→60% C (OpenAPI stub + Criterion/bench-gate); C04 47%→53% D (CycloneDX SBOM CI); C08 40%→47% D (per-PR hard-ish gate + baselines).
 - **Evidence-only (no pct change):** C07 L69 now PR-matrix ubuntu+macos (rubric score-1 bar; Windows still needed for 2); C11 Formula `head do` + OpenAPI deploy row (brew sha still PLACEHOLDER).
 - **SBOM scored under C04 L32** (not C06 — supply-chain pillars have no SBOM slot).
-- **Highest-leverage remaining:** brew digest after Release attach (C11; upload-artifact pin fixed), federated AuthN (W5.1), SLSA L3 / cosign (C06).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), federated AuthN (W5.1), SLSA L3 / cosign (C06).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` (machine Status tokens) + `WORK_DAG.md`.
 - **Agent-readiness verdict (C03):** Wave3 FR/journey/golden/friction complete; C03 at A.
 - **Time-2 verdict (C11):** OCI+uninstall+mobile decision + brew --HEAD solid; bottle PLACEHOLDER and unsigned archives remain.
@@ -138,6 +138,12 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Seed `SOURCE_DATE_EPOCH=0` on release builds; add `audit.toml` yanked=warn.
 - **C06 17/30 (57% D) → 18/30 (60% C):** L60 2→3 (`rust-toolchain.toml` evidence).
 - Overall stays **65% C** (mean 780/12).
+
+### 2026-07-13 (W4.2 brew sha)
+- Attached linux+darwin tarballs to `v0.3.0`; Formula sha256 filled.
+- Release: Zig setup + cyclonedx filename + attach no longer blocked on attest.
+- **C11 29/45 (64% C) → 30/45 (67% C):** L109 2→3.
+- Overall stays **65% C** (mean 783/12).
 
 ## Spine links
 

@@ -2,6 +2,12 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (W4.2 brew)
+
+- Status: DONE — v0.3.0 darwin/linux assets attached; Formula sha256 filled
+- Score: C11 → 67% C; overall 65% C
+- Next: W5.1 federated AuthN; L112 signing Blocked on Apple secrets
+
 ## 2026-07-13 (C06 release pin)
 
 - Status: DONE — fixed broken `upload-artifact` SHA; SOURCE_DATE_EPOCH on release; audit.toml yanked=warn
