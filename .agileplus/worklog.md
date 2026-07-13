@@ -2,6 +2,12 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C06 release pin)
+
+- Status: DONE — fixed broken `upload-artifact` SHA; SOURCE_DATE_EPOCH on release; audit.toml yanked=warn
+- Score: C06 → 60% C (L60 2→3); overall 65% C
+- Next: re-dispatch Release → fill brew sha; W5.1 federated AuthN
+
 ## 2026-07-13 (T-300)
 
 - Status: DONE — T-300 unhappy-path (`tests/fr_invalid_missing_friction.rs`)

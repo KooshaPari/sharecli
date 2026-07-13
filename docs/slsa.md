@@ -24,6 +24,7 @@ log alongside the artifact.
 | Provenance distributed alongside artifact   | ✅ L2        |
 | Build platform hosted and isolated          | ✅ L2        |
 | Provenance authenticity (OIDC-signed)       | ✅ L2        |
+| `SOURCE_DATE_EPOCH` seeded on release build | ✅ seeded    |
 | Build platform isolated from build request | ⏭ L3 target |
 | Hardened build platform                     | ⏭ L3 target |
 | Provenance non-forgeable (sigstore/cosign)  | ⏭ L3 target |

@@ -80,6 +80,9 @@ jobs:
 
       - name: Build release binary
         shell: bash
+        env:
+          # Reproducibility seed for release binaries (C06 L52).
+          SOURCE_DATE_EPOCH: "0"
         run: |
           set -euo pipefail
           cargo build --release --locked --bin sharecli --target ${{ matrix.target }}
@@ -109,7 +112,7 @@ jobs:
           echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
 
       - name: Upload platform artifact
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861c4a24d9c5d28 # v4.4.0
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: sharecli-${{ matrix.target }}
           path: |
@@ -147,7 +150,7 @@ jobs:
           ls -laR release-artifacts/
 
       - name: Upload combined artifacts
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861c4a24d9c5d28 # v4.4.0
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-artifacts
           path: release-artifacts/
