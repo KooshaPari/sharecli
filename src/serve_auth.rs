@@ -121,6 +121,7 @@ impl ServeAuth {
     }
 
     /// Backward-compatible helper used by older call sites / tests.
+    #[allow(dead_code)]
     pub fn from_env_or_token(config_token: Option<&str>) -> Self {
         let token = std::env::var("SHARECLI_SERVE_TOKEN")
             .ok()
@@ -177,6 +178,7 @@ impl ServeAuth {
     }
 
     /// Legacy name retained for unit tests.
+    #[allow(dead_code)]
     pub fn check_bearer(&self, header_val: Option<&str>) -> bool {
         self.check_authorization(header_val).is_ok()
     }
