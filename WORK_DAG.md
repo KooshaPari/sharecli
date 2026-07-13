@@ -45,7 +45,7 @@ flowchart TD
 | T-210 | Land `tests/fr003_*.rs` acceptance suite | FR-003 | T-200 | M | DONE | TRACEABILITY AC-003.* functions exist & pass |
 | T-220 | Land `tests/fr004_*.rs` acceptance suite | FR-004 | T-210 | M | DONE | TRACEABILITY AC-004.* functions exist & pass |
 | T-230 | Land `tests/fr005_*.rs` acceptance suite | FR-005 | T-220 | M | DONE | TRACEABILITY AC-005.* functions exist & pass |
-| T-240 | Outside-in journey test (`*_journey_*`) | FR-001..003 / L30.6 | T-160 | M | READY | One CLI journey test maps steps → FR IDs |
+| T-240 | Outside-in journey test (`*_journey_*`) | FR-001..003 / L30.6 | T-160 | M | DONE | One CLI journey test maps steps → FR IDs |
 | T-250 | Golden CLI/TUI snapshot fixtures | L30.7 | T-240 | M | READY | `tests/golden/` has ≥3 committed fixtures |
 | T-260 | Multi-agent file ownership protocol in AGENTS | L30.9 | T-120 | S | DONE | Explicit claim-lock section for shared paths |
 | T-270 | Publish local loop timing budgets | L30.10 | T-140 | S | DONE | `docs/ops/` or AGENTS lists measured `just test` budget |
@@ -61,6 +61,7 @@ flowchart TD
 | T-210 | FR-003 acceptance (`tests/fr003_*.rs`) | DONE (2026-07-12) |
 | T-220 | FR-004 acceptance (`tests/fr004_*.rs`) | DONE (2026-07-12) |
 | T-230 | FR-005 acceptance (`tests/fr005_*.rs`) | DONE (2026-07-13) |
+| T-240 | Outside-in Quick Start journey (`tests/quick_start_journey.rs`) | DONE (2026-07-13) |
 | T-260 | Claim-lock protocol in `AGENTS.md` | DONE (2026-07-12) |
 | T-270 | Local loop budgets `docs/ops/LOCAL_LOOP_BUDGETS.md` | DONE (2026-07-12) |
 | — | Phase roadmap in `PLAN.md` (weeks 1–8) | superseded by this DAG |

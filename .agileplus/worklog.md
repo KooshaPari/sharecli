@@ -2,6 +2,11 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (T-240)
+
+- Status: DONE — T-240 outside-in journey (`tests/quick_start_journey.rs`)
+- Next READY: T-250 golden / T-300 unhappy-path; brew sha still Blocked
+
 ## 2026-07-13 (T-230)
 
 - Status: DONE — T-230 FR-005 acceptance (`tests/fr005_*.rs`)

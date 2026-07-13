@@ -12,7 +12,7 @@ title: User Journeys
 
 | Journey | Time | Complexity | Primary FRs | Status |
 |---------|------|------------|-------------|--------|
-| [Quick Start](./quick-start) | 5 min | Beginner | FR-001, FR-002, FR-003 | Ready (CLI-oriented) |
+| [Quick Start](./quick-start) | 5 min | Beginner | FR-001, FR-002, FR-003 | Ready — `tests/quick_start_journey.rs` |
 | Core Integration | 15 min | Intermediate | FR-001, FR-004, FR-005 | Planned |
 | Production Setup | 30 min | Advanced | FR-004, FR-005, NFR-001..003 | Planned |
 
