@@ -14,7 +14,7 @@
    acceptance test.
 
 **Phase:** 3 (spec+test+traceability e2e)
-**Last updated:** 2026-07-12
+**Last updated:** 2026-07-12 (T-210)
 
 ---
 
@@ -88,5 +88,6 @@
 
 ## Change log
 
+- **2026-07-12 — T-210:** Landed `tests/fr003_project_registry.rs` + `tests/fr003_project_discover.rs` (AC-003.1..003.5). Also T-260 claim-lock + T-270 loop budgets.
 - **2026-07-12 — T-200:** Landed `tests/fr002_config_init.rs` + `tests/fr002_config_load.rs` (AC-002.1..002.5). FR-002 Status remains ACCEPTED with files on disk. Governance: `docs/ops/governance/{WBS-PHASED,GAP-QA-MATRIX}.md`.
 - **2026-06-15 — Phase 3 initial:** 5 FRs published; 10 acceptance test files added; full FR→source→test matrix established.
