@@ -2,6 +2,12 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (T-250)
+
+- Status: DONE — T-250 golden fixtures (`tests/golden/` ×5 + `golden_snapshots.rs`)
+- Score: C03 → 89% B; overall → 65% C
+- Next READY: T-300 unhappy-path; brew sha still Blocked
+
 ## 2026-07-13 (T-240)
 
 - Status: DONE — T-240 outside-in journey (`tests/quick_start_journey.rs`)

@@ -1,0 +1,9 @@
+List managed processes
+
+Usage: sharecli ps [OPTIONS]
+
+Options:
+  -p, --project <PROJECT>  Filter by project name
+      --harness <HARNESS>  Filter by harness type (claude, forge, node, bun)
+  -a, --all                Show all processes including system ones
+  -h, --help               Print help
