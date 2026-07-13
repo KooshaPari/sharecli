@@ -37,11 +37,7 @@ async fn fr005_limits_set_persists_values() {
     let memory_mb = 512u64;
     let max_processes = 3usize;
 
-    let limits = ProjectLimits {
-        memory_limit_mb: memory_mb,
-        max_processes,
-        cpu_affinity: None,
-    };
+    let limits = ProjectLimits { memory_limit_mb: memory_mb, max_processes, cpu_affinity: None };
     resources.set_limits(project, limits).await;
 
     let stored = resources.get_limits(project).await;
@@ -88,11 +84,7 @@ async fn fr005_get_limits_returns_default_for_unknown() {
     resources
         .set_limits(
             "widget",
-            ProjectLimits {
-                memory_limit_mb: 256,
-                max_processes: 2,
-                cpu_affinity: None,
-            },
+            ProjectLimits { memory_limit_mb: 256, max_processes: 2, cpu_affinity: None },
         )
         .await;
     let latest = resources.get_limits("widget").await;

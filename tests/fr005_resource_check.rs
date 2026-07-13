@@ -84,10 +84,7 @@ fn fr005_check_prints_status_lines() {
     assert!(out_ok.contains("=== Resource Limits for 'demo' ==="), "got: {out_ok}");
     assert!(out_ok.contains("Memory: 128 MB / 1024 MB"), "got: {out_ok}");
     assert!(out_ok.contains("Processes: 3 / 10"), "got: {out_ok}");
-    assert!(
-        out_ok.matches("Status: OK").count() >= 2,
-        "both axes MUST show OK; got: {out_ok}"
-    );
+    assert!(out_ok.matches("Status: OK").count() >= 2, "both axes MUST show OK; got: {out_ok}");
     assert!(out_ok.contains("Overall: OK"), "got: {out_ok}");
 
     let exceeded = check(2048, 1024, 15, 10);
