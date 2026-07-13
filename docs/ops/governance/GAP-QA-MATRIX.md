@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](../../../WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](../../../TEST_COVERAGE_MATRIX.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-12 (FR-003 Covered; T-260/T-270 Covered; brew PLACEHOLDER Blocked)
+**Last sync:** 2026-07-12 (FR-004 Covered; T-220 DONE; brew PLACEHOLDER Blocked)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -15,7 +15,7 @@
 | C03 | L30.3 | FR-001 lifecycle suite | Med | FR-001 | Status: Covered | `tests/fr001_*.rs` | agent-c03 |
 | C03 | L30.3 | FR-002 config suite | High | FR-002 · T-200 · W3.1 | Status: Covered | `tests/fr002_*.rs` · `docs/specs/TRACEABILITY.md` | agent-c03 |
 | C03 | L30.3 | FR-003 registry suite | High | FR-003 · T-210 · W3.2 | Status: Covered | `tests/fr003_project_registry.rs` · `tests/fr003_project_discover.rs` | agent-c03 |
-| C03 | L30.3 | FR-004 health/status suite | High | FR-004 · T-220 · W3.3 | Status: Gap | target `tests/fr004_*.rs` | agent-c03 |
+| C03 | L30.3 | FR-004 health/status suite | High | FR-004 · T-220 · W3.3 | Status: Covered | `tests/fr004_status_health.rs` · `tests/fr004_pool_status.rs` | agent-c03 |
 | C03 | L30.3 | FR-005 limits suite | High | FR-005 · T-230 · W3.4 | Status: Gap | target `tests/fr005_*.rs` | agent-c03 |
 | C03 | L30.6 | Outside-in journey e2e | Med | T-240 · W3.5 | Status: Gap | `docs/journeys/` | agent-c03 |
 | C03 | L30.7 | Golden CLI/TUI fixtures | Med | T-250 · W3.5 | Status: Gap | `tests/golden/` | agent-c03 |
