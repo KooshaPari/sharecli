@@ -47,7 +47,7 @@
 | FR-002 | TOML Configuration Management | `tests/fr002_config_init.rs` (2), `tests/fr002_config_load.rs` (3) | **Covered** (T-200 DONE) |
 | FR-003 | Project Registry | `tests/fr003_project_registry.rs` (4), `tests/fr003_project_discover.rs` (1) | **Covered** (T-210 DONE) |
 | FR-004 | Process & Pool Health Status | `tests/fr004_status_health.rs` (3), `tests/fr004_pool_status.rs` (2) | **Covered** (T-220 DONE) |
-| FR-005 | Per-Project Resource Limits | Target: `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs` | **Gap** (claim T-230) |
+| FR-005 | Per-Project Resource Limits | `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs` | **Covered** (T-230) |
 | FR-CAST-001 | Pane Address Schema | `tests/cast_address.rs` (10) | **Covered** (extension) |
 | FR-CAST-002 | Pane Registry | `tests/cast_registry.rs` (7) | **Covered** (extension) |
 | FR-CAST-003 | Ghostty cast | `tests/cast_ghostty.rs` (7) | **Covered** (extension) |
@@ -63,8 +63,8 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ## Coverage Gaps
 
 ### Critical Gaps
-1. **FR-005** acceptance files still missing on disk (FR-002..004 Covered).
-2. No outside-in `*_journey_*` test mapping user journeys → FR IDs yet (see `WORK_DAG.md` T-240).
+1. No outside-in `*_journey_*` test mapping user journeys → FR IDs yet (see `WORK_DAG.md` T-240).
+2. Unhappy-path friction suites still open (`WORK_DAG.md` T-300).
 
 ### Partial Coverage
 1. **FR-001** library acceptance is strong; CLI binary coverage is smoke-level (`integration_cli.rs`), not full AC-001.* via the binary.
@@ -75,7 +75,7 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ## Recommendations
 
 ### Immediate Actions
-1. Claim `T-230` in `WORK_DAG.md` to land FR-005 acceptance suites.
+1. Claim `T-240` for outside-in journey coverage.
 2. Keep FR annotations (`//! FR: FR-NNN`) on every new acceptance test.
 3. Sync status tokens in `docs/ops/governance/GAP-QA-MATRIX.md` + `WBS-PHASED.md`.
 
@@ -85,4 +85,4 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ---
 
-**Last Updated**: 2026-07-10
+**Last Updated**: 2026-07-13

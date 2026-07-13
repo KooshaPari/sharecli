@@ -2,6 +2,11 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (T-230)
+
+- Status: DONE — T-230 FR-005 acceptance (`tests/fr005_*.rs`)
+- Next READY: T-240 journey / T-300 unhappy-path; brew sha still Blocked
+
 ## 2026-07-12 (T-220)
 
 - Status: DONE — T-220 FR-004 acceptance (`tests/fr004_*.rs`)
