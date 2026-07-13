@@ -43,7 +43,7 @@ flowchart TD
 |----|------|-------------|------|--------|--------|-----------|
 | T-200 | Land `tests/fr002_*.rs` acceptance suite | FR-002 | T-130 | M | DONE | TRACEABILITY AC-002.* functions exist & pass |
 | T-210 | Land `tests/fr003_*.rs` acceptance suite | FR-003 | T-200 | M | DONE | TRACEABILITY AC-003.* functions exist & pass |
-| T-220 | Land `tests/fr004_*.rs` acceptance suite | FR-004 | T-210 | M | READY | TRACEABILITY AC-004.* functions exist & pass |
+| T-220 | Land `tests/fr004_*.rs` acceptance suite | FR-004 | T-210 | M | DONE | TRACEABILITY AC-004.* functions exist & pass |
 | T-230 | Land `tests/fr005_*.rs` acceptance suite | FR-005 | T-220 | M | READY | TRACEABILITY AC-005.* functions exist & pass |
 | T-240 | Outside-in journey test (`*_journey_*`) | FR-001..003 / L30.6 | T-160 | M | READY | One CLI journey test maps steps → FR IDs |
 | T-250 | Golden CLI/TUI snapshot fixtures | L30.7 | T-240 | M | READY | `tests/golden/` has ≥3 committed fixtures |
@@ -59,6 +59,7 @@ flowchart TD
 | T-100..T-160 | Wave1 agent-readiness scaffolding | DONE (2026-07-10) |
 | T-200 | FR-002 acceptance (`tests/fr002_*.rs`) | DONE (2026-07-12) |
 | T-210 | FR-003 acceptance (`tests/fr003_*.rs`) | DONE (2026-07-12) |
+| T-220 | FR-004 acceptance (`tests/fr004_*.rs`) | DONE (2026-07-12) |
 | T-260 | Claim-lock protocol in `AGENTS.md` | DONE (2026-07-12) |
 | T-270 | Local loop budgets `docs/ops/LOCAL_LOOP_BUDGETS.md` | DONE (2026-07-12) |
 | — | Phase roadmap in `PLAN.md` (weeks 1–8) | superseded by this DAG |
