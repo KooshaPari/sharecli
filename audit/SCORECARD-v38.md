@@ -17,7 +17,7 @@
 | C00 | Architecture + Module | L0–L9 | 18/30 | 60% | C | lib.rs sprawl; OpenAPI drift CI; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 19/30 | 63% | C | echo coverage; i18n; action SHA pins |
 | C02 | Error handling, API, Governance | L20–L29 | 21/30 | 70% | C | federated IdP; audit retention; burn alerts |
-| C03 | Agent Readiness | L30 | 32/36 | 89% | B | unhappy-path friction (T-300) |
+| C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional T-310 polish; brew still Blocked |
 | C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 17/30 | 57% | D | provenance upgrade; lock/deny gaps |
@@ -31,19 +31,19 @@
 
 **Weighted overall score:** 65% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+70+89+60+70+57+63+53+58+67+64)/12 = 774/12 = **65%**.)
+(Unweighted mean of cluster pcts: (60+63+70+92+60+70+57+63+53+58+67+64)/12 = 777/12 = **65%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+70+89)×2 + (60+70+57+63+53+58+67+64) = 564 + 492 = 1056 / 16 = **66%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+70+92)×2 + (60+70+57+63+53+58+67+64) = 570 + 492 = 1062 / 16 = **66.375%** (C).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (89% B) — FR-NNN + WORK_DAG + journey + goldens + llms.txt + pr-lint.
+- **Strongest:** C03 Agent Readiness (92% A) — FR suites + journey + goldens + unhappy-path + WORK_DAG.
 - **Wave2 lifts:** C00 50%→60% C (OpenAPI stub + Criterion/bench-gate); C04 47%→53% D (CycloneDX SBOM CI); C08 40%→47% D (per-PR hard-ish gate + baselines).
 - **Evidence-only (no pct change):** C07 L69 now PR-matrix ubuntu+macos (rubric score-1 bar; Windows still needed for 2); C11 Formula `head do` + OpenAPI deploy row (brew sha still PLACEHOLDER).
 - **SBOM scored under C04 L32** (not C06 — supply-chain pillars have no SBOM slot).
-- **Highest-leverage remaining:** brew digest after first `v*` attach (C11), unhappy-path (T-300), federated AuthN, C06 provenance.
+- **Highest-leverage remaining:** brew digest after first `v*` attach (C11), federated AuthN, C06 provenance, Wave4 packaging.
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` (machine Status tokens) + `WORK_DAG.md`.
-- **Agent-readiness verdict (C03):** Agents can claim WORK_DAG tasks with FR refs; FR-001..005 Covered; journey + goldens Covered; unhappy-path still open.
+- **Agent-readiness verdict (C03):** Wave3 FR/journey/golden/friction complete; C03 at A.
 - **Time-2 verdict (C11):** OCI+uninstall+mobile decision + brew --HEAD solid; bottle PLACEHOLDER and unsigned archives remain.
 
 ## Supersedes
@@ -127,6 +127,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C03 31/36 (86% B) → 32/36 (89% B):** L30.7 2→3 (`tests/golden/` ×5 + `golden_snapshots.rs`).
 - **Overall 64% C → 65% C** (mean 774/12).
 - Remaining C03 gap: unhappy-path (T-300); T-310 re-score still optional.
+
+### 2026-07-13 (T-300 unhappy-path)
+- **C03 32/36 (89% B) → 33/36 (92% A):** L30.12 2→3 (`tests/fr_invalid_missing_friction.rs`).
+- Overall stays **65% C** (mean 777/12).
+- W3.5 Journey+golden+friction → DONE.
 
 ## Spine links
 

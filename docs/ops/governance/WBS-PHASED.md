@@ -50,8 +50,8 @@ See SCORECARD post-audit remediations through 2026-07-11. C05 closed at **70%**.
 | W3.2 | FR-003 project registry | T-210 · `tests/fr003_*.rs` · C03 | Status: DONE |
 | W3.3 | FR-004 status/health | T-220 · `tests/fr004_*.rs` · C03 | Status: DONE |
 | W3.4 | FR-005 limits | T-230 · C03 | Status: DONE |
-| W3.5 | Journey + golden + friction | T-240..T-300 · C03 | Status: IN_PROGRESS |
-| W3.6 | C03 re-score | T-310 | Status: BLOCKED |
+| W3.5 | Journey + golden + friction | T-240..T-300 · C03 | Status: DONE |
+| W3.6 | C03 re-score | T-310 | Status: DONE |
 | W3.7 | Claim-lock + loop budgets | T-260 · T-270 | Status: DONE |
 
 Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.

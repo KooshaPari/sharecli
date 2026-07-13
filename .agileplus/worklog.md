@@ -2,6 +2,12 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (T-300)
+
+- Status: DONE — T-300 unhappy-path (`tests/fr_invalid_missing_friction.rs`)
+- Score: C03 → 92% A; W3.5 DONE; overall 65% C
+- Next READY: T-310 C03 polish / Wave4 brew; brew sha still Blocked
+
 ## 2026-07-13 (T-250)
 
 - Status: DONE — T-250 golden fixtures (`tests/golden/` ×5 + `golden_snapshots.rs`)

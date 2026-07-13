@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](../../../WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](../../../TEST_COVERAGE_MATRIX.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-13 (T-250 golden Covered; T-240 journey Covered; brew PLACEHOLDER Blocked)
+**Last sync:** 2026-07-13 (T-300 unhappy-path Covered; W3.5 DONE; brew PLACEHOLDER Blocked)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -19,9 +19,10 @@
 | C03 | L30.3 | FR-005 limits suite | High | FR-005 · T-230 · W3.4 | Status: Covered | `tests/fr005_project_limits.rs` · `tests/fr005_resource_check.rs` | agent-c03 |
 | C03 | L30.6 | Outside-in journey e2e | Med | T-240 · W3.5 | Status: Covered | `tests/quick_start_journey.rs` · `docs/journeys/quick-start.md` | agent-c03 |
 | C03 | L30.7 | Golden CLI/TUI fixtures | Med | T-250 · W3.5 | Status: Covered | `tests/golden/` · `tests/golden_snapshots.rs` | agent-c03 |
+| C03 | L30.12 | Unhappy-path friction suite | Med | T-300 · W3.5 | Status: Covered | `tests/fr_invalid_missing_friction.rs` | agent-c03 |
 | C03 | L30.9 | Multi-agent claim-lock | Low | T-260 | Status: Covered | `AGENTS.md` Claim-lock protocol | agent-c03 |
 | C03 | L30.10 | Local loop timing budgets | Low | T-270 | Status: Covered | `docs/ops/LOCAL_LOOP_BUDGETS.md` | agent-c03 |
-| C03 | audit | C03 re-score after FR suites | Low | T-310 · W3.6 | Status: Blocked | `audit/.lane-c03/C03.md` | agent-c03 |
+| C03 | audit | C03 re-score after FR suites | Low | T-310 · W3.6 | Status: Covered | `audit/.lane-c03/C03.md` · SCORECARD 92% A | agent-c03 |
 
 ## Security / packaging closures
 

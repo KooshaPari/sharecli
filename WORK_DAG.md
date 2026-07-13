@@ -49,8 +49,8 @@ flowchart TD
 | T-250 | Golden CLI/TUI snapshot fixtures | L30.7 | T-240 | M | DONE | `tests/golden/` has ≥3 committed fixtures |
 | T-260 | Multi-agent file ownership protocol in AGENTS | L30.9 | T-120 | S | DONE | Explicit claim-lock section for shared paths |
 | T-270 | Publish local loop timing budgets | L30.10 | T-140 | S | DONE | `docs/ops/` or AGENTS lists measured `just test` budget |
-| T-300 | Unhappy-path friction tests (`_invalid_` / `_missing_`) | L30.12 | T-230 | M | READY | ≥1 unhappy-path test per FR-001..005 |
-| T-310 | Re-score C03 in `audit/.lane-c03/C03.md` | audit | T-150,T-230 | S | BLOCKED | Cluster ≥ C (≥60% with L30.1–.5 at ≥2) |
+| T-300 | Unhappy-path friction tests (`_invalid_` / `_missing_`) | L30.12 | T-230 | M | DONE | ≥1 unhappy-path test per FR-001..005 |
+| T-310 | Re-score C03 in `audit/.lane-c03/C03.md` | audit | T-150,T-230 | S | DONE | Cluster ≥ C (≥60% with L30.1–.5 at ≥2) |
 
 ## Completed
 
@@ -63,6 +63,8 @@ flowchart TD
 | T-230 | FR-005 acceptance (`tests/fr005_*.rs`) | DONE (2026-07-13) |
 | T-240 | Outside-in Quick Start journey (`tests/quick_start_journey.rs`) | DONE (2026-07-13) |
 | T-250 | Golden CLI/TUI fixtures (`tests/golden/` + `golden_snapshots.rs`) | DONE (2026-07-13) |
+| T-300 | Unhappy-path friction (`tests/fr_invalid_missing_friction.rs`) | DONE (2026-07-13) |
+| T-310 | C03 re-score → 33/36 (92% A) | DONE (2026-07-13) |
 | T-260 | Claim-lock protocol in `AGENTS.md` | DONE (2026-07-12) |
 | T-270 | Local loop budgets `docs/ops/LOCAL_LOOP_BUDGETS.md` | DONE (2026-07-12) |
 | — | Phase roadmap in `PLAN.md` (weeks 1–8) | superseded by this DAG |
