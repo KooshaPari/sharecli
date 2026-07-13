@@ -27,8 +27,9 @@
 | FR-003  | Project Registry                     | `src/config.rs:8-68`, `src/commands/mod.rs:225-313`                                          | `tests/fr003_project_registry.rs`, `tests/fr003_project_discover.rs`                              | ACCEPTED |
 | FR-004  | Process & Pool Health Status         | `src/runtime.rs:152-356`, `src/monitoring.rs:1-118`, `src/commands/mod.rs:140-191`, `:325-396` | `tests/fr004_status_health.rs`, `tests/fr004_pool_status.rs`                                      | ACCEPTED |
 | FR-005  | Per-Project Resource Limits          | `src/runtime.rs:358-455`, `src/commands/mod.rs:398-447`                                     | `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs`                                  | ACCEPTED |
+| FR-012  | Serve HTTP Federated AuthN           | `src/serve_auth.rs`, `src/config.rs` (`ServeJwtConfig`), `src/commands/serve.rs`            | `tests/fr012_serve_jwt_auth.rs`                                                                   | ACCEPTED |
 
-**Coverage summary:** 5/5 FRs mapped, 10 acceptance test files, 0 gaps.
+**Coverage summary:** 6 FRs mapped (FR-001..005 + FR-012), acceptance tests present, 0 gaps.
 
 ---
 

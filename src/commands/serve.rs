@@ -170,12 +170,16 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         scheduler.start(initial_config.health_checks.clone());
     }
 
-    let auth = ServeAuth::from_env_or_config(initial_config.serve.bearer_token.as_deref());
+    let auth = ServeAuth::from_env_or_config(&initial_config.serve)
+        .map_err(|e| anyhow::anyhow!("serve AuthN config error: {e}"))?;
     if auth.enabled() {
-        info!("sharecli serve: Bearer AuthN enabled (probes /healthz /readyz remain public)");
-        audit_log::emit("auth_enabled", json!({ "mode": "bearer" }));
+        info!(
+            "sharecli serve: AuthN mode={} (probes /healthz /readyz remain public)",
+            auth.mode_label()
+        );
+        audit_log::emit("auth_enabled", json!({ "mode": auth.mode_label() }));
     } else {
-        info!("sharecli serve: AuthN disabled (set SHARECLI_SERVE_TOKEN to require Bearer)");
+        info!("sharecli serve: AuthN disabled (set SHARECLI_SERVE_TOKEN or [serve.jwt])");
         audit_log::emit("auth_disabled", json!({ "mode": "open" }));
     }
     audit_log::emit("serve_start", json!({ "url": url, "bind": bind }));

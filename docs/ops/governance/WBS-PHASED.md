@@ -25,7 +25,7 @@
 |---------|-------|:---:|:-----:|--------------|--------|
 | C00 | Architecture + Module | 60% | C | Wave2 | Status: DONE |
 | C01 | CI / DX / Obs | 63% | C | Wave1–2 | Status: DONE |
-| C02 | Error / API / Governance | 70% | C | Wave2 + Wave5 | Status: IN_PROGRESS |
+| C02 | Error / API / Governance | 73% | C | Wave2 + Wave5 | Status: IN_PROGRESS |
 | C03 | Agent Readiness | 92% | A | Wave1 + Wave3 | Status: DONE |
 | C04 | Security | 60% | C | Wave2 + L39 | Status: IN_PROGRESS |
 | C05 | Observability (deep) | 70% | C | Wave2 | Status: DONE |
@@ -69,9 +69,9 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
-| W5.1 | Federated IdP for `serve` | C02 L21 | Status: READY |
+| W5.1 | Federated IdP for `serve` | C02 L21 | Status: DONE |
 | W5.2 | Audit retention + burn alerts | C02 | Status: READY |
-| W5.3 | Threat-model review post-federation | C04 L39 · `THREAT_MODEL.md` | Status: BLOCKED |
+| W5.3 | Threat-model review post-federation | C04 L39 · `THREAT_MODEL.md` | Status: READY |
 
 ## Sync protocol
 
