@@ -17,7 +17,7 @@
 | C00 | Architecture + Module | L0–L9 | 18/30 | 60% | C | lib.rs sprawl; OpenAPI drift CI; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 19/30 | 63% | C | echo coverage; i18n; action SHA pins |
 | C02 | Error handling, API, Governance | L20–L29 | 21/30 | 70% | C | federated IdP; audit retention; burn alerts |
-| C03 | Agent Readiness | L30 | 30/36 | 83% | B | FR-005 tests; journey e2e; golden fixtures |
+| C03 | Agent Readiness | L30 | 30/36 | 83% | B | journey e2e; golden fixtures; unhappy-path |
 | C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 17/30 | 57% | D | provenance upgrade; lock/deny gaps |
@@ -41,9 +41,9 @@
 - **Wave2 lifts:** C00 50%→60% C (OpenAPI stub + Criterion/bench-gate); C04 47%→53% D (CycloneDX SBOM CI); C08 40%→47% D (per-PR hard-ish gate + baselines).
 - **Evidence-only (no pct change):** C07 L69 now PR-matrix ubuntu+macos (rubric score-1 bar; Windows still needed for 2); C11 Formula `head do` + OpenAPI deploy row (brew sha still PLACEHOLDER).
 - **SBOM scored under C04 L32** (not C06 — supply-chain pillars have no SBOM slot).
-- **Highest-leverage remaining:** brew digest after first `v*` attach (C11), FR-005 (T-230), federated AuthN, C06 provenance.
+- **Highest-leverage remaining:** brew digest after first `v*` attach (C11), journey/golden (T-240/T-250), federated AuthN, C06 provenance.
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` (machine Status tokens) + `WORK_DAG.md`.
-- **Agent-readiness verdict (C03):** Agents can claim WORK_DAG tasks with FR refs; FR-002..004 Covered; FR-005 still open.
+- **Agent-readiness verdict (C03):** Agents can claim WORK_DAG tasks with FR refs; FR-001..005 Covered; journey/golden still open.
 - **Time-2 verdict (C11):** OCI+uninstall+mobile decision + brew --HEAD solid; bottle PLACEHOLDER and unsigned archives remain.
 
 ## Supersedes
@@ -113,6 +113,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-12 (T-220 FR-004)
 - **C03 evidence:** FR-004 acceptance on disk (`tests/fr004_*.rs`); T-220 → DONE.
 - Remaining FR gap: FR-005 (T-230) + journey/golden (T-240/T-250).
+
+### 2026-07-13 (T-230 FR-005)
+- **C03 evidence:** FR-005 acceptance on disk (`tests/fr005_*.rs`); T-230 → DONE.
+- Remaining C03 gaps: journey/golden (T-240/T-250) + unhappy-path (T-300); T-310 still BLOCKED on re-score.
 
 ## Spine links
 
