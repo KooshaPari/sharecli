@@ -63,8 +63,8 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ## Coverage Gaps
 
 ### Critical Gaps
-1. No outside-in `*_journey_*` test mapping user journeys → FR IDs yet (see `WORK_DAG.md` T-240).
-2. Unhappy-path friction suites still open (`WORK_DAG.md` T-300).
+1. Unhappy-path friction suites still open (`WORK_DAG.md` T-300).
+2. Golden CLI/TUI fixtures still open (`WORK_DAG.md` T-250).
 
 ### Partial Coverage
 1. **FR-001** library acceptance is strong; CLI binary coverage is smoke-level (`integration_cli.rs`), not full AC-001.* via the binary.
@@ -75,12 +75,12 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ## Recommendations
 
 ### Immediate Actions
-1. Claim `T-240` for outside-in journey coverage.
+1. Claim `T-250` for golden fixtures / `T-300` for unhappy-path.
 2. Keep FR annotations (`//! FR: FR-NNN`) on every new acceptance test.
 3. Sync status tokens in `docs/ops/governance/GAP-QA-MATRIX.md` + `WBS-PHASED.md`.
 
 ### Short-term Actions
-1. Add journey + unhappy-path tests (`T-240`, `T-300`).
+1. Add golden + unhappy-path tests (`T-250`, `T-300`).
 2. Publish a measured coverage % from `just coverage` into this summary after CI green.
 
 ---
