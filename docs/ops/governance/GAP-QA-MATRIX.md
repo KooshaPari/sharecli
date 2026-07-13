@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](../../../WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](../../../TEST_COVERAGE_MATRIX.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-13 (T-300 unhappy-path Covered; W3.5 DONE; brew PLACEHOLDER Blocked)
+**Last sync:** 2026-07-13 (C06 60% C; release pin fixed; T-300 Covered; brew attach pending)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 

@@ -26,10 +26,10 @@
 | C00 | Architecture + Module | 60% | C | Wave2 | Status: DONE |
 | C01 | CI / DX / Obs | 63% | C | Wave1–2 | Status: DONE |
 | C02 | Error / API / Governance | 70% | C | Wave2 + Wave5 | Status: IN_PROGRESS |
-| C03 | Agent Readiness | 83% | B | Wave1 + Wave3 | Status: IN_PROGRESS |
+| C03 | Agent Readiness | 92% | A | Wave1 + Wave3 | Status: DONE |
 | C04 | Security | 60% | C | Wave2 + L39 | Status: IN_PROGRESS |
 | C05 | Observability (deep) | 70% | C | Wave2 | Status: DONE |
-| C06 | Supply Chain | 57% | D | Wave2 | Status: READY |
+| C06 | Supply Chain | 60% | C | Wave2 + release pin | Status: IN_PROGRESS |
 | C07 | DX / QEng / Portability | 63% | C | Wave1–2 | Status: DONE |
 | C08 | Eval Coverage | 53% | D | Wave1–2 | Status: READY |
 | C09 | Accessibility + UX | 58% | D | backlog | Status: READY |
