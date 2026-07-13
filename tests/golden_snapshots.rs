@@ -1,0 +1,124 @@
+//! Golden CLI/TUI snapshot suite (L30.7 / WORK_DAG T-250).
+//!
+//! Fixtures live under `tests/golden/`. Regenerate with:
+//! `UPDATE_GOLDENS=1 cargo test --test golden_snapshots`
+//!
+//! FR: FR-001 (ps help), NFR CLI surfaces; thermal TUI is packaging/UX polish.
+
+use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
+
+use ratatui::backend::TestBackend;
+use ratatui::Terminal;
+use sharecli_fleet::thermal::ThermalLevel;
+use sharecli_thermal_tui::{render, App};
+
+const TUI_W: u16 = 80;
+const TUI_H: u16 = 24;
+
+fn golden_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("golden")
+}
+
+fn read_golden(name: &str) -> String {
+    let path = golden_dir().join(name);
+    fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+}
+
+fn write_golden(name: &str, contents: &str) {
+    let path = golden_dir().join(name);
+    fs::create_dir_all(path.parent().unwrap()).expect("create golden dir");
+    // Normalize newlines for cross-OS commits (LF).
+    let normalized = contents.replace("\r\n", "\n");
+    fs::write(&path, normalized).unwrap_or_else(|e| panic!("write {}: {e}", path.display()));
+}
+
+fn updating() -> bool {
+    matches!(std::env::var("UPDATE_GOLDENS").as_deref(), Ok("1") | Ok("true"))
+}
+
+fn assert_or_update(name: &str, actual: &str) {
+    let actual = actual.replace("\r\n", "\n");
+    if updating() {
+        write_golden(name, &actual);
+        return;
+    }
+    let expected = read_golden(name).replace("\r\n", "\n");
+    assert_eq!(
+        actual, expected,
+        "golden mismatch for {name}; re-run with UPDATE_GOLDENS=1 if intentional"
+    );
+}
+
+fn bin() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_sharecli"))
+}
+
+fn normalize_cli(stdout: &str) -> String {
+    stdout.replace("sharecli.exe", "sharecli").replace("\r\n", "\n").trim_end().to_string() + "\n"
+}
+
+fn render_thermal(level: ThermalLevel, slots: u32) -> String {
+    let backend = TestBackend::new(TUI_W, TUI_H);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    let mut app = App::new(4);
+    app.update(level, slots);
+    terminal.draw(|f| render(f, &app)).expect("draw");
+    let buf = terminal.backend().buffer();
+    let mut out = String::new();
+    for y in 0..TUI_H {
+        for x in 0..TUI_W {
+            out.push_str(buf[(x, y)].symbol());
+        }
+        out.push('\n');
+    }
+    out
+}
+
+/// CLI `--help` golden (command inventory + Backbone theme flag).
+#[test]
+fn golden_cli_help() {
+    let out = bin().arg("--help").output().expect("sharecli --help");
+    assert!(out.status.success(), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+    let actual = normalize_cli(&String::from_utf8_lossy(&out.stdout));
+    assert_or_update("cli_help.txt", &actual);
+    assert!(actual.contains("Usage: sharecli"), "help MUST name the binary");
+    assert!(actual.contains("thermal"), "help MUST list thermal TUI");
+}
+
+/// CLI `ps --help` golden (FR-001 list surface).
+#[test]
+fn golden_cli_ps_help() {
+    let out = bin().args(["ps", "--help"]).output().expect("ps --help");
+    assert!(out.status.success(), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+    let actual = normalize_cli(&String::from_utf8_lossy(&out.stdout));
+    assert_or_update("cli_ps_help.txt", &actual);
+    assert!(actual.to_lowercase().contains("project"), "ps help MUST document --project");
+}
+
+/// Thermal TUI headless goldens (green / yellow / red) — ≥3 fixtures for T-250.
+#[test]
+fn golden_thermal_tui_levels() {
+    let cases = [
+        ("thermal_green.txt", ThermalLevel::Green, 0u32),
+        ("thermal_yellow.txt", ThermalLevel::Yellow, 2u32),
+        ("thermal_red.txt", ThermalLevel::Red, 4u32),
+    ];
+    for (name, level, slots) in cases {
+        let actual = render_thermal(level, slots);
+        assert_or_update(name, &actual);
+        match level {
+            ThermalLevel::Green => {
+                assert!(actual.contains("GREEN") && actual.contains("ADMIT"), "{name}");
+            }
+            ThermalLevel::Yellow => {
+                assert!(actual.contains("YELLOW") && actual.contains("ADMIT"), "{name}");
+            }
+            ThermalLevel::Red => {
+                assert!(actual.contains("RED") && actual.contains("DENY"), "{name}");
+            }
+        }
+        assert!(actual.contains("sharecli thermal monitor"), "{name} MUST show TUI title");
+    }
+}

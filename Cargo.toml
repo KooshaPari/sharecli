@@ -84,6 +84,10 @@ prost = "0.12"
 [dev-dependencies]
 tempfile = "3"
 criterion = { version = "0.5", features = ["async_tokio", "html_reports"] }
+# Golden snapshot suite (T-250 / L30.7) needs headless thermal TUI renders.
+sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
+sharecli-fleet = { path = "crates/sharecli-fleet" }
+ratatui = "0.30"
 
 [[bench]]
 name = "config_parse"
