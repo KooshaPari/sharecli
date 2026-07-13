@@ -63,23 +63,19 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ## Coverage Gaps
 
 ### Critical Gaps
-1. Unhappy-path friction suites still open (`WORK_DAG.md` T-300).
-
-### Partial Coverage
-1. **FR-001** library acceptance is strong; CLI binary coverage is smoke-level (`integration_cli.rs`), not full AC-001.* via the binary.
-2. Cast FRs are tested but not yet promoted into `docs/specs/FR.md` as FR-006+.
+1. Homebrew bottle sha still PLACEHOLDER (`WORK_DAG` Wave4 / C11).
 
 ---
 
 ## Recommendations
 
 ### Immediate Actions
-1. Claim `T-300` for unhappy-path `_invalid_` / `_missing_` suites.
+1. Claim Wave4 packaging (brew sha after `v*` attach) or T-310 C03 polish.
 2. Keep FR annotations (`//! FR: FR-NNN`) on every new acceptance test.
 3. Sync status tokens in `docs/ops/governance/GAP-QA-MATRIX.md` + `WBS-PHASED.md`.
 
 ### Short-term Actions
-1. Close W3.5 after T-300; optionally run T-310 C03 re-score polish.
+1. Optionally close T-310 after lane evidence sweep.
 2. Publish a measured coverage % from `just coverage` into this summary after CI green.
 
 ---
