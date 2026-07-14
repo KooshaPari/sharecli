@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (MVP finality + OS parity — W10.6)
+
+- Status: DONE — FINALITY.md; desktop-builds.yml; Windows CLI in release matrix; tray-linux release job; just parity recipes
+- Score: packaging evidence (C11); no GA claim for tray/desktop; overall stays ~71% C
+- FR: FR-004 NFR (deploy/parity)
+- Next: harden Win tray CI; macOS desktop artifact green; L112 signing when secrets land
+
 ## 2026-07-13 (C04 OSV + Dependabot groups — W10.5)
 
 - Status: DONE — osv.yml (OSV/GHSA), Dependabot cargo/actions groups, container-hardening.md

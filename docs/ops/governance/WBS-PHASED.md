@@ -115,6 +115,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W10.3 | OpenAPI ↔ serve route drift CI | L2 · `docs/openapi/serve.yaml` · `scripts/check-openapi-drift.py` | Status: DONE |
 | W10.4 | proptest + soft mutants/fuzz + C08 corpus/CSV | L65–L67 · L71/L74 · `mutants.toml` · `docs/eval/corpus/` | Status: DONE |
 | W10.5 | OSV scanner + Dependabot groups + container hardening | L37 · L38 · L40 · `osv.yml` · `docs/ops/container-hardening.md` | Status: DONE |
+| W10.6 | MVP finality + OS parity (macOS/Windows/Linux/WSL) | L108–L110 · `docs/deploy/FINALITY.md` · `desktop-builds.yml` | Status: DONE |
 
 ## Sync protocol
 

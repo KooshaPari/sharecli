@@ -58,6 +58,43 @@ build-release:
     @echo ">> cargo build --release"
     @cargo build --release --locked --all-features
 
+# -------- MVP finality / OS parity (docs/deploy/FINALITY.md) --------
+[group: 'parity']
+build-cli: build-release
+    @echo ">> CLI release binary ready (lane A / GA)"
+
+[group: 'parity']
+build-tray-linux:
+    @echo ">> Linux StatusNotifier tray (lane B / beta)"
+    @cargo build -p sharecli-tray-linux --release --locked
+
+[group: 'parity']
+build-tray-macos:
+    @echo ">> macOS Swift tray + desktop (lane B+C / beta)"
+    @cargo build -p sharecli-ffi --release --locked
+    @cd desktop/ShareCLITray && swift build -c release \
+        -Xlinker -L -Xlinker ../../target/release \
+        -Xlinker -lsharecli_ffi
+
+[group: 'parity']
+build-desktop-macos: build-tray-macos
+    @echo ">> alias: ShareCLITray includes DashboardView"
+
+[group: 'parity']
+build-tray-windows:
+    @echo ">> Windows WinUI tray (lane B / beta)"
+    @dotnet build windows/ShareCLITray/ShareCLITray.csproj -c Release
+
+[group: 'parity']
+wsl-parity-check:
+    @echo ">> WSL parity checklist (see docs/deploy/FINALITY.md)"
+    @grep -q 'WSL bridge' docs/deploy/FINALITY.md
+    @grep -q '127.0.0.1:9000' docs/deploy/FINALITY.md
+    @echo "1) WSL: sharecli serve --bind 0.0.0.0:9000"
+    @echo "2) Windows: curl http://127.0.0.1:9000/healthz  OR  ShareCLITray"
+    @echo "3) Optional WSLg: sharecli-tray on Linux session"
+    @echo ">> wsl-parity-check OK"
+
 # -------- testing --------
 [group: 'test']
 test:
