@@ -6,6 +6,12 @@
 - Score: C11 73%→76% B; overall ~78% / weighted ~79% B
 - FR: FR-004 packaging / update channels
 - Next: in-binary updater after L112; dmg/msi; harden Win tray CI
+## 2026-07-14 (C05 soft load burst — FR-003)
+
+- Status: DONE — load-soft.yml starts serve + healthz_burst; just load-soft; L50 1→2
+- Score: C05 70%→73% C; overall ~78% / weighted ~79% B
+- FR: FR-003 observability / load harness
+- Next: soak/chaos hard gate; multi-hop traces; live PD
 
 ## 2026-07-14 (MVP finality + OS parity refresh — FR-004)
 
