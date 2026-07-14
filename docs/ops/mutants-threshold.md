@@ -6,16 +6,18 @@ Audit-v38 **C07 L65**. Scoped to `sharecli-thermal-tui` pure helpers (`mutants.t
 
 | Mode | Workflow | Behavior |
 |------|----------|----------|
-| Soft | `.github/workflows/mutants.yml` | PR/cron/dispatch; `continue-on-error: true` |
-| Local | `just mutants` | Installs/runs cargo-mutants smoke |
+| Soft | `.github/workflows/mutants.yml` | PR/cron/dispatch; **fail-on-survivors** for examine set; job `continue-on-error: true` |
+| Local | `just mutants` | Scoped smoke matching CI examine file |
+| Artifact | `mutants-soft-<sha>.json` | Upload on soft CI for triage |
 
-## Threshold (target for hard gate)
+## Threshold (soft enforced today)
 
-| Metric | Soft target | Hard target |
-|--------|-------------|-------------|
-| Scope | `examine_re` in `mutants.toml` | same |
-| Outcome | zero surviving mutants in examine set | same + **required** check |
+| Metric | Soft (enforced) | Hard target |
+|--------|-----------------|-------------|
+| Scope | `examine_re` / `--file` thermal-tui lib | same |
+| Outcome | **zero surviving mutants** in examine set | same + **required** check |
 | Timeout | 60s per mutant | 60s |
+| Fail mode | step fails → job soft-red | remove `continue-on-error` |
 
 Hard promotion: remove `continue-on-error` once the examine set stays green on `main` for one week.
 

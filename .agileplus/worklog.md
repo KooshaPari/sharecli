@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C07 mutants soft threshold — FR-003)
+- Status: DONE — mutants soft fail-on-survivors; L65 stays 2
+- FR: FR-003
 ## 2026-07-14 (C00 alloc profiling + soft RSS — FR-003)
 - Status: DONE — alloc-profiling.md; rss-soft.yml; L8 stays 2
 - FR: FR-003
