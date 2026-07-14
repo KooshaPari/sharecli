@@ -64,8 +64,8 @@ struct Cli {
     #[arg(short, long)]
     quiet: bool,
 
-    /// Color theme: `backbone-2` (default), `backbone2`, or `bb2`.
-    /// Maps to the Backbone-2 family in tokens.css.
+    /// Color theme: `backbone-2` / `bb2` / `dark` (default) or `backbone-2-light` / `light`.
+    /// Maps to Backbone-2 dark/light families in tokens.css.
     #[arg(long, value_name = "NAME", default_value = "backbone-2")]
     theme: String,
 }
@@ -354,7 +354,10 @@ fn is_no_color() -> bool {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let tokens = theme::Tokens::from_name(&cli.theme).ok_or_else(|| {
-        anyhow::anyhow!("unknown theme '{}': expected backbone-2 / backbone2 / bb2", cli.theme,)
+        anyhow::anyhow!(
+            "unknown theme '{}': expected backbone-2 / bb2 / dark or backbone-2-light / light",
+            cli.theme,
+        )
     })?;
     eprintln!("{}", tokens.panel.ansi_fg());
 

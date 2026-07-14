@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C06 hermetic soft + C10 light theme — FR-003/FR-004)
+
+- Status: DONE — hermetic-soft.yml + just hermetic; Backbone2Light + tokens.css light; docs/visual/theming.md
+- Score: C06 77%→80% B; C10 83%→86% B; overall ~77% B
+- FR: FR-004 hermetic builds + FR-003 visual theming
+- Next: mutants hard gate; SLSA L3 network-block; hard codesign secrets
+
 ## 2026-07-14 (C11 codesign soft + C06 MCP ADR — FR-004)
 
 - Status: DONE — docs/ops/codesign-notarize.md; codesign-soft.yml; ADR-0004 no MCP; deploy.md N/A seed

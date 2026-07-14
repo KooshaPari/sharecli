@@ -36,7 +36,7 @@ Options:
           Quiet mode
 
       --theme <NAME>
-          Color theme: `backbone-2` (default), `backbone2`, or `bb2`. Maps to the Backbone-2 family in tokens.css
+          Color theme: `backbone-2` / `bb2` / `dark` (default) or `backbone-2-light` / `light`. Maps to Backbone-2 dark/light families in tokens.css
           
           [default: backbone-2]
 
