@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C09 table-header contrast)
+
+- Status: DONE — dashboard `thead` `#a371f7` on `#161b22` (5.16:1); L81.2 2→3
+- Score: C09 → 69% C (31/45); overall stays ~68% C
+- FR: FR-004 (dashboard chrome a11y)
+- Next: axe CI; responsive TUI
+
 ## 2026-07-13 (C08 hyperfine CI artifact)
 
 - Status: DONE — soft `hyperfine healthz` job + nightly JSON artifact upload (L72 / LOAD-2)
