@@ -149,6 +149,14 @@ doc-build:
 gate: lint test audit deny fmt-check
     @echo ">> all gates green"
 
+# Soft hermetic: fetch then offline build (C06 L54). See docs/ops/hermetic-builds.md
+[group: 'gate']
+hermetic:
+    @echo ">> cargo fetch --locked && cargo build --locked --offline -p sharecli"
+    @cargo fetch --locked
+    @cargo build --locked --offline -p sharecli
+    @echo ">> hermetic soft gate green"
+
 [group: 'gate']
 gate-release: lint-pedantic test audit deny fmt-check build-release
     @echo ">> release gate green"

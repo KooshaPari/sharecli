@@ -19,6 +19,26 @@
   --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Light pair — same brand accents, paper surfaces (CLI: --theme light) */
+:root[data-theme="light"],
+[data-theme="light"] {
+  --bb2-graphite: #f6f8fa;
+  --bb2-panel: #ffffff;
+  --bb2-pulse-green: #1a7f37;
+  --bb2-sync-violet: #8250df;
+  --bb2-warm-amber: #9a6700;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bb2-graphite: #f6f8fa;
+    --bb2-panel: #ffffff;
+    --bb2-pulse-green: #1a7f37;
+    --bb2-sync-violet: #8250df;
+    --bb2-warm-amber: #9a6700;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-duration-fast: 0ms;

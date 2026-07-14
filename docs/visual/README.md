@@ -9,6 +9,7 @@ Design-system reference for audit-v38 **C10** (L96–L107).
 | [PROVENANCE.md](PROVENANCE.md) | Asset provenance tiers (1/2/3) |
 | [typography.md](typography.md) | Type-role scale + rationale |
 | [motion.md](motion.md) | Motion tokens + prefers-reduced-motion |
+| [theming.md](theming.md) | Dark / light Backbone-2 pair |
 
 **Sources of truth**
 

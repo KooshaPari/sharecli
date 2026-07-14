@@ -49,6 +49,8 @@ impl Rgb {
 pub enum ThemeVariant {
     #[default]
     Backbone2,
+    /// Light surfaces; same accent hues as Backbone-2.
+    Backbone2Light,
 }
 
 /// Palette + derived decorations.
@@ -73,6 +75,16 @@ impl Tokens {
         warm_amber: Rgb::from_hex("#d29922"),
     };
 
+    /// Light variant — paper ground with Backbone-2 accents (tokens.css `[data-theme=light]`).
+    pub const BACKBONE2_LIGHT: Tokens = Tokens {
+        variant: ThemeVariant::Backbone2Light,
+        graphite: Rgb::from_hex("#f6f8fa"),
+        panel: Rgb::from_hex("#ffffff"),
+        pulse_green: Rgb::from_hex("#1a7f37"),
+        sync_violet: Rgb::from_hex("#8250df"),
+        warm_amber: Rgb::from_hex("#9a6700"),
+    };
+
     /// Default palette = Backbone-2.
     pub const fn default() -> Self {
         Self::BACKBONE2
@@ -81,7 +93,10 @@ impl Tokens {
     /// Resolve variant by name; case-insensitive on the canonical family name.
     pub fn from_name(name: &str) -> Option<Self> {
         match name.to_ascii_lowercase().as_str() {
-            "backbone-2" | "backbone2" | "bb2" => Some(Self::BACKBONE2),
+            "backbone-2" | "backbone2" | "bb2" | "dark" => Some(Self::BACKBONE2),
+            "backbone-2-light" | "backbone2-light" | "bb2-light" | "light" => {
+                Some(Self::BACKBONE2_LIGHT)
+            }
             _ => None,
         }
     }
@@ -123,7 +138,16 @@ mod tests {
         assert!(Tokens::from_name("backbone-2").is_some());
         assert!(Tokens::from_name("Backbone2").is_some());
         assert!(Tokens::from_name("BB2").is_some());
+        assert!(Tokens::from_name("light").is_some());
+        assert_eq!(Tokens::from_name("bb2-light").unwrap().variant, ThemeVariant::Backbone2Light);
         assert!(Tokens::from_name("not-a-family").is_none());
+    }
+
+    #[test]
+    fn backbone2_light_uses_paper_ground() {
+        let t = Tokens::BACKBONE2_LIGHT;
+        assert_eq!(t.graphite, Rgb(0xf6, 0xf8, 0xfa));
+        assert_eq!(t.panel, Rgb(0xff, 0xff, 0xff));
     }
 
     #[test]
