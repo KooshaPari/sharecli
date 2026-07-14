@@ -694,8 +694,8 @@ mod tests {
     /// Soft C08 live corpus: fixtures with `expect.health` must match `healthz_json`.
     #[test]
     fn corpus_health_fixtures_match_healthz() {
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("docs/eval/corpus/scenarios");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/eval/corpus/scenarios");
         let mut checked = 0u32;
         for entry in std::fs::read_dir(&dir).expect("corpus scenarios dir") {
             let path = entry.expect("entry").path();
@@ -703,12 +703,8 @@ mod tests {
                 continue;
             }
             let raw = std::fs::read_to_string(&path).expect("read scenario");
-            let data: serde_json::Value =
-                serde_json::from_str(&raw).expect("parse scenario");
-            let Some(health) = data
-                .pointer("/expect/health")
-                .and_then(|v| v.as_str())
-            else {
+            let data: serde_json::Value = serde_json::from_str(&raw).expect("parse scenario");
+            let Some(health) = data.pointer("/expect/health").and_then(|v| v.as_str()) else {
                 continue;
             };
             assert_eq!(
@@ -719,10 +715,7 @@ mod tests {
             );
             checked += 1;
         }
-        assert!(
-            checked >= 1,
-            "expected at least one corpus fixture with expect.health"
-        );
+        assert!(checked >= 1, "expected at least one corpus fixture with expect.health");
     }
 
     #[test]
