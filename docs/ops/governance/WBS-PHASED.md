@@ -106,6 +106,12 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W9.1 | axe-core CI for dashboard (WCAG 2.x Level A) | L81.1 · L81.5 · FR-004 NFR · `.github/workflows/a11y.yml` · `scripts/a11y/axe-dashboard.mjs` | Status: DONE |
 | W9.2 | C09 re-score after axe CI | L81.1 · L81.5 · `audit/.lane-c09/C09.md` | Status: DONE |
 
+### Wave10 — CI hygiene (C01)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W10.1 | Pin Actions to SHAs + ubuntu-24.04 | L10 · `.github/workflows/*` | Status: DONE |
+
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.

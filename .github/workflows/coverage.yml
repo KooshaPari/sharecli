@@ -14,7 +14,7 @@ env:
 
 jobs:
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -28,10 +28,10 @@ jobs:
         with:
           version: 0.14.1
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@9458fed45835344deb5e69e06e831be047c96abf # cargo-llvm-cov
 
       - name: Guard — refuse empty test suite
         run: |
@@ -50,7 +50,7 @@ jobs:
             --lcov --output-path lcov.info
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           files: lcov.info
           fail_ci_if_error: false

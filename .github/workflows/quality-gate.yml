@@ -14,13 +14,13 @@ env:
 
 jobs:
   check-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       has_tests: ${{ steps.check.outputs.has_tests }}
       has_e2e: ${{ steps.check.outputs.has_e2e }}
       has_integration: ${{ steps.check.outputs.has_integration }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
@@ -34,7 +34,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
@@ -48,10 +48,10 @@ jobs:
           version: 0.14.1
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@9458fed45835344deb5e69e06e831be047c96abf # cargo-llvm-cov
 
       - name: Run unit tests
         run: cargo test --lib --all-features
@@ -68,7 +68,7 @@ jobs:
             --lcov --output-path lcov.info
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           files: ./lcov.info
           fail_ci_if_error: false
@@ -77,15 +77,15 @@ jobs:
     name: E2E Tests
     needs: check-changes
     if: needs.check-changes.outputs.has_e2e == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Run E2E tests
         run: cargo test --test e2e --all-features || echo "No E2E tests found"
@@ -94,24 +94,24 @@ jobs:
     name: Integration Tests
     needs: check-changes
     if: needs.check-changes.outputs.has_integration == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Run integration tests
         run: cargo test --test integration --all-features || echo "No integration tests found"
 
   fr-annotation-check:
     name: FR Annotation Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
@@ -147,9 +147,9 @@ jobs:
     name: Quality Report
     needs: [unit-tests, e2e-tests, integration-tests, fr-annotation-check]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Generate quality report
         id: report
@@ -192,7 +192,7 @@ jobs:
           cat report.md
 
       - name: Comment PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const fs = require('fs');

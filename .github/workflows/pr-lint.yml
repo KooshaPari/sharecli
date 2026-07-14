@@ -20,11 +20,11 @@ concurrency:
 jobs:
   fr-in-body:
     name: FR reference in PR body
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event.pull_request.draft == false
     steps:
       - name: Require FR- ID in pull request body
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const body = context.payload.pull_request.body || "";
