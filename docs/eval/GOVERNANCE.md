@@ -61,12 +61,12 @@ rows and `scripts/load/README.md`.
 |-----|--------------|-------|
 | `criterion` (soft) | Advisory Criterion on PR/push | No (`continue-on-error`) |
 | `bench-gate` | `check-bench-baseline.py` vs committed JSON | **Yes** (50% max regression) |
-| `bench-nightly` | `export-trend.py` → Actions artifact | No (longitudinal) |
+| `bench-nightly` | `export-trend.py` + hyperfine JSON → Actions artifacts | No (longitudinal) |
+| `hyperfine-healthz` (soft) | Live `/healthz` hyperfine JSON on PR/push | No (`continue-on-error`) |
 
-Hyperfine JSON (`SHARECLI_HYPERFINE_OUT`, default
-`docs/eval/baselines/hyperfine-healthz.json`) is local/optional; nightly
-Criterion trends are documented in `TRENDS.md`. Publishing hyperfine JSON in
-CI artifacts remains a small follow-up (L72).
+Hyperfine JSON (`SHARECLI_HYPERFINE_OUT`) is produced locally and in CI
+artifacts (`hyperfine-healthz-<sha>.json`); see `TRENDS.md` and
+`scripts/bench/README.md`.
 
 ## References
 

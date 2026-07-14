@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C08 hyperfine CI artifact)
+
+- Status: DONE — soft `hyperfine healthz` job + nightly JSON artifact upload (L72 / LOAD-2)
+- Score: C08 stays 60% C (18/30); overall stays 68% C
+- FR: FR-004 (`GET /healthz`)
+- Next: axe CI (C09); synthetic eval corpus (C08)
+
 ## 2026-07-13 (C08 jwt bench-gate)
 
 - Status: DONE — `jwt_auth_validate` in soft/`bench-gate`/nightly; baseline `jwt_validate_rs256` (BENCH-4)

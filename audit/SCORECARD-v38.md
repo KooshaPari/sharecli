@@ -22,7 +22,7 @@
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | hyperfine JSON CI artifact; synthetic eval corpus |
+| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | synthetic eval corpus; tighter multi-week trend CSV |
 | C09 | Accessibility + UX | L81–L95 | 30/45 | 67% | C | axe CI; responsive TUI; table-header contrast |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
@@ -39,7 +39,7 @@
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), axe CI for C09, hyperfine JSON CI artifact (C08), SLSA L3 / cosign (C06).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), axe CI for C09, synthetic eval corpus (C08), SLSA L3 / cosign (C06).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -161,6 +161,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-13 (C08 jwt bench-gate)
 - Wired `jwt_auth_validate` into soft/`bench-gate`/nightly Criterion jobs; baseline `jwt_validate_rs256` (BENCH-4, 10 ms).
 - C08 score unchanged (18/30 60% C); closes L71 follow-up gap. Remaining: hyperfine JSON CI artifact.
+
+### 2026-07-13 (C08 hyperfine CI artifact)
+- Soft PR/push job + nightly upload of `hyperfine-healthz-<sha>.json` (LOAD-2 / L72).
+- C08 score unchanged (18/30 60% C); closes L72 hyperfine artifact gap.
 
 ## Spine links
 
