@@ -1,0 +1,37 @@
+name: Accessibility
+
+# C09 L81.1 / L81.5 — axe-core WCAG 2.x Level A scan for src/dashboard.html (FR-004 NFR).
+# Tags: wcag2a, wcag21a, wcag22a. Hard-fail on serious/critical violations.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: a11y-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  axe-dashboard:
+    name: axe dashboard (WCAG 2.x Level A)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install a11y deps
+        run: npm ci
+
+      - name: Run axe on dashboard.html
+        run: npm run a11y:dashboard

@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C09 axe CI — W9.1)
+
+- Status: DONE — `.github/workflows/a11y.yml` + `scripts/a11y/axe-dashboard.mjs` (axe-core + jsdom; wcag2a/wcag21a/wcag22a; hard-fail serious/critical)
+- Score: C09 → 73% C (33/45); L81.1+L81.5 2→3 on top of contrast lift; overall ~69% C (822/12)
+- FR: FR-004 NFR (dashboard a11y)
+- Next: responsive TUI (L81.11)
+
 ## 2026-07-13 (C09 table-header contrast)
 
 - Status: DONE — dashboard `thead` `#a371f7` on `#161b22` (5.16:1); L81.2 2→3
@@ -120,3 +127,4 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 ## 2026-04
 
 - Stub worklog created.
+

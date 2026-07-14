@@ -3,11 +3,11 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-feat-c09-table-header-contrast",
+  "commit": "pending-feat-c09-axe-ci",
   "date": "2026-07-13",
-  "overall_pct": 68,
+  "overall_pct": 69,
   "grade": "C",
-  "wave_note": "C09 L81.2 contrast fix (69% C); C06/C08 at 67%/60%; overall ~68% C.",
+  "wave_note": "C09 axe CI + contrast (73% C); C06/C08 67%/60%; overall ~69% C.",
   "clusters": {
     "C00": { "pct": 60, "grade": "C", "score": "18/30" },
     "C01": { "pct": 63, "grade": "C", "score": "19/30" },
@@ -18,14 +18,14 @@
     "C06": { "pct": 67, "grade": "C", "score": "20/30" },
     "C07": { "pct": 63, "grade": "C", "score": "19/30" },
     "C08": { "pct": 60, "grade": "C", "score": "18/30" },
-    "C09": { "pct": 69, "grade": "C", "score": "31/45" },
+    "C09": { "pct": 73, "grade": "C", "score": "33/45" },
     "C10": { "pct": 67, "grade": "C", "score": "24/36" },
     "C11": { "pct": 67, "grade": "C", "score": "30/45" }
   },
   "governance": {
     "wbs": "docs/ops/governance/WBS-PHASED.md",
     "gap_qa": "docs/ops/governance/GAP-QA-MATRIX.md",
-    "work_dag": "WORK_DAG.md",
-    "traceability": "docs/specs/TRACEABILITY.md"
+    "work_dag": "docs/ops/governance/WORK_DAG.md",
+    "spine": "https://github.com/KooshaPari/phenotype-org-audits"
   }
 }

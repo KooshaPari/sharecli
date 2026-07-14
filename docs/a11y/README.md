@@ -19,7 +19,12 @@ The following Level A expectations apply to terminal surfaces (adapted from WCAG
 3. **Keyboard (2.1.1):** TUI is fully operable without a mouse; see [`keyboard.md`](./keyboard.md).
 4. **Timing adjustable (2.2.1):** TUI polls on a fixed interval; user can exit immediately with `q` or `Ctrl-C`.
 
-Automated enforcement for the dashboard is via `tests/a11y/dashboard_landmarks.rs` (landmark + `lang` assertions). Full axe-core CI is tracked in the a11y backlog.
+Automated enforcement for the dashboard:
+
+- **Rust (CI via `cargo test`):** `tests/a11y/dashboard_landmarks.rs` — landmark + `lang` assertions.
+- **axe-core (CI via `.github/workflows/a11y.yml`):** `scripts/a11y/axe-dashboard.mjs` scans `src/dashboard.html` with jsdom (no browser). Tags **`wcag2a`**, **`wcag21a`**, **`wcag22a`** (WCAG 2.x Level A). The job **hard-fails** on **serious/critical** violations; moderate/minor are logged only.
+
+Run locally: `npm ci && npm run a11y:dashboard`.
 
 ## Degraded-mode operation
 
