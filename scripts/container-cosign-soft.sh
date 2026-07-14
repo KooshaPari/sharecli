@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# C06 L56 — soft container cosign gate (no GHCR secrets required).
+# Builds sharecli:ci when docker is available; keyless sign-blob on main only.
+set -euo pipefail
+
+IMAGE_TAG="${IMAGE_TAG:-sharecli:ci}"
+BLOB_FILE="${BLOB_FILE:-sharecli-ci-image-id.txt}"
+BUNDLE_FILE="${BUNDLE_FILE:-sharecli-ci-image-id.txt.sigstore.json}"
+IDENTITY_REGEXP="${COSIGN_IDENTITY_REGEXP:-https://github.com/KooshaPari/sharecli/.*}"
+OIDC_ISSUER="${COSIGN_OIDC_ISSUER:-https://token.actions.githubusercontent.com}"
+
+if [[ ! -f Containerfile ]]; then
+  echo "::notice::Containerfile missing — skip container cosign soft gate"
+  exit 0
+fi
+
+echo "Containerfile present — container cosign soft gate"
+cosign version
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "::notice::docker CLI unavailable — cosign version + Containerfile gate only"
+  exit 0
+fi
+
+if ! docker info >/dev/null 2>&1; then
+  echo "::notice::docker daemon unavailable — cosign version + Containerfile gate only"
+  exit 0
+fi
+
+echo "Building ${IMAGE_TAG} from Containerfile"
+docker build -f Containerfile -t "${IMAGE_TAG}" .
+
+IMAGE_ID="$(docker inspect --format='{{.Id}}' "${IMAGE_TAG}")"
+printf '%s\n' "${IMAGE_ID}" >"${BLOB_FILE}"
+echo "Image ID: ${IMAGE_ID}"
+
+# GHCR keyless image sign — only when publish is explicitly enabled (not wired by default).
+if [[ "${GHCR_COSIGN_PUSH:-false}" == "true" ]]; then
+  GHCR_IMAGE="${GHCR_IMAGE:-ghcr.io/${GITHUB_REPOSITORY,,}/sharecli:ci}"
+  echo "GHCR_COSIGN_PUSH=true — tagging and pushing ${GHCR_IMAGE}"
+  docker tag "${IMAGE_TAG}" "${GHCR_IMAGE}"
+  docker push "${GHCR_IMAGE}"
+  cosign sign --yes "${GHCR_IMAGE}" \
+    --certificate-identity-regexp "${IDENTITY_REGEXP}" \
+    --certificate-oidc-issuer "${OIDC_ISSUER}"
+  cosign verify "${GHCR_IMAGE}" \
+    --certificate-identity-regexp "${IDENTITY_REGEXP}" \
+    --certificate-oidc-issuer "${OIDC_ISSUER}"
+  exit 0
+fi
+
+# Soft path: keyless sign-blob of the local image ID on main (no registry secrets).
+if [[ "${GITHUB_ACTIONS:-}" == "true" && "${GITHUB_REF_NAME:-}" == "main" ]]; then
+  echo "Keyless cosign sign-blob (main)"
+  cosign sign-blob --yes "${BLOB_FILE}" \
+    --bundle "${BUNDLE_FILE}" \
+    --output-signature "${BLOB_FILE}.sig" \
+    --output-certificate "${BLOB_FILE}.cert"
+  cosign verify-blob "${BLOB_FILE}" \
+    --bundle "${BUNDLE_FILE}" \
+    --certificate-identity-regexp "${IDENTITY_REGEXP}" \
+    --certificate-oidc-issuer "${OIDC_ISSUER}"
+  exit 0
+fi
+
+echo "::notice::Non-main or local run — build + digest only (no keyless sign-blob)"
+echo "Dry-run verify (after main CI produces a bundle):"
+echo "  cosign verify-blob ${BLOB_FILE} \\"
+echo "    --bundle ${BUNDLE_FILE} \\"
+echo "    --certificate-identity-regexp '${IDENTITY_REGEXP}' \\"
+echo "    --certificate-oidc-issuer '${OIDC_ISSUER}'"

@@ -20,7 +20,7 @@
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 21/30 | 70% | C | signed commits; 2FA evidence; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
-| C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
+| C06 | Supply Chain | L51–L60 | 21/30 | 70% | C | SLSA L3; hermetic builds; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | ADR N/A L75–78; corpus runner harness |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
@@ -196,6 +196,12 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-13 (C04 OSV + Dependabot groups — W10.5)
 - **C04 18/30 (60% C) → 21/30 (70% C):** L37 2→3, L38 1→2, L40 2→3 (OSV workflow, Dependabot groups, container hardening docs).
 - Overall stays **~71% C** (mean 856/12).
+
+### 2026-07-14 (C06 container cosign soft — L56)
+- **C06 20/30 (67% C) → 21/30 (70% C):** L56 1→2 (`container-cosign-soft.yml` + `scripts/container-cosign-soft.sh`; keyless sign-blob on main).
+- Docs: `docs/slsa.md` verify-blob + opt-in GHCR cosign verify commands.
+- **Overall 71% C → 72% C** (mean 859/12).
+- FR-002 supply-chain traceability for container digest signing.
 
 ## Spine links
 

@@ -1,0 +1,54 @@
+name: Container cosign (soft)
+
+# C06 L56 — build Containerfile + soft cosign sign-blob (no GHCR secrets).
+# Hard GHCR publish + cosign sign remains deferred until image registry lands.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ghcr_cosign_push:
+        description: "Push to GHCR and keyless cosign sign image (requires packages:write)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+concurrency:
+  group: container-cosign-soft-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container-cosign-soft:
+    name: Container build + cosign soft
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@d0e95c1e597a85f6211ad6ce8f3dd2d5ed8ecf0e # v3.7.1
+
+      - name: Container cosign soft gate
+        env:
+          GHCR_COSIGN_PUSH: ${{ github.event_name == 'workflow_dispatch' && inputs.ghcr_cosign_push && 'true' || 'false' }}
+        run: bash scripts/container-cosign-soft.sh
+
+      - name: Upload cosign bundle (main)
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sharecli-container-cosign-soft
+          path: |
+            sharecli-ci-image-id.txt
+            sharecli-ci-image-id.txt.sigstore.json
+            sharecli-ci-image-id.txt.sig
+            sharecli-ci-image-id.txt.cert
+          if-no-files-found: ignore
+          retention-days: 30
