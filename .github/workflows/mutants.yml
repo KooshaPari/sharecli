@@ -39,7 +39,7 @@ jobs:
           # while the job stays soft via continue-on-error.
       - name: Upload mutants JSON (soft artifact)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75a8047ad91e6fcd76e75f4be1f # v4.6.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutants-soft-${{ github.sha }}
           path: mutants-soft.json
