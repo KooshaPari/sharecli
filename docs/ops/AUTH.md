@@ -64,3 +64,16 @@ Security-relevant events append JSON lines to:
 - Windows: `%LOCALAPPDATA%/sharecli/audit.jsonl`
 
 Events include `auth_enabled`, `auth_disabled`, `auth_ok` (JWT includes `sub`), `auth_fail`, `serve_start`, `serve_stop`.
+
+### Retention
+
+Size-based rotation (best-effort, before each append):
+
+| Env | Default | Meaning |
+|-----|---------|---------|
+| `SHARECLI_AUDIT_MAX_BYTES` | `10485760` (10 MiB) | Rotate active file when larger |
+| `SHARECLI_AUDIT_RETAIN` | `5` | Keep `audit.jsonl.1` … `.N`; delete older |
+
+Rotated files sit beside the active log (`audit.jsonl.1`, …). AuthN burn alerts
+use `sharecli_http_unauthorized_total` — see `docs/ops/SLO.md` SLO-4 and
+`docs/ops/alertmanager/sharecli.yml`.

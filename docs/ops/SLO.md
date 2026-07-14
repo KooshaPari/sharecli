@@ -33,6 +33,16 @@ Numbers are starting targets for local/daemon ops; tighten once scrape history e
 | **Error budget** | ~7 failed scrapes / day at 1/min cadence |
 | **Notes** | Includes process/health gauges and HTTP RED series (`sharecli_http_requests_total`, `sharecli_http_errors_total`, `sharecli_http_request_duration_ms_*`). See `docs/ops/otel.md` and Grafana `docs/ops/grafana/sharecli-serve.json`. |
 
+## SLO-4 — AuthN failure burn
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Protected routes reject bad credentials without flooding (401 rate bounded) |
+| **Target** | `rate(sharecli_http_unauthorized_total) / rate(sharecli_http_requests_total)` ≤ 10% over 5m, sustained <10m |
+| **Probe** | Prometheus series from `/metrics/prometheus` + JSONL `auth_fail` in audit log |
+| **Error budget** | Short bursts OK (misconfigured clients); 10m sustained burn → investigate IdP/JWKS/token |
+| **Alert** | `SharecliAuthFailBurn` in `docs/ops/alertmanager/sharecli.yml` |
+
 ## Mapping to probes
 
 | Endpoint | Role | Success |

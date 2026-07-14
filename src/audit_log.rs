@@ -4,6 +4,11 @@
 //! `~/.local/state/sharecli/audit.jsonl` (Windows: `%LOCALAPPDATA%/sharecli/audit.jsonl`).
 //! Override with `SHARECLI_AUDIT_LOG`.
 //!
+//! Size-based retention: when the active file exceeds
+//! `SHARECLI_AUDIT_MAX_BYTES` (default 10 MiB), it rotates to
+//! `audit.jsonl.1` … `audit.jsonl.N` where N = `SHARECLI_AUDIT_RETAIN`
+//! (default 5). Oldest files beyond N are deleted.
+//!
 //! Failures to write are logged via `tracing::warn` and never fail the request
 //! path (best-effort audit).
 
@@ -17,6 +22,9 @@ use serde_json::{json, Value};
 use tracing::warn;
 
 static WRITE_LOCK: Mutex<()> = Mutex::new(());
+
+const DEFAULT_MAX_BYTES: u64 = 10 * 1024 * 1024;
+const DEFAULT_RETAIN: usize = 5;
 
 /// Emit one audit event (`event` + arbitrary JSON fields).
 pub fn emit(event: &str, fields: Value) {
@@ -54,6 +62,7 @@ pub fn emit_to(path: &Path, event: &str, fields: Value) {
     };
 
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    rotate_if_needed(path);
     match OpenOptions::new().create(true).append(true).open(path) {
         Ok(mut f) => {
             if let Err(e) = writeln!(f, "{line}") {
@@ -74,6 +83,51 @@ pub fn audit_log_path() -> PathBuf {
         }
     }
     state_dir().join("audit.jsonl")
+}
+
+fn max_bytes() -> u64 {
+    std::env::var("SHARECLI_AUDIT_MAX_BYTES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .filter(|&n| n > 0)
+        .unwrap_or(DEFAULT_MAX_BYTES)
+}
+
+fn retain_count() -> usize {
+    std::env::var("SHARECLI_AUDIT_RETAIN")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .filter(|&n| n > 0)
+        .unwrap_or(DEFAULT_RETAIN)
+}
+
+/// Rotate `path` when it exceeds the configured size budget.
+///
+/// Callers must hold [`WRITE_LOCK`].
+fn rotate_if_needed(path: &Path) {
+    let Ok(meta) = std::fs::metadata(path) else {
+        return;
+    };
+    if meta.len() < max_bytes() {
+        return;
+    }
+    let retain = retain_count();
+    let oldest = rotation_path(path, retain);
+    let _ = std::fs::remove_file(&oldest);
+    for i in (1..retain).rev() {
+        let from = rotation_path(path, i);
+        let to = rotation_path(path, i + 1);
+        let _ = std::fs::rename(&from, &to);
+    }
+    if let Err(e) = std::fs::rename(path, rotation_path(path, 1)) {
+        warn!(error = %e, path = %path.display(), "audit log: rotate rename failed");
+    }
+}
+
+fn rotation_path(path: &Path, index: usize) -> PathBuf {
+    let mut s = path.as_os_str().to_os_string();
+    s.push(format!(".{index}"));
+    PathBuf::from(s)
 }
 
 fn state_dir() -> PathBuf {
@@ -125,6 +179,28 @@ mod tests {
         assert_eq!(audit_log_path(), path);
         unsafe {
             std::env::remove_var("SHARECLI_AUDIT_LOG");
+        }
+    }
+
+    #[test]
+    fn rotates_when_over_max_bytes() {
+        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _env = ENV_LOCK.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("audit.jsonl");
+        unsafe {
+            std::env::set_var("SHARECLI_AUDIT_MAX_BYTES", "80");
+            std::env::set_var("SHARECLI_AUDIT_RETAIN", "2");
+        }
+        for i in 0..6 {
+            emit_to(&path, "rot", json!({ "i": i, "pad": "xxxxxxxxxxxxxxxxxxxx" }));
+        }
+        assert!(path.exists() || rotation_path(&path, 1).exists());
+        assert!(rotation_path(&path, 1).exists() || rotation_path(&path, 2).exists());
+        assert!(!rotation_path(&path, 3).exists());
+        unsafe {
+            std::env::remove_var("SHARECLI_AUDIT_MAX_BYTES");
+            std::env::remove_var("SHARECLI_AUDIT_RETAIN");
         }
     }
 }
