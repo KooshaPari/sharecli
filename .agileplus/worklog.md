@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C08 thermal/gate corpus + ADR seed + C06 L59 — FR-003)
+
+- Status: DONE — corpus_thermal_gate_fixtures_match_gate_decision; L75–L78 seeded via ADR-0002; C06 L59 DCO evidence
+- Score: C08 60%→73% C; C06 70%→73% C; overall ~76% B
+- FR: FR-003 eval corpus / thermal gate assertions
+- Next: C11 signing docs; mutants hard gate; hermetic builds
+
 ## 2026-07-14 (C04 2FA + C10 motion/type — FR-004 / FR-003)
 
 - Status: DONE — maintainer-2fa.md; tokens.css type+motion; dashboard prefers-reduced-motion; docs/visual/motion.md
