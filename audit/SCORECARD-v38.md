@@ -275,3 +275,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - docs/ops/alloc-profiling.md + soft rss-soft.yml.
 - C00 L8 stays 2/3; cluster 21/30 (70% C) unchanged.
 
+
+### 2026-07-14 (C07 mutants soft threshold harden — L65)
+- Soft fail-on-survivors + JSON artifact; L65 stays 2.
+
