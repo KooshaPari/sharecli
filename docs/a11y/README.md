@@ -41,6 +41,7 @@ See [`status-and-recovery.md`](./status-and-recovery.md) for FR-004 health surfa
 
 - [Color contrast ratios](./contrast.md) — Backbone-2 tokens (`assets/tokens.css`, `src/theme.rs`)
 - [Keyboard bindings](./keyboard.md) — TUI quit keys and dashboard focus order
+- [Responsive layout](./responsive.md) — TUI compact mode + dashboard 375/768 breakpoints
 - [Status & recovery](./status-and-recovery.md) — health endpoints, validation hints, degraded mode
 
 ## Screen-reader / assistive-tech checklist (manual)

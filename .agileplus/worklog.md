@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C09 responsive layout — W10.2)
+
+- Status: DONE — TUI compact/full via `frame.area().width`; dashboard 375/768 media queries; a11y smoke tests
+- Score: C09 → 76% B (34/45); L81.11 1→2; overall stays ~69% C (829/12)
+- FR: FR-004 NFR (adaptive UX)
+- Next: synthetic eval corpus (C08); OpenAPI drift CI (C00)
+
 ## 2026-07-13 (C01 action SHA pins — W10.1)
 
 - Status: DONE — pin Actions tags to commit SHAs; ubuntu-24.04 across workflows; L10 2→3

@@ -29,3 +29,11 @@ fn dashboard_announces_live_status() {
     let html = dashboard_html();
     assert!(html.contains("aria-live"), "connection/status updates should use aria-live");
 }
+
+#[test]
+fn dashboard_has_responsive_breakpoints() {
+    let html = dashboard_html();
+    assert!(html.contains(r#"name="viewport""#), "missing viewport meta for adaptive layout");
+    assert!(html.contains("@media (max-width: 768px)"), "missing tablet breakpoint smoke (768)");
+    assert!(html.contains("@media (max-width: 375px)"), "missing phone breakpoint smoke (375)");
+}
