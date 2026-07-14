@@ -1,0 +1,30 @@
+# Mutation testing threshold (soft → hard path)
+
+Audit-v38 **C07 L65**. Scoped to `sharecli-thermal-tui` pure helpers (`mutants.toml`).
+
+## Current gate
+
+| Mode | Workflow | Behavior |
+|------|----------|----------|
+| Soft | `.github/workflows/mutants.yml` | PR/cron/dispatch; `continue-on-error: true` |
+| Local | `just mutants` | Installs/runs cargo-mutants smoke |
+
+## Threshold (target for hard gate)
+
+| Metric | Soft target | Hard target |
+|--------|-------------|-------------|
+| Scope | `examine_re` in `mutants.toml` | same |
+| Outcome | zero surviving mutants in examine set | same + **required** check |
+| Timeout | 60s per mutant | 60s |
+
+Hard promotion: remove `continue-on-error` once the examine set stays green on `main` for one week.
+
+## Commands
+
+```bash
+just mutants
+# or:
+cargo mutants --timeout 60 --jobs 2 \
+  --file 'crates/sharecli-thermal-tui/src/lib.rs' \
+  -- --locked -p sharecli-thermal-tui
+```

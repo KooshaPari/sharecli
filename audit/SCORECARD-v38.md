@@ -15,7 +15,7 @@
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 21/30 | 70% | C | lib.rs sprawl; error envelope; tight perf budgets |
-| C01 | CI, DX, Observability | L10–L19 | 21/30 | 70% | C | fluent catalogs deferred; codecov/gitleaks polish |
+| C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 23/30 | 77% | B | GPG+branch protection; org 2FA enforce; OSV hard-fail |
@@ -29,17 +29,17 @@
 
 ## Overall
 
-**Weighted overall score:** 77% · **Overall grade:** B
+**Weighted overall score:** 78% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+70+80+92+77+70+80+77+73+76+86+73)/12 = 924/12 = **77.0% ≈ 77%**.)
+(Unweighted mean of cluster pcts: (70+80+80+92+77+70+80+77+73+76+86+73)/12 = 934/12 = **77.8% ≈ 78%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (77+70+80+77+73+76+86+73) = 624 + 612 = 1236 / 16 = **77.3% ≈ 77%** (B).
+**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (77+70+80+77+73+76+86+73) = 644 + 612 = 1256 / 16 = **78.5% ≈ 79%** (B).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (92% A); C10 **86% B**; C02/C06 **80% B**.
+- **Strongest:** C03 Agent Readiness (92% A); C10 **86% B**; C01/C02/C06 **80% B**.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), GPG+required signed commits (C04 L34), mutants hard gate (C07).
+- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), mutants hard required check (C07 L65), GPG+required signed commits (C04 L34).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -253,3 +253,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C06 23/30 (77% B) → 24/30 (80% B):** L54 1→2 (hermetic-soft.yml + just hermetic).
 - **C10 30/36 (83% B) → 31/36 (86% B):** L104 2→3 (Backbone2Light + tokens.css light).
 - Overall mean **~77% B** (924/12); weighted **~77% B**.
+
+### 2026-07-14 (C01 a11y checklist + SBOM evidence sync)
+- **C01 21/30 (70% C) → 24/30 (80% B):** L17 1→3 (cli-tui-checklist + existing a11y suite); L19 2→3 (CycloneDX SBOM in sbom.yml/release).
+- Soft mutants threshold doc (C07 L65 stays 2).
+- Overall mean **~78% B** (934/12); weighted **~79% B**.
