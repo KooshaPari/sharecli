@@ -246,7 +246,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - name: Build WinUI tray
-        run: dotnet build windows/ShareCLITray/ShareCLITray.csproj -c Release
+        run: dotnet build windows/ShareCLITray/ShareCLITray.csproj -c Release -p:Platform=x64
       - name: Pack zip
         shell: pwsh
         run: |
