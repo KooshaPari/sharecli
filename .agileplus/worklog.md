@@ -78,13 +78,6 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 - Score: C08 → 60% C (18/30); overall → 67% C
 - Next: wire jwt bench into `bench-gate`; C09 AX lift
 
-## 2026-07-14 (C06 container cosign soft — L56)
-
-- Status: DONE — `container-cosign-soft.yml` + `scripts/container-cosign-soft.sh`; keyless sign-blob on main; GHCR opt-in via dispatch
-- Score: C06 L56 1→2; C06 → 70% C (21/30); overall → 72% C
-- FR: FR-002 (supply-chain / build determinism traceability)
-- Next: default GHCR publish + cosign sign/attest on release
-
 ## 2026-07-13 (C06 supply-chain lift)
 
 - Status: DONE — L52 repro-check (`scripts/repro-check.sh`, `repro-check.yml`, `just repro-check`); L55 deny sources + audit.toml sync; L56 cosign roadmap in `docs/slsa.md`
@@ -187,13 +180,9 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 - Fixed ADR 0001→0002, corpus README path, removed missing stories/integration link.
 - Pointed out-of-tree paths (trays, WORK_DAG, repro-check) at GitHub blob/tree URLs; ignoreDeadLinks safety net in config.mts.
 
-## W10.9 — Deploy docs via GitHub Pages workflow (FR-005)
-- VitePress build was green; peaceiris push 403 because default_workflow_permissions=read and Pages unset.
-- Enabled Pages build_type=workflow; switched deploy-docs.yml to upload-pages-artifact + deploy-pages with pages/id-token write.
+## W10.11 — WinUI tray NuGet restore (FR-005)
+- Replace missing CommunityToolkit.WinUI 8.x with CommunityToolkit.WinUI.UI.Controls.DataGrid 7.1.2; pin WindowsAppSDK 1.6.240923002.
 
-## W10.10 — OSSF Binary-Artifacts: untrack zig-cache (FR-001)
+## W10.11 — WinUI tray NuGet restore (FR-005)
+- Replace missing CommunityToolkit.WinUI 8.x with CommunityToolkit.WinUI.UI.Controls.DataGrid 7.1.2; pin WindowsAppSDK 1.6.240923002.
 
-- Removed tracked `crates/spawn-core/.zig-cache/` from git index (11 files: `.o`, `.a`, build cache).
-- `.gitignore`: `**/zig-cache/`, `**/zig-out/` alongside existing `**/.zig-cache/`.
-- SECURITY.md: note that Zig caches are local-only; Scorecard Binary-Artifacts expects none in-tree.
-- Soft CI: `scripts/check-no-build-artifacts.sh` + `build-artifacts-soft.yml` (`continue-on-error`).
