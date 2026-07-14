@@ -24,16 +24,16 @@
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | ADR N/A L75–78; expand live corpus assertions |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
-| C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
+| C10 | Visual Identity | L96–L107 | 28/36 | 78% | B | golden visual tests; light theme; CSS type tokens |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
 ## Overall
 
 **Weighted overall score:** 74% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (70+70+80+92+73+70+70+77+60+76+67+67)/12 = 872/12 = **72.7% ≈ 73%**.)
+(Unweighted mean of cluster pcts: (70+70+80+92+73+70+70+77+60+76+78+67)/12 = 883/12 = **73.6% ≈ 74%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (73+70+70+77+60+76+67+67) = 624 + 560 = 1184 / 16 = **74.0% ≈ 74%** (C).
+**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (73+70+70+77+60+76+78+67) = 624 + 571 = 1195 / 16 = **74.7% ≈ 75%** (B).
 
 ## Headline Findings
 
@@ -229,3 +229,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C04 DCO signed-commits soft)
 - **C04 21/30 (70% C) → 22/30 (73% C):** L34 0→1 (CONTRIBUTING DCO, docs/ops/signed-commits.md, dco-soft.yml).
 - Overall mean **~73% C** (872/12); weighted **~74% C**.
+
+### 2026-07-14 (C10 docs/visual soft)
+- **C10 24/36 (67% C) → 28/36 (78% B):** L97 1→2, L105 2→3, L106 2→3, L107 1→2 (`docs/visual/*`).
+- Overall mean **~74% C** (883/12); weighted **~75% B**.

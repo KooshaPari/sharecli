@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C10 docs/visual soft — FR-003)
+
+- Status: DONE — docs/visual/{README,IDENTITY,VISUAL_SPEC,PROVENANCE,typography}.md
+- Score: C10 24/36 → 28/36 (78% B); L97/L105/L106/L107 lifts; overall ~74% / weighted ~75%
+- FR: FR-003 (visual acceptance / agent-detectable polish)
+- Next: tests/golden visual gates; light theme; wire type tokens into tokens.css
+
 ## 2026-07-14 (C04 DCO signed-commits soft — FR-004)
 
 - Status: DONE — CONTRIBUTING DCO; docs/ops/signed-commits.md; dco-soft.yml (continue-on-error)
