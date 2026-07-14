@@ -44,17 +44,46 @@ podman build -f Containerfile -t sharecli .
 podman run --rm -p 9000:9000 sharecli
 ```
 
-Deploy surface matrix: [`docs/deploy.md`](docs/deploy.md).  
-Finality + OS parity (macOS / Windows / Linux / WSL): [`docs/deploy/FINALITY.md`](docs/deploy/FINALITY.md).
-
 ### Per-host install (parity floor)
 
-| Host | CLI | Tray / dashboard |
-|------|-----|------------------|
-| macOS | `cargo binstall sharecli` or release `*-apple-darwin.tar.gz` | Swift tray+desktop (`sharecli-desktop-macos-*`) |
-| Windows | release `*-pc-windows-msvc.zip` | WinUI tray (`sharecli-tray-windows-*`) + web cockpit |
-| Linux | release `*-unknown-linux-gnu.tar.gz` | `sharecli-tray-linux-*` + web cockpit |
-| WSL | CLI inside WSL (same binary as Linux) | Windows tray → `localhost:9000` or WSLg — see FINALITY |
+Same capability set on every host: CLI + `serve`, process verbs, tray/menubar (or WSL bridge), dashboard at `http://127.0.0.1:9000/` (macOS also native window). Details: [`docs/deploy/FINALITY.md`](docs/deploy/FINALITY.md).
+
+#### macOS (optimal: Swift tray + `DashboardView`)
+
+```bash
+cargo binstall sharecli
+# or: gh release download <tag> -p 'sharecli-*-apple-darwin.tar.gz'
+# tray/desktop: sharecli-desktop-macos-*.tar.gz from the same release
+```
+
+#### Windows (optimal: WinUI tray + web cockpit)
+
+```powershell
+# CLI zip from GitHub Releases: sharecli-*-pc-windows-msvc.zip
+# Tray: sharecli-tray-windows-*.zip (beta; unsigned)
+# Dashboard: start `sharecli serve` then http://127.0.0.1:9000/
+```
+
+#### Linux (optimal: StatusNotifier tray + web cockpit)
+
+```bash
+# gh release download <tag> -p 'sharecli-*-unknown-linux-gnu.tar.gz'
+# tray: sharecli-tray-linux-*.tar.gz
+cargo binstall sharecli   # CLI alternative
+```
+
+#### WSL (CLI in WSL + Windows/WSLg tray bridge)
+
+```bash
+# Inside WSL (same Linux CLI artifact):
+sharecli serve --bind 0.0.0.0:9000
+# From Windows: http://127.0.0.1:9000/  or ShareCLITray → that port
+# Optional: WSLg + sharecli-tray-linux
+just wsl-parity-check
+```
+
+Deploy surface matrix: [`docs/deploy.md`](docs/deploy.md).  
+Finality + OS parity: [`docs/deploy/FINALITY.md`](docs/deploy/FINALITY.md).
 
 ## Uninstall
 

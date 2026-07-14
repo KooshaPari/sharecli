@@ -174,10 +174,14 @@ public actor IPCClient {
 
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
-        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
-            path.withCString { cstr in
-                let dest = UnsafeMutableRawPointer(ptr).assumingMemoryBound(to: CChar.self)
-                strncpy(dest, cstr, MemoryLayout.size(ofValue: addr.sun_path) - 1)
+        let pathCap = MemoryLayout.size(ofValue: addr.sun_path)
+        path.withCString { cstr in
+            withUnsafeMutableBytes(of: &addr.sun_path) { raw in
+                guard let base = raw.baseAddress else { return }
+                let dest = base.assumingMemoryBound(to: CChar.self)
+                let n = min(pathCap, raw.count)
+                memset(dest, 0, n)
+                strncpy(dest, cstr, n > 0 ? n - 1 : 0)
             }
         }
 

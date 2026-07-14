@@ -64,6 +64,19 @@ build-cli: build-release
     @echo ">> CLI release binary ready (lane A / GA)"
 
 [group: 'parity']
+[windows]
+build-cli-windows:
+    @echo ">> Windows CLI native release (lane A / GA)"
+    @cargo build --release --locked --bin sharecli
+
+[group: 'parity']
+[unix]
+build-cli-windows:
+    @echo ">> Windows CLI cross-compile (optional; CI uses windows-latest)"
+    @echo "    rustup target add x86_64-pc-windows-msvc  # plus appropriate linker"
+    -cargo build --release --locked --bin sharecli --target x86_64-pc-windows-msvc
+
+[group: 'parity']
 build-tray-linux:
     @echo ">> Linux StatusNotifier tray (lane B / beta)"
     @cargo build -p sharecli-tray-linux --release --locked
@@ -90,6 +103,9 @@ wsl-parity-check:
     @echo ">> WSL parity checklist (see docs/deploy/FINALITY.md)"
     @grep -q 'WSL bridge' docs/deploy/FINALITY.md
     @grep -q '127.0.0.1:9000' docs/deploy/FINALITY.md
+    @grep -q 'WSL (CLI in WSL' README.md
+    @grep -q 'x86_64-pc-windows-msvc' .github/workflows/release.yml
+    @grep -q 'tray-macos' .github/workflows/release.yml
     @echo "1) WSL: sharecli serve --bind 0.0.0.0:9000"
     @echo "2) Windows: curl http://127.0.0.1:9000/healthz  OR  ShareCLITray"
     @echo "3) Optional WSLg: sharecli-tray on Linux session"

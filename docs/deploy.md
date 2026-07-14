@@ -16,10 +16,10 @@ surface gains proof (release asset, deploy URL, or CI log).
 | OCI container (`Containerfile`) | **ready** | Multi-stage build, non-root `USER sharecli`, `HEALTHCHECK` → `/healthz` | `podman build -f Containerfile -t sharecli .` then `podman run --rm -p 9000:9000 sharecli` |
 | Self-hosted / reverse proxy | **documented** | Bind `sharecli serve --bind 0.0.0.0:9000` behind nginx/Caddy | Probe `GET /healthz` and `GET /readyz` (see `docs/ops/SLO.md`) |
 | Cross-device fleet | **in progress** | `sharecli fleet register` / `status` over NATS | See `docs/CROSS_DEVICE_DEPLOY.md` |
-| CLI — Linux / macOS / Windows | **GA** | Release matrix in `release.yml` | Parity floor lane A |
-| Tray — Linux (SNI) / macOS (Swift) / Windows (WinUI) | **beta** | Native per OS; see [`FINALITY.md`](deploy/FINALITY.md) | CI artifacts `sharecli-tray-*` / `sharecli-desktop-macos-*` |
+| CLI — Linux / macOS / Windows | **GA** | Release matrix in `release.yml` (incl. `x86_64-pc-windows-msvc`) | Parity floor lane A — see [`FINALITY.md`](deploy/FINALITY.md) |
+| Tray — Linux (SNI) / macOS (Swift) / Windows (WinUI) | **beta** | Native per OS; release + `desktop-builds.yml` | Artifacts `sharecli-tray-*` / `sharecli-desktop-macos-*` (Win tray soft until green) |
 | Dashboard UI (all hosts) | **beta** | Web cockpit `http://127.0.0.1:9000/`; macOS also native `DashboardView` | Equal parity; macOS is optimal native peak |
-| WSL | **beta (bridged)** | CLI in WSL + Windows tray or WSLg Linux tray | [`FINALITY.md`](deploy/FINALITY.md#wsl-bridge-parity) |
+| WSL | **beta (bridged)** | CLI in WSL + Windows tray or WSLg Linux tray | [`FINALITY.md`](deploy/FINALITY.md#wsl-bridge-parity) — equal capability list via bridge |
 | Mobile (iOS/Android/PWA) | **N/A** | Deliberate non-goal | ADR: [`docs/adr/0001-no-mobile-app.md`](adr/0001-no-mobile-app.md) |
 | Edge / serverless (Workers, Vercel) | **N/A** | CLI + local supervisor, not an edge app | No `wrangler.toml` / `vercel.json` by design |
 | Traditional packaged unit (systemd/Caddy sample) | **N/A (soft)** | Bind-behind-proxy documented; no first-class unit file | Optional follow-up sample only |
