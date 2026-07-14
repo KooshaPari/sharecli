@@ -13,6 +13,7 @@ COPY --from=builder /app/target/release/sharecli /usr/local/bin/sharecli
 
 USER sharecli
 EXPOSE 9000
+# See docs/ops/container-hardening.md for --read-only / no-new-privileges / cap-drop.
 # Liveness probe matches `GET /healthz` in src/commands/serve.rs
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -fsS http://127.0.0.1:9000/healthz || exit 1

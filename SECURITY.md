@@ -81,12 +81,17 @@ on a weekly schedule:
 
 - [`cargo audit`](https://github.com/rustsec/rustsec) — RustSec advisory DB
   → `.github/workflows/audit.yml` (SARIF uploaded to the Security tab).
+- [`OSV-Scanner`](https://google.github.io/osv-scanner/) — OSV/GHSA lockfile
+  feed → `.github/workflows/osv.yml` (weekly + PR; SARIF upload).
 - [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny) — license,
   ban, advisory, and source policy → `.github/workflows/deny.yml`.
 - **OSSF Scorecard** — supply-chain health score → `.github/workflows/scorecard.yml`.
 - **GitHub Dependabot** — automatic PRs for outdated / vulnerable
-  dependencies (see `.github/dependabot.yml`).
+  dependencies; cargo patch/minor + github-actions grouped
+  (see `.github/dependabot.yml`).
 - **CodeQL** — static analysis → `.github/workflows/sast.yml`.
+
+Container runtime hardening notes: [`docs/ops/container-hardening.md`](docs/ops/container-hardening.md).
 
 The full policy lives in `deny.toml` at the repo root. Allowed licenses,
 banned crates, allowed git sources, and per-advisory ignore-list with

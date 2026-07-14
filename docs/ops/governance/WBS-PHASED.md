@@ -27,7 +27,7 @@
 | C01 | CI / DX / Obs | 67% | C | Wave1–2 + W10 | Status: DONE |
 | C02 | Error / API / Governance | 80% | B | Wave2 + Wave5 | Status: DONE |
 | C03 | Agent Readiness | 92% | A | Wave1 + Wave3 | Status: DONE |
-| C04 | Security | 60% | C | Wave2 + L39 | Status: IN_PROGRESS |
+| C04 | Security | 70% | C | Wave2 + W10 | Status: DONE |
 | C05 | Observability (deep) | 70% | C | Wave2 | Status: DONE |
 | C06 | Supply Chain | 67% | C | Wave2 + repro/deny | Status: DONE |
 | C07 | DX / QEng / Portability | 77% | B | Wave1–2 + W10 | Status: DONE |
