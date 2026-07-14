@@ -178,6 +178,36 @@ grade:
     @test -f audit_scorecard.json && cat audit_scorecard.json | jq '{repo, overall, grade}' \
         || echo "no audit_scorecard.json present"
 
+# -------- observability (C05 L45) --------
+[group: 'observability']
+pyro-push-sample:
+    @echo ">> curl pprof from sharecli serve and push to Pyroscope (see docs/ops/pyroscope.md)"
+    @test -n "${SHARECLI_PPROF:-}" || { echo "error: set SHARECLI_PPROF=1 and run sharecli serve first"; exit 1; }
+    @PYRO_URL="${SHARECLI_PYROSCOPE_URL:-http://127.0.0.1:4040}"; \
+     APP="${SHARECLI_PYROSCOPE_APP_NAME:-sharecli}"; \
+     PPROF_URL="${SHARECLI_PPROF_URL:-http://127.0.0.1:9000/debug/pprof/profile}"; \
+     SECS="${SHARECLI_PPROF_SECONDS:-10}"; \
+     OUT="/tmp/sharecli-profile-$$.pb"; \
+     CURL_AUTH=(); \
+     if [ -n "${SHARECLI_SERVE_TOKEN:-}" ]; then CURL_AUTH=(-H "Authorization: Bearer ${SHARECLI_SERVE_TOKEN}"); fi; \
+     echo ">> sampling ${PPROF_URL}?seconds=${SECS}"; \
+     curl -fsS "${CURL_AUTH[@]}" -o "$$OUT" "$${PPROF_URL}?seconds=$${SECS}"; \
+     if command -v pyroscope >/dev/null 2>&1; then \
+       echo ">> pyroscope push -> $${PYRO_URL}"; \
+       pyroscope push "$$OUT" --application-name="$${APP}" --server-address="$${PYRO_URL}"; \
+     elif [ -n "$${SHARECLI_PYROSCOPE_USER:-}" ] && [ -n "$${SHARECLI_PYROSCOPE_PASSWORD:-}" ]; then \
+       echo ">> curl ingest -> $${PYRO_URL}/ingest"; \
+       curl -fsS -u "$${SHARECLI_PYROSCOPE_USER}:$${SHARECLI_PYROSCOPE_PASSWORD}" \
+         -H "Content-Type: application/vnd.google.protobuf" \
+         --data-binary @"$$OUT" \
+         "$${PYRO_URL}/ingest?format=pprof&name=$${APP}"; \
+     else \
+       echo ">> no pyroscope CLI or Grafana Cloud creds — saved $$OUT"; \
+       echo ">> install pyroscope CLI or set SHARECLI_PYROSCOPE_USER/PASSWORD; see docs/ops/pyroscope.md"; \
+       go tool pprof -top "$$OUT" 2>/dev/null || true; \
+     fi; \
+     rm -f "$$OUT"
+
 # -------- local CI simulation --------
 # Mirrors .github/workflows/ci.yml — useful for `act` or local debugging
 [group: 'ci']

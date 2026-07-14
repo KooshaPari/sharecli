@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C05 Pyroscope soft — FR-003)
+
+- Status: DONE — L45 external Pyroscope push recipe (`docs/ops/pyroscope.md`, `just pyro-push-sample`, `.env.example` SHARECLI_PYROSCOPE_*)
+- Status: DONE — `serve` logs hint when `SHARECLI_PYROSCOPE_URL` set (no in-process agent)
+- Re-score: C05 L45 stays 2/3 (70% C); soft goal met for push docs without Grafana Cloud secrets
+- Next READY: in-process always-on agent (effort L); multi-hop traces; live PD secrets
+
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
 ## 2026-07-13 (MVP finality + OS parity — W10.6)
@@ -180,9 +187,5 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 - Fixed ADR 0001→0002, corpus README path, removed missing stories/integration link.
 - Pointed out-of-tree paths (trays, WORK_DAG, repro-check) at GitHub blob/tree URLs; ignoreDeadLinks safety net in config.mts.
 
-## W10.11 — WinUI tray NuGet restore (FR-005)
-- Replace missing CommunityToolkit.WinUI 8.x with CommunityToolkit.WinUI.UI.Controls.DataGrid 7.1.2; pin WindowsAppSDK 1.6.240923002.
-
-## W10.11 — WinUI tray NuGet restore (FR-005)
-- Replace missing CommunityToolkit.WinUI 8.x with CommunityToolkit.WinUI.UI.Controls.DataGrid 7.1.2; pin WindowsAppSDK 1.6.240923002.
-
+## W10.12 — C05 Pyroscope soft push path (FR-003)
+- docs/ops/pyroscope.md + just pyro-push-sample; links from profiling.md.

@@ -45,8 +45,15 @@ samply record -- sharecli serve --bind 127.0.0.1:9000
 - Flamegraph SVG is **not** served in-process (avoids `inferno` → vulnerable
   `quick-xml`); convert with `go tool pprof` offline.
 
+## Push to Pyroscope
+
+External upload (no in-process agent): set `SHARECLI_PYROSCOPE_URL` and run
+`just pyro-push-sample`, or scrape with Grafana Alloy. Full recipes, env vars, and
+optional local docker-compose: `docs/ops/pyroscope.md`.
+
 ## Related
 
+- Pyroscope push: `docs/ops/pyroscope.md`
 - OTel traces: `docs/ops/otel.md`
 - RED metrics: `GET /metrics/prometheus`
 - OpenAPI: `docs/openapi/serve.yaml` → `/debug/pprof/profile`
