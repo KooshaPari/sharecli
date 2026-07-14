@@ -28,6 +28,10 @@ surface gains proof (release asset, deploy URL, or CI log).
 
 Soft runbook: [`ops/codesign-notarize.md`](ops/codesign-notarize.md) (L112). Release assets remain unsigned until org secrets land.
 
+## Auto-update (soft)
+
+Operator channels: [`ops/auto-update.md`](ops/auto-update.md) (C11 L111). Prefer crates.io / binstall / brew / checksummed Releases — no in-binary `self-update` yet.
+
 ## Quick container smoke
 
 ```bash

@@ -19,21 +19,21 @@
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 23/30 | 77% | B | GPG+branch protection; org 2FA enforce; OSV hard-fail |
-| C05 | Observability (deep) | L41–L50 | 22/30 | 73% | C | multi-hop traces; live PD; soak/chaos hard gate |
+| C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 24/30 | 80% | B | SLSA L3; network-blocked hermetic; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | live HTTP pool probes; supersede ADR if agent-eval lands |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 31/36 | 86% | B | golden visual tests; high-contrast; dashboard hex drift |
-| C11 | Packaging + Distribution | L108–L122 | 33/45 | 73% | C | hard codesign/notarize; dmg/msi; harden Win tray; auto-update |
+| C11 | Packaging + Distribution | L108–L122 | 34/45 | 76% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
 
 ## Overall
 
 **Weighted overall score:** 79% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+80+80+92+77+73+80+77+73+76+86+73)/12 = 937/12 = **78.1% ≈ 78%**.)
+(Unweighted mean of cluster pcts: (70+80+80+92+77+70+80+77+73+76+86+76)/12 = 937/12 = **78.1% ≈ 78%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (77+73+80+77+73+76+86+73) = 644 + 615 = 1259 / 16 = **78.7% ≈ 79%** (B).
+**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (77+70+80+77+73+76+86+76) = 644 + 615 = 1259 / 16 = **78.7% ≈ 79%** (B).
 
 ## Headline Findings
 
@@ -263,6 +263,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - FINALITY host×capability matrix; README four-host install blocks; `release.yml` tray-macos + tray-windows attach (Win soft).
 - C11 L108/L110/L118 evidence updated; no GA overclaim for tray/desktop (still beta until L112).
 
-### 2026-07-14 (C05 soft load burst — L50)
-- **C05 21/30 (70% C) → 22/30 (73% C):** L50 1→2 (`load-soft.yml` + `scripts/load/healthz_burst.sh` CI wiring + `just load-soft`).
+### 2026-07-14 (C11 auto-update soft — L111)
+- **C11 33/45 (73% C) → 34/45 (76% B):** L111 0→1 (`docs/ops/auto-update.md` + deploy.md link).
 - Overall mean **~78% B** (937/12); weighted **~79% B**.
