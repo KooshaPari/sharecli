@@ -179,3 +179,7 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 - VitePress build failed on main after scorecard YAML fix unblocked Deploy docs.
 - Fixed ADR 0001→0002, corpus README path, removed missing stories/integration link.
 - Pointed out-of-tree paths (trays, WORK_DAG, repro-check) at GitHub blob/tree URLs; ignoreDeadLinks safety net in config.mts.
+
+## W10.9 — Deploy docs via GitHub Pages workflow (FR-005)
+- VitePress build was green; peaceiris push 403 because default_workflow_permissions=read and Pages unset.
+- Enabled Pages build_type=workflow; switched deploy-docs.yml to upload-pages-artifact + deploy-pages with pages/id-token write.
