@@ -20,4 +20,5 @@ These are **not** hard merge gates yet.
 ## Follow-ups
 
 - Optional `jemallocator` / `tikv-jemallocator` behind a feature for `serve`.
-- `dhat` or heaptrack sample job (soft) on main.
+- `dhat` or heaptrack sample job (soft) on main — see [`alloc-profiling.md`](alloc-profiling.md).
+- Soft RSS sample: `just rss-soft` / `.github/workflows/rss-soft.yml`.

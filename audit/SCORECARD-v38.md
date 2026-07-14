@@ -270,3 +270,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C11 auto-update soft — L111)
 - **C11 33/45 (73% C) → 34/45 (76% B):** L111 0→1 (`docs/ops/auto-update.md` + deploy.md link).
 - Overall mean **~78% B** (940/12); weighted **~79% B**.
+
+### 2026-07-14 (C00 alloc profiling + soft RSS — L8 evidence)
+- docs/ops/alloc-profiling.md + soft rss-soft.yml.
+- C00 L8 stays 2/3; cluster 21/30 (70% C) unchanged.
+

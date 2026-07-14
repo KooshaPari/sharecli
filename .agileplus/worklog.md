@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C00 alloc profiling + soft RSS — FR-003)
+- Status: DONE — alloc-profiling.md; rss-soft.yml; L8 stays 2
+- FR: FR-003
 ## 2026-07-14 (C11 auto-update soft — FR-004)
 
 - Status: DONE — docs/ops/auto-update.md channel matrix; deploy.md link; L111 0→1
