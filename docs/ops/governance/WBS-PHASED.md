@@ -96,7 +96,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
 | W8.1 | Wire `jwt_auth_validate` into Criterion CI | L71 · FR-012 · `bench.yml` · `jwt_validate_rs256` baseline | Status: DONE |
-| W8.2 | Hyperfine JSON CI artifact | L73 · `scripts/bench/` | Status: READY |
+| W8.2 | Hyperfine JSON CI artifact | L73 · `scripts/bench/` | Status: DONE |
 
 ## Sync protocol
 

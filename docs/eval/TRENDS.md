@@ -28,8 +28,15 @@ Download from the Actions run → Artifacts. Per-PR regression gating remains
 `scripts/check-bench-baseline.py` against `docs/eval/baselines/criterion-baseline.json`
 (50% threshold) — trends are longitudinal, not the merge gate.
 
+## Hyperfine /healthz JSON
+
+Nightly (and soft PR) runs also upload `hyperfine-healthz-<sha>.json` from
+`scripts/bench/hyperfine-healthz.sh` (LOAD-2). Soft job:
+`hyperfine healthz (soft)` (`continue-on-error`).
+
 ## Related
 
 - `docs/eval/REPRO.md` — pins / seed contract
 - `docs/testing/flake-policy.md` — Criterion flake quarantine
-- `docs/ops/SLO.md` — BENCH budgets
+- `docs/ops/SLO.md` — BENCH + LOAD budgets
+- `scripts/bench/README.md` — hyperfine harness

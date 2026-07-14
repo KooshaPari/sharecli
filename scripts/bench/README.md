@@ -30,6 +30,10 @@ Pins and seed: `docs/eval/REPRO.md`.
 `hyperfine-healthz.sh` exports JSON via `--export-json` (default:
 `docs/eval/baselines/hyperfine-healthz.json`, override with
 `SHARECLI_HYPERFINE_OUT`). Commit refreshed JSON after local runs when
-updating LOAD-2 latency trends. Nightly CI currently uploads Criterion trend
-JSON only (`docs/eval/TRENDS.md`); hyperfine JSON in Actions artifacts is a
-planned L72 follow-up.
+updating LOAD-2 latency trends.
+
+CI uploads hyperfine JSON as an Actions artifact:
+- Soft job `hyperfine healthz (soft)` on PR/push (`continue-on-error`)
+- Nightly / `workflow_dispatch` job `cargo bench (nightly trends)` also
+  builds `sharecli`, probes `/healthz`, and uploads `hyperfine-healthz-<sha>.json`
+  alongside Criterion trend JSON (`docs/eval/TRENDS.md`).
