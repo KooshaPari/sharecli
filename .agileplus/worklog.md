@@ -78,6 +78,13 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 - Score: C08 → 60% C (18/30); overall → 67% C
 - Next: wire jwt bench into `bench-gate`; C09 AX lift
 
+## 2026-07-14 (C06 container cosign soft — L56)
+
+- Status: DONE — `container-cosign-soft.yml` + `scripts/container-cosign-soft.sh`; keyless sign-blob on main; GHCR opt-in via dispatch
+- Score: C06 L56 1→2; C06 → 70% C (21/30); overall → 72% C
+- FR: FR-002 (supply-chain / build determinism traceability)
+- Next: default GHCR publish + cosign sign/attest on release
+
 ## 2026-07-13 (C06 supply-chain lift)
 
 - Status: DONE — L52 repro-check (`scripts/repro-check.sh`, `repro-check.yml`, `just repro-check`); L55 deny sources + audit.toml sync; L56 cosign roadmap in `docs/slsa.md`

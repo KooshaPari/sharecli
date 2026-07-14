@@ -127,19 +127,49 @@ reusable workflow with a build image pinned by digest. The reusable
 workflow handles ephemeral runners, hardened isolation, and
 non-forgeable provenance signing transparently.
 
-## Container image provenance (L56 roadmap)
+## Container image provenance (L56)
 
-`Containerfile` builds a local/podman image today; **GHCR publish is not
-wired yet**. When image publish lands, the planned cosign path (no secrets
-required in this doc) is:
+`Containerfile` builds a local/podman image today. **GHCR publish is not
+wired by default**; soft CI signs the local image digest with keyless
+`cosign sign-blob` (no registry secrets).
 
-1. **Build** — multi-stage `Containerfile` on `ubuntu-latest` (digest-pinned
-   base images).
-2. **Sign** — `cosign sign --yes ghcr.io/<org>/sharecli:<tag>` with GitHub
-   OIDC (`id-token: write` + `packages: write`).
-3. **Attest** — `cosign attest --type slsaprovenance --predicate …` or
-   GitHub Artifact Attestations for the OCI digest.
-4. **Verify (consumers)** — before deploy:
+### Soft CI (today)
+
+Workflow: [`.github/workflows/container-cosign-soft.yml`](../.github/workflows/container-cosign-soft.yml)
+(`continue-on-error: true` on `main` push + `workflow_dispatch`).
+
+1. **Gate** — require root `Containerfile`; install `cosign`; print `cosign version`.
+2. **Build** — `docker build -f Containerfile -t sharecli:ci .` (skips gracefully
+   when docker/daemon is unavailable).
+3. **Sign (main only)** — keyless `cosign sign-blob` on the image ID file;
+   bundle uploaded as `sharecli-container-cosign-soft` artifact.
+4. **Verify (consumers)** — download the artifact from a green main run, then:
+
+```bash
+cosign verify-blob sharecli-ci-image-id.txt \
+  --bundle sharecli-ci-image-id.txt.sigstore.json \
+  --certificate-identity-regexp 'https://github.com/KooshaPari/sharecli/.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+```
+
+Local dry-run (build only, no OIDC):
+
+```bash
+bash scripts/container-cosign-soft.sh
+# prints dry-run verify-blob command when not on main CI
+```
+
+### GHCR publish (when enabled)
+
+Opt-in via `workflow_dispatch` input `ghcr_cosign_push` (needs
+`packages: write` + `id-token: write`; uses `GITHUB_TOKEN`, no extra secrets).
+
+1. **Build** — multi-stage `Containerfile` on `ubuntu-24.04`.
+2. **Push** — `ghcr.io/<org>/sharecli:<tag>`.
+3. **Sign** — `cosign sign --yes ghcr.io/<org>/sharecli:<tag>` (keyless OIDC).
+4. **Attest** — `cosign attest --type slsaprovenance --predicate …` or GitHub
+   Artifact Attestations for the OCI digest.
+5. **Verify (consumers)** — before deploy:
 
 ```bash
 cosign verify ghcr.io/<org>/sharecli:<tag> \
@@ -147,9 +177,9 @@ cosign verify ghcr.io/<org>/sharecli:<tag> \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 ```
 
-Until GHCR publish exists, use `podman build -f Containerfile` locally and
-Trivy scan via `.github/workflows/security.yml` when a root `Dockerfile` is
-added. Signing remains **documented-only** — no cosign secrets in CI yet.
+Until GHCR publish is default, use `podman build -f Containerfile` locally;
+Trivy scan remains in `.github/workflows/security.yml` when a root `Dockerfile`
+exists (this repo uses `Containerfile` for the soft cosign path).
 
 ## References
 
