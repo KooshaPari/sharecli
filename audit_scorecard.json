@@ -3,11 +3,11 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-feat-c01-action-sha-pins",
+  "commit": "pending-feat-c09-responsive-layout",
   "date": "2026-07-13",
   "overall_pct": 69,
   "grade": "C",
-  "wave_note": "C01 L10 SHA pins (67% C) + C09 axe/contrast (73% C); overall ~69% C.",
+  "wave_note": "C09 responsive layout (76% B) + C01 SHA pins (67% C); overall ~69% C.",
   "clusters": {
     "C00": { "pct": 60, "grade": "C", "score": "18/30" },
     "C01": { "pct": 67, "grade": "C", "score": "20/30" },
@@ -18,7 +18,7 @@
     "C06": { "pct": 67, "grade": "C", "score": "20/30" },
     "C07": { "pct": 63, "grade": "C", "score": "19/30" },
     "C08": { "pct": 60, "grade": "C", "score": "18/30" },
-    "C09": { "pct": 73, "grade": "C", "score": "33/45" },
+    "C09": { "pct": 76, "grade": "B", "score": "34/45" },
     "C10": { "pct": 67, "grade": "C", "score": "24/36" },
     "C11": { "pct": 67, "grade": "C", "score": "30/45" }
   },

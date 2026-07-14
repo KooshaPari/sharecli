@@ -32,7 +32,7 @@
 | C06 | Supply Chain | 67% | C | Wave2 + repro/deny | Status: DONE |
 | C07 | DX / QEng / Portability | 63% | C | Wave1–2 | Status: DONE |
 | C08 | Eval Coverage | 60% | C | Wave1–2 | Status: DONE |
-| C09 | Accessibility + UX | 67% | C | Wave7 | Status: DONE |
+| C09 | Accessibility + UX | 76% | B | Wave7 + W9–W10 | Status: DONE |
 | C10 | Visual Identity | 67% | C | Wave1 | Status: DONE |
 | C11 | Packaging + Distribution | 67% | C | Wave4 | Status: IN_PROGRESS |
 
@@ -106,11 +106,12 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W9.1 | axe-core CI for dashboard (WCAG 2.x Level A) | L81.1 · L81.5 · FR-004 NFR · `.github/workflows/a11y.yml` · `scripts/a11y/axe-dashboard.mjs` | Status: DONE |
 | W9.2 | C09 re-score after axe CI | L81.1 · L81.5 · `audit/.lane-c09/C09.md` | Status: DONE |
 
-### Wave10 — CI hygiene (C01)
+### Wave10 — CI hygiene (C01) + C09 adaptive
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
 | W10.1 | Pin Actions to SHAs + ubuntu-24.04 | L10 · `.github/workflows/*` | Status: DONE |
+| W10.2 | Responsive TUI + dashboard breakpoints | L81.11 · `sharecli-thermal-tui` · `docs/a11y/responsive.md` | Status: DONE |
 
 ## Sync protocol
 

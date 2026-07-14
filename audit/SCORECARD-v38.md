@@ -23,7 +23,7 @@
 | C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | synthetic eval corpus; tighter multi-week trend CSV |
-| C09 | Accessibility + UX | L81–L95 | 33/45 | 73% | C | responsive TUI; SR checklist |
+| C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
@@ -31,15 +31,15 @@
 
 **Weighted overall score:** 69% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+67+80+92+60+70+67+63+60+73+67+67)/12 = 826/12 = **68.8% ≈ 69%**.)
+(Unweighted mean of cluster pcts: (60+67+80+92+60+70+67+63+60+76+67+67)/12 = 829/12 = **69.1% ≈ 69%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+67+80+92)×2 + (60+70+67+63+60+73+67+67) = 598 + 527 = 1125 / 16 = **70.3% ≈ 70%** (C).
+**Tier-1 double-weight (C00–C03):** (60+67+80+92)×2 + (60+70+67+63+60+76+67+67) = 598 + 530 = 1128 / 16 = **70.5% ≈ 71%** (C).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), responsive TUI (C09), synthetic eval corpus (C08), SLSA L3 / cosign (C06).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), synthetic eval corpus (C08), SLSA L3 / cosign (C06), OpenAPI drift CI (C00).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -179,6 +179,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-13 (C01 action SHA pins — W10.1)
 - **C01 19/30 (63% C) → 20/30 (67% C):** L10 2→3 — pin floating Actions tags to commit SHAs; `ubuntu-latest` → `ubuntu-24.04`.
 - Overall stays **~69% C** (mean 826/12).
+
+### 2026-07-13 (C09 responsive layout — W10.2)
+- **C09 33/45 (73% C) → 34/45 (76% B):** L81.11 1→2 — TUI `is_compact`/`COLUMNS`-adaptive render + Resize; dashboard `@media` 375/768 + landmark smoke.
+- Overall stays **~69% C** (mean 829/12).
 
 ## Spine links
 

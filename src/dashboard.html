@@ -107,6 +107,19 @@
     color: #e2e8f0;
     outline: 2px solid #a78bfa;
   }
+  /* Responsive breakpoints: 375 (phone) / 768 (tablet) / 1280 (desktop default) */
+  @media (max-width: 768px) {
+    body { padding: 12px; font-size: 12px; }
+    header { flex-wrap: wrap; gap: 8px; }
+    #thermal-status { margin-left: 0; }
+    tbody td { white-space: normal; }
+  }
+  @media (max-width: 375px) {
+    body { padding: 8px; font-size: 11px; }
+    h1 { font-size: 15px; }
+    thead th { padding: 6px 8px; }
+    tbody td { padding: 5px 8px; }
+  }
 </style>
 </head>
 <body>

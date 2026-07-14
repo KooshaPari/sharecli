@@ -104,6 +104,34 @@ pub fn slot_color(active: u32, cap: u32) -> Color {
     }
 }
 
+/// Columns below this width switch the TUI to compact layout (L81.11).
+pub const COMPACT_WIDTH: u16 = 80;
+
+/// True when the terminal is narrower than [`COMPACT_WIDTH`].
+///
+/// Prefer `frame.area().width` (ratatui already reflects `crossterm::terminal::size`)
+/// or an explicit `COLUMNS`-derived width in tests.
+pub fn is_compact(width: u16) -> bool {
+    width < COMPACT_WIDTH
+}
+
+/// Short pressure blurb for compact terminals; full sentence otherwise.
+pub fn thermal_blurb(level: ThermalLevel, compact: bool) -> &'static str {
+    if compact {
+        match level {
+            ThermalLevel::Green => "[GREEN] cool",
+            ThermalLevel::Yellow => "[YELLOW] warm",
+            ThermalLevel::Red => "[RED] hot — back-pressure",
+        }
+    } else {
+        match level {
+            ThermalLevel::Green => "[ GREEN  ] device is cool — spawns proceed",
+            ThermalLevel::Yellow => "[ YELLOW ] device is warm — spawns proceed w/ warning",
+            ThermalLevel::Red => "[ RED    ] device is hot — spawns BACK-PRESSURED",
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Application state
 // ---------------------------------------------------------------------------
@@ -173,119 +201,141 @@ pub fn count_cargo_builds() -> u32 {
 // ---------------------------------------------------------------------------
 
 /// Render the full TUI into `frame`.
+///
+/// Layout adapts to `frame.area().width` (backed by terminal size / `COLUMNS`).
 pub fn render(frame: &mut Frame, app: &App) {
     let area = frame.area();
+    let compact = is_compact(area.width);
+    let margin = if compact { 0 } else { 1 };
+    let thermal_h = if compact { 4 } else { 5 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
+        .margin(margin)
         .constraints([
-            Constraint::Length(3), // title
-            Constraint::Length(5), // thermal pressure block
-            Constraint::Length(3), // gate decision
-            Constraint::Length(3), // slot gauge
-            Constraint::Length(3), // footer
+            Constraint::Length(3),         // title
+            Constraint::Length(thermal_h), // thermal pressure block
+            Constraint::Length(3),         // gate decision
+            Constraint::Length(3),         // slot gauge
+            Constraint::Length(3),         // footer
         ])
         .split(area);
 
-    render_title(frame, chunks[0]);
-    render_thermal(frame, chunks[1], app);
-    render_decision(frame, chunks[2], app);
-    render_slots(frame, chunks[3], app);
-    render_footer(frame, chunks[4], app);
+    render_title(frame, chunks[0], compact);
+    render_thermal(frame, chunks[1], app, compact);
+    render_decision(frame, chunks[2], app, compact);
+    render_slots(frame, chunks[3], app, compact);
+    render_footer(frame, chunks[4], app, compact);
 }
 
-fn render_title(frame: &mut Frame, area: Rect) {
+fn render_title(frame: &mut Frame, area: Rect, compact: bool) {
+    let text = if compact {
+        " thermal"
+    } else {
+        "  sharecli thermal monitor"
+    };
     let title = Paragraph::new(Line::from(vec![Span::styled(
-        "  sharecli thermal monitor",
+        text,
         Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
     )]))
     .block(Block::default().borders(Borders::ALL).title(" sharecli "));
     frame.render_widget(title, area);
 }
 
-fn render_thermal(frame: &mut Frame, area: Rect, app: &App) {
+fn render_thermal(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let level = app.thermal_level;
     let color = level_color(level);
     let label = level_label(level);
     let raw = level_pressure_raw(level);
 
-    let lines = vec![
-        Line::from(vec![
-            Span::raw("  Pressure level: "),
-            Span::styled(
-                format!("{label}  (kern.memorystatus_vm_pressure_level = {raw})"),
-                Style::default().fg(color).add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled(
-                match level {
-                    ThermalLevel::Green => "[ GREEN  ] device is cool — spawns proceed",
-                    ThermalLevel::Yellow => "[ YELLOW ] device is warm — spawns proceed w/ warning",
-                    ThermalLevel::Red => "[ RED    ] device is hot — spawns BACK-PRESSURED",
-                },
-                Style::default().fg(color),
-            ),
-        ]),
-    ];
+    let pressure = if compact {
+        format!("{label} ({raw})")
+    } else {
+        format!("{label}  (kern.memorystatus_vm_pressure_level = {raw})")
+    };
 
-    let block = Block::default().borders(Borders::ALL).title(" Thermal Pressure ");
+    let mut lines = vec![Line::from(vec![
+        Span::raw(if compact { " P: " } else { "  Pressure level: " }),
+        Span::styled(pressure, Style::default().fg(color).add_modifier(Modifier::BOLD)),
+    ])];
+    if !compact {
+        lines.push(Line::from(""));
+    }
+    lines.push(Line::from(vec![
+        Span::raw("  "),
+        Span::styled(thermal_blurb(level, compact), Style::default().fg(color)),
+    ]));
+
+    let title = if compact { " Thermal " } else { " Thermal Pressure " };
+    let block = Block::default().borders(Borders::ALL).title(title);
     let para = Paragraph::new(lines).block(block);
     frame.render_widget(para, area);
 }
 
-fn render_decision(frame: &mut Frame, area: Rect, app: &App) {
+fn render_decision(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let level = app.thermal_level;
     let decision = gate_decision(level);
     let color = decision_color(level);
 
+    let hint = if compact {
+        ""
+    } else if level == ThermalLevel::Red {
+        "  — hypervisor will retry up to 5x before returning Err"
+    } else {
+        ""
+    };
+
     let line = Line::from(vec![
-        Span::raw("  Gate decision: "),
+        Span::raw(if compact { " Gate: " } else { "  Gate decision: " }),
         Span::styled(
             format!("[ {decision} ]"),
             Style::default().fg(color).add_modifier(Modifier::BOLD),
         ),
-        Span::raw(if level == ThermalLevel::Red {
-            "  — hypervisor will retry up to 5x before returning Err"
-        } else {
-            ""
-        }),
+        Span::raw(hint),
     ]);
 
-    let block = Block::default().borders(Borders::ALL).title(" Gate Decision ");
+    let title = if compact { " Gate " } else { " Gate Decision " };
+    let block = Block::default().borders(Borders::ALL).title(title);
     let para = Paragraph::new(line).block(block);
     frame.render_widget(para, area);
 }
 
-fn render_slots(frame: &mut Frame, area: Rect, app: &App) {
+fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let ratio = slot_ratio(app.active_slots, app.slot_cap);
     let color = slot_color(app.active_slots, app.slot_cap);
-    let label = format!(" Build slots: {}/{} active ", app.active_slots, app.slot_cap);
+    let label = if compact {
+        format!(" {}/{} ", app.active_slots, app.slot_cap)
+    } else {
+        format!(" Build slots: {}/{} active ", app.active_slots, app.slot_cap)
+    };
 
+    let title = if compact { " Slots " } else { " Build Slots " };
     let gauge = Gauge::default()
-        .block(Block::default().borders(Borders::ALL).title(" Build Slots "))
+        .block(Block::default().borders(Borders::ALL).title(title))
         .gauge_style(Style::default().fg(color).bg(Color::DarkGray))
         .ratio(ratio)
         .label(label);
     frame.render_widget(gauge, area);
 }
 
-fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
+fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let elapsed = app.last_poll.elapsed().as_secs();
+    let meta = if compact {
+        format!(" polls:{} last:{}s", app.poll_count, elapsed)
+    } else {
+        format!(
+            "  polls: {}  last: {}s ago  interval: {}s",
+            app.poll_count,
+            elapsed,
+            POLL_INTERVAL.as_secs()
+        )
+    };
     let footer = Paragraph::new(Line::from(vec![
         Span::styled(" q", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" quit  "),
         Span::styled(" Ctrl-C", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" quit  "),
-        Span::raw(format!(
-            "  polls: {}  last: {}s ago  interval: {}s",
-            app.poll_count,
-            elapsed,
-            POLL_INTERVAL.as_secs()
-        )),
+        Span::raw(meta),
     ]))
     .block(Block::default().borders(Borders::ALL));
     frame.render_widget(footer, area);
@@ -341,11 +391,14 @@ fn event_loop(
         terminal.draw(|f| render(f, app))?;
 
         // Poll for input with a timeout equal to the poll interval.
+        // Also accept Resize so layout reflows when COLUMNS / terminal size changes.
         if event::poll(POLL_INTERVAL)? {
-            if let Event::Key(key) = event::read()? {
-                if is_quit_key(&key) {
-                    break;
+            match event::read()? {
+                Event::Key(key) if is_quit_key(&key) => break,
+                Event::Resize(_, _) => {
+                    // Next draw uses the new frame.area().width (compact vs full).
                 }
+                _ => {}
             }
         }
 
@@ -374,6 +427,20 @@ mod tests {
     #[test]
     fn test_is_quit_key_q() {
         assert!(is_quit_key(&key_event(KeyCode::Char('q'), KeyModifiers::NONE)));
+    }
+
+    #[test]
+    fn test_is_compact_columns() {
+        assert!(is_compact(40));
+        assert!(is_compact(79));
+        assert!(!is_compact(80));
+        assert!(!is_compact(120));
+    }
+
+    #[test]
+    fn test_thermal_blurb_adapts() {
+        assert_eq!(thermal_blurb(ThermalLevel::Red, true), "[RED] hot — back-pressure");
+        assert!(thermal_blurb(ThermalLevel::Red, false).contains("BACK-PRESSURED"));
     }
 
     #[test]
