@@ -6,7 +6,7 @@
     "a11y:dashboard": "node scripts/a11y/axe-dashboard.mjs"
   },
   "devDependencies": {
-    "axe-core": "4.10.2",
+    "axe-core": "4.12.1",
     "jsdom": "26.1.0",
     "vitepress": "^1.0.0"
   }
