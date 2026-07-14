@@ -1,0 +1,31 @@
+name: Miri (soft)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/harness-native/**'
+      - 'src/**'
+      - '.github/workflows/miri-soft.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  miri:
+    name: cargo miri (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Rust nightly + miri
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - name: Miri (harness-native lib tests)
+        run: |
+          set -euo pipefail
+          cd crates/harness-native
+          cargo miri test --locked --lib 2>&1 | tee miri.log || true
+          echo "soft miri finished (non-blocking)"
