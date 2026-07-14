@@ -1,0 +1,18 @@
+# cargo-mutants config — C07 L65 (soft CI / local smoke)
+# Focus on pure TUI transforms so mutants finish quickly.
+
+test_timeout = 60
+jobs = 2
+
+# Examine only the thermal-tui pure helpers first.
+examine_re = [
+  "crates/sharecli-thermal-tui/src/lib.rs",
+]
+
+# Skip render/event-loop noise that needs a terminal.
+exclude_re = [
+  "fn render",
+  "fn event_loop",
+  "fn run",
+  "fn count_cargo_builds",
+]

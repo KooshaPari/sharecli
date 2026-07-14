@@ -1,0 +1,10 @@
+{
+  "id": "CORPUS-1",
+  "name": "empty-pool",
+  "expect": {
+    "process_count": 0,
+    "health": "ok",
+    "gate": "ADMIT"
+  },
+  "notes": "Baseline empty ProcessPool /healthz + list"
+}

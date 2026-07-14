@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C07 proptest/mutants/fuzz + C08 corpus — W10.4)
+
+- Status: DONE — proptest on thermal-tui; soft mutants + fuzz CI; synthetic corpus + trend CSV
+- Score: C07 → 77% B (23/30); C08 stays 60% C; overall → ~71% C (846/12)
+- FR: FR-004 NFR (eval/QEng)
+- Next: mutants hard gate; C11 signing (blocked); C06 SLSA L3
+
 ## 2026-07-13 (C00 OpenAPI drift CI — W10.3)
 
 - Status: DONE — expand serve.yaml to all routes; `check-openapi-drift.py` + workflow

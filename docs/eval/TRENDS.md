@@ -28,6 +28,15 @@ Download from the Actions run → Artifacts. Per-PR regression gating remains
 `scripts/check-bench-baseline.py` against `docs/eval/baselines/criterion-baseline.json`
 (50% threshold) — trends are longitudinal, not the merge gate.
 
+## Committed multi-week CSV
+
+In-repo seed (three weekly rows derived from measured baselines):
+
+`docs/eval/trends/criterion-trends.csv`
+
+Append nightly JSON rows over time; CSV is the human-readable longitudinal store
+for L74 soft-goal evidence.
+
 ## Hyperfine /healthz JSON
 
 Nightly (and soft PR) runs also upload `hyperfine-healthz-<sha>.json` from

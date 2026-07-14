@@ -1,0 +1,13 @@
+ts,sha,seed,bench,mean_ns,source
+2026-07-01T06:00:00Z,seed-week-1,42,config_toml_from_str,20349,criterion-baseline-seed
+2026-07-01T06:00:00Z,seed-week-1,42,pool_new_and_list_empty,54272000,criterion-baseline-seed
+2026-07-01T06:00:00Z,seed-week-1,42,prometheus_render_32,29971,criterion-baseline-seed
+2026-07-01T06:00:00Z,seed-week-1,42,jwt_validate_rs256,5000000,criterion-baseline-seed
+2026-07-08T06:00:00Z,seed-week-2,42,config_toml_from_str,21000,criterion-baseline-seed
+2026-07-08T06:00:00Z,seed-week-2,42,pool_new_and_list_empty,55000000,criterion-baseline-seed
+2026-07-08T06:00:00Z,seed-week-2,42,prometheus_render_32,30500,criterion-baseline-seed
+2026-07-08T06:00:00Z,seed-week-2,42,jwt_validate_rs256,5100000,criterion-baseline-seed
+2026-07-13T06:00:00Z,seed-week-3,42,config_toml_from_str,20800,criterion-baseline-seed
+2026-07-13T06:00:00Z,seed-week-3,42,pool_new_and_list_empty,54800000,criterion-baseline-seed
+2026-07-13T06:00:00Z,seed-week-3,42,prometheus_render_32,30100,criterion-baseline-seed
+2026-07-13T06:00:00Z,seed-week-3,42,jwt_validate_rs256,5050000,criterion-baseline-seed
