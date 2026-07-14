@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Soft C08 corpus harness — validate synthetic scenario JSON fixtures.
+# Optional live probe: SHARECLI_CORPUS_LIVE=1 SHARECLI_BASE_URL=http://127.0.0.1:9000
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CORPUS="${ROOT}/docs/eval/corpus/scenarios"
@@ -31,4 +32,18 @@ if [[ "${count}" -eq 0 ]]; then
   exit 1
 fi
 echo "Validated ${count} corpus scenario(s)"
+
+if [[ "${SHARECLI_CORPUS_LIVE:-}" == "1" ]]; then
+  BASE="${SHARECLI_BASE_URL:-http://127.0.0.1:9000}"
+  echo "Live corpus: GET ${BASE}/healthz"
+  body="$(curl -fsS "${BASE}/healthz")"
+  status="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"${body}")"
+  if [[ "${status}" != "ok" ]]; then
+    echo "Live healthz status=${status} (want ok)" >&2
+    fail=1
+  else
+    echo "Live healthz OK"
+  fi
+fi
+
 exit "${fail}"

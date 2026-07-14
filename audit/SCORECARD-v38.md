@@ -221,3 +221,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C00 concurrency/memory soft)
 - **C00 19/30 (63% C) → 21/30 (70% C):** L7/L8 1→2 (docs/ops/concurrency.md, docs/ops/memory.md, soft miri-soft.yml).
 - Overall ~72% → **~73% C** (mean 869/12).
+
+### 2026-07-14 (C08 live corpus health assertions)
+- Soft live path: unit test maps `expect.health` fixtures → `healthz_json`; optional `SHARECLI_CORPUS_LIVE=1` curl probe.
+- C08 stays 18/30 (60% C); closes “live corpus assertions” soft gap for health fixtures.

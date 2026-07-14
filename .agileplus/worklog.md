@@ -195,3 +195,6 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 
 ## W10.14 — C00 concurrency/memory soft (FR-001)
 - docs/ops/concurrency.md + memory.md; soft miri-soft.yml; C00 → 70% C.
+
+## W10.15 — C08 live corpus health assertions (FR-003)
+- serve.rs corpus_health_fixtures_match_healthz + optional SHARECLI_CORPUS_LIVE in run-corpus.sh.
