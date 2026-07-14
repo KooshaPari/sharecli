@@ -1,0 +1,41 @@
+name: OSV Scanner
+
+# C04 L38 — OSV/GHSA feed beyond RustSec cargo-audit (soft until backlog clear)
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  osv:
+    name: OSV / GHSA lockfile scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Scan Cargo.lock with OSV-Scanner
+        id: scan
+        continue-on-error: true
+        uses: google/osv-scanner-action/osv-scanner-action@e92b5d07338d4f0ba0981dffed17c48976ca4730 # v2.2.3
+        with:
+          scan-args: |-
+            --lockfile=Cargo.lock
+            --format=sarif
+            --output=osv-results.sarif
+      - name: Upload SARIF
+        if: always() && hashFiles('osv-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@4dd16135b69a43b6c8efb853346f8437d92d3c93 # v3.27.0
+        with:
+          sarif_file: osv-results.sarif
+        continue-on-error: true
+      - name: Soft gate (always pass)
+        if: always()
+        run: |
+          echo "OSV scan outcome=${{ steps.scan.outcome }} (soft; see SARIF / logs)"
+          exit 0

@@ -18,7 +18,7 @@
 | C01 | CI, DX, Observability | L10–L19 | 20/30 | 67% | C | i18n; residual codecov/gitleaks polish |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
-| C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
+| C04 | Security | L31–L40 | 21/30 | 70% | C | signed commits; 2FA evidence; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
@@ -31,15 +31,15 @@
 
 **Weighted overall score:** 71% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (63+67+80+92+60+70+67+77+60+76+67+67)/12 = 846/12 = **70.5% ≈ 71%**.)
+(Unweighted mean of cluster pcts: (63+67+80+92+70+70+67+77+60+76+67+67)/12 = 856/12 = **71.3% ≈ 71%**.)
 
-**Tier-1 double-weight (C00–C03):** (63+67+80+92)×2 + (60+70+67+77+60+76+67+67) = 604 + 544 = 1148 / 16 = **71.8% ≈ 72%** (C).
+**Tier-1 double-weight (C00–C03):** (63+67+80+92)×2 + (70+70+67+77+60+76+67+67) = 604 + 554 = 1158 / 16 = **72.4% ≈ 72%** (C).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), lib.rs module split (C00), mutants hard gate (C07).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), signed commits (C04 L34), mutants hard gate (C07).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -192,6 +192,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C07 19/30 (63% C) → 23/30 (77% B):** L65 1→2, L66 0→2, L67 1→2 (proptest + soft mutants/fuzz CI).
 - **C08** stays 60% C; adds synthetic corpus fixtures + `criterion-trends.csv`.
 - **Overall 69% → 71% C** (mean 846/12).
+
+### 2026-07-13 (C04 OSV + Dependabot groups — W10.5)
+- **C04 18/30 (60% C) → 21/30 (70% C):** L37 2→3, L38 1→2, L40 2→3 (OSV workflow, Dependabot groups, container hardening docs).
+- Overall stays **~71% C** (mean 856/12).
 
 ## Spine links
 

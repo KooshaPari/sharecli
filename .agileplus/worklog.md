@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C04 OSV + Dependabot groups — W10.5)
+
+- Status: DONE — osv.yml (OSV/GHSA), Dependabot cargo/actions groups, container-hardening.md
+- Score: C04 → 70% C (21/30); L37/L38/L40 lifts; overall stays ~71% C (856/12)
+- FR: FR-004 NFR (security scanning)
+- Next: SLSA L3 / cosign (C06); signed commits (C04 L34)
+
 ## 2026-07-13 (C07 proptest/mutants/fuzz + C08 corpus — W10.4)
 
 - Status: DONE — proptest on thermal-tui; soft mutants + fuzz CI; synthetic corpus + trend CSV
