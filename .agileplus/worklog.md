@@ -1,5 +1,11 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C11 auto-update soft — FR-004)
+
+- Status: DONE — docs/ops/auto-update.md channel matrix; deploy.md link; L111 0→1
+- Score: C11 73%→76% B; overall ~78% / weighted ~79% B
+- FR: FR-004 packaging / update channels
+- Next: in-binary updater after L112; dmg/msi; harden Win tray CI
 ## 2026-07-14 (C05 soft load burst — FR-003)
 
 - Status: DONE — load-soft.yml starts serve + healthz_burst; just load-soft; L50 1→2

@@ -25,7 +25,7 @@
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | live HTTP pool probes; supersede ADR if agent-eval lands |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 31/36 | 86% | B | golden visual tests; high-contrast; dashboard hex drift |
-| C11 | Packaging + Distribution | L108–L122 | 33/45 | 73% | C | hard codesign/notarize; dmg/msi; harden Win tray; auto-update |
+| C11 | Packaging + Distribution | L108–L122 | 34/45 | 76% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
 
 ## Overall
 
@@ -266,3 +266,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C05 soft load burst — L50)
 - **C05 21/30 (70% C) → 22/30 (73% C):** L50 1→2 (`load-soft.yml` + `scripts/load/healthz_burst.sh` CI wiring + `just load-soft`).
 - Overall mean **~78% B** (937/12); weighted **~79% B**.
+
+### 2026-07-14 (C11 auto-update soft — L111)
+- **C11 33/45 (73% C) → 34/45 (76% B):** L111 0→1 (`docs/ops/auto-update.md` + deploy.md link).
+- Overall mean **~78% B** (940/12); weighted **~79% B**.
