@@ -33,7 +33,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run analysis
-        uses: ossf/scorecard-action@086b6f6c4b38d3229e546af95803e6e9c2553ae3 # v2.4.0
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
@@ -45,3 +45,4 @@ jobs:
           name: results.sarif
           path: results.sarif
           retention-days: 30
+
