@@ -2,7 +2,7 @@
 
 Contract for repeating Criterion benches and load scripts with pinned inputs.
 Harbor / SWE-bench are **out of scope** — see
-[`../adr/0001-eval-surface-out-of-scope.md`](../adr/0001-eval-surface-out-of-scope.md).
+[`../adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval-surface-out-of-scope.md).
 
 ## Pins
 

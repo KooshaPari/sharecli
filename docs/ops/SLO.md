@@ -64,7 +64,7 @@ Alert **rule pack + severity routing + runbooks** ship in
 
 Draft performance budgets tied to Criterion benches and load scripts.
 Reproduce via [`docs/eval/REPRO.md`](../eval/REPRO.md). Harbor/SWE-bench remain
-out of scope per [`docs/adr/0001-eval-surface-out-of-scope.md`](../adr/0001-eval-surface-out-of-scope.md).
+out of scope per [`docs/adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval-surface-out-of-scope.md).
 
 | ID | Surface | Budget | Harness |
 |----|---------|--------|---------|

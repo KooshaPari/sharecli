@@ -174,3 +174,8 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 ## W10.7 — OSSF Scorecard publish + workflow YAML (FR-001)
 - Fixed deploy-docs.yml flow-mapping parse error (inline with: block containing GitHub expressions broke Dangerous-Workflow / Pinned-Dependencies / Token-Permissions / SAST).
 - scorecard.yml: top-level permissions read-all; job-scoped security-events/id-token write; SARIF upload; branch_protection_rule casing.
+
+## W10.8 — Deploy docs dead links (FR-005)
+- VitePress build failed on main after scorecard YAML fix unblocked Deploy docs.
+- Fixed ADR 0001→0002, corpus README path, removed missing stories/integration link.
+- Pointed out-of-tree paths (trays, WORK_DAG, repro-check) at GitHub blob/tree URLs; ignoreDeadLinks safety net in config.mts.

@@ -8,7 +8,7 @@ Process-supervisor evaluation surfaces for audit-v38 **C08**.
 | [`adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval-surface-out-of-scope.md) | Governance: Harbor/SWE-bench N/A |
 | [`REPRO.md`](REPRO.md) | Seed / lockfile / SHA reproducibility |
 | [`TRENDS.md`](TRENDS.md) | Nightly Criterion trend artifact contract |
-| [`corpus/`](corpus/) | Synthetic process-supervisor eval scenarios (ADR-in-scope) |
+| [`corpus/`](corpus/README.md) | Synthetic process-supervisor eval scenarios (ADR-in-scope) |
 | [`trends/criterion-trends.csv`](trends/criterion-trends.csv) | Committed multi-week mean seed CSV |
 | [`baselines/criterion-baseline.json`](baselines/criterion-baseline.json) | Committed Criterion means for the perf gate |
 | `benches/` | Criterion microbenches (`config_parse`, `pool_list`, `prometheus_render`, `jwt_auth_validate`) |

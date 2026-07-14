@@ -3,7 +3,7 @@
 **Status:** ACTIVE  
 **Target overall:** ~64% (tier-1 weighted C) · **Pinned card:** `audit/SCORECARD-v38.md`  
 **Spine:** [phenotype-org-audits SPINE-INDEX](https://github.com/KooshaPari/phenotype-org-audits/blob/main/docs/SPINE-INDEX.md) · rubric `audit-v38`  
-**DAG:** [`WORK_DAG.md`](../../../WORK_DAG.md) · **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](../../../FUNCTIONAL_REQUIREMENTS.md)  
+**DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
 **Last sync:** 2026-07-13 (C06+C08+C09 lifts; overall ~68% C)
 

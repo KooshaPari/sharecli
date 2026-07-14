@@ -1,7 +1,7 @@
 # Synthetic process-supervisor eval corpus (C08 L71)
 
 Harbor / SWE-bench style agent task corpora remain **out of scope**
-([ADR 0002](../adr/0002-eval-surface-out-of-scope.md)). This corpus is the
+([ADR 0002](../../adr/0002-eval-surface-out-of-scope.md)). This corpus is the
 **in-scope** synthetic stand-in: deterministic scenarios for the process
 supervisor surface (spawn/list/stop/health), exercised by integration tests
 and load scripts.
