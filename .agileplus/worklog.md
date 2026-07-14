@@ -170,3 +170,7 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 
 - Stub worklog created.
 
+
+## W10.7 — OSSF Scorecard publish + workflow YAML (FR-001)
+- Fixed deploy-docs.yml flow-mapping parse error (inline with: block containing GitHub expressions broke Dangerous-Workflow / Pinned-Dependencies / Token-Permissions / SAST).
+- scorecard.yml: top-level permissions read-all; job-scoped security-events/id-token write; SARIF upload; branch_protection_rule casing.

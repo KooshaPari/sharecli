@@ -4,7 +4,7 @@ name: Scorecard
 # Publishes results to the Security tab and uploads SARIF to code-scanning.
 
 on:
-  branch_Protection_Rule:
+  branch_protection_rule:
   push:
     branches: [main]
   schedule:
@@ -15,18 +15,18 @@ concurrency:
   group: scorecard-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  security-events: write
+# Top-level must stay read-only for publish_results; write scopes only on the job.
+permissions: read-all
 
 jobs:
   analysis:
     name: OSSF Scorecard
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
-      id-token: write
       security-events: write
+      id-token: write
+      contents: read
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -45,4 +45,8 @@ jobs:
           name: results.sarif
           path: results.sarif
           retention-days: 30
-
+      - name: Upload to code-scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@4dd16135b69a43b6c8efb853346f8437d92d3c93 # v3.27.0
+        with:
+          sarif_file: results.sarif
