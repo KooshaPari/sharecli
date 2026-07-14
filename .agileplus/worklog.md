@@ -2,6 +2,12 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (W5.2 retention + burn)
+
+- Status: DONE — audit JSONL size rotation; AuthN unauthorized counter + burn alert
+- Score: C02 → 80% B (L23+L27); overall → 66% C
+- Next: W5.3 threat review; C08/C09 lifts
+
 ## 2026-07-13 (W5.1 JWT AuthN)
 
 - Status: DONE — FR-012 JWT/JWKS for `serve`; L21 2→3

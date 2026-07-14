@@ -67,3 +67,20 @@ groups:
             Optional counter; if absent, use process restart metrics / notifier webhook
             storm detection instead (SLO-2 ≤2 unplanned restarts / day).
           runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#slo-2"
+
+      - alert: SharecliAuthFailBurn
+        expr: |
+          (
+            sum(rate(sharecli_http_unauthorized_total[5m]))
+            /
+            clamp_min(sum(rate(sharecli_http_requests_total[5m])), 1e-9)
+          ) > 0.10
+        for: 10m
+        labels:
+          severity: warning
+          service: sharecli
+          slo: SLO-4
+        annotations:
+          summary: "sharecli AuthN failure rate >10% (5m)"
+          description: "Sustained 401 burn. Check JWT/bearer config and audit.jsonl auth_fail events."
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#sharecliauthfailburn"

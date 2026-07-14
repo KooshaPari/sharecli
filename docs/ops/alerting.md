@@ -69,6 +69,13 @@ See `docs/ops/SLO.md` for error-budget policy that these alerts enforce.
 2. Optional: `SHARECLI_PPROF=1` + `GET /debug/pprof/profile?seconds=15`.
 3. Compare Criterion gate on the PR that last touched serve hot paths.
 
+### SharecliAuthFailBurn
+
+1. Scrape `/metrics/prometheus` — `sharecli_http_unauthorized_total`.
+2. Tail audit log for `auth_fail` (`reason`, `mode`, `path`).
+3. Verify bearer token / JWT issuer-audience-JWKS (`docs/ops/AUTH.md`).
+4. Confirm probes (`/healthz`, `/readyz`) remain public and are not counted as auth failures.
+
 ### SLO-2
 
 Unplanned restart storm: correlate thermal critical shutdowns and notifier

@@ -16,7 +16,7 @@
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 18/30 | 60% | C | lib.rs sprawl; OpenAPI drift CI; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 19/30 | 63% | C | echo coverage; i18n; action SHA pins |
-| C02 | Error handling, API, Governance | L20–L29 | 22/30 | 73% | C | audit retention; burn alerts; residual OAuth/SAML |
+| C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
@@ -31,17 +31,16 @@
 
 **Weighted overall score:** 66% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+73+92+60+70+60+63+53+58+67+67)/12 = 786/12 = **65.5% ≈ 66%**.)
+(Unweighted mean of cluster pcts: (60+63+80+92+60+70+60+63+53+58+67+67)/12 = 793/12 = **66.1% ≈ 66%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+73+92)×2 + (60+70+60+63+53+58+67+67) = 576 + 498 = 1074 / 16 = **67.125%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+60+63+53+58+67+67) = 590 + 498 = 1088 / 16 = **68%** (C).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (92% A) — FR suites + journey + goldens + unhappy-path + WORK_DAG.
-- **W5.1:** C02 L21 federated JWT AuthN — C02 **70%→73% C**; FR-012 + JWKS resource-server.
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), audit retention (W5.2), SLSA L3 / cosign (C06).
-- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` (machine Status tokens) + `WORK_DAG.md`.
-- **Agent-readiness verdict (C03):** Wave3 FR/journey/golden/friction complete; C03 at A.
+- **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
+- **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), C08/C09 lifts, SLSA L3 / cosign (C06).
+- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
 ## Supersedes

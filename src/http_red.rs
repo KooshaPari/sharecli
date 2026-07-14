@@ -11,6 +11,8 @@ use std::time::Duration;
 pub struct HttpRedMetrics {
     pub requests_total: AtomicU64,
     pub errors_total: AtomicU64,
+    /// HTTP 401 responses (AuthN failures on protected routes).
+    pub unauthorized_total: AtomicU64,
     pub duration_count: AtomicU64,
     pub duration_sum_ms: AtomicU64,
     pub bucket_le_5ms: AtomicU64,
@@ -24,6 +26,9 @@ impl HttpRedMetrics {
         self.requests_total.fetch_add(1, Ordering::Relaxed);
         if status >= 500 {
             self.errors_total.fetch_add(1, Ordering::Relaxed);
+        }
+        if status == 401 {
+            self.unauthorized_total.fetch_add(1, Ordering::Relaxed);
         }
         let ms = elapsed.as_millis() as u64;
         self.duration_count.fetch_add(1, Ordering::Relaxed);
@@ -44,6 +49,7 @@ impl HttpRedMetrics {
         HttpRedSnapshot {
             requests_total: self.requests_total.load(Ordering::Relaxed),
             errors_total: self.errors_total.load(Ordering::Relaxed),
+            unauthorized_total: self.unauthorized_total.load(Ordering::Relaxed),
             duration_count: self.duration_count.load(Ordering::Relaxed),
             duration_sum_ms: self.duration_sum_ms.load(Ordering::Relaxed),
             bucket_le_5ms: self.bucket_le_5ms.load(Ordering::Relaxed),
@@ -59,6 +65,7 @@ impl HttpRedMetrics {
 pub struct HttpRedSnapshot {
     pub requests_total: u64,
     pub errors_total: u64,
+    pub unauthorized_total: u64,
     pub duration_count: u64,
     pub duration_sum_ms: u64,
     pub bucket_le_5ms: u64,
@@ -78,6 +85,10 @@ pub fn render_http_red_metrics(out: &mut String, red: &HttpRedSnapshot) {
     out.push_str("# HELP sharecli_http_errors_total HTTP responses with status >= 500\n");
     out.push_str("# TYPE sharecli_http_errors_total counter\n");
     out.push_str(&format!("sharecli_http_errors_total {}\n", red.errors_total));
+
+    out.push_str("# HELP sharecli_http_unauthorized_total HTTP 401 responses (AuthN failures)\n");
+    out.push_str("# TYPE sharecli_http_unauthorized_total counter\n");
+    out.push_str(&format!("sharecli_http_unauthorized_total {}\n", red.unauthorized_total));
 
     out.push_str("# HELP sharecli_http_request_duration_ms HTTP request latency in milliseconds\n");
     out.push_str("# TYPE sharecli_http_request_duration_ms histogram\n");
@@ -110,14 +121,16 @@ mod tests {
         let m = HttpRedMetrics::default();
         m.record(200, Duration::from_millis(3));
         m.record(503, Duration::from_millis(40));
+        m.record(401, Duration::from_millis(2));
         let s = m.snapshot();
-        assert_eq!(s.requests_total, 2);
+        assert_eq!(s.requests_total, 3);
         assert_eq!(s.errors_total, 1);
-        assert_eq!(s.bucket_le_5ms, 1);
-        assert_eq!(s.bucket_le_25ms, 1);
-        assert_eq!(s.bucket_le_100ms, 2);
-        assert_eq!(s.bucket_le_inf, 2);
-        assert_eq!(s.duration_sum_ms, 43);
+        assert_eq!(s.unauthorized_total, 1);
+        assert_eq!(s.bucket_le_5ms, 2);
+        assert_eq!(s.bucket_le_25ms, 2);
+        assert_eq!(s.bucket_le_100ms, 3);
+        assert_eq!(s.bucket_le_inf, 3);
+        assert_eq!(s.duration_sum_ms, 45);
     }
 
     #[test]
@@ -128,6 +141,7 @@ mod tests {
             &HttpRedSnapshot {
                 requests_total: 9,
                 errors_total: 1,
+                unauthorized_total: 2,
                 duration_count: 9,
                 duration_sum_ms: 90,
                 bucket_le_5ms: 4,
@@ -138,6 +152,7 @@ mod tests {
         );
         assert!(out.contains("sharecli_http_requests_total 9"));
         assert!(out.contains("sharecli_http_errors_total 1"));
+        assert!(out.contains("sharecli_http_unauthorized_total 2"));
         assert!(out.contains("sharecli_http_request_duration_ms_bucket"));
     }
 }
