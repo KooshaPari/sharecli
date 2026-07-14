@@ -14,7 +14,7 @@
 
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
-| C00 | Architecture + Module | L0–L9 | 18/30 | 60% | C | lib.rs sprawl; OpenAPI drift CI; tight perf budgets |
+| C00 | Architecture + Module | L0–L9 | 19/30 | 63% | C | lib.rs sprawl; error envelope; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 20/30 | 67% | C | i18n; residual codecov/gitleaks polish |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
@@ -31,15 +31,15 @@
 
 **Weighted overall score:** 69% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+67+80+92+60+70+67+63+60+76+67+67)/12 = 829/12 = **69.1% ≈ 69%**.)
+(Unweighted mean of cluster pcts: (63+67+80+92+60+70+67+63+60+76+67+67)/12 = 832/12 = **69.3% ≈ 69%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+67+80+92)×2 + (60+70+67+63+60+76+67+67) = 598 + 530 = 1128 / 16 = **70.5% ≈ 71%** (C).
+**Tier-1 double-weight (C00–C03):** (63+67+80+92)×2 + (60+70+67+63+60+76+67+67) = 604 + 530 = 1134 / 16 = **70.9% ≈ 71%** (C).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), synthetic eval corpus (C08), SLSA L3 / cosign (C06), OpenAPI drift CI (C00).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), synthetic eval corpus (C08), SLSA L3 / cosign (C06), lib.rs module split (C00).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -183,6 +183,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-13 (C09 responsive layout — W10.2)
 - **C09 33/45 (73% C) → 34/45 (76% B):** L81.11 1→2 — TUI `is_compact`/`COLUMNS`-adaptive render + Resize; dashboard `@media` 375/768 + landmark smoke.
 - Overall stays **~69% C** (mean 829/12).
+
+### 2026-07-13 (C00 OpenAPI drift CI — W10.3)
+- **C00 18/30 (60% C) → 19/30 (63% C):** L2 2→3 — full path coverage + `scripts/check-openapi-drift.py` + `openapi-drift.yml`.
+- Overall stays **~69% C** (mean 832/12).
 
 ## Spine links
 

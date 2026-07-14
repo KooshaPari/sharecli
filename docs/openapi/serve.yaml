@@ -9,6 +9,20 @@ servers:
   - url: http://127.0.0.1:9000
     description: Default local bind (`sharecli serve --bind 127.0.0.1:9000`)
 paths:
+  /:
+    get:
+      operationId: dashboard
+      summary: Embedded HTML dashboard
+      description: |
+        Serves `src/dashboard.html` (process table + thermal status over WebSocket).
+        UI surface — not a JSON API.
+      responses:
+        "200":
+          description: HTML dashboard
+          content:
+            text/html:
+              schema:
+                type: string
   /healthz:
     get:
       operationId: healthz
@@ -47,6 +61,23 @@ paths:
                 $ref: "#/components/schemas/StatusUnavailable"
               example:
                 status: unavailable
+  /health/processes:
+    get:
+      operationId: healthProcesses
+      summary: Process health snapshot
+      description: |
+        Returns health status for monitored processes (JSON).
+        Bearer required when AuthN is enabled.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Process health list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
   /metrics/prometheus:
     get:
       operationId: metricsPrometheus
@@ -125,6 +156,18 @@ paths:
                 type: object
                 additionalProperties: true
                 description: Serialized `Config` (projects, runtime, pool, monitoring, …)
+  /ws:
+    get:
+      operationId: websocketProcessStream
+      summary: Process snapshot WebSocket
+      description: |
+        Upgrades to WebSocket and streams periodic ProcessSummary JSON snapshots
+        (and thermal warning/critical events) for the dashboard.
+      responses:
+        "101":
+          description: Switching Protocols (WebSocket)
+        "400":
+          description: Not a WebSocket upgrade request
 components:
   securitySchemes:
     bearerAuth:

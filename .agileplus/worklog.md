@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C00 OpenAPI drift CI — W10.3)
+
+- Status: DONE — expand serve.yaml to all routes; `check-openapi-drift.py` + workflow
+- Score: C00 → 63% C (19/30); L2 2→3; overall stays ~69% C (832/12)
+- FR: FR-004
+- Next: synthetic eval corpus (C08); lib.rs module split (C00)
+
 ## 2026-07-13 (C09 responsive layout — W10.2)
 
 - Status: DONE — TUI compact/full via `frame.area().width`; dashboard 375/768 media queries; a11y smoke tests

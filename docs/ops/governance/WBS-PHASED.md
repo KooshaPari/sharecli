@@ -23,7 +23,7 @@
 
 | Cluster | Focus | Pct | Grade | Phase anchor | Status |
 |---------|-------|:---:|:-----:|--------------|--------|
-| C00 | Architecture + Module | 60% | C | Wave2 | Status: DONE |
+| C00 | Architecture + Module | 63% | C | Wave2 + W10 | Status: DONE |
 | C01 | CI / DX / Obs | 67% | C | Wave1–2 + W10 | Status: DONE |
 | C02 | Error / API / Governance | 80% | B | Wave2 + Wave5 | Status: DONE |
 | C03 | Agent Readiness | 92% | A | Wave1 + Wave3 | Status: DONE |
@@ -112,6 +112,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 |-----|------|-------|--------|
 | W10.1 | Pin Actions to SHAs + ubuntu-24.04 | L10 · `.github/workflows/*` | Status: DONE |
 | W10.2 | Responsive TUI + dashboard breakpoints | L81.11 · `sharecli-thermal-tui` · `docs/a11y/responsive.md` | Status: DONE |
+| W10.3 | OpenAPI ↔ serve route drift CI | L2 · `docs/openapi/serve.yaml` · `scripts/check-openapi-drift.py` | Status: DONE |
 
 ## Sync protocol
 
