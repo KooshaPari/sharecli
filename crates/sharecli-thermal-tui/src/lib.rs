@@ -229,11 +229,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 }
 
 fn render_title(frame: &mut Frame, area: Rect, compact: bool) {
-    let text = if compact {
-        " thermal"
-    } else {
-        "  sharecli thermal monitor"
-    };
+    let text = if compact { " thermal" } else { "  sharecli thermal monitor" };
     let title = Paragraph::new(Line::from(vec![Span::styled(
         text,
         Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
