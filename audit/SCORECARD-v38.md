@@ -20,26 +20,26 @@
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 23/30 | 77% | B | GPG+branch protection; org 2FA enforce; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
-| C06 | Supply Chain | L51–L60 | 21/30 | 70% | C | SLSA L3; hermetic builds; GHCR publish default |
+| C06 | Supply Chain | L51–L60 | 22/30 | 73% | C | SLSA L3; hermetic builds; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | ADR N/A L75–78; expand live corpus assertions |
+| C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | live HTTP pool probes; supersede ADR if agent-eval lands |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 30/36 | 83% | B | golden visual tests; light theme; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
 ## Overall
 
-**Weighted overall score:** 75% · **Overall grade:** B
+**Weighted overall score:** 76% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+70+80+92+77+70+70+77+60+76+83+67)/12 = 892/12 = **74.3% ≈ 74%**.)
+(Unweighted mean of cluster pcts: (70+70+80+92+77+70+73+77+73+76+83+67)/12 = 908/12 = **75.7% ≈ 76%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (77+70+70+77+60+76+83+67) = 624 + 580 = 1204 / 16 = **75.3% ≈ 75%** (B).
+**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (77+70+73+77+73+76+83+67) = 624 + 596 = 1220 / 16 = **76.3% ≈ 76%** (B).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (92% A); C02 **80% B**; C10 now **83% B** (docs/visual + motion/type tokens).
+- **Strongest:** C03 Agent Readiness (92% A); C10 **83% B**; C02 **80% B**.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), GPG+required signed commits (C04 L34), mutants hard gate (C07), C08 N/A pillars / live corpus.
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), GPG+required signed commits (C04 L34), mutants hard gate (C07).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -238,3 +238,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C04 22/30 (73% C) → 23/30 (77% B):** L36 0→1 (maintainer-2fa.md + SECURITY.md).
 - **C10 28/36 (78% B) → 30/36 (83% B):** L97 2→3, L102 2→3 (tokens.css type/motion + dashboard reduced-motion).
 - Overall mean **~74%** (892/12); weighted **~75% B**.
+
+### 2026-07-14 (C08 ADR seed + thermal gate corpus + C06 DCO provenance)
+- **C08 18/30 (60% C) → 22/30 (73% C):** L75–L78 0→1 (ADR-0002 seeded N/A); thermal/gate fixture unit test.
+- **C06 21/30 (70% C) → 22/30 (73% C):** L59 1→2 (DCO soft provenance).
+- Overall mean **~76% B** (908/12); weighted **~76% B**.

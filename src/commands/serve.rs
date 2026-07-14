@@ -718,6 +718,53 @@ mod tests {
         assert!(checked >= 1, "expected at least one corpus fixture with expect.health");
     }
 
+    /// Soft C08 live corpus: fixtures with `expect.gate` must match thermal `gate_decision`.
+    #[test]
+    fn corpus_thermal_gate_fixtures_match_gate_decision() {
+        use sharecli_thermal_tui::gate_decision;
+
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/eval/corpus/scenarios");
+        let mut checked = 0u32;
+        for entry in std::fs::read_dir(&dir).expect("corpus scenarios dir") {
+            let path = entry.expect("entry").path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let raw = std::fs::read_to_string(&path).expect("read scenario");
+            let data: serde_json::Value = serde_json::from_str(&raw).expect("parse scenario");
+            let Some(expect_gate) = data.pointer("/expect/gate").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            let level = match data.get("thermal").and_then(|v| v.as_str()) {
+                Some("red") => ThermalLevel::Red,
+                Some("yellow") => ThermalLevel::Yellow,
+                Some("green") | None => ThermalLevel::Green,
+                Some(other) => panic!("fixture {}: unknown thermal {:?}", path.display(), other),
+            };
+            assert_eq!(
+                gate_decision(level),
+                expect_gate,
+                "fixture {} expect.gate mismatch for {:?}",
+                path.display(),
+                level
+            );
+            if let Some(spawn_allowed) =
+                data.pointer("/expect/spawn_allowed").and_then(|v| v.as_bool())
+            {
+                let allowed = expect_gate != "DENY";
+                assert_eq!(
+                    spawn_allowed,
+                    allowed,
+                    "fixture {} expect.spawn_allowed inconsistent with gate",
+                    path.display()
+                );
+            }
+            checked += 1;
+        }
+        assert!(checked >= 1, "expected at least one corpus fixture with expect.gate");
+    }
+
     #[test]
     fn readyz_ok_while_serving() {
         let (status, body) = readyz_response(false);
