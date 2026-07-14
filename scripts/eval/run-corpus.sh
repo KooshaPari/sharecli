@@ -17,8 +17,8 @@ for key in ("id", "name", "expect"):
     if key not in data:
         raise SystemExit(f"{path}: missing {key}")
 expect = data["expect"]
-if not isinstance(expect, dict) or "health" not in expect:
-    raise SystemExit(f"{path}: expect.health required")
+if not isinstance(expect, dict) or not (("health" in expect) or ("gate" in expect)):
+    raise SystemExit(f"{path}: expect.health or expect.gate required")
 print(f"OK {data['id']} {data['name']}")
 PY
   then
