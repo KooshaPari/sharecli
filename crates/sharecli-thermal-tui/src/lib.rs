@@ -413,6 +413,7 @@ fn event_loop(
 #[cfg(test)]
 mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+    use proptest::prelude::*;
 
     use super::*;
 
@@ -673,5 +674,38 @@ mod tests {
         let level = gov.poll().unwrap();
         assert_eq!(level, ThermalLevel::Yellow);
         assert_eq!(gate_decision(level), "ADMIT");
+    }
+
+    // --- proptest (C07 L66) ---
+    proptest::proptest! {
+        #[test]
+        fn prop_slot_ratio_bounded(active in 0u32..10_000u32, cap in 0u32..10_000u32) {
+            let r = slot_ratio(active, cap);
+            prop_assert!((0.0..=1.0).contains(&r));
+            if cap == 0 {
+                prop_assert_eq!(r, 0.0);
+            } else if active >= cap {
+                prop_assert!((r - 1.0).abs() < 1e-12);
+            }
+        }
+
+        #[test]
+        fn prop_is_compact_threshold(width in 0u16..500u16) {
+            prop_assert_eq!(is_compact(width), width < COMPACT_WIDTH);
+        }
+
+        #[test]
+        fn prop_gate_decision_red_only_denies(level in prop_thermal_level()) {
+            let decision = gate_decision(level);
+            if level == ThermalLevel::Red {
+                prop_assert_eq!(decision, "DENY");
+            } else {
+                prop_assert_eq!(decision, "ADMIT");
+            }
+        }
+    }
+
+    fn prop_thermal_level() -> impl proptest::strategy::Strategy<Value = ThermalLevel> {
+        proptest::sample::select(vec![ThermalLevel::Green, ThermalLevel::Yellow, ThermalLevel::Red])
     }
 }

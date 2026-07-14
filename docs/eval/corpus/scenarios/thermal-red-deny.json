@@ -1,0 +1,10 @@
+{
+  "id": "CORPUS-3",
+  "name": "thermal-red-deny",
+  "thermal": "red",
+  "expect": {
+    "gate": "DENY",
+    "spawn_allowed": false
+  },
+  "notes": "Maps to ThermalLevel::Red / gate_decision DENY"
+}

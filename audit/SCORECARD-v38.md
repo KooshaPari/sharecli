@@ -21,25 +21,25 @@
 | C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
-| C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | synthetic eval corpus; tighter multi-week trend CSV |
+| C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
+| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | ADR N/A L75–78; corpus runner harness |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
 ## Overall
 
-**Weighted overall score:** 69% · **Overall grade:** C
+**Weighted overall score:** 71% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (63+67+80+92+60+70+67+63+60+76+67+67)/12 = 832/12 = **69.3% ≈ 69%**.)
+(Unweighted mean of cluster pcts: (63+67+80+92+60+70+67+77+60+76+67+67)/12 = 846/12 = **70.5% ≈ 71%**.)
 
-**Tier-1 double-weight (C00–C03):** (63+67+80+92)×2 + (60+70+67+63+60+76+67+67) = 604 + 530 = 1134 / 16 = **70.9% ≈ 71%** (C).
+**Tier-1 double-weight (C00–C03):** (63+67+80+92)×2 + (60+70+67+77+60+76+67+67) = 604 + 544 = 1148 / 16 = **71.8% ≈ 72%** (C).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), synthetic eval corpus (C08), SLSA L3 / cosign (C06), lib.rs module split (C00).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), lib.rs module split (C00), mutants hard gate (C07).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -187,6 +187,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-13 (C00 OpenAPI drift CI — W10.3)
 - **C00 18/30 (60% C) → 19/30 (63% C):** L2 2→3 — full path coverage + `scripts/check-openapi-drift.py` + `openapi-drift.yml`.
 - Overall stays **~69% C** (mean 832/12).
+
+### 2026-07-13 (C07 proptest/mutants/fuzz + C08 corpus — W10.4)
+- **C07 19/30 (63% C) → 23/30 (77% B):** L65 1→2, L66 0→2, L67 1→2 (proptest + soft mutants/fuzz CI).
+- **C08** stays 60% C; adds synthetic corpus fixtures + `criterion-trends.csv`.
+- **Overall 69% → 71% C** (mean 846/12).
 
 ## Spine links
 

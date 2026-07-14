@@ -1,0 +1,33 @@
+name: Mutation Testing
+
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "crates/sharecli-thermal-tui/**"
+      - "mutants.toml"
+      - ".github/workflows/mutants.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mutants-soft:
+    name: cargo-mutants (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: mutants
+      - name: Install cargo-mutants
+        run: cargo install --locked cargo-mutants
+      - name: Run cargo mutants (thermal-tui slice)
+        run: |
+          cargo mutants --timeout 60 --jobs 2 \
+            --file 'crates/sharecli-thermal-tui/src/lib.rs' \
+            -- --locked -p sharecli-thermal-tui
