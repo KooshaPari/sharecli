@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C04 DCO signed-commits soft — FR-004)
+
+- Status: DONE — CONTRIBUTING DCO; docs/ops/signed-commits.md; dco-soft.yml (continue-on-error)
+- Score: C04 L34 0→1; C04 21/30 → 22/30 (73% C); overall ~73% / weighted ~74% C
+- FR: FR-004 NFR (supply-chain / commit integrity)
+- Next: GPG+branch protection require signed commits; 2FA evidence (L36)
+
 ## 2026-07-14 (C05 Pyroscope soft — FR-003)
 
 - Status: DONE — L45 external Pyroscope push recipe (`docs/ops/pyroscope.md`, `just pyro-push-sample`, `.env.example` SHARECLI_PYROSCOPE_*)
