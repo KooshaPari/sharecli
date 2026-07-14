@@ -754,7 +754,8 @@ mod tests {
             {
                 let allowed = expect_gate != "DENY";
                 assert_eq!(
-                    spawn_allowed, allowed,
+                    spawn_allowed,
+                    allowed,
                     "fixture {} expect.spawn_allowed inconsistent with gate",
                     path.display()
                 );
