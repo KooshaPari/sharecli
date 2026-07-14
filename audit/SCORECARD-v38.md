@@ -25,7 +25,7 @@
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | live HTTP pool probes; supersede ADR if agent-eval lands |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 31/36 | 86% | B | golden visual tests; high-contrast; dashboard hex drift |
-| C11 | Packaging + Distribution | L108–L122 | 33/45 | 73% | C | hard codesign/notarize; native dmg/msi; auto-update |
+| C11 | Packaging + Distribution | L108–L122 | 33/45 | 73% | C | hard codesign/notarize; dmg/msi; harden Win tray; auto-update |
 
 ## Overall
 
@@ -258,3 +258,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C01 21/30 (70% C) → 24/30 (80% B):** L17 1→3 (cli-tui-checklist + existing a11y suite); L19 2→3 (CycloneDX SBOM in sbom.yml/release).
 - Soft mutants threshold doc (C07 L65 stays 2).
 - Overall mean **~78% B** (934/12); weighted **~79% B**.
+
+### 2026-07-14 (MVP finality + OS parity refresh)
+- FINALITY host×capability matrix; README four-host install blocks; `release.yml` tray-macos + tray-windows attach (Win soft).
+- C11 L108/L110/L118 evidence updated; no GA overclaim for tray/desktop (still beta until L112).

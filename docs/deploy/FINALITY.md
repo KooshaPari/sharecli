@@ -17,14 +17,17 @@ installers (L108) land.
 
 ## Parity floor (every host)
 
-| Capability | Requirement |
-|------------|-------------|
-| CLI install + `serve` | Same flags; `GET /healthz` / `/readyz`; OpenAPI contract |
-| Process list / stop / status | Same CLI verbs + IPC schema |
-| Tray / menubar | Visible status item on GUI hosts |
-| Dashboard | One click from tray **or** `http://127.0.0.1:9000/` |
-| Release artifact | Downloadable archive **or** documented WSL→host bridge |
-| Docs | This file + [`deploy.md`](../deploy.md) row per host |
+| Capability | macOS | Windows | Linux | WSL |
+|------------|:-----:|:-------:|:-----:|:---:|
+| CLI + `serve` (`/healthz` `/readyz`) | ✓ | ✓ | ✓ | ✓ (in WSL) |
+| Process list / stop / status | ✓ | ✓ | ✓ | ✓ |
+| Tray / menubar | Swift NSStatusItem | WinUI tray | StatusNotifier | via Windows tray or WSLg |
+| Dashboard UI | native `DashboardView` **or** web | web cockpit | web cockpit | via bridge URL |
+| Release archive **or** bridge docs | `*-apple-darwin` + desktop | `*-pc-windows-msvc` + tray zip | linux CLI + tray | bridge in this file |
+| Docs entrypoint | this file + [`deploy.md`](../deploy.md) | same | same | same |
+
+Anything **below** a row for a host is a parity bug. Native extras above the floor are preferred (macOS `DashboardView`).
+
 
 ## Maximum optimality per OS
 
@@ -49,11 +52,13 @@ Smoke: `curl -fsS http://127.0.0.1:9000/healthz` from both WSL and Windows.
 ## Local builds
 
 ```bash
-just build-cli
-just build-tray-linux      # Linux host
-just build-tray-macos      # macOS: ffi + Swift (tray + desktop)
-just build-tray-windows    # Windows: WinUI
-just wsl-parity-check      # prints bridge checklist
+just build-cli              # host CLI release (lane A)
+just build-cli-windows      # Windows target or native Win build
+just build-tray-linux       # Linux StatusNotifier tray
+just build-tray-macos       # macOS ffi + Swift (tray + desktop)
+just build-desktop-macos    # alias of build-tray-macos
+just build-tray-windows     # WinUI tray
+just wsl-parity-check       # prints / asserts bridge checklist
 ```
 
 ## CI artifacts
@@ -65,6 +70,6 @@ just wsl-parity-check      # prints bridge checklist
 | `sharecli-*-pc-windows-msvc` | Windows CLI | A |
 | `sharecli-tray-linux-*` | Linux tray | B |
 | `sharecli-desktop-macos-*` | macOS tray+desktop | B+C |
-| `sharecli-tray-windows-*` | Windows tray | B |
+| `sharecli-tray-windows-*` | Windows tray | B (soft until green) |
 
-See `.github/workflows/desktop-builds.yml` (PR smoke) and `release.yml` (tag/dispatch attach).
+See `.github/workflows/desktop-builds.yml` (PR smoke) and `release.yml` (tag/dispatch attach for CLI + all three tray/desktop archives).

@@ -10,7 +10,9 @@ on:
       - "windows/ShareCLITray/**"
       - "docs/deploy/**"
       - ".github/workflows/desktop-builds.yml"
+      - ".github/workflows/release.yml"
       - "justfile"
+      - "README.md"
   workflow_dispatch:
 
 permissions:
@@ -128,4 +130,8 @@ jobs:
           grep -q 'macOS' docs/deploy/FINALITY.md
           grep -q 'Windows' docs/deploy/FINALITY.md
           grep -q 'Linux' docs/deploy/FINALITY.md
+          grep -q 'Parity floor' docs/deploy/FINALITY.md
+          grep -q 'x86_64-pc-windows-msvc' .github/workflows/release.yml
+          grep -q 'tray-macos' .github/workflows/release.yml
+          grep -q 'WSL (CLI in WSL' README.md
           echo "WSL parity docs OK"

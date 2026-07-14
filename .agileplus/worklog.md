@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (MVP finality + OS parity refresh — FR-004)
+
+- Status: DONE — FINALITY host×capability matrix; README four install blocks; release.yml tray-macos + tray-windows attach; just build-cli-windows; C11 L108/L110 evidence
+- Score: packaging parity (C11); no GA claim for tray/desktop; Win tray remains soft `continue-on-error`
+- FR: FR-004 NFR (deploy/parity)
+- Next: harden Win tray CI; L112 signing when secrets land; native dmg/msi
+
 ## 2026-07-14 (C01 a11y checklist + SBOM sync — FR-003)
 
 - Status: DONE — docs/a11y/cli-tui-checklist.md; L17/L19 evidence sync; mutants-threshold.md (soft)
