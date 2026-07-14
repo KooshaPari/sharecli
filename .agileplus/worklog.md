@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C04 2FA + C10 motion/type — FR-004 / FR-003)
+
+- Status: DONE — maintainer-2fa.md; tokens.css type+motion; dashboard prefers-reduced-motion; docs/visual/motion.md
+- Score: C04 73%→77% B (L36 0→1); C10 78%→83% B (L97/L102→3); overall ~74% / weighted ~75% B
+- FR: FR-004 (authN policy) + FR-003 (visual/a11y motion)
+- Next: org 2FA enforce; golden visual tests; C11 signing; C08 live corpus
+
 ## 2026-07-14 (C10 docs/visual soft — FR-003)
 
 - Status: DONE — docs/visual/{README,IDENTITY,VISUAL_SPEC,PROVENANCE,typography}.md

@@ -102,6 +102,12 @@ justifications are all defined there.
 
 ---
 
+## Maintainer authentication (2FA)
+
+Maintainers and admins must enable **GitHub two-factor authentication** (hardware key preferred). Soft policy: [`docs/ops/maintainer-2fa.md`](docs/ops/maintainer-2fa.md). Org-wide enforcement is a GitHub Organization settings follow-up.
+
+---
+
 ## Threat Model (Summary)
 
 Full STRIDE + attack-surface inventory: **[`THREAT_MODEL.md`](THREAT_MODEL.md)**  

@@ -5,9 +5,11 @@ Soft type-role scale for C10 L97. CLI/TUI remain monospace-first; dashboard HTML
 | Role | CSS intent | Approx size | Use |
 |------|------------|-------------|-----|
 | display | `--type-display` | clamp(1.75rem, 4vw, 2.5rem) | Splash / brand lockup |
-| heading | `--type-heading` | 1.25–1.5rem | Section titles |
-| body | `--type-body` | 0.95–1rem | Prose / table cells |
-| caption | `--type-caption` | 0.75–0.85rem | Hints, timestamps, muted meta |
+| heading | `--type-heading` | 1.25rem | Section titles |
+| body | `--type-body` | 0.95rem | Prose / table cells |
+| caption | `--type-caption` | 0.8rem | Hints, timestamps, muted meta |
+
+These custom properties are defined in `assets/tokens.css` (CSS SoT).
 
 ## Stack
 

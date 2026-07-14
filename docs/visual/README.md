@@ -8,6 +8,7 @@ Design-system reference for audit-v38 **C10** (L96–L107).
 | [VISUAL_SPEC.md](VISUAL_SPEC.md) | Palette, type, states, major surfaces |
 | [PROVENANCE.md](PROVENANCE.md) | Asset provenance tiers (1/2/3) |
 | [typography.md](typography.md) | Type-role scale + rationale |
+| [motion.md](motion.md) | Motion tokens + prefers-reduced-motion |
 
 **Sources of truth**
 
