@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C08 jwt bench-gate)
+
+- Status: DONE — `jwt_auth_validate` in soft/`bench-gate`/nightly; baseline `jwt_validate_rs256` (BENCH-4)
+- Score: C08 stays 60% C (18/30); overall stays 68% C
+- FR: FR-012
+- Next: hyperfine JSON CI artifact; axe CI (C09)
+
 ## 2026-07-13 (C08 eval lift)
 
 - Status: DONE — `jwt_auth_validate` Criterion bench (FR-012); `docs/eval/GOVERNANCE.md`; L71+L80→3

@@ -91,6 +91,13 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W7.3 | TUI keyboard matrix + quit-key tests | L81.3 · `docs/a11y/keyboard.md` | Status: DONE |
 | W7.4 | Status/recovery + degraded-mode docs | L81.6 · L81.7 · FR-004 · `docs/a11y/status-and-recovery.md` | Status: DONE |
 
+### Wave8 — Eval / perf gate polish (C08)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W8.1 | Wire `jwt_auth_validate` into Criterion CI | L71 · FR-012 · `bench.yml` · `jwt_validate_rs256` baseline | Status: DONE |
+| W8.2 | Hyperfine JSON CI artifact | L73 · `scripts/bench/` | Status: READY |
+
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.

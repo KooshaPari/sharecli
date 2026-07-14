@@ -24,6 +24,12 @@
       "measured_mean_ns": 29971,
       "slo_id": "BENCH-3",
       "notes": "Measured ~30 µs; baseline uses ~2× headroom."
+    },
+    "jwt_validate_rs256": {
+      "mean_ns": 10000000,
+      "measured_mean_ns": 5000000,
+      "slo_id": "BENCH-4",
+      "notes": "FR-012 JWT RS256 validate; draft SLO p95 < 5 ms; baseline 10 ms (~2× headroom) until ubuntu-latest seed refresh."
     }
   }
 }

@@ -56,6 +56,7 @@ jobs:
           cargo bench --locked --bench config_parse -- --sample-size 10 --warm-up-time 1 --measurement-time 2
           cargo bench --locked --bench pool_list -- --sample-size 10 --warm-up-time 1 --measurement-time 2
           cargo bench --locked --bench prometheus_render -- --sample-size 10 --warm-up-time 1 --measurement-time 2
+          cargo bench --locked --bench jwt_auth_validate -- --sample-size 10 --warm-up-time 1 --measurement-time 2
 
   bench-gate:
     name: cargo bench (gate)
@@ -89,6 +90,7 @@ jobs:
           cargo bench --locked --bench config_parse -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
           cargo bench --locked --bench pool_list -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
           cargo bench --locked --bench prometheus_render -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
+          cargo bench --locked --bench jwt_auth_validate -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
 
       - name: Compare against committed baseline (50% max regression)
         run: |
@@ -125,6 +127,7 @@ jobs:
           cargo bench --locked --bench config_parse -- --sample-size 25 --warm-up-time 1 --measurement-time 3
           cargo bench --locked --bench pool_list -- --sample-size 25 --warm-up-time 1 --measurement-time 3
           cargo bench --locked --bench prometheus_render -- --sample-size 25 --warm-up-time 1 --measurement-time 3
+          cargo bench --locked --bench jwt_auth_validate -- --sample-size 25 --warm-up-time 1 --measurement-time 3
 
       - name: Export trend JSON
         run: |
