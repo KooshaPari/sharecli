@@ -2,6 +2,12 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C08 eval lift)
+
+- Status: DONE — `jwt_auth_validate` Criterion bench (FR-012); `docs/eval/GOVERNANCE.md`; L71+L80→3
+- Score: C08 → 60% C (18/30); overall → 67% C
+- Next: wire jwt bench into `bench-gate`; C09 AX lift
+
 ## 2026-07-13 (C06 supply-chain lift)
 
 - Status: DONE — L52 repro-check (`scripts/repro-check.sh`, `repro-check.yml`, `just repro-check`); L55 deny sources + audit.toml sync; L56 cosign roadmap in `docs/slsa.md`

@@ -31,7 +31,7 @@
 | C05 | Observability (deep) | 70% | C | Wave2 | Status: DONE |
 | C06 | Supply Chain | 67% | C | Wave2 + repro/deny | Status: DONE |
 | C07 | DX / QEng / Portability | 63% | C | Wave1–2 | Status: DONE |
-| C08 | Eval Coverage | 53% | D | Wave1–2 | Status: READY |
+| C08 | Eval Coverage | 60% | C | Wave1–2 | Status: DONE |
 | C09 | Accessibility + UX | 58% | D | backlog | Status: READY |
 | C10 | Visual Identity | 67% | C | Wave1 | Status: DONE |
 | C11 | Packaging + Distribution | 67% | C | Wave4 | Status: IN_PROGRESS |

@@ -22,7 +22,7 @@
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 16/30 | 53% | D | Harbor N/A by ADR; tighter bench thresholds |
+| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | wire jwt bench into bench-gate; hyperfine CI JSON |
 | C09 | Accessibility + UX | L81–L95 | 26/45 | 58% | D | degraded-mode AX; recovery docs |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 67% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+53+58+67+67)/12 = 800/12 = **66.7% ≈ 67%**.)
+(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+60+58+67+67)/12 = 807/12 = **67.3% ≈ 67%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+53+58+67+67) = 590 + 505 = 1095 / 16 = **68.4% ≈ 68%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+60+58+67+67) = 590 + 512 = 1102 / 16 = **68.9% ≈ 69%** (C).
 
 ## Headline Findings
 
@@ -147,6 +147,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Release: Zig setup + cyclonedx filename + attach no longer blocked on attest.
 - **C11 29/45 (64% C) → 30/45 (67% C):** L109 2→3.
 - Overall stays **65% C** (mean 783/12).
+
+### 2026-07-13 (C08 eval lift)
+- **C08 16/30 (53% D) → 18/30 (60% C):** L71 2→3 (`jwt_auth_validate` bench, FR-012); L80 2→3 (`docs/eval/GOVERNANCE.md`).
+- **Overall 66% C → 67% C** (mean 793/12 → 800/12).
+- Remaining C08 gaps: wire jwt bench into `bench-gate`; hyperfine JSON CI artifact.
 
 ## Spine links
 
