@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "Project",
   description: "Documentation",
+  base: '/sharecli/',
   // Repo-root paths (crates/, scripts/, WORK_DAG.md, …) are intentional and
   // live outside the VitePress source tree — do not fail the docs build on them.
   ignoreDeadLinks: [
