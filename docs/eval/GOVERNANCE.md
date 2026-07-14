@@ -47,8 +47,9 @@ come from supervisor benches + load + REPRO + CI gate + this doc.
    `python3 scripts/seed-bench-baseline.py` and commit
    `docs/eval/baselines/criterion-baseline.json` with ~2× headroom for CI
    variance.
-5. **Wire CI** — add the bench to `.github/workflows/bench.yml` (`criterion`,
-   `bench-gate`, and `bench-nightly` jobs). Merge gate ownership: **C08 lane /
+5. **Wire CI** — `jwt_auth_validate` is included in `.github/workflows/bench.yml`
+   (`criterion`, `bench-gate`, `bench-nightly`) with baseline key `jwt_validate_rs256`.
+   Merge gate ownership: **C08 lane /
    perf maintainers**; flake quarantine per `docs/testing/flake-policy.md`.
 
 Load scripts follow the same pattern under `scripts/load/` with `LOAD-*` SLO
