@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C01 action SHA pins — W10.1)
+
+- Status: DONE — pin Actions tags to commit SHAs; ubuntu-24.04 across workflows; L10 2→3
+- Score: C01 → 67% C (20/30); overall stays ~69% C (826/12)
+- FR: FR-001
+- Next: synthetic eval corpus (C08); responsive TUI (C09)
+
 ## 2026-07-13 (C09 axe CI — W9.1)
 
 - Status: DONE — `.github/workflows/a11y.yml` + `scripts/a11y/axe-dashboard.mjs` (axe-core + jsdom; wcag2a/wcag21a/wcag22a; hard-fail serious/critical)

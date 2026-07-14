@@ -40,7 +40,7 @@ env:
 jobs:
   repro-check:
     name: Reproducible build (L52)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -53,7 +53,7 @@ jobs:
           version: 0.14.1
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Run repro-check
         run: bash scripts/repro-check.sh

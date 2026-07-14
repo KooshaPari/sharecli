@@ -15,7 +15,7 @@
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 18/30 | 60% | C | lib.rs sprawl; OpenAPI drift CI; tight perf budgets |
-| C01 | CI, DX, Observability | L10–L19 | 19/30 | 63% | C | echo coverage; i18n; action SHA pins |
+| C01 | CI, DX, Observability | L10–L19 | 20/30 | 67% | C | i18n; residual codecov/gitleaks polish |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 69% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+60+73+67+67)/12 = 822/12 = **68.5% ≈ 69%**.)
+(Unweighted mean of cluster pcts: (60+67+80+92+60+70+67+63+60+73+67+67)/12 = 826/12 = **68.8% ≈ 69%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+60+73+67+67) = 590 + 527 = 1117 / 16 = **69.8% ≈ 70%** (C).
+**Tier-1 double-weight (C00–C03):** (60+67+80+92)×2 + (60+70+67+63+60+73+67+67) = 598 + 527 = 1125 / 16 = **70.3% ≈ 70%** (C).
 
 ## Headline Findings
 
@@ -175,6 +175,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C09 31/45 (69% C) → 33/45 (73% C):** L81.1 2→3 + L81.5 2→3 (`.github/workflows/a11y.yml` + `scripts/a11y/axe-dashboard.mjs`; WCAG 2.x Level A; zero violations).
 - **Overall 68% C → 69% C** (mean 822/12).
 - FR-004 NFR: dashboard axe gate.
+
+### 2026-07-13 (C01 action SHA pins — W10.1)
+- **C01 19/30 (63% C) → 20/30 (67% C):** L10 2→3 — pin floating Actions tags to commit SHAs; `ubuntu-latest` → `ubuntu-24.04`.
+- Overall stays **~69% C** (mean 826/12).
 
 ## Spine links
 

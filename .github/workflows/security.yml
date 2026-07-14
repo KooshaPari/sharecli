@@ -20,7 +20,7 @@ jobs:
   # Secret Scanning
   secrets:
     name: Secret Detection
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -37,7 +37,7 @@ jobs:
   # SAST Scanning
   sast:
     name: SAST Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       security-events: write
@@ -66,7 +66,7 @@ jobs:
   # Dependency Vulnerability Scanning
   dependencies:
     name: Dependency Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -85,7 +85,7 @@ jobs:
   # Container Scanning (if Dockerfile exists)
   container:
     name: Container Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ hashFiles('Dockerfile') != '' }}
     permissions:
       contents: read

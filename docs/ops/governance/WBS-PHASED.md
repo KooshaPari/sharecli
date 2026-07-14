@@ -24,7 +24,7 @@
 | Cluster | Focus | Pct | Grade | Phase anchor | Status |
 |---------|-------|:---:|:-----:|--------------|--------|
 | C00 | Architecture + Module | 60% | C | Wave2 | Status: DONE |
-| C01 | CI / DX / Obs | 63% | C | Wave1–2 | Status: DONE |
+| C01 | CI / DX / Obs | 67% | C | Wave1–2 + W10 | Status: DONE |
 | C02 | Error / API / Governance | 80% | B | Wave2 + Wave5 | Status: DONE |
 | C03 | Agent Readiness | 92% | A | Wave1 + Wave3 | Status: DONE |
 | C04 | Security | 60% | C | Wave2 + L39 | Status: IN_PROGRESS |
@@ -105,6 +105,12 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 |-----|------|-------|--------|
 | W9.1 | axe-core CI for dashboard (WCAG 2.x Level A) | L81.1 · L81.5 · FR-004 NFR · `.github/workflows/a11y.yml` · `scripts/a11y/axe-dashboard.mjs` | Status: DONE |
 | W9.2 | C09 re-score after axe CI | L81.1 · L81.5 · `audit/.lane-c09/C09.md` | Status: DONE |
+
+### Wave10 — CI hygiene (C01)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W10.1 | Pin Actions to SHAs + ubuntu-24.04 | L10 · `.github/workflows/*` | Status: DONE |
 
 ## Sync protocol
 

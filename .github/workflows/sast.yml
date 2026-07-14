@@ -6,9 +6,9 @@ on:
   schedule: [{cron: "0 2 * * *"}]
 jobs:
   codeql:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: github/codeql-action/init-action@v3
         with:
           languages: [typescript, python, rust, go]

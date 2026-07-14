@@ -29,7 +29,7 @@ env:
 jobs:
   criterion:
     name: cargo bench (soft)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -43,7 +43,7 @@ jobs:
           version: 0.14.1
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Record pins
         run: |
@@ -60,7 +60,7 @@ jobs:
 
   bench-gate:
     name: cargo bench (gate)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -73,7 +73,7 @@ jobs:
           version: 0.14.1
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: bench-gate
 
@@ -103,7 +103,7 @@ jobs:
   bench-nightly:
     name: cargo bench (nightly trends)
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -118,7 +118,7 @@ jobs:
           version: 0.14.1
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: bench-nightly
 
@@ -137,7 +137,7 @@ jobs:
             --sha "${GITHUB_SHA}"
 
       - name: Upload trend artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: bench-trend-${{ github.sha }}
           path: bench-trend-*.json
@@ -172,7 +172,7 @@ jobs:
           test -s "${SHARECLI_HYPERFINE_OUT}"
 
       - name: Upload hyperfine JSON artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: hyperfine-healthz-${{ github.sha }}
           path: hyperfine-healthz-*.json
@@ -183,7 +183,7 @@ jobs:
   hyperfine-healthz:
     name: hyperfine healthz (soft)
     if: github.event_name == 'pull_request' || github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -197,7 +197,7 @@ jobs:
           version: 0.14.1
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: hyperfine-healthz
 
@@ -229,7 +229,7 @@ jobs:
           test -s "${SHARECLI_HYPERFINE_OUT}"
 
       - name: Upload hyperfine JSON artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: hyperfine-healthz-${{ github.sha }}
           path: hyperfine-healthz-*.json
