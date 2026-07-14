@@ -90,6 +90,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W7.2 | Contrast token documentation | L81.2 · `docs/a11y/contrast.md` | Status: DONE |
 | W7.3 | TUI keyboard matrix + quit-key tests | L81.3 · `docs/a11y/keyboard.md` | Status: DONE |
 | W7.4 | Status/recovery + degraded-mode docs | L81.6 · L81.7 · FR-004 · `docs/a11y/status-and-recovery.md` | Status: DONE |
+| W7.5 | Table-header contrast AA UI | L81.2 · `src/dashboard.html` · `docs/a11y/contrast.md` | Status: DONE |
 
 ### Wave8 — Eval / perf gate polish (C08)
 

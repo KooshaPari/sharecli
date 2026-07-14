@@ -32,11 +32,11 @@ TUI thermal labels pair ratatui named colors with text (`GREEN` / `YELLOW` / `RE
 | H1 `#a78bfa` on `#1a1a2e` | **6.27:1** | pass | Page title |
 | Status `#94a3b8` on `#1a1a2e` | **6.65:1** | pass | Connection label |
 | Running `#22c55e` on `#1a1a2e` | **7.49:1** | pass | Status column |
-| Table header `#7c3aed` on `#16213e` | **2.79:1** | **fail** | Decorative uppercase 11px — tracked for token alignment |
+| Table header `#a371f7` on `#161b22` | **5.16:1** | pass | Aligned with `--bb2-sync-violet` / `--bb2-panel` |
 
 ### Known gap
 
-Table header violet-on-panel (**2.79:1**) is below the 3:1 UI-component threshold. Remediation: align dashboard chrome with Backbone-2 `--bb2-sync-violet` on `--bb2-panel` (5.16:1) in a future visual pass (C10).
+None for Level AA UI chrome on the dashboard table header (remediated 2026-07-13).
 
 ## Verification
 

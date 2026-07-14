@@ -23,7 +23,7 @@
 | C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | synthetic eval corpus; tighter multi-week trend CSV |
-| C09 | Accessibility + UX | L81–L95 | 30/45 | 67% | C | axe CI; responsive TUI; table-header contrast |
+| C09 | Accessibility + UX | L81–L95 | 31/45 | 69% | C | axe CI; responsive TUI |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 68% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+60+67+67+67)/12 = 816/12 = **68%**.)
+(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+60+69+67+67)/12 = 818/12 = **68.2% ≈ 68%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+60+67+67+67) = 590 + 521 = 1111 / 16 = **69.4% ≈ 69%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+60+69+67+67) = 590 + 523 = 1113 / 16 = **69.6% ≈ 70%** (C).
 
 ## Headline Findings
 
@@ -165,6 +165,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-13 (C08 hyperfine CI artifact)
 - Soft PR/push job + nightly upload of `hyperfine-healthz-<sha>.json` (LOAD-2 / L72).
 - C08 score unchanged (18/30 60% C); closes L72 hyperfine artifact gap.
+
+### 2026-07-13 (C09 table-header contrast)
+- **C09 30/45 (67% C) → 31/45 (69% C):** L81.2 2→3 — dashboard `thead` uses `#a371f7` on `#161b22` (5.16:1).
+- Overall stays **~68% C** (mean 818/12).
 
 ## Spine links
 
