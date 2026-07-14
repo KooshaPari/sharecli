@@ -23,23 +23,23 @@
 | C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | wire jwt bench into bench-gate; hyperfine CI JSON |
-| C09 | Accessibility + UX | L81–L95 | 26/45 | 58% | D | degraded-mode AX; recovery docs |
+| C09 | Accessibility + UX | L81–L95 | 30/45 | 67% | C | axe CI; responsive TUI; table-header contrast |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
 ## Overall
 
-**Weighted overall score:** 67% · **Overall grade:** C
+**Weighted overall score:** 68% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+60+58+67+67)/12 = 807/12 = **67.3% ≈ 67%**.)
+(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+60+67+67+67)/12 = 816/12 = **68%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+60+58+67+67) = 590 + 512 = 1102 / 16 = **68.9% ≈ 69%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+60+67+67+67) = 590 + 521 = 1111 / 16 = **69.4% ≈ 69%** (C).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), C08/C09 lifts, SLSA L3 / cosign (C06).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), axe CI for C09, wire jwt bench into bench-gate, SLSA L3 / cosign (C06).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -152,6 +152,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C08 16/30 (53% D) → 18/30 (60% C):** L71 2→3 (`jwt_auth_validate` bench, FR-012); L80 2→3 (`docs/eval/GOVERNANCE.md`).
 - **Overall 66% C → 67% C** (mean 793/12 → 800/12).
 - Remaining C08 gaps: wire jwt bench into `bench-gate`; hyperfine JSON CI artifact.
+
+### 2026-07-13 (C09 a11y lift)
+- **C09 26/45 (58% D) → 30/45 (67% C):** L81.1/L81.5 1→2 (dashboard landmarks + `docs/a11y/README.md` + `tests/a11y/`); L81.2 1→2 (`docs/a11y/contrast.md`); L81.3 1→2 (`is_quit_key` tests + `docs/a11y/keyboard.md`).
+- Docs: `docs/a11y/status-and-recovery.md` (FR-004 status matrix); `--help` after_long_help cites a11y + degraded mode.
+- **Overall 67% C → 68% C** (mean 816/12; C06+C08+C09 at 67%/60%/67%).
 
 ## Spine links
 

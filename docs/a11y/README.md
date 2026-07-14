@@ -1,0 +1,45 @@
+# Accessibility — sharecli
+
+**Compliance posture:** WCAG 2.2 **Level A** for the embedded web dashboard; **dev-AX Level A** for CLI/TUI surfaces (structured output, non-color degradation, keyboard exits).
+
+sharecli is primarily a developer-facing CLI with three human-visible surfaces:
+
+| Surface | Path | Level A posture |
+|---------|------|-----------------|
+| Web dashboard | `src/dashboard.html` (served at `/` by `sharecli serve`) | Semantic landmarks (`nav`, `main`), `lang="en"`, live status regions; see `tests/a11y/` |
+| Thermal TUI | `crates/sharecli-thermal-tui` | Keyboard-only operation (`q`, `Ctrl-C`); text labels alongside color (GREEN/YELLOW/RED) |
+| CLI stdout/stderr | `src/main.rs` | `NO_COLOR` honored; `--json` / `--format json` machine-readable modes; plain-language errors |
+
+## WCAG 2.2 Level A — CLI & TUI
+
+The following Level A expectations apply to terminal surfaces (adapted from WCAG 1.4.1, 1.3.1, 2.1.1):
+
+1. **Use of color (1.4.1):** Thermal state and process status expose text labels, not color alone (`level_label`, table columns). Set `NO_COLOR=1` or `TERM=dumb` to disable ANSI styling.
+2. **Info and relationships (1.3.1):** `sharecli ps` prints fixed column headers; `sharecli list --json` returns structured fields.
+3. **Keyboard (2.1.1):** TUI is fully operable without a mouse; see [`keyboard.md`](./keyboard.md).
+4. **Timing adjustable (2.2.1):** TUI polls on a fixed interval; user can exit immediately with `q` or `Ctrl-C`.
+
+Automated enforcement for the dashboard is via `tests/a11y/dashboard_landmarks.rs` (landmark + `lang` assertions). Full axe-core CI is tracked in the a11y backlog.
+
+## Degraded-mode operation
+
+| Condition | Behavior |
+|-----------|----------|
+| `NO_COLOR` set | Theme ANSI suppressed; output remains readable plain text |
+| `TERM=dumb` | No escape sequences assumed; use `--json` where available |
+| WebSocket disconnect | Dashboard shows `disconnected — reconnecting in 3s` and auto-retries |
+| Thermal governor unavailable | TUI falls back to `ThermalLevel::Green` and continues polling |
+
+See [`status-and-recovery.md`](./status-and-recovery.md) for FR-004 health surfaces and error-recovery patterns.
+
+## Related docs
+
+- [Color contrast ratios](./contrast.md) — Backbone-2 tokens (`assets/tokens.css`, `src/theme.rs`)
+- [Keyboard bindings](./keyboard.md) — TUI quit keys and dashboard focus order
+- [Status & recovery](./status-and-recovery.md) — health endpoints, validation hints, degraded mode
+
+## Screen-reader / assistive-tech checklist (manual)
+
+1. **Dashboard:** VoiceOver/NVDA — verify `nav` announces connection status; `main` table headers are read in order.
+2. **CLI:** Run `sharecli list --json` and pipe to your tooling; avoid parsing colorized `ps` output.
+3. **Tray (macOS):** `accessibilityDescription: "ShareCLI"` on menu-bar icon (`desktop/ShareCLITray`).

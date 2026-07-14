@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](../../../WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](../../../TEST_COVERAGE_MATRIX.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-13 (C06 67% C — L52 repro-check + L55 deny sources)
+**Last sync:** 2026-07-13 (C06 67% C L52+L55; C09 67% C a11y W6.1–W6.4 Closed; overall ~67% C)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -49,6 +49,18 @@
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |
 | C06 | L56 | Container cosign publish | Low | W6.3 | Status: Gap | `docs/slsa.md` cosign roadmap | agent-c06 |
 | C06 | L53–L54 | SLSA L3 / hermetic builds | Med | backlog | Status: Gap | `audit/.lane-c06/C06.md` | agent-c06 |
+
+## C09 accessibility (Wave6)
+
+| Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
+|---------|--------|-----|----------|-------------|--------|---------------|----------------|
+| C09 | L81.1 | WCAG Level A baseline + landmark tests | Med | W6.1 · FR-004 NFR | Status: Closed | `docs/a11y/README.md` · `tests/a11y/dashboard_landmarks.rs` | agent-c09 |
+| C09 | L81.2 | Contrast ratios for theme tokens | Med | W6.2 | Status: Closed | `docs/a11y/contrast.md` · `assets/tokens.css` | agent-c09 |
+| C09 | L81.3 | TUI keyboard quit-key matrix + unit tests | Med | W6.3 | Status: Closed | `docs/a11y/keyboard.md` · `crates/sharecli-thermal-tui` `is_quit_key` | agent-c09 |
+| C09 | L81.5 | Dashboard landmarks (`nav`/`main`) | Med | W6.1 | Status: Closed | `src/dashboard.html` · `tests/a11y/` | agent-c09 |
+| C09 | L81.6/L81.7 | Status visibility + degraded-mode recovery docs | Med | W6.4 · FR-004 | Status: Closed | `docs/a11y/status-and-recovery.md` · `src/main.rs` after_long_help | agent-c09 |
+| C09 | L81.1 | axe-core CI for dashboard | Low | backlog | Status: Gap | `audit/.lane-c09/C09.md` | agent-c09 |
+| C09 | L81.11 | Responsive TUI + viewport e2e | Low | backlog | Status: Gap | `audit/.lane-c09/C09.md` | agent-c09 |
 
 ## Update recipe
 

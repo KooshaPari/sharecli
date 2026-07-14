@@ -5,7 +5,7 @@
 **Spine:** [phenotype-org-audits SPINE-INDEX](https://github.com/KooshaPari/phenotype-org-audits/blob/main/docs/SPINE-INDEX.md) · rubric `audit-v38`  
 **DAG:** [`WORK_DAG.md`](../../../WORK_DAG.md) · **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](../../../FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-13 (C06 supply-chain lift → 67% C; overall ~67%)
+**Last sync:** 2026-07-13 (C06+C08+C09 lifts; overall ~68% C)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -32,7 +32,7 @@
 | C06 | Supply Chain | 67% | C | Wave2 + repro/deny | Status: DONE |
 | C07 | DX / QEng / Portability | 63% | C | Wave1–2 | Status: DONE |
 | C08 | Eval Coverage | 60% | C | Wave1–2 | Status: DONE |
-| C09 | Accessibility + UX | 58% | D | backlog | Status: READY |
+| C09 | Accessibility + UX | 67% | C | Wave7 | Status: DONE |
 | C10 | Visual Identity | 67% | C | Wave1 | Status: DONE |
 | C11 | Packaging + Distribution | 67% | C | Wave4 | Status: IN_PROGRESS |
 
@@ -81,6 +81,15 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W6.2 | Deny sources tighten + audit.toml sync (L55) | `deny.toml` · `audit.toml` | Status: DONE |
 | W6.3 | Container cosign roadmap (L56) | `docs/slsa.md` | Status: DONE |
 | W6.4 | C06 re-score | `audit/.lane-c06/C06.md` | Status: DONE |
+
+### Wave7 — Accessibility / UX (C09)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W7.1 | Dashboard landmarks + Level A docs | L81.1 · L81.5 · `docs/a11y/README.md` · `tests/a11y/` | Status: DONE |
+| W7.2 | Contrast token documentation | L81.2 · `docs/a11y/contrast.md` | Status: DONE |
+| W7.3 | TUI keyboard matrix + quit-key tests | L81.3 · `docs/a11y/keyboard.md` | Status: DONE |
+| W7.4 | Status/recovery + degraded-mode docs | L81.6 · L81.7 · FR-004 · `docs/a11y/status-and-recovery.md` | Status: DONE |
 
 ## Sync protocol
 

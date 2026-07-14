@@ -90,31 +90,54 @@
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.5; }
   }
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .skip-link:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 8px 12px;
+    background: #16213e;
+    color: #e2e8f0;
+    outline: 2px solid #a78bfa;
+  }
 </style>
 </head>
 <body>
-<header>
-  <div id="status-dot"></div>
-  <h1>sharecli</h1>
-  <span id="status-label">connecting...</span>
-  <span id="thermal-status">&#x1F321; Normal</span>
-</header>
+<a class="skip-link" href="#main-content">Skip to process table</a>
 
-<table>
+<nav aria-label="Dashboard status">
+  <header>
+    <div id="status-dot" role="status" aria-hidden="true"></div>
+    <h1 id="dashboard-title">sharecli</h1>
+    <span id="status-label" aria-live="polite">connecting...</span>
+    <span id="thermal-status" role="status" aria-live="polite">&#x1F321; Normal</span>
+  </header>
+</nav>
+
+<main id="main-content" aria-labelledby="dashboard-title">
+<table aria-label="Managed processes">
   <thead>
     <tr>
-      <th>Name</th>
-      <th>PID</th>
-      <th>Memory MB</th>
-      <th>Project</th>
-      <th>Status</th>
+      <th scope="col">Name</th>
+      <th scope="col">PID</th>
+      <th scope="col">Memory MB</th>
+      <th scope="col">Project</th>
+      <th scope="col">Status</th>
     </tr>
   </thead>
   <tbody id="proc-body">
     <tr id="empty-row"><td colspan="5">waiting for data...</td></tr>
   </tbody>
 </table>
-<div id="last-update"></div>
+<div id="last-update" aria-live="polite"></div>
+</main>
 
 <script>
   const dot = document.getElementById('status-dot');

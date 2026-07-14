@@ -29,8 +29,21 @@ Commands:
   help          Print this message or the help of the given subcommand(s)
 
 Options:
-  -v, --verbose       Enable verbose output
-  -q, --quiet         Quiet mode
-      --theme <NAME>  Color theme: `backbone-2` (default), `backbone2`, or `bb2`. Maps to the Backbone-2 family in tokens.css [default: backbone-2]
-  -h, --help          Print help
-  -V, --version       Print version
+  -v, --verbose
+          Enable verbose output
+
+  -q, --quiet
+          Quiet mode
+
+      --theme <NAME>
+          Color theme: `backbone-2` (default), `backbone2`, or `bb2`. Maps to the Backbone-2 family in tokens.css
+          
+          [default: backbone-2]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+Accessibility (C09): docs/a11y/README.md — NO_COLOR/TERM=dumb degrade ANSI color; FR-004 status via `sharecli status` and GET /health. Degraded-mode notes: docs/a11y/status-and-recovery.md
