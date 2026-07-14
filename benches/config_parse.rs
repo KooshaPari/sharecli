@@ -3,9 +3,10 @@
 //! Target (draft SLO): `config_parse` p95 < 1 ms for the default document.
 //! See docs/ops/SLO.md § Bench-linked targets and docs/eval/REPRO.md.
 
+use std::hint::black_box;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use sharecli::config::Config;
-use std::hint::black_box;
 
 fn config_parse(c: &mut Criterion) {
     let sample = toml::to_string_pretty(&Config::default()).expect("serialize default config");

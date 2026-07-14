@@ -71,7 +71,6 @@ opentelemetry_sdk = { version = "0.32.1", features = ["rt-tokio", "trace"] }
 opentelemetry-otlp = { version = "0.32", features = ["http-proto", "reqwest-rustls", "trace"] }
 tracing-opentelemetry = "0.33"
 jsonwebtoken = { version = "9", features = ["use_pem"] }
-base64 = "0.22.1"
 
 [features]
 desktop-notifications = ["notify-rust"]
@@ -90,8 +89,6 @@ criterion = { version = "0.5", features = ["async_tokio", "html_reports"] }
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 ratatui = "0.30"
-rsa = { version = "0.9.10", features = ["pem"] }
-rand = "0.8"
 
 [[bench]]
 name = "config_parse"

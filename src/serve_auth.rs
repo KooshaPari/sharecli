@@ -8,6 +8,8 @@
 //!
 //! `/healthz` and `/readyz` stay public in all modes.
 
+use std::sync::Arc;
+
 use axum::body::Body;
 use axum::extract::Request;
 use axum::http::{header, StatusCode};
@@ -19,7 +21,6 @@ use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
 
 use crate::config::{ServeConfig, ServeJwtConfig};
 
@@ -377,69 +378,32 @@ pub async fn require_bearer(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use base64::Engine;
-    use jsonwebtoken::{encode, EncodingKey, Header};
-    use rsa::pkcs1::EncodeRsaPrivateKey;
-    use rsa::traits::PublicKeyParts;
-    use rsa::{RsaPrivateKey, RsaPublicKey};
-    use serde::Serialize;
     use std::sync::OnceLock;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
-    #[derive(Serialize)]
-    struct Claims {
-        sub: String,
-        iss: String,
-        aud: String,
-        exp: i64,
-        nbf: i64,
+    use serde::Deserialize;
+
+    use super::*;
+
+    #[derive(Deserialize)]
+    struct Fixture {
+        jwks: serde_json::Value,
+        tokens: Tokens,
     }
 
-    struct TestKeys {
-        encoding: EncodingKey,
-        jwks: String,
+    #[derive(Deserialize)]
+    struct Tokens {
+        valid: String,
+        expired: String,
+        bad_aud: String,
+        bad_iss: String,
     }
 
-    fn test_keys() -> &'static TestKeys {
-        static KEYS: OnceLock<TestKeys> = OnceLock::new();
-        KEYS.get_or_init(|| {
-            let mut rng = rand::rngs::OsRng;
-            let private = RsaPrivateKey::new(&mut rng, 2048).expect("rsa");
-            let public = RsaPublicKey::from(&private);
-            let pem = private
-                .to_pkcs1_pem(rsa::pkcs1::LineEnding::LF)
-                .expect("pem")
-                .to_string();
-            let n = base64::engine::general_purpose::URL_SAFE_NO_PAD
-                .encode(public.n().to_bytes_be());
-            let e = base64::engine::general_purpose::URL_SAFE_NO_PAD
-                .encode(public.e().to_bytes_be());
-            let jwks = format!(
-                r#"{{"keys":[{{"kty":"RSA","use":"sig","alg":"RS256","kid":"test-key-1","n":"{n}","e":"{e}"}}]}}"#
-            );
-            TestKeys {
-                encoding: EncodingKey::from_rsa_pem(pem.as_bytes()).expect("encoding"),
-                jwks,
-            }
+    fn fixture() -> &'static Fixture {
+        static FIX: OnceLock<Fixture> = OnceLock::new();
+        FIX.get_or_init(|| {
+            serde_json::from_str(include_str!("../tests/fixtures/jwt_static.json"))
+                .expect("jwt_static.json")
         })
-    }
-
-    fn now() -> i64 {
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
-    }
-
-    fn mint(iss: &str, aud: &str, exp_offset: i64) -> String {
-        let claims = Claims {
-            sub: "user-1".into(),
-            iss: iss.into(),
-            aud: aud.into(),
-            exp: now() + exp_offset,
-            nbf: now() - 10,
-        };
-        let mut header = Header::new(Algorithm::RS256);
-        header.kid = Some("test-key-1".into());
-        encode(&header, &claims, &test_keys().encoding).expect("encode")
     }
 
     fn jwt_auth() -> ServeAuth {
@@ -447,12 +411,9 @@ mod tests {
             issuer: "https://idp.example/".into(),
             audience: "sharecli-serve".into(),
             jwks_path: None,
-            jwks: Some(test_keys().jwks.clone()),
+            jwks: Some(fixture().jwks.to_string()),
         };
-        // Bypass env: parallel unit tests may leave SHARECLI_SERVE_TOKEN set.
-        ServeAuth {
-            mode: AuthMode::Jwt(Arc::new(JwtValidator::from_config(&jwt).expect("jwks"))),
-        }
+        ServeAuth { mode: AuthMode::Jwt(Arc::new(JwtValidator::from_config(&jwt).expect("jwks"))) }
     }
 
     #[test]
@@ -502,7 +463,7 @@ mod tests {
     #[test]
     fn jwt_valid_rs256() {
         let auth = jwt_auth();
-        let token = mint("https://idp.example/", "sharecli-serve", 3600);
+        let token = &fixture().tokens.valid;
         let sub = auth.check_authorization(Some(&format!("Bearer {token}"))).expect("valid");
         assert_eq!(sub.as_deref(), Some("user-1"));
     }
@@ -510,7 +471,7 @@ mod tests {
     #[test]
     fn jwt_expired_rejected() {
         let auth = jwt_auth();
-        let token = mint("https://idp.example/", "sharecli-serve", -120);
+        let token = &fixture().tokens.expired;
         let err = auth.check_authorization(Some(&format!("Bearer {token}"))).unwrap_err();
         assert_eq!(err, "jwt_expired");
     }
@@ -518,7 +479,7 @@ mod tests {
     #[test]
     fn jwt_wrong_audience_rejected() {
         let auth = jwt_auth();
-        let token = mint("https://idp.example/", "other-aud", 3600);
+        let token = &fixture().tokens.bad_aud;
         let err = auth.check_authorization(Some(&format!("Bearer {token}"))).unwrap_err();
         assert_eq!(err, "jwt_invalid_aud");
     }
@@ -526,7 +487,7 @@ mod tests {
     #[test]
     fn jwt_wrong_issuer_rejected() {
         let auth = jwt_auth();
-        let token = mint("https://evil.example/", "sharecli-serve", 3600);
+        let token = &fixture().tokens.bad_iss;
         let err = auth.check_authorization(Some(&format!("Bearer {token}"))).unwrap_err();
         assert_eq!(err, "jwt_invalid_iss");
     }
