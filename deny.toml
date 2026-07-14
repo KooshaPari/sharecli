@@ -1,3 +1,10 @@
+# cargo-deny policy (C06 L51/L55/L58). Source of truth for licenses, advisories,
+# and dependency-confusion guards. Post-W5.1: crates.io-only + explicit git
+# allowlist; Dependabot + deny.yml PR gate catch typosquatting on lock churn.
+#
+# Private-registry mirror: N/A (public crates.io workspace). Substitute registries
+# are blocked via `unknown-registry = "deny"`.
+
 [licenses]
 version = 2
 allow = [
@@ -24,7 +31,9 @@ allow = [
 ]
 
 [sources]
+unknown-registry = "deny"
 unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = ["https://github.com/KooshaPari/substrate"]
 
 [advisories]

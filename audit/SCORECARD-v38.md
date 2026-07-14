@@ -20,7 +20,7 @@
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 18/30 | 60% | C | signed commits; residual AuthZ; sandbox harden |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
-| C06 | Supply Chain | L51–L60 | 18/30 | 60% | C | SLSA L3; hermetic builds; container cosign |
+| C06 | Supply Chain | L51–L60 | 20/30 | 67% | C | SLSA L3; hermetic builds; container cosign |
 | C07 | DX, QEng, Portability | L61–L70 | 19/30 | 63% | C | proptest; mutants CI gate; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 16/30 | 53% | D | Harbor N/A by ADR; tighter bench thresholds |
 | C09 | Accessibility + UX | L81–L95 | 26/45 | 58% | D | degraded-mode AX; recovery docs |
@@ -29,11 +29,11 @@
 
 ## Overall
 
-**Weighted overall score:** 66% · **Overall grade:** C
+**Weighted overall score:** 67% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (60+63+80+92+60+70+60+63+53+58+67+67)/12 = 793/12 = **66.1% ≈ 66%**.)
+(Unweighted mean of cluster pcts: (60+63+80+92+60+70+67+63+53+58+67+67)/12 = 800/12 = **66.7% ≈ 67%**.)
 
-**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+60+63+53+58+67+67) = 590 + 498 = 1088 / 16 = **68%** (C).
+**Tier-1 double-weight (C00–C03):** (60+63+80+92)×2 + (60+70+67+63+53+58+67+67) = 590 + 505 = 1095 / 16 = **68.4% ≈ 68%** (C).
 
 ## Headline Findings
 
@@ -135,6 +135,12 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Seed `SOURCE_DATE_EPOCH=0` on release builds; add `audit.toml` yanked=warn.
 - **C06 17/30 (57% D) → 18/30 (60% C):** L60 2→3 (`rust-toolchain.toml` evidence).
 - Overall stays **65% C** (mean 780/12).
+
+### 2026-07-13 (C06 supply-chain lift)
+- **C06 18/30 (60% C) → 20/30 (67% C):** L52 2→3 (`scripts/repro-check.sh` + `repro-check.yml` + `just repro-check`); L55 2→3 (`unknown-registry=deny` + post-W5.1 deny/audit.toml alignment).
+- Docs: `docs/slsa.md` repro + cosign/GHCR roadmap (L56 documented-only).
+- **Overall 66% C → 67% C** (mean 800/12).
+- FR-002 (config/build determinism) traceability for repro gate.
 
 ### 2026-07-13 (W4.2 brew sha)
 - Attached linux+darwin tarballs to `v0.3.0`; Formula sha256 filled.

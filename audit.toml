@@ -1,6 +1,6 @@
-# cargo-audit config.
-# Transitive yanked crates (e.g. spin via pprof) surface as informational
-# warnings; CI runs `cargo audit` without `--deny warnings` so only
-# real vulnerabilities fail the job.
+# cargo-audit config (C06 L55 / W5.1 supply-chain posture).
+# Transitive yanked crates (e.g. spin via pprof) surface as warnings only;
+# CI runs `cargo audit` without `--deny warnings` so real vulns still fail.
 [advisories]
 ignore = []
+yanked = "warn"
