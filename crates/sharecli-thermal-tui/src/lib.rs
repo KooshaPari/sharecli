@@ -367,12 +367,7 @@ mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
 
     fn key_event(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        KeyEvent {
-            code,
-            modifiers,
-            kind: KeyEventKind::Press,
-            state: KeyEventState::NONE,
-        }
+        KeyEvent { code, modifiers, kind: KeyEventKind::Press, state: KeyEventState::NONE }
     }
 
     // --- is_quit_key ---
@@ -383,19 +378,13 @@ mod tests {
 
     #[test]
     fn test_is_quit_key_ctrl_c() {
-        assert!(is_quit_key(&key_event(
-            KeyCode::Char('c'),
-            KeyModifiers::CONTROL
-        )));
+        assert!(is_quit_key(&key_event(KeyCode::Char('c'), KeyModifiers::CONTROL)));
     }
 
     #[test]
     fn test_is_quit_key_other_ignored() {
         assert!(!is_quit_key(&key_event(KeyCode::Char('a'), KeyModifiers::NONE)));
-        assert!(!is_quit_key(&key_event(
-            KeyCode::Char('c'),
-            KeyModifiers::NONE
-        )));
+        assert!(!is_quit_key(&key_event(KeyCode::Char('c'), KeyModifiers::NONE)));
     }
 
     // --- level_label ---

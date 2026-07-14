@@ -39,7 +39,7 @@
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), C08 lift, axe CI for C09, SLSA L3 / cosign (C06).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), axe CI for C09, wire jwt bench into bench-gate, SLSA L3 / cosign (C06).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 

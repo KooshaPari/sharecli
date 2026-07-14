@@ -17,7 +17,8 @@ fn dashboard_has_lang_and_landmarks() {
     assert!(html.contains("<main"), "missing <main> landmark");
     assert!(html.contains("<nav"), "missing <nav> landmark");
     assert!(
-        html.contains(r#"aria-label="Dashboard status""#) || html.contains("aria-label='Dashboard status'"),
+        html.contains(r#"aria-label="Dashboard status""#)
+            || html.contains("aria-label='Dashboard status'"),
         "nav should have aria-label"
     );
     assert!(html.contains("id=\"main-content\""), "main needs skiplink target id");
@@ -26,8 +27,5 @@ fn dashboard_has_lang_and_landmarks() {
 #[test]
 fn dashboard_announces_live_status() {
     let html = dashboard_html();
-    assert!(
-        html.contains("aria-live"),
-        "connection/status updates should use aria-live"
-    );
+    assert!(html.contains("aria-live"), "connection/status updates should use aria-live");
 }
