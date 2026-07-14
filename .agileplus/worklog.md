@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C11 codesign soft + C06 MCP ADR — FR-004)
+
+- Status: DONE — docs/ops/codesign-notarize.md; codesign-soft.yml; ADR-0004 no MCP; deploy.md N/A seed
+- Score: C11 67%→73% C; C06 73%→77% B; overall ~77% B
+- FR: FR-004 NFR (packaging / supply-chain scope)
+- Next: hard signing secrets; hermetic builds; mutants hard gate
+
 ## 2026-07-14 (C08 thermal/gate corpus + ADR seed + C06 L59 — FR-003)
 
 - Status: DONE — corpus_thermal_gate_fixtures_match_gate_decision; L75–L78 seeded via ADR-0002; C06 L59 DCO evidence
