@@ -9,7 +9,7 @@ surface gains proof (release asset, deploy URL, or CI log).
 | cargo-binstall | **configured** | `[package.metadata.dist]` in `Cargo.toml` | Targets: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu` |
 | GitHub Releases (prebuilt binaries) | **ready** | Tag `v*` → `release.yml` `github-release` job | Attaches **UNSIGNED** `sharecli-*.tar.gz` + `.sha256` (+ SBOM in-archive). Not notarized (L112 open). |
 | Homebrew (`Formula/sharecli.rb`) | **partial** | Bottle URL still PLACEHOLDER; `brew install --HEAD` builds from git | Fill sha after first tagged attach of darwin tarball |
-| OpenAPI (`docs/openapi/serve.yaml`) | **stub** | Committed paths for `/healthz` `/readyz` `/metrics/prometheus` `/config` `/debug/pprof/profile` | Mirrors `sharecli serve` HTTP surface |
+| OpenAPI (`docs/openapi/serve.yaml`) | **gated** | All `serve` Axum routes; drift CI via `scripts/check-openapi-drift.py` | Mirrors `sharecli serve` HTTP surface |
 | SBOM (CycloneDX) | **shipped** | `sbom.yml` on main + embedded in release tarballs | `sharecli.cdx.json` in-archive + CI artifact |
 | OCI container (`Containerfile`) | **ready** | Multi-stage build, non-root `USER sharecli`, `HEALTHCHECK` → `/healthz` | `podman build -f Containerfile -t sharecli .` then `podman run --rm -p 9000:9000 sharecli` |
 | Self-hosted / reverse proxy | **documented** | Bind `sharecli serve --bind 0.0.0.0:9000` behind nginx/Caddy | Probe `GET /healthz` and `GET /readyz` (see `docs/ops/SLO.md`) |
