@@ -25,7 +25,7 @@
     border-radius: 50%;
     background: #ef4444;
     flex-shrink: 0;
-    transition: background 0.3s;
+    transition: background var(--motion-duration, 0.3s) var(--motion-ease, ease);
   }
   #status-dot.connected { background: #22c55e; }
   #status-label { font-size: 11px; color: #94a3b8; }
@@ -45,7 +45,7 @@
   }
   tbody tr {
     border-bottom: 1px solid #1e1e3a;
-    transition: background 0.15s;
+    transition: background var(--motion-duration-fast, 0.15s) var(--motion-ease, ease);
   }
   tbody tr:hover { background: #16213e; }
   tbody td {
@@ -75,7 +75,7 @@
     background: #16213e;
     color: #22c55e;
     border: 1px solid #22c55e;
-    transition: color 0.3s, border-color 0.3s, background 0.3s;
+    transition: color var(--motion-duration, 0.3s), border-color var(--motion-duration, 0.3s), background var(--motion-duration, 0.3s);
   }
   #thermal-status.warning {
     color: #f59e0b;
@@ -89,6 +89,15 @@
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.5; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    #thermal-status.critical { animation: none; }
   }
   .skip-link {
     position: absolute;

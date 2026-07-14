@@ -18,28 +18,28 @@
 | C01 | CI, DX, Observability | L10–L19 | 21/30 | 70% | C | fluent catalogs deferred; codecov/gitleaks polish |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
-| C04 | Security | L31–L40 | 22/30 | 73% | C | GPG+branch protection; 2FA evidence; OSV hard-fail |
+| C04 | Security | L31–L40 | 23/30 | 77% | B | GPG+branch protection; org 2FA enforce; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 21/30 | 70% | C | SLSA L3; hermetic builds; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | ADR N/A L75–78; expand live corpus assertions |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
-| C10 | Visual Identity | L96–L107 | 28/36 | 78% | B | golden visual tests; light theme; CSS type tokens |
+| C10 | Visual Identity | L96–L107 | 30/36 | 83% | B | golden visual tests; light theme; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
 ## Overall
 
-**Weighted overall score:** 74% · **Overall grade:** C
+**Weighted overall score:** 75% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+70+80+92+73+70+70+77+60+76+78+67)/12 = 883/12 = **73.6% ≈ 74%**.)
+(Unweighted mean of cluster pcts: (70+70+80+92+77+70+70+77+60+76+83+67)/12 = 892/12 = **74.3% ≈ 74%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (73+70+70+77+60+76+78+67) = 624 + 571 = 1195 / 16 = **74.7% ≈ 75%** (B).
+**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (77+70+70+77+60+76+83+67) = 624 + 580 = 1204 / 16 = **75.3% ≈ 75%** (B).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
+- **Strongest:** C03 Agent Readiness (92% A); C02 **80% B**; C10 now **83% B** (docs/visual + motion/type tokens).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), GPG+required signed commits (C04 L34), mutants hard gate (C07).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), GPG+required signed commits (C04 L34), mutants hard gate (C07), C08 N/A pillars / live corpus.
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -233,3 +233,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C10 docs/visual soft)
 - **C10 24/36 (67% C) → 28/36 (78% B):** L97 1→2, L105 2→3, L106 2→3, L107 1→2 (`docs/visual/*`).
 - Overall mean **~74% C** (883/12); weighted **~75% B**.
+
+### 2026-07-14 (C04 2FA + C10 motion/type tokens)
+- **C04 22/30 (73% C) → 23/30 (77% B):** L36 0→1 (maintainer-2fa.md + SECURITY.md).
+- **C10 28/36 (78% B) → 30/36 (83% B):** L97 2→3, L102 2→3 (tokens.css type/motion + dashboard reduced-motion).
+- Overall mean **~74%** (892/12); weighted **~75% B**.

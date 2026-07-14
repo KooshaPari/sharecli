@@ -6,4 +6,22 @@
   --bb2-pulse-green: #3fb950;
   --bb2-sync-violet: #a371f7;
   --bb2-warm-amber: #d29922;
+
+  /* Type roles (docs/visual/typography.md) */
+  --type-display: clamp(1.75rem, 4vw, 2.5rem);
+  --type-heading: 1.25rem;
+  --type-body: 0.95rem;
+  --type-caption: 0.8rem;
+
+  /* Motion (docs/visual/motion.md) */
+  --motion-duration-fast: 150ms;
+  --motion-duration: 300ms;
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration: 0ms;
+  }
 }
