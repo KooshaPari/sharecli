@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C05 soft load burst — FR-003)
+
+- Status: DONE — load-soft.yml starts serve + healthz_burst; just load-soft; L50 1→2
+- Score: C05 70%→73% C; overall ~78% / weighted ~79% B
+- FR: FR-003 observability / load harness
+- Next: soak/chaos hard gate; multi-hop traces; live PD
+
 ## 2026-07-14 (MVP finality + OS parity refresh — FR-004)
 
 - Status: DONE — FINALITY host×capability matrix; README four install blocks; release.yml tray-macos + tray-windows attach; just build-cli-windows; C11 L108/L110 evidence
