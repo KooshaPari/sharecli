@@ -1,0 +1,26 @@
+name: Build artifacts (soft)
+
+# Soft guard against committed Zig caches / object files under crates/.
+# Does not block merges; surfaces OSSF Scorecard Binary-Artifacts regressions early.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - '.gitignore'
+      - 'scripts/check-no-build-artifacts.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-tracked-artifacts:
+    name: No tracked build artifacts under crates/
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check for committed zig caches / binaries
+        run: bash scripts/check-no-build-artifacts.sh

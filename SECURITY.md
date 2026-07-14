@@ -86,6 +86,9 @@ on a weekly schedule:
 - [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny) — license,
   ban, advisory, and source policy → `.github/workflows/deny.yml`.
 - **OSSF Scorecard** — supply-chain health score → `.github/workflows/scorecard.yml`.
+  The Binary-Artifacts check flags committed executables and object files.
+  Zig build caches (`.zig-cache/`, `zig-out/`) are **local build products**,
+  gitignored, and must not be committed — see `scripts/check-no-build-artifacts.sh`.
 - **GitHub Dependabot** — automatic PRs for outdated / vulnerable
   dependencies; cargo patch/minor + github-actions grouped
   (see `.github/dependabot.yml`).

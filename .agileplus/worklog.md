@@ -183,3 +183,10 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 ## W10.9 — Deploy docs via GitHub Pages workflow (FR-005)
 - VitePress build was green; peaceiris push 403 because default_workflow_permissions=read and Pages unset.
 - Enabled Pages build_type=workflow; switched deploy-docs.yml to upload-pages-artifact + deploy-pages with pages/id-token write.
+
+## W10.10 — OSSF Binary-Artifacts: untrack zig-cache (FR-001)
+
+- Removed tracked `crates/spawn-core/.zig-cache/` from git index (11 files: `.o`, `.a`, build cache).
+- `.gitignore`: `**/zig-cache/`, `**/zig-out/` alongside existing `**/.zig-cache/`.
+- SECURITY.md: note that Zig caches are local-only; Scorecard Binary-Artifacts expects none in-tree.
+- Soft CI: `scripts/check-no-build-artifacts.sh` + `build-artifacts-soft.yml` (`continue-on-error`).
