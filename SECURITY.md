@@ -97,7 +97,7 @@ justifications are all defined there.
 ## Threat Model (Summary)
 
 Full STRIDE + attack-surface inventory: **[`THREAT_MODEL.md`](THREAT_MODEL.md)**  
-(reviewed yearly; last reviewed 2026-07-12).
+(reviewed yearly; last reviewed 2026-07-13 — W5.3 post-federation).
 
 | In-scope | Out-of-scope |
 |----------|--------------|
@@ -107,7 +107,7 @@ Full STRIDE + attack-surface inventory: **[`THREAT_MODEL.md`](THREAT_MODEL.md)**
 | process-compose YAML generation correctness | Security of the `substrate` SDK internals (tracked upstream) |
 | Path / argument injection into spawned commands | Kernel-level sandbox escapes |
 | Tmpfile / state-file races (`sharecli status` cache, etc.) | — |
-| `sharecli serve` HTTP/WS (AuthN, metrics, pprof) | Federated IdP / multi-tenant AuthZ (future) |
+| `sharecli serve` HTTP/WS (Bearer + JWT AuthN, metrics, pprof, audit) | OAuth code-flow / SAML / multi-tenant AuthZ |
 
 ---
 

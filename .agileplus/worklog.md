@@ -9,6 +9,12 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 - FR: FR-002 (config/build determinism) for repro gate
 - Next: SLSA L3 / hermetic builds; GHCR+cosign when publish lands
 
+## 2026-07-13 (W5.3 threat review)
+
+- Status: DONE — post-federation STRIDE refresh; SECURITY.md aligned; checklist signed
+- Score: C04 L39 remains 3; C04 60% C unchanged
+- Next READY: C08 eval / C09 a11y; W4.3 signing Blocked
+
 ## 2026-07-13 (W5.2 retention + burn)
 
 - Status: DONE — audit JSONL size rotation; AuthN unauthorized counter + burn alert

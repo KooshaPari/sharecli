@@ -71,7 +71,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 |-----|------|-------|--------|
 | W5.1 | Federated IdP for `serve` | C02 L21 | Status: DONE |
 | W5.2 | Audit retention + burn alerts | C02 | Status: DONE |
-| W5.3 | Threat-model review post-federation | C04 L39 · `THREAT_MODEL.md` | Status: READY |
+| W5.3 | Threat-model review post-federation | C04 L39 · `THREAT_MODEL.md` | Status: DONE |
 
 ### Wave6 — Supply chain (C06)
 
