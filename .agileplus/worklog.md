@@ -192,3 +192,6 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 
 ## W10.13 — C01 i18n ADR + C08 corpus harness (FR-003)
 - ADR 0003 English-primary (L16 seeded); soft `just eval-corpus` + eval-corpus-soft.yml.
+
+## W10.14 — C00 concurrency/memory soft (FR-001)
+- docs/ops/concurrency.md + memory.md; soft miri-soft.yml; C00 → 70% C.
