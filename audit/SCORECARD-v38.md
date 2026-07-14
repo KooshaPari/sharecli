@@ -209,3 +209,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Spine index: [docs/SPINE-INDEX.md](https://github.com/KooshaPari/phenotype-org-audits/blob/main/docs/SPINE-INDEX.md)
 - CI truth notes: `audit/CI_TRUTH_FINDINGS.md`
 - Boundary: `audit/BOUNDARY_VERIFY_2026-07-10.md`
+
+### 2026-07-14 (C05 Pyroscope soft)
+- Docs/recipe for pprof→Pyroscope ingest; L45 stays 2 (in-process agent still soft).
+
