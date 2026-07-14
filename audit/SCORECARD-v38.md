@@ -15,25 +15,25 @@
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 19/30 | 63% | C | lib.rs sprawl; error envelope; tight perf budgets |
-| C01 | CI, DX, Observability | L10–L19 | 20/30 | 67% | C | i18n; residual codecov/gitleaks polish |
+| C01 | CI, DX, Observability | L10–L19 | 21/30 | 70% | C | fluent catalogs deferred; codecov/gitleaks polish |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 21/30 | 70% | C | signed commits; 2FA evidence; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 21/30 | 70% | C | SLSA L3; hermetic builds; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | ADR N/A L75–78; corpus runner harness |
+| C08 | Eval Coverage | L71–L80 | 18/30 | 60% | C | ADR N/A L75–78; expand live corpus assertions |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 24/36 | 67% | C | visual docs; light theme; type scale |
 | C11 | Packaging + Distribution | L108–L122 | 30/45 | 67% | C | signing/notarize; native dmg/msi |
 
 ## Overall
 
-**Weighted overall score:** 71% · **Overall grade:** C
+**Weighted overall score:** 72% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (63+67+80+92+70+70+67+77+60+76+67+67)/12 = 856/12 = **71.3% ≈ 71%**.)
+(Unweighted mean of cluster pcts: (63+70+80+92+70+70+70+77+60+76+67+67)/12 = 862/12 = **71.8% ≈ 72%**.)
 
-**Tier-1 double-weight (C00–C03):** (63+67+80+92)×2 + (70+70+67+77+60+76+67+67) = 604 + 554 = 1158 / 16 = **72.4% ≈ 72%** (C).
+**Tier-1 double-weight (C00–C03):** (63+70+80+92)×2 + (70+70+70+77+60+76+67+67) = 610 + 557 = 1167 / 16 = **72.9% ≈ 73%** (C).
 
 ## Headline Findings
 
@@ -213,3 +213,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C05 Pyroscope soft)
 - Docs/recipe for pprof→Pyroscope ingest; L45 stays 2 (in-process agent still soft).
 
+### 2026-07-14 (C01 i18n ADR + C08 corpus harness)
+- **C01 20/30 (67% C) → 21/30 (70% C):** L16 0→1 (docs/adr/0003-cli-english-primary.md).
+- **C08** stays 18/30 (60% C); closes corpus runner soft gap (scripts/eval/run-corpus.sh + soft CI).
+- **Overall 71% → 72% C** (mean 862/12).

@@ -1,0 +1,23 @@
+name: Eval corpus (soft)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/eval/corpus/**'
+      - 'scripts/eval/**'
+      - '.github/workflows/eval-corpus-soft.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    name: Validate eval corpus fixtures
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Run corpus harness
+        run: bash scripts/eval/run-corpus.sh

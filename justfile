@@ -261,3 +261,8 @@ fuzz:
     @command -v cargo-fuzz >/dev/null 2>&1 || cargo install --locked cargo-fuzz
     @rustup toolchain install nightly --profile minimal
     @cargo +nightly fuzz run toml_lite -- -max_total_time=30
+
+# Soft: validate docs/eval/corpus scenario JSON
+eval-corpus:
+    bash scripts/eval/run-corpus.sh
+

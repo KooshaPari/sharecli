@@ -16,3 +16,13 @@ and load scripts.
 
 Run contract: scenarios are fixtures for docs + future harness wiring; CLI
 acceptance remains `tests/fr00*.rs` + Criterion/hyperfine (see [`../README.md`](../README.md)).
+
+## Harness
+
+Validate fixtures (soft CI):
+
+```bash
+just eval-corpus
+# or: bash scripts/eval/run-corpus.sh
+```
+
