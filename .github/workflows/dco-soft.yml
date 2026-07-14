@@ -1,0 +1,39 @@
+name: DCO (soft)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dco:
+    name: Signed-off-by check (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Check DCO trailers on PR commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          missing=0
+          while IFS= read -r sha; do
+            body="$(git log -1 --format=%B "$sha")"
+            if ! grep -qiE '^Signed-off-by: .+ <.+@.+>$' <<<"$body"; then
+              echo "MISSING Signed-off-by: $sha $(git log -1 --format=%s "$sha")"
+              missing=1
+            else
+              echo "OK $sha"
+            fi
+          done < <(git rev-list --no-merges "${BASE}..${HEAD}")
+          if [[ "$missing" -ne 0 ]]; then
+            echo "::warning::One or more commits lack DCO Signed-off-by (soft gate)"
+            exit 1
+          fi
+          echo "All commits have Signed-off-by"

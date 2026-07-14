@@ -179,6 +179,19 @@ We follow the **Conventional Commits** specification (lightweight form):
 | `ci` | CI workflow change |
 | `perf` | Performance improvement |
 
+### Signed commits / DCO (soft)
+
+Prefer **Developer Certificate of Origin** sign-off on commits:
+
+```
+Signed-off-by: Your Name <you@example.com>
+```
+
+Use `git commit -s` (or configure a prepare-commit-msg hook). GPG/SSH commit
+signatures are encouraged for maintainers; branch-protection “required signed
+commits” remains a follow-up (needs org settings). Soft CI may warn when PR
+commits lack `Signed-off-by`.
+
 Examples:
 
 ```

@@ -18,7 +18,7 @@
 | C01 | CI, DX, Observability | L10–L19 | 21/30 | 70% | C | fluent catalogs deferred; codecov/gitleaks polish |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
-| C04 | Security | L31–L40 | 21/30 | 70% | C | signed commits; 2FA evidence; OSV hard-fail |
+| C04 | Security | L31–L40 | 22/30 | 73% | C | GPG+branch protection; 2FA evidence; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 21/30 | 70% | C | Pyroscope push; multi-hop traces; live PD secrets |
 | C06 | Supply Chain | L51–L60 | 21/30 | 70% | C | SLSA L3; hermetic builds; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
@@ -29,17 +29,17 @@
 
 ## Overall
 
-**Weighted overall score:** 73% · **Overall grade:** C
+**Weighted overall score:** 74% · **Overall grade:** C
 
-(Unweighted mean of cluster pcts: (70+70+80+92+70+70+70+77+60+76+67+67)/12 = 869/12 = **72.4% ≈ 72%**.)
+(Unweighted mean of cluster pcts: (70+70+80+92+73+70+70+77+60+76+67+67)/12 = 872/12 = **72.7% ≈ 73%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (70+70+70+77+60+76+67+67) = 624 + 557 = 1181 / 16 = **73.8% ≈ 74%** (C).
+**Tier-1 double-weight (C00–C03):** (70+70+80+92)×2 + (73+70+70+77+60+76+67+67) = 624 + 560 = 1184 / 16 = **74.0% ≈ 74%** (C).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C02 now **80% B** (W5.1 JWT + W5.2 retention/burn).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), signed commits (C04 L34), mutants hard gate (C07).
+- **Highest-leverage remaining:** codesign/notarize (C11 L112), SLSA L3 / cosign (C06), GPG+required signed commits (C04 L34), mutants hard gate (C07).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -225,3 +225,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C08 live corpus health assertions)
 - Soft live path: unit test maps `expect.health` fixtures → `healthz_json`; optional `SHARECLI_CORPUS_LIVE=1` curl probe.
 - C08 stays 18/30 (60% C); closes “live corpus assertions” soft gap for health fixtures.
+
+### 2026-07-14 (C04 DCO signed-commits soft)
+- **C04 21/30 (70% C) → 22/30 (73% C):** L34 0→1 (CONTRIBUTING DCO, docs/ops/signed-commits.md, dco-soft.yml).
+- Overall mean **~73% C** (872/12); weighted **~74% C**.
