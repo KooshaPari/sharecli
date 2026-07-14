@@ -18,7 +18,7 @@
 | C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
-| C04 | Security | L31–L40 | 23/30 | 77% | B | GPG+branch protection; org 2FA enforce; OSV hard-fail |
+| C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 22/30 | 73% | C | multi-hop traces; live PD; soak/chaos hard gate |
 | C06 | Supply Chain | L51–L60 | 24/30 | 80% | B | SLSA L3; network-blocked hermetic; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
@@ -31,15 +31,15 @@
 
 **Weighted overall score:** 79% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+80+80+92+77+73+80+77+73+76+86+73)/12 = 937/12 = **78.1% ≈ 78%**.)
+(Unweighted mean of cluster pcts: (70+80+80+92+80+73+80+77+73+76+86+76)/12 = 943/12 = **78.6% ≈ 79%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (77+73+80+77+73+76+86+73) = 644 + 615 = 1259 / 16 = **78.7% ≈ 79%** (B).
+**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (80+73+80+77+73+76+86+76) = 644 + 621 = 1265 / 16 = **79.1% ≈ 79%** (B).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (92% A); C10 **86% B**; C01/C02/C06 **80% B**.
+- **Strongest:** C03 Agent Readiness (92% A); C10 **86% B**; C01/C02/C04/C06 **80% B**.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), mutants hard required check (C07 L65), GPG+required signed commits (C04 L34).
+- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), mutants hard required check (C07 L65), ruleset “Require signed commits” (C04 L34).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -278,4 +278,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-14 (C07 mutants soft threshold harden — L65)
 - Soft fail-on-survivors + JSON artifact; L65 stays 2.
+
+### 2026-07-14 (C04 GPG/SSH verified commits soft — L34)
+- **C04 23/30 (77% B) → 24/30 (80% B):** L34 1→2 (`gpg-soft.yml` + signed-commits GPG/SSH + ruleset checklist).
+- Overall mean **~79% B** (943/12); weighted **~79% B**.
 
