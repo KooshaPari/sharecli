@@ -54,6 +54,9 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -66,6 +69,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Setup Zig
+        if: runner.os != 'Windows'
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
         with:
           version: 0.14.1
@@ -97,6 +101,7 @@ jobs:
           cargo build --release --locked --bin sharecli --target ${{ matrix.target }}
 
       - name: Install cargo-cyclonedx
+        if: runner.os != 'Windows'
         run: cargo install --locked cargo-cyclonedx
 
       - name: Package archive
@@ -106,23 +111,40 @@ jobs:
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
           TARGET="${{ matrix.target }}"
+          ARCHIVE_KIND="${{ matrix.archive }}"
           STAGE="sharecli-${VERSION}-${TARGET}"
           mkdir -p "${STAGE}"
           BIN="target/${TARGET}/release/sharecli"
           if [[ ! -f "${BIN}" ]]; then
             BIN="target/${TARGET}/release/sharecli.exe"
           fi
-          cp "${BIN}" "${STAGE}/sharecli"
-          cargo cyclonedx --format json --spec-version 1.5 --override-filename sharecli
-          # cargo-cyclonedx ≥0.5 writes `sharecli.json` (not `sharecli.cdx.json`).
-          if [[ -f sharecli.json ]]; then
-            mv -f sharecli.json sharecli.cdx.json
+          if [[ "${BIN}" == *.exe ]]; then
+            cp "${BIN}" "${STAGE}/sharecli.exe"
+          else
+            cp "${BIN}" "${STAGE}/sharecli"
           fi
-          test -f sharecli.cdx.json
-          cp sharecli.cdx.json "${STAGE}/sharecli.cdx.json"
-          ARCHIVE="sharecli-${TARGET}.tar.gz"
-          tar -czf "${ARCHIVE}" -C "${STAGE}" .
-          shasum -a 256 "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+          if command -v cargo-cyclonedx >/dev/null 2>&1; then
+            cargo cyclonedx --format json --spec-version 1.5 --override-filename sharecli
+            if [[ -f sharecli.json ]]; then
+              mv -f sharecli.json sharecli.cdx.json
+            fi
+            if [[ -f sharecli.cdx.json ]]; then
+              cp sharecli.cdx.json "${STAGE}/sharecli.cdx.json"
+            fi
+          fi
+          if [[ "${ARCHIVE_KIND}" == "zip" ]]; then
+            ARCHIVE="sharecli-${TARGET}.zip"
+            (cd "${STAGE}" && zip -r "../${ARCHIVE}" .)
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+            else
+              shasum -a 256 "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+            fi
+          else
+            ARCHIVE="sharecli-${TARGET}.tar.gz"
+            tar -czf "${ARCHIVE}" -C "${STAGE}" .
+            shasum -a 256 "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+          fi
           echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
 
       - name: Upload platform artifact
@@ -139,9 +161,35 @@ jobs:
         if: matrix.os == 'ubuntu-24.04'
         run: cargo test --release --locked --all-features
 
+  tray-linux:
+    name: Tray Linux (beta)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: release-tray-linux
+      - name: Build + pack
+        run: |
+          set -euo pipefail
+          cargo build -p sharecli-tray-linux --release --locked
+          STAGE=sharecli-tray-linux
+          mkdir -p "$STAGE"
+          cp target/release/sharecli-tray "$STAGE/sharecli-tray"
+          ARCHIVE=sharecli-tray-linux-x86_64.tar.gz
+          tar -czf "$ARCHIVE" -C "$STAGE" .
+          shasum -a 256 "$ARCHIVE" | tee "${ARCHIVE}.sha256"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sharecli-tray-linux-x86_64
+          path: |
+            sharecli-tray-linux-x86_64.tar.gz
+            sharecli-tray-linux-x86_64.tar.gz.sha256
+
   attest:
     name: SLSA Build Attestation (L2)
-    needs: build
+    needs: [build, tray-linux]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -160,7 +208,7 @@ jobs:
       - name: Flatten artifact tree
         run: |
           set -euo pipefail
-          find release-artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' \) -print
+          find release-artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.sha256' \) -print
           ls -laR release-artifacts/
 
       - name: Upload combined artifacts
@@ -175,7 +223,7 @@ jobs:
         continue-on-error: true
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: "release-artifacts/**/*.tar.gz"
+          subject-path: "release-artifacts/**/*.{tar.gz,zip}"
 
   publish:
     name: Publish to crates.io
@@ -208,10 +256,10 @@ jobs:
           fi
 
   # Unsigned GitHub Release attach (L118). Uses GITHUB_TOKEN only — no Apple secrets.
-  # Depends on build only — attest is best-effort and must not block bottle attach.
+  # Depends on build + tray-linux — attest is best-effort and must not block bottle attach.
   github-release:
     name: Attach unsigned assets to GitHub Release
-    needs: [build]
+    needs: [build, tray-linux]
     if: >
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.attach_github_release == 'true' && github.event.inputs.dry_run != 'true')
@@ -233,28 +281,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAG="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           else
             VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
-            TAG="v${VERSION}"
+            echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
           fi
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "Attaching UNSIGNED assets to ${TAG}"
 
-      - name: Create or update GitHub Release (UNSIGNED)
+      - name: Attach to GitHub Release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           TAG="${{ steps.tag.outputs.tag }}"
-          NOTES=$'## UNSIGNED release assets\n\nThese archives include `.sha256` digests and optional CycloneDX SBOM.\n**Not** Apple-notarized / codesigned (C11 L112 still open).\nAfter attach, fill Homebrew `sha256` from the darwin tarball digest.\n'
+          shopt -s nullglob
+          ASSETS=(release-artifacts/*.tar.gz release-artifacts/*.zip release-artifacts/*.sha256)
+          if [[ ${#ASSETS[@]} -eq 0 ]]; then
+            echo "No release assets found under release-artifacts/"
+            ls -laR release-artifacts || true
+            exit 1
+          fi
           if gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release upload "${TAG}" release-artifacts/*.tar.gz release-artifacts/*.sha256 --clobber
+            gh release upload "${TAG}" "${ASSETS[@]}" --clobber
           else
-            gh release create "${TAG}" release-artifacts/*.tar.gz release-artifacts/*.sha256 \
+            gh release create "${TAG}" "${ASSETS[@]}" \
               --title "${TAG}" \
-              --notes "${NOTES}" \
-              --latest=false
+              --notes "Unsigned CLI + tray archives (see docs/deploy/FINALITY.md). Not notarized."
           fi

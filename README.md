@@ -44,7 +44,17 @@ podman build -f Containerfile -t sharecli .
 podman run --rm -p 9000:9000 sharecli
 ```
 
-Deploy surface matrix: [`docs/deploy.md`](docs/deploy.md).
+Deploy surface matrix: [`docs/deploy.md`](docs/deploy.md).  
+Finality + OS parity (macOS / Windows / Linux / WSL): [`docs/deploy/FINALITY.md`](docs/deploy/FINALITY.md).
+
+### Per-host install (parity floor)
+
+| Host | CLI | Tray / dashboard |
+|------|-----|------------------|
+| macOS | `cargo binstall sharecli` or release `*-apple-darwin.tar.gz` | Swift tray+desktop (`sharecli-desktop-macos-*`) |
+| Windows | release `*-pc-windows-msvc.zip` | WinUI tray (`sharecli-tray-windows-*`) + web cockpit |
+| Linux | release `*-unknown-linux-gnu.tar.gz` | `sharecli-tray-linux-*` + web cockpit |
+| WSL | CLI inside WSL (same binary as Linux) | Windows tray → `localhost:9000` or WSLg — see FINALITY |
 
 ## Uninstall
 
