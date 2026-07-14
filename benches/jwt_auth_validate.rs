@@ -59,9 +59,8 @@ fn jwt_validate(c: &mut Criterion) {
 
     c.bench_function("jwt_validate_rs256", |b| {
         b.iter(|| {
-            let sub = auth
-                .check_authorization(Some(black_box(header.as_str())))
-                .expect("valid jwt");
+            let sub =
+                auth.check_authorization(Some(black_box(header.as_str()))).expect("valid jwt");
             black_box(sub)
         });
     });
