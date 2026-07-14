@@ -41,3 +41,7 @@ node_modules/
 
 docs/.vitepress/dist/
 
+
+windows/ShareCLITray/obj/
+windows/ShareCLITray/bin/
+
