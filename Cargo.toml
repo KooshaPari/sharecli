@@ -102,6 +102,10 @@ harness = false
 name = "prometheus_render"
 harness = false
 
+[[bench]]
+name = "jwt_auth_validate"
+harness = false
+
 # Temporary clippy allow-list so CI `RUSTFLAGS=-D warnings` + `clippy -D warnings`
 # can pass while style/pedantic debt is paid down (see audit/CI_TRUTH_FINDINGS.md).
 # Do not weaken workflow RUSTFLAGS; re-enable these lints as code is cleaned.
