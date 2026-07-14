@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C01 a11y checklist + SBOM sync — FR-003)
+
+- Status: DONE — docs/a11y/cli-tui-checklist.md; L17/L19 evidence sync; mutants-threshold.md (soft)
+- Score: C01 70%→80% B; overall ~78% / weighted ~79% B
+- FR: FR-003 a11y / supply-chain evidence
+- Next: mutants hard required check; C00 70% lifts; hard codesign secrets
+
 ## 2026-07-14 (C06 hermetic soft + C10 light theme — FR-003/FR-004)
 
 - Status: DONE — hermetic-soft.yml + just hermetic; Backbone2Light + tokens.css light; docs/visual/theming.md
