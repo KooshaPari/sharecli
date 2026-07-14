@@ -1,0 +1,54 @@
+name: Codesign readiness (soft)
+
+# C11 L112 — soft gate until Apple/Windows signing secrets exist.
+# Does not produce signed artifacts; continue-on-error by design.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codesign-soft:
+    name: Codesign secrets check (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Require soft runbook
+        run: |
+          set -euo pipefail
+          test -f docs/ops/codesign-notarize.md
+          grep -q 'notarytool\|Authenticode\|codesign' docs/ops/codesign-notarize.md
+          echo "Soft L112 runbook present"
+      - name: Report signing secret availability
+        env:
+          # Referenced so evidence grep finds secrets.* (values stay empty until org wires them)
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in APPLE_CERTIFICATE_BASE64 APPLE_API_KEY WINDOWS_CERT_PFX_BASE64; do
+            eval "val=\${$name:-}"
+            if [[ -z "$val" ]]; then
+              echo "::warning::$name not configured (soft L112)"
+              missing=1
+            else
+              echo "OK $name is set (length redacted)"
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            echo "Signing secrets incomplete — release stays UNSIGNED (see docs/ops/codesign-notarize.md)"
+            exit 1
+          fi
+          echo "All primary signing secrets present — wire release.yml hard steps next"
