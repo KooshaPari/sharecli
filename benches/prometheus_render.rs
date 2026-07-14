@@ -3,13 +3,14 @@
 //! Target (draft SLO): `prometheus_render` p95 < 500 µs for 32 synthetic processes.
 //! See docs/ops/SLO.md § Bench-linked targets and docs/eval/REPRO.md.
 
+use std::collections::HashMap;
+use std::hint::black_box;
+use std::time::Instant;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use sharecli::commands::serve::render_prometheus_metrics;
 use sharecli::health_check::HealthStatus;
 use sharecli::runtime::ProcessInfo;
-use std::collections::HashMap;
-use std::hint::black_box;
-use std::time::Instant;
 
 fn sample_processes(n: usize) -> Vec<ProcessInfo> {
     (0..n)

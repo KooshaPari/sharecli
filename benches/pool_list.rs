@@ -3,9 +3,10 @@
 //! Target (draft SLO): `pool_list` p95 < 50 ms on CI ubuntu-latest (empty pool).
 //! See docs/ops/SLO.md § Bench-linked targets and docs/eval/REPRO.md.
 
+use std::hint::black_box;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use sharecli::runtime::ProcessPool;
-use std::hint::black_box;
 
 fn pool_new_list(c: &mut Criterion) {
     let rt =
