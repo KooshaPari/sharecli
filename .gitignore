@@ -36,3 +36,6 @@ agileplus.db
 # Node (a11y axe tooling)
 node_modules/
 
+
+docs/.vitepress/dist/
+

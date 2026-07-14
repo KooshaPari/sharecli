@@ -30,9 +30,9 @@ installers (L108) land.
 
 | Host | Optimal stack | Parity path |
 |------|---------------|-------------|
-| **macOS** | Swift [`desktop/ShareCLITray`](../../desktop/ShareCLITray) — NSStatusItem + NSPopover + `DashboardView` | Exceeds floor (native desktop window) |
-| **Windows** | WinUI [`windows/ShareCLITray`](../../windows/ShareCLITray) + CLI zip; open web cockpit from tray | Tray + dashboard |
-| **Linux** | [`sharecli-tray-linux`](../../crates/sharecli-tray-linux) (StatusNotifier) + CLI tarball; tray opens web cockpit | Tray + dashboard |
+| **macOS** | Swift [`desktop/ShareCLITray`](https://github.com/KooshaPari/sharecli/tree/main/desktop/ShareCLITray) — NSStatusItem + NSPopover + `DashboardView` | Exceeds floor (native desktop window) |
+| **Windows** | WinUI [`windows/ShareCLITray`](https://github.com/KooshaPari/sharecli/tree/main/windows/ShareCLITray) + CLI zip; open web cockpit from tray | Tray + dashboard |
+| **Linux** | [`sharecli-tray-linux`](https://github.com/KooshaPari/sharecli/tree/main/crates/sharecli-tray-linux) (StatusNotifier) + CLI tarball; tray opens web cockpit | Tray + dashboard |
 | **WSL** | CLI **inside** WSL; tray/dashboard via **Windows tray → forwarded port** (preferred) or WSLg + Linux tray | Equal capabilities through bridge |
 
 Do not unify on Electron/Tauri for MVP — that trades away per-OS optimality.

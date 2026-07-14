@@ -59,7 +59,7 @@ and is triggered:
 
 Release binaries are built with `SOURCE_DATE_EPOCH=0` (see
 [`.github/workflows/release.yml`](../.github/workflows/release.yml) and
-[`scripts/repro-check.sh`](../scripts/repro-check.sh)).
+[`scripts/repro-check.sh`](https://github.com/KooshaPari/sharecli/blob/main/scripts/repro-check.sh)).
 
 | Surface | Command | Notes |
 | ------- | ------- | ----- |

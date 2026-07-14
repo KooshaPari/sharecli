@@ -7,7 +7,6 @@
 | Story | Difficulty | Time |
 |-------|------------|------|
 | [Hello World](./hello-world) | ⭐ Beginner | 2 min |
-| [Integration](./integration) | ⭐⭐ Intermediate | 10 min |
 
 ## Format
 

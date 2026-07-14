@@ -1,7 +1,7 @@
 # GAP-QA-MATRIX — sharecli
 
 **Status:** ACTIVE  
-**Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](../../../WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](../../../TEST_COVERAGE_MATRIX.md)  
+**Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](https://github.com/KooshaPari/sharecli/blob/main/TEST_COVERAGE_MATRIX.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
 **Last sync:** 2026-07-13 (C09 axe CI W9.1 Closed; C09 71% C L81.1+L81.5→3; overall ~68% C)
