@@ -378,11 +378,14 @@ pub async fn require_bearer(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::OnceLock;
+    use std::sync::{Mutex, OnceLock};
 
     use serde::Deserialize;
 
     use super::*;
+
+    /// Serialize env mutations — llvm-cov runs lib tests in parallel.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[derive(Deserialize)]
     struct Fixture {
@@ -430,7 +433,8 @@ mod tests {
 
     #[test]
     fn auth_disabled_allows_any() {
-        let auth = ServeAuth::from_env_or_token(None);
+        // Construct Open directly — do not call from_env_or_token under parallel llvm-cov.
+        let auth = ServeAuth { mode: AuthMode::Open };
         assert!(auth.check_bearer(None));
         assert!(auth.check_bearer(Some("Bearer nope")));
         assert_eq!(auth.mode_label(), "open");
@@ -438,7 +442,8 @@ mod tests {
 
     #[test]
     fn auth_enabled_requires_matching_bearer() {
-        let auth = ServeAuth::from_env_or_token(Some("s3cret"));
+        // Construct Bearer directly so SHARECLI_SERVE_TOKEN races cannot poison assertions.
+        let auth = ServeAuth { mode: AuthMode::Bearer { token: "s3cret".into() } };
         assert!(!auth.check_bearer(None));
         assert!(!auth.check_bearer(Some("Bearer wrong")));
         assert!(!auth.check_bearer(Some("Basic s3cret")));
@@ -448,8 +453,7 @@ mod tests {
 
     #[test]
     fn env_overrides_config_bearer() {
-        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::set_var("SHARECLI_SERVE_TOKEN", "from-env");
         }
