@@ -15,6 +15,13 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 - FR: FR-002 (config/build determinism) for repro gate
 - Next: SLSA L3 / hermetic builds; GHCR+cosign when publish lands
 
+## 2026-07-13 (C09 a11y lift)
+
+- Status: DONE — W7.1–W7.4: dashboard landmarks, `docs/a11y/*`, TUI `is_quit_key` tests
+- Score: C09 → 67% C (30/45); L81.1/L81.2/L81.3/L81.5 1→2; overall → 68% C
+- FR: FR-004 status/recovery cited in `docs/a11y/status-and-recovery.md`
+- Next: axe CI for dashboard; responsive TUI (L81.11)
+
 ## 2026-07-13 (W5.3 threat review)
 
 - Status: DONE — post-federation STRIDE refresh; SECURITY.md aligned; checklist signed

@@ -48,7 +48,9 @@ use runtime::ProcessPool;
 #[command(
     name = "sharecli",
     about = "Shared CLI process manager for multi-project agent orchestration",
-    version = "0.1.0"
+    version = "0.1.0",
+    after_long_help = "Accessibility (C09): docs/a11y/README.md — NO_COLOR/TERM=dumb degrade ANSI color; \
+FR-004 status via `sharecli status` and GET /health. Degraded-mode notes: docs/a11y/status-and-recovery.md"
 )]
 struct Cli {
     #[command(subcommand)]

@@ -13,7 +13,7 @@
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -26,6 +26,15 @@ use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 // ---------------------------------------------------------------------------
 // Pure transforms — unit-testable
 // ---------------------------------------------------------------------------
+
+/// Returns true when the key event should exit the TUI (`q` or `Ctrl-C`).
+pub fn is_quit_key(key: &KeyEvent) -> bool {
+    match key.code {
+        KeyCode::Char('q') => true,
+        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => true,
+        _ => false,
+    }
+}
 
 /// Map a [`ThermalLevel`] to a human-readable label.
 pub fn level_label(level: ThermalLevel) -> &'static str {
@@ -334,10 +343,8 @@ fn event_loop(
         // Poll for input with a timeout equal to the poll interval.
         if event::poll(POLL_INTERVAL)? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => break,
-                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => break,
-                    _ => {}
+                if is_quit_key(&key) {
+                    break;
                 }
             }
         }
@@ -357,6 +364,39 @@ fn event_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+
+    fn key_event(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent {
+            code,
+            modifiers,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::NONE,
+        }
+    }
+
+    // --- is_quit_key ---
+    #[test]
+    fn test_is_quit_key_q() {
+        assert!(is_quit_key(&key_event(KeyCode::Char('q'), KeyModifiers::NONE)));
+    }
+
+    #[test]
+    fn test_is_quit_key_ctrl_c() {
+        assert!(is_quit_key(&key_event(
+            KeyCode::Char('c'),
+            KeyModifiers::CONTROL
+        )));
+    }
+
+    #[test]
+    fn test_is_quit_key_other_ignored() {
+        assert!(!is_quit_key(&key_event(KeyCode::Char('a'), KeyModifiers::NONE)));
+        assert!(!is_quit_key(&key_event(
+            KeyCode::Char('c'),
+            KeyModifiers::NONE
+        )));
+    }
 
     // --- level_label ---
     #[test]
