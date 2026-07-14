@@ -1,0 +1,4 @@
+version: 2
+# Test fixtures hold synthetic JWKS + token *parts* for FR-012; not production secrets.
+paths-ignore:
+  - "tests/fixtures/**"

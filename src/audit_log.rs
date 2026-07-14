@@ -97,8 +97,9 @@ fn state_dir() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
+    use super::*;
 
     #[test]
     fn emit_appends_json_line() {
