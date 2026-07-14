@@ -412,8 +412,9 @@ fn event_loop(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+
+    use super::*;
 
     fn key_event(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
         KeyEvent { code, modifiers, kind: KeyEventKind::Press, state: KeyEventState::NONE }
