@@ -5,7 +5,7 @@
 **Spine:** [phenotype-org-audits SPINE-INDEX](https://github.com/KooshaPari/phenotype-org-audits/blob/main/docs/SPINE-INDEX.md) · rubric `audit-v38`  
 **DAG:** [`WORK_DAG.md`](../../../WORK_DAG.md) · **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](../../../FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-12 (T-200 / FR-002; C05=70%; overall≈64%)
+**Last sync:** 2026-07-13 (C06 supply-chain lift → 67% C; overall ~67%)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -29,7 +29,7 @@
 | C03 | Agent Readiness | 92% | A | Wave1 + Wave3 | Status: DONE |
 | C04 | Security | 60% | C | Wave2 + L39 | Status: IN_PROGRESS |
 | C05 | Observability (deep) | 70% | C | Wave2 | Status: DONE |
-| C06 | Supply Chain | 60% | C | Wave2 + release pin | Status: IN_PROGRESS |
+| C06 | Supply Chain | 67% | C | Wave2 + repro/deny | Status: DONE |
 | C07 | DX / QEng / Portability | 63% | C | Wave1–2 | Status: DONE |
 | C08 | Eval Coverage | 53% | D | Wave1–2 | Status: READY |
 | C09 | Accessibility + UX | 58% | D | backlog | Status: READY |
@@ -72,6 +72,15 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W5.1 | Federated IdP for `serve` | C02 L21 | Status: DONE |
 | W5.2 | Audit retention + burn alerts | C02 | Status: DONE |
 | W5.3 | Threat-model review post-federation | C04 L39 · `THREAT_MODEL.md` | Status: READY |
+
+### Wave6 — Supply chain (C06)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W6.1 | Repro-check script + CI (L52) | FR-002 · `scripts/repro-check.sh` · `repro-check.yml` | Status: DONE |
+| W6.2 | Deny sources tighten + audit.toml sync (L55) | `deny.toml` · `audit.toml` | Status: DONE |
+| W6.3 | Container cosign roadmap (L56) | `docs/slsa.md` | Status: DONE |
+| W6.4 | C06 re-score | `audit/.lane-c06/C06.md` | Status: DONE |
 
 ## Sync protocol
 

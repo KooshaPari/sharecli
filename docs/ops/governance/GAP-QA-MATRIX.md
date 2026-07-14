@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](../../../WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](../../../TEST_COVERAGE_MATRIX.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-13 (W4.2 brew sha Closed; v0.3.0 assets attached; C06 60% C)
+**Last sync:** 2026-07-13 (C06 67% C — L52 repro-check + L55 deny sources)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -45,7 +45,10 @@
 | C02 | L23 | Audit retention + rotation | Med | W5.2 | Status: Closed | `src/audit_log.rs` + `docs/ops/AUTH.md` | maintainer |
 | C02 | L27 | AuthN/HTTP burn alerts | Med | W5.2 | Status: Closed | `docs/ops/alertmanager/sharecli.yml` + `src/http_red.rs` | maintainer |
 | C08 | L74 | Tighter bench thresholds | Low | Wave2 | Status: READY | `docs/eval/TRENDS.md` | agent-c08 |
-| C06 | L51–L60 | Provenance / deny lock gaps | Med | backlog | Status: Gap | SCORECARD C06 | agent-c06 |
+| C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
+| C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |
+| C06 | L56 | Container cosign publish | Low | W6.3 | Status: Gap | `docs/slsa.md` cosign roadmap | agent-c06 |
+| C06 | L53–L54 | SLSA L3 / hermetic builds | Med | backlog | Status: Gap | `audit/.lane-c06/C06.md` | agent-c06 |
 
 ## Update recipe
 

@@ -25,6 +25,7 @@ log alongside the artifact.
 | Build platform hosted and isolated          | ✅ L2        |
 | Provenance authenticity (OIDC-signed)       | ✅ L2        |
 | `SOURCE_DATE_EPOCH` seeded on release build | ✅ seeded    |
+| Bit-identical repro-check (local + CI)      | ✅ L52 gate  |
 | Build platform isolated from build request | ⏭ L3 target |
 | Hardened build platform                     | ⏭ L3 target |
 | Provenance non-forgeable (sigstore/cosign)  | ⏭ L3 target |
@@ -53,6 +54,26 @@ and is triggered:
    (90 day retention).
 7. **Attest** — generate SLSA Build L2 provenance with
    `slsa-framework/slsa-github-generator/attest-build-provenance@v1`.
+
+## Reproducible builds (L52)
+
+Release binaries are built with `SOURCE_DATE_EPOCH=0` (see
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) and
+[`scripts/repro-check.sh`](../scripts/repro-check.sh)).
+
+| Surface | Command | Notes |
+| ------- | ------- | ----- |
+| Local (unix) | `just repro-check` | Builds twice into isolated `CARGO_TARGET_DIR`s; compares SHA-256 |
+| CI | [`.github/workflows/repro-check.yml`](../.github/workflows/repro-check.yml) | `ubuntu-latest` on lockfile / source changes |
+| Release matrix | `release.yml` `build` job | Cross-target tarballs; per-target repro not yet gated |
+
+On Windows hosts the script exits 0 with a skip message — reproducibility
+is enforced on unix CI only (spawn-core-sys uses a Rust stub on Windows).
+
+```bash
+# Optional: pin epoch explicitly (default 0)
+SOURCE_DATE_EPOCH=0 just repro-check
+```
 
 ## Verification
 
@@ -105,6 +126,30 @@ To upgrade, switch the `attest-build-provenance` step to invoke the
 reusable workflow with a build image pinned by digest. The reusable
 workflow handles ephemeral runners, hardened isolation, and
 non-forgeable provenance signing transparently.
+
+## Container image provenance (L56 roadmap)
+
+`Containerfile` builds a local/podman image today; **GHCR publish is not
+wired yet**. When image publish lands, the planned cosign path (no secrets
+required in this doc) is:
+
+1. **Build** — multi-stage `Containerfile` on `ubuntu-latest` (digest-pinned
+   base images).
+2. **Sign** — `cosign sign --yes ghcr.io/<org>/sharecli:<tag>` with GitHub
+   OIDC (`id-token: write` + `packages: write`).
+3. **Attest** — `cosign attest --type slsaprovenance --predicate …` or
+   GitHub Artifact Attestations for the OCI digest.
+4. **Verify (consumers)** — before deploy:
+
+```bash
+cosign verify ghcr.io/<org>/sharecli:<tag> \
+  --certificate-identity-regexp 'https://github.com/KooshaPari/sharecli/.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+```
+
+Until GHCR publish exists, use `podman build -f Containerfile` locally and
+Trivy scan via `.github/workflows/security.yml` when a root `Dockerfile` is
+added. Signing remains **documented-only** — no cosign secrets in CI yet.
 
 ## References
 

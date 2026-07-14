@@ -167,6 +167,12 @@ publish: build-release
     @echo ">> cargo publish --dry-run to {{ registry }}"
     @cargo publish --dry-run --locked
 
+# C06 L52 — bit-identical release binary (unix only; skips on Windows).
+[group: 'release']
+repro-check:
+    @echo ">> reproducible build digest check (SOURCE_DATE_EPOCH)"
+    @bash scripts/repro-check.sh
+
 # -------- C07 DevEx (append-only) --------
 [group: 'devex']
 dev: install-tools

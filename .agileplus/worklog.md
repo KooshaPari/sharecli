@@ -2,6 +2,13 @@
 
 Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-QA.
 
+## 2026-07-13 (C06 supply-chain lift)
+
+- Status: DONE — L52 repro-check (`scripts/repro-check.sh`, `repro-check.yml`, `just repro-check`); L55 deny sources + audit.toml sync; L56 cosign roadmap in `docs/slsa.md`
+- Score: C06 → 67% C (20/30); overall → 67% C
+- FR: FR-002 (config/build determinism) for repro gate
+- Next: SLSA L3 / hermetic builds; GHCR+cosign when publish lands
+
 ## 2026-07-13 (W5.2 retention + burn)
 
 - Status: DONE — audit JSONL size rotation; AuthN unauthorized counter + burn alert
