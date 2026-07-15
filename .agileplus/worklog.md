@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (SCORECARD reconcile — FR-003)
+- Status: DONE — re-sync C02/C05/C09 category scores after wide merges
+- FR: FR-003
+
 ## 2026-07-14 (C02 crypto/privacy soft — FR-004)
 - Status: DONE — crypto-keys.md + privacy-tenant.md; L22/L24 1→2
 - Score: C02 80%→87% B
