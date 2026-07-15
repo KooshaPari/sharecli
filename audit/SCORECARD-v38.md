@@ -16,7 +16,7 @@
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 21/30 | 70% | C | lib.rs sprawl; error envelope; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
-| C02 | Error handling, API, Governance | L20–L29 | 24/30 | 80% | B | residual OAuth/SAML; spawn audit events |
+| C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 22/30 | 73% | C | multi-hop traces; live PD; soak/chaos hard gate |
@@ -29,11 +29,11 @@
 
 ## Overall
 
-**Weighted overall score:** 79% · **Overall grade:** B
+**Weighted overall score:** 80% · **Overall grade:** B
 
 (Unweighted mean of cluster pcts: (70+80+80+92+80+73+80+77+73+76+86+78)/12 = 945/12 = **78.8% ≈ 79%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (80+73+80+77+73+76+86+78) = 644 + 623 = 1267 / 16 = **79.2% ≈ 79%** (B).
+**Tier-1 double-weight (C00–C03):** (70+80+87+92)×2 + (80+73+80+77+73+76+86+78) = 658 + 623 = 1281 / 16 = **80.1% ≈ 80%** (B).
 
 ## Headline Findings
 
@@ -287,3 +287,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C11 34/45 (76% B) → 35/45 (78% B):** L115 1→2 (sample systemd unit + Caddyfile).
 - Overall mean **~79% B** (945/12); weighted **~79% B**.
 
+### 2026-07-14 (C02 crypto/privacy soft — L22/L24)
+- **C02 24/30 (80% B) → 26/30 (87% B):** L22/L24 1→2 (crypto-keys.md + privacy-tenant.md).
+- Overall mean **~79% B** (952/12); weighted **~80% B**.

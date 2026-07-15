@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C02 crypto/privacy soft — FR-004)
+- Status: DONE — crypto-keys.md + privacy-tenant.md; L22/L24 1→2
+- Score: C02 80%→87% B
+- FR: FR-004
+
 ## 2026-07-14 (C11 systemd/Caddy soft samples — FR-004)
 
 - Status: DONE — docs/deploy/systemd/sharecli.service + Caddyfile.sample; L115 1→2
