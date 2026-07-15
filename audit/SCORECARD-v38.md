@@ -25,15 +25,15 @@
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | live HTTP pool probes; supersede ADR if agent-eval lands |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 31/36 | 86% | B | golden visual tests; high-contrast; dashboard hex drift |
-| C11 | Packaging + Distribution | L108–L122 | 34/45 | 76% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
+| C11 | Packaging + Distribution | L108–L122 | 35/45 | 78% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
 
 ## Overall
 
 **Weighted overall score:** 79% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+80+80+92+80+73+80+77+73+76+86+76)/12 = 943/12 = **78.6% ≈ 79%**.)
+(Unweighted mean of cluster pcts: (70+80+80+92+80+73+80+77+73+76+86+78)/12 = 945/12 = **78.8% ≈ 79%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (80+73+80+77+73+76+86+76) = 644 + 621 = 1265 / 16 = **79.1% ≈ 79%** (B).
+**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (80+73+80+77+73+76+86+78) = 644 + 623 = 1267 / 16 = **79.2% ≈ 79%** (B).
 
 ## Headline Findings
 

@@ -1,0 +1,11 @@
+# Sample Caddy reverse proxy in front of sharecli serve (soft / L115).
+# sharecli stays on loopback; Caddy terminates TLS.
+
+sharecli.example.com {
+	reverse_proxy 127.0.0.1:9000
+	encode gzip
+	header {
+		# Bearer AuthN is sharecli's job when SHARECLI_SERVE_TOKEN is set
+		-Server
+	}
+}
