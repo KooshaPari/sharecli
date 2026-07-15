@@ -1,0 +1,59 @@
+name: Playwright viewports (soft)
+
+# C09 L81.11 — soft dashboard screenshots at 375/768/1280.
+
+on:
+  pull_request:
+    paths:
+      - "src/dashboard.html"
+      - "docs/a11y/playwright-viewports.md"
+      - ".github/workflows/playwright-soft.yml"
+      - "scripts/a11y/playwright_viewports.mjs"
+  push:
+    branches: [main]
+    paths:
+      - "src/dashboard.html"
+      - "docs/a11y/playwright-viewports.md"
+      - ".github/workflows/playwright-soft.yml"
+      - "scripts/a11y/playwright_viewports.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  playwright-soft:
+    name: dashboard viewports (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: playwright-soft
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+      - name: Build sharecli
+        run: cargo build --locked --release -p sharecli
+      - name: Install Playwright Chromium
+        run: npx --yes playwright@1.49.0 install --with-deps chromium
+      - name: Capture viewports
+        run: |
+          set -euo pipefail
+          ./target/release/sharecli serve --bind 127.0.0.1:9000 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/healthz && break; sleep 1; done
+          node scripts/a11y/playwright_viewports.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: playwright-viewports-${{ github.sha }}
+          path: artifacts/playwright/*.png
+          if-no-files-found: ignore
+          retention-days: 14
