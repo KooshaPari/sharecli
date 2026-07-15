@@ -25,15 +25,15 @@
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | live HTTP pool probes; supersede ADR if agent-eval lands |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
 | C10 | Visual Identity | L96–L107 | 31/36 | 86% | B | golden visual tests; high-contrast; dashboard hex drift |
-| C11 | Packaging + Distribution | L108–L122 | 34/45 | 76% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
+| C11 | Packaging + Distribution | L108–L122 | 35/45 | 78% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
 
 ## Overall
 
 **Weighted overall score:** 79% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+80+80+92+80+73+80+77+73+76+86+76)/12 = 943/12 = **78.6% ≈ 79%**.)
+(Unweighted mean of cluster pcts: (70+80+80+92+80+73+80+77+73+76+86+78)/12 = 945/12 = **78.8% ≈ 79%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (80+73+80+77+73+76+86+76) = 644 + 621 = 1265 / 16 = **79.1% ≈ 79%** (B).
+**Tier-1 double-weight (C00–C03):** (70+80+80+92)×2 + (80+73+80+77+73+76+86+78) = 644 + 623 = 1267 / 16 = **79.2% ≈ 79%** (B).
 
 ## Headline Findings
 
@@ -282,4 +282,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C04 GPG/SSH verified commits soft — L34)
 - **C04 23/30 (77% B) → 24/30 (80% B):** L34 1→2 (`gpg-soft.yml` + signed-commits GPG/SSH + ruleset checklist).
 - Overall mean **~79% B** (943/12); weighted **~79% B**.
+
+### 2026-07-14 (C11 systemd/Caddy soft samples — L115)
+- **C11 34/45 (76% B) → 35/45 (78% B):** L115 1→2 (sample systemd unit + Caddyfile).
+- Overall mean **~79% B** (945/12); weighted **~79% B**.
 

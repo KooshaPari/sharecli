@@ -22,7 +22,7 @@ surface gains proof (release asset, deploy URL, or CI log).
 | WSL | **beta (bridged)** | CLI in WSL + Windows tray or WSLg Linux tray | [`FINALITY.md`](deploy/FINALITY.md#wsl-bridge-parity) — equal capability list via bridge |
 | Mobile (iOS/Android/PWA) | **N/A** | Deliberate non-goal | ADR: [`docs/adr/0001-no-mobile-app.md`](adr/0001-no-mobile-app.md) |
 | Edge / serverless (Workers, Vercel) | **N/A** | CLI + local supervisor, not an edge app | No `wrangler.toml` / `vercel.json` by design |
-| Traditional packaged unit (systemd/Caddy sample) | **N/A (soft)** | Bind-behind-proxy documented; no first-class unit file | Optional follow-up sample only |
+| Traditional packaged unit (systemd/Caddy sample) | **soft sample** | [`systemd/sharecli.service`](systemd/sharecli.service) + [`caddy/Caddyfile.sample`](caddy/Caddyfile.sample) | Optional self-host; not a packaged distro unit |
 
 ## Signing
 

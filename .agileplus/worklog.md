@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C11 systemd/Caddy soft samples — FR-004)
+
+- Status: DONE — docs/deploy/systemd/sharecli.service + Caddyfile.sample; L115 1→2
+- Score: C11 76%→78% B; overall ~79% / weighted ~79% B
+- FR: FR-004 packaging / traditional server sample
+- Next: hard codesign secrets; dmg/msi; Win tray harden
+
 ## 2026-07-14 (C04 GPG/SSH verified commits soft — FR-004)
 
 - Status: DONE — gpg-soft.yml verified-commit check; signed-commits.md GPG/SSH + ruleset checklist; L34 1→2

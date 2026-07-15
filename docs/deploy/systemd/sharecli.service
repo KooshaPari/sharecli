@@ -1,0 +1,23 @@
+# sharecli.service — sample unit (soft / L115)
+
+[Unit]
+Description=sharecli process supervisor (HTTP dashboard)
+Documentation=https://github.com/KooshaPari/sharecli
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sharecli
+Group=sharecli
+WorkingDirectory=/var/lib/sharecli
+ExecStart=/usr/local/bin/sharecli serve --bind 127.0.0.1:9000
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/sharecli
+
+[Install]
+WantedBy=multi-user.target
