@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-14 (C04 GPG/SSH verified commits soft — FR-004)
+
+- Status: DONE — gpg-soft.yml verified-commit check; signed-commits.md GPG/SSH + ruleset checklist; L34 1→2
+- Score: C04 77%→80% B; overall ~79% / weighted ~79% B
+- FR: FR-004 NFR (commit integrity)
+- Next: enable “Require signed commits” ruleset when bots/maintainers ready
+
 ## 2026-07-14 (C07 mutants soft threshold — FR-003)
 - Status: DONE — mutants soft fail-on-survivors; L65 stays 2
 - FR: FR-003

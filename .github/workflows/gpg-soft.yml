@@ -1,0 +1,43 @@
+name: GPG/SSH signed commits (soft)
+
+# C04 L34 — soft verified-commit check (continue-on-error).
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gpg-soft:
+    name: Verified commits check (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - name: Check GitHub verified flag on PR commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # List commits on the PR; require verification.verified=true (soft).
+          json="$(gh api "repos/${REPO}/pulls/${PR}/commits" --paginate)"
+          missing=0
+          while IFS= read -r line; do
+            sha="$(echo "$line" | cut -f1)"
+            ver="$(echo "$line" | cut -f2)"
+            msg="$(echo "$line" | cut -f3-)"
+            if [[ "$ver" != "true" ]]; then
+              echo "UNVERIFIED (no GPG/SSH signature): $sha $msg"
+              missing=1
+            else
+              echo "verified: $sha"
+            fi
+          done < <(echo "$json" | jq -r '.[] | [.sha, (.commit.verification.verified|tostring), (.commit.message|split("\n")[0])] | @tsv')
+          if [[ "$missing" -ne 0 ]]; then
+            echo "soft fail: some commits are not GitHub-verified (see docs/ops/signed-commits.md)"
+            exit 1
+          fi
+          echo "all PR commits verified"
