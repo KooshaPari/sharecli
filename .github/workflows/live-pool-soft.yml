@@ -1,0 +1,31 @@
+name: Live pool health (soft)
+
+# C08 — soft GET /health/processes after serve comes up.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-pool-soft:
+    name: live pool probe (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: live-pool-soft
+      - name: Build sharecli
+        run: cargo build --locked --release -p sharecli
+      - name: Probe /healthz + /health/processes
+        run: bash scripts/eval/live_pool_probe.sh
