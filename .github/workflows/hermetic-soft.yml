@@ -29,5 +29,13 @@ jobs:
         run: cargo fetch --locked
       - name: Offline build (sharecli)
         run: cargo build --locked --offline -p sharecli
+      - name: Soft network-block smoke (poisoned proxy + offline)
+        env:
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          ALL_PROXY: http://127.0.0.1:9
+          http_proxy: http://127.0.0.1:9
+          https_proxy: http://127.0.0.1:9
+        run: cargo build --locked --offline -p sharecli
       - name: Soft runbook present
         run: test -f docs/ops/hermetic-builds.md
