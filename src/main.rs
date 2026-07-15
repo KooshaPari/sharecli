@@ -378,15 +378,31 @@ async fn main() -> Result<()> {
         crate::otel::ensure_trace_context_propagator();
 
         let level = if cli.verbose { tracing::Level::DEBUG } else { tracing::Level::INFO };
-        let fmt_layer = tracing_subscriber::fmt::layer()
-            .with_ansi(!is_no_color())
-            .with_filter(tracing_subscriber::filter::LevelFilter::from_level(level));
-
-        let registry = tracing_subscriber::registry().with(fmt_layer);
-        if let Some(otel_layer) = crate::otel::try_otel_layer() {
-            registry.with(otel_layer).init();
+        let json = std::env::var("SHARECLI_LOG_FORMAT")
+            .map(|v| v.eq_ignore_ascii_case("json"))
+            .unwrap_or(false);
+        let filter = tracing_subscriber::filter::LevelFilter::from_level(level);
+        if json {
+            let fmt_layer = tracing_subscriber::fmt::layer()
+                .json()
+                .with_ansi(false)
+                .with_filter(filter);
+            let registry = tracing_subscriber::registry().with(fmt_layer);
+            if let Some(otel_layer) = crate::otel::try_otel_layer() {
+                registry.with(otel_layer).init();
+            } else {
+                registry.init();
+            }
         } else {
-            registry.init();
+            let fmt_layer = tracing_subscriber::fmt::layer()
+                .with_ansi(!is_no_color())
+                .with_filter(filter);
+            let registry = tracing_subscriber::registry().with(fmt_layer);
+            if let Some(otel_layer) = crate::otel::try_otel_layer() {
+                registry.with(otel_layer).init();
+            } else {
+                registry.init();
+            }
         }
     } else {
         crate::otel::ensure_trace_context_propagator();
