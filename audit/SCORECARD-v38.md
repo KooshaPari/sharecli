@@ -283,3 +283,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C04 23/30 (77% B) → 24/30 (80% B):** L34 1→2 (`gpg-soft.yml` + signed-commits GPG/SSH + ruleset checklist).
 - Overall mean **~79% B** (943/12); weighted **~79% B**.
 
+### 2026-07-14 (C11 systemd/Caddy soft samples — L115)
+- **C11 34/45 (76% B) → 35/45 (78% B):** L115 1→2 (sample systemd unit + Caddyfile).
+- Overall mean **~79% B** (945/12); weighted **~79% B**.
+
