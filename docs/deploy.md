@@ -36,6 +36,10 @@ Operator channels: [`ops/auto-update.md`](ops/auto-update.md) (C11 L111). Prefer
 
 Planned `.dmg` / `.msi` / `.deb` paths: [`ops/dmg-msi-packaging.md`](ops/dmg-msi-packaging.md) (C11 L108). Archives today; classic installers after L112 signing unblocks.
 
+## Windows tray hardening (soft)
+
+WinUI tray mutex / elevation / manifest checklist: [`ops/win-tray-hardening.md`](ops/win-tray-hardening.md) (C11 L110 · L118). Release zip attach is soft until CI gate removes `continue-on-error`; Authenticode deferred to L112.
+
 ## Quick container smoke
 
 ```bash

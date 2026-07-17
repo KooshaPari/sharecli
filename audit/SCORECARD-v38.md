@@ -337,3 +337,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/ops/advisory-hard-fail.md`; L19 stays 3; hard gate deferred until RustSec backlog cleared.
 ### 2026-07-17 (C00 lib-sprawl plan soft — L0/L1 evidence)
 - `docs/ops/lib-sprawl-plan.md`; L0/L1 stays 2 until crate split lands; cross-ref `error-envelope.md`.
+### 2026-07-17 (C11 Win tray hardening soft — L110/L118 evidence)
+- `docs/ops/win-tray-hardening.md` + `deploy.md` link; L110/L118 stay 3 (Win CI `continue-on-error`; L112 signing cross-ref only).

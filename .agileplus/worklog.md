@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C11 Win tray hardening soft — FR-003)
+- Status: DONE — docs/ops/win-tray-hardening.md; deploy.md link; L110/L118 evidence; Win CI still soft
+- FR: FR-003
 ## 2026-07-17 (C00 lib-sprawl plan soft — FR-003)
 - Status: DONE — docs/ops/lib-sprawl-plan.md; L0/L1 stays 2
 - FR: FR-003
