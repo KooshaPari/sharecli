@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C05 live PD soft — FR-003)
+- Status: DONE — docs/ops/live-pd.md; L48 stays 2
+- FR: FR-003
 ## 2026-07-17 (C10 high-contrast soft — FR-003)
 - Status: DONE — docs/a11y/high-contrast.md; L104 stays 3, L105 1→2
 - FR: FR-003
