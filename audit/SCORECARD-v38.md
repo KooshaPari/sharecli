@@ -322,3 +322,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C07 portability soft — L70 evidence)
 - docs/ops/portability-freebsd-wasm.md; L70 stays 1.
+
+### 2026-07-17 (C10 high-contrast soft — L104 evidence)
+- docs/a11y/high-contrast.md; L104 stays 3, L105 1→2.

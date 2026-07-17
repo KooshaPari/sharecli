@@ -41,6 +41,7 @@ See [`status-and-recovery.md`](./status-and-recovery.md) for FR-004 health surfa
 
 - [CLI/TUI checklist](./cli-tui-checklist.md) — pre-merge operator checklist (C01 L17)
 - [Color contrast ratios](./contrast.md) — Backbone-2 tokens (`assets/tokens.css`, `src/theme.rs`)
+- [High contrast / forced-colors](./high-contrast.md) — `prefers-contrast` posture, token pairs, dashboard hex audit (C10 L104/L105)
 - [Keyboard bindings](./keyboard.md) — TUI quit keys and dashboard focus order
 - [Responsive layout](./responsive.md) — TUI compact mode + dashboard 375/768 breakpoints
 - [Status & recovery](./status-and-recovery.md) — health endpoints, validation hints, degraded mode
