@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C07 mutants hard-gate soft — FR-003)
+- Status: DONE — docs/ops/mutants-hard-gate.md; cross-ref mutants-threshold.md; L65 stays 2
+- FR: FR-003
 ## 2026-07-17 (C01 i18n/fluent roadmap soft — FR-004)
 - Status: DONE — docs/ops/i18n-fluent.md; L16 stays 1; ADR 0003 cross-ref; fluent/gettext deferred
 - FR: FR-004
