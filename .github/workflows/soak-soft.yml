@@ -1,0 +1,47 @@
+name: Soak healthz (soft)
+
+# C05 L47 — soft /healthz soak after serve comes up (continue-on-error).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  soak-soft:
+    name: healthz soak (soft)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: soak-soft
+      - name: Build sharecli (release)
+        run: cargo build --locked --release -p sharecli
+      - name: Soak GET /healthz
+        env:
+          SHARECLI_LOAD_URL: http://127.0.0.1:9000/healthz
+          SHARECLI_SOAK_SEC: "60"
+          SHARECLI_SOAK_INTERVAL_SEC: "1"
+        run: |
+          set -euo pipefail
+          ./target/release/sharecli serve --bind 127.0.0.1:9000 &
+          serve_pid=$!
+          trap 'kill $serve_pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null "$SHARECLI_LOAD_URL"; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf -o /dev/null "$SHARECLI_LOAD_URL"
+          bash scripts/load/soak_healthz.sh
