@@ -333,3 +333,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/ops/oauth-saml-roadmap.md`; L21 stays 3 (JWT resource-server); residual OAuth Code / SAML SP deferred.
 ### 2026-07-17 (C05 soak healthz script — L47 evidence)
 - `scripts/load/soak_healthz.sh` + `just load-soak`; L47 stays 1 until CI soak gate.
+### 2026-07-17 (C01 advisory hard-fail soft — L19 evidence)
+- `docs/ops/advisory-hard-fail.md`; L19 stays 3; hard gate deferred until RustSec backlog cleared.
