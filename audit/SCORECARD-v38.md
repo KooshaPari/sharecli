@@ -326,5 +326,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-17 (C10 high-contrast soft — L104 evidence)
 - docs/a11y/high-contrast.md; L104 stays 3, L105 1→2.
 
-### 2026-07-17 (C11 dmg/msi packaging soft — L108 evidence)
-- `docs/ops/dmg-msi-packaging.md` + `deploy.md` link; L108 stays 2 (unsigned archives today; L112 signing still soft).
+### 2026-07-17 (C06 SLSA L3 soft plan — L53/L54 evidence)
+- `docs/ops/slsa-l3-plan.md`; links `hermetic-builds.md`; cites L55/L56 dependency+container evidence; L53/L54 stay 2 (roadmap only, no hard gate).

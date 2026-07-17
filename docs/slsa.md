@@ -107,6 +107,9 @@ contains:
 
 ## Path to SLSA Build L3
 
+See also: [`docs/ops/slsa-l3-plan.md`](ops/slsa-l3-plan.md) for the phased
+network-block roadmap (soft; no hard CI gate).
+
 The current pipeline satisfies L2. To graduate to L3, the following
 additions are required:
 
