@@ -290,6 +290,10 @@ fuzz:
 eval-corpus:
     bash scripts/eval/run-corpus.sh
 
+# Soft: ADR 0005 Phase 2 Harbor stub (corpus preflight + stub pass)
+harbor-stub:
+    bash scripts/eval/harbor_stub.sh
+
 # -------- C05 load (soft) --------
 [group: 'ops']
 load-soft:
