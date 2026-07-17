@@ -302,3 +302,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-14 (C07 config proptest soft — L66 evidence)
 - `docs/ops/config-proptest.md`; L66 stays 2 until root proptest dep lands.
+
+### 2026-07-17 (C09 SR checklist soft — L81.11 evidence)`n- ``docs/a11y/sr-checklist.md``; L81.11 stays 2 until manual SR pass logged.
