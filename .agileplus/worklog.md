@@ -3,6 +3,10 @@
 
 
 
+
+## 2026-07-17 (C09 SR checklist soft — FR-003)
+- Status: DONE — docs/a11y/sr-checklist.md; L81.11 stays 2
+- FR: FR-003
 ## 2026-07-14 (C07 config proptest soft — FR-003)
 - Status: DONE — config-proptest.md plan; L66 stays 2
 - FR: FR-003
