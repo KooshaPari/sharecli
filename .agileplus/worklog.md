@@ -1,7 +1,7 @@
 # AgilePlus worklog — sharecli
 
-## 2026-07-14 (SCORECARD reconcile — FR-003)
-- Status: DONE — re-sync C02/C05/C09 category scores after wide merges
+## 2026-07-14 (C08 live pool soft — FR-003)
+- Status: DONE — live-pool-soft.yml + live_pool_probe.sh
 - FR: FR-003
 
 ## 2026-07-14 (C02 crypto/privacy soft — FR-004)
