@@ -353,3 +353,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/adr/0005-agent-eval-supersede.md`; L71/L76/L80 supersede when/how documented; ADR 0002 remains authoritative until Phase 4 harness; C08 cluster stays 22/30.
 ### 2026-07-17 (C03 brew bottle soft — L30 / C11 L109 evidence)
 - `docs/ops/brew-bottle.md`; sha placeholder policy + `release.yml` cross-ref + homebrew tap sketch; L109 stays 3 (in-repo digest); tap publish still soft.
+
+### 2026-07-17 (C09 Playwright baseline policy soft — L81.11 evidence)
+- `docs/a11y/playwright-viewports.md` baseline commit/artifact policy; cross-ref `golden-visual-tests.md`; L81.11 stays 2 until committed baselines + hard diff.

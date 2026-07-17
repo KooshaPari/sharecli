@@ -1,5 +1,7 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C09 Playwright baseline policy soft — FR-003)
+- Status: DONE — docs/a11y/playwright-viewports.md baseline commit/artifact policy; L81.11 stays 2
 ## 2026-07-17 (C03 brew bottle soft — FR-003)
 - Status: DONE — docs/ops/brew-bottle.md; sha placeholder policy; release.yml cross-ref; homebrew tap sketch; L109 stays 3 until tap lands
 - FR: FR-003
