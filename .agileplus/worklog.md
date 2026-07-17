@@ -1,6 +1,10 @@
 # AgilePlus worklog — sharecli
 
 
+
+## 2026-07-14 (C01 secrets soft — FR-004)
+- Status: DONE — docs/ops/secrets.md; L18 stays 2
+- FR: FR-004
 ## 2026-07-14 (C05 multi-hop soft — FR-003)
 - Status: DONE — trace-multihop.md; L44 stays 2
 - FR: FR-003
@@ -300,4 +304,3 @@ Machine-oriented append-only log. Prefer Status tokens matching WORK_DAG / GAP-Q
 
 ## W10.15 — C08 live corpus health assertions (FR-003)
 - serve.rs corpus_health_fixtures_match_healthz + optional SHARECLI_CORPUS_LIVE in run-corpus.sh.
-

@@ -296,3 +296,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-14 (C05 multi-hop soft — L44 evidence)
 - `docs/ops/trace-multihop.md`; L44 stays 2 (CLI/IPC/tray injectors still soft).
+
+### 2026-07-14 (C01 secrets soft — L18 evidence)
+- ``docs/ops/secrets.md``; L18 stays 2 (OS keyring still deferred).
