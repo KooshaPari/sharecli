@@ -11,13 +11,50 @@ use std::time::{Duration, Instant};
 
 use anyhow::{bail, Result};
 use runtime_process::CommandGroupProcess;
+use serde_json::json;
 use substrate::{ProcessHandle, ProcessPort, ProcessSpawnSpec};
 use sysinfo::{Pid, System};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
+use crate::audit_log;
 use crate::config;
 use crate::spawn_policy::{is_build_harness, SpawnPolicy};
+
+fn spawn_capability(cmd: &str, harness: &Option<String>) -> String {
+    harness.clone().unwrap_or_else(|| cmd.to_string())
+}
+
+fn emit_spawn_audit(
+    project: &Option<String>,
+    capability: &str,
+    outcome: &str,
+    pid: Option<u32>,
+) {
+    let mut fields = json!({
+        "project": project,
+        "capability": capability,
+        "outcome": outcome,
+    });
+    if let Some(pid) = pid {
+        if let Some(obj) = fields.as_object_mut() {
+            obj.insert("pid".to_string(), json!(pid));
+        }
+    }
+    audit_log::emit_if_configured("spawn", fields);
+}
+
+fn emit_stop_audit(project: &Option<String>, capability: &str, pid: u32, outcome: &str) {
+    audit_log::emit_if_configured(
+        "stop",
+        json!({
+            "project": project,
+            "pid": pid,
+            "capability": capability,
+            "outcome": outcome,
+        }),
+    );
+}
 
 // ---------------------------------------------------------------------------
 // RAII env-var guard — restores a variable to its previous value on drop.
@@ -190,11 +227,14 @@ impl ProcessPool {
         let spec =
             ProcessSpawnSpec { program: effective_cmd.clone(), args: effective_args.clone(), cwd };
 
-        let handle = self
-            .port
-            .spawn(&spec)
-            .await
-            .map_err(|e| anyhow::anyhow!("spawn {}: {e}", effective_cmd))?;
+        let capability = spawn_capability(cmd, &harness);
+        let handle = match self.port.spawn(&spec).await {
+            Ok(handle) => handle,
+            Err(e) => {
+                emit_spawn_audit(&project, &capability, "denied", None);
+                return Err(anyhow::anyhow!("spawn {}: {e}", effective_cmd));
+            }
+        };
         // _env_guards drops here, restoring env vars before any async point.
 
         let pid = handle.pid;
@@ -216,6 +256,8 @@ impl ProcessPool {
         let mut procs = self.processes.write().await;
         procs.insert(pid, managed);
 
+        emit_spawn_audit(&info.project, &capability, "ok", Some(pid));
+
         Ok(info)
     }
 
@@ -223,10 +265,16 @@ impl ProcessPool {
     pub async fn kill(&self, pid: u32) -> Result<()> {
         let mut procs = self.processes.write().await;
         if let Some(managed) = procs.remove(&pid) {
-            self.port
-                .kill_group(&managed.handle)
-                .await
-                .map_err(|e| anyhow::anyhow!("kill pid {pid}: {e}"))?;
+            let capability = spawn_capability(&managed.info.name, &managed.info.harness);
+            match self.port.kill_group(&managed.handle).await {
+                Ok(()) => {
+                    emit_stop_audit(&managed.info.project, &capability, pid, "ok");
+                }
+                Err(e) => {
+                    emit_stop_audit(&managed.info.project, &capability, pid, "denied");
+                    return Err(anyhow::anyhow!("kill pid {pid}: {e}"));
+                }
+            }
         }
         Ok(())
     }
@@ -234,8 +282,14 @@ impl ProcessPool {
     /// Kill all managed processes
     pub async fn kill_all(&self) -> Result<()> {
         let mut procs = self.processes.write().await;
-        for (_, managed) in procs.drain() {
-            let _ = self.port.kill_group(&managed.handle).await;
+        for (pid, managed) in procs.drain() {
+            let capability = spawn_capability(&managed.info.name, &managed.info.harness);
+            let outcome = if self.port.kill_group(&managed.handle).await.is_ok() {
+                "ok"
+            } else {
+                "denied"
+            };
+            emit_stop_audit(&managed.info.project, &capability, pid, outcome);
         }
         Ok(())
     }

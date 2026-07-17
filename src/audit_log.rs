@@ -26,9 +26,21 @@ static WRITE_LOCK: Mutex<()> = Mutex::new(());
 const DEFAULT_MAX_BYTES: u64 = 10 * 1024 * 1024;
 const DEFAULT_RETAIN: usize = 5;
 
+/// True when spawn/serve audit rows are enabled via explicit `SHARECLI_AUDIT_LOG`.
+pub fn is_configured() -> bool {
+    std::env::var("SHARECLI_AUDIT_LOG").map(|s| !s.is_empty()).unwrap_or(false)
+}
+
 /// Emit one audit event (`event` + arbitrary JSON fields).
 pub fn emit(event: &str, fields: Value) {
     emit_to(&audit_log_path(), event, fields);
+}
+
+/// Emit only when [`is_configured`] — soft gate for spawn/stop lifecycle rows.
+pub fn emit_if_configured(event: &str, fields: Value) {
+    if is_configured() {
+        emit(event, fields);
+    }
 }
 
 /// Emit to an explicit path (tests + callers that already resolved the path).
@@ -154,6 +166,29 @@ mod tests {
     use std::fs;
 
     use super::*;
+
+    #[test]
+    fn emit_if_configured_respects_env_gate() {
+        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _env = ENV_LOCK.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gated.jsonl");
+        unsafe {
+            std::env::remove_var("SHARECLI_AUDIT_LOG");
+        }
+        emit_if_configured("spawn", json!({ "outcome": "ok" }));
+        assert!(!path.exists());
+
+        unsafe {
+            std::env::set_var("SHARECLI_AUDIT_LOG", &path);
+        }
+        emit_if_configured("spawn", json!({ "outcome": "ok" }));
+        let body = fs::read_to_string(&path).unwrap();
+        assert!(body.contains("\"event\":\"spawn\""));
+        unsafe {
+            std::env::remove_var("SHARECLI_AUDIT_LOG");
+        }
+    }
 
     #[test]
     fn emit_appends_json_line() {
