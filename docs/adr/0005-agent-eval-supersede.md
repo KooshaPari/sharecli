@@ -54,7 +54,7 @@ ADR 0002 in force** until an agent-eval harness actually ships.
 | **0 — today** | Supervisor corpus + Criterion + REPRO + ADR 0002 | **Yes** | bench-gate only |
 | **1 — plan** | This ADR + scorecard/worklog (FR-003) | **Yes** | No |
 | **2 — stub** | [`docs/ops/harbor-eval-stub.md`](../ops/harbor-eval-stub.md) + `scripts/eval/harbor_stub.sh` | **Yes** | No (`continue-on-error`) |
-| **3 — soak** | Soft workflow green on `main` 7 days; Harbor env pin documented | **Yes** | No |
+| **3 — soak** | [`docs/ops/harbor-phase3-soak.md`](../ops/harbor-phase3-soak.md) + soft workflow green on `main` 7 days; Harbor env pin documented | **Yes** | No |
 | **4 — supersede** | ADR 0002 marked superseded; GOVERNANCE + lane re-score | **No** | Per new harness |
 
 Phases 0–3 are **documentation + soft CI** only. Phase 4 needs maintainer sign-off
@@ -83,7 +83,8 @@ after phase-3 soak and an explicit FR or product-scope claim.
 |------|--------|
 | Agent-eval supersede pathway ADR | Done (this file) |
 | [`docs/ops/harbor-eval-stub.md`](../ops/harbor-eval-stub.md) + `harbor_stub.sh` | Done (Phase 2 soft) |
-| Seven-day Harbor soft soak on `main` | Open (Phase 3) |
+| [`docs/ops/harbor-phase3-soak.md`](../ops/harbor-phase3-soak.md) soak evidence plan | Done (Phase 3 plan) |
+| Seven-day Harbor soft soak on `main` | Open (Phase 3 — clock starts post-merge) |
 | Mark ADR 0002 superseded | Deferred (Phase 4) |
 
 ## References
@@ -93,4 +94,5 @@ after phase-3 soak and an explicit FR or product-scope claim.
 - Rubric: `audit/rubric/audit-30-pillar/audit-30-pillar-L71-L80-eval-coverage.md`
 - Corpus ops: [`../ops/eval-corpus.md`](../ops/eval-corpus.md)
 - Harbor stub (Phase 2): [`../ops/harbor-eval-stub.md`](../ops/harbor-eval-stub.md)
+- Harbor soak plan (Phase 3): [`../ops/harbor-phase3-soak.md`](../ops/harbor-phase3-soak.md)
 - Related org repos: portage (Harbor), pheno-harness (SWE-bench tasks) — cross-repo only
