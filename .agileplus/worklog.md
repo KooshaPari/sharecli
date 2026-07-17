@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C08 eval corpus soft — FR-003)
+- Status: DONE — eval-corpus.md expansion doc; L72 stays 2
+- FR: FR-003
 ## 2026-07-17 (C04 ruleset checklist — FR-004)
 - Status: DONE — docs/ops/ruleset-checklist.md; L34/L36 org-gated steps; L34 stays 2
 - FR: FR-004
@@ -17,6 +20,7 @@
 ## 2026-07-17 (C02 spawn audit soft — FR-004)
 - Status: DONE — spawn-audit.md; L28 stays 2
 - FR: FR-004
+
 ## 2026-07-17 (C09 SR checklist soft — FR-003)
 - Status: DONE — docs/a11y/sr-checklist.md; L81.11 stays 2
 - FR: FR-003
