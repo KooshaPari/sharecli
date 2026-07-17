@@ -1,10 +1,10 @@
 # GAP-QA-MATRIX — sharecli
 
 **Status:** ACTIVE  
-**Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`TEST_COVERAGE_MATRIX.md`](https://github.com/KooshaPari/sharecli/blob/main/TEST_COVERAGE_MATRIX.md)  
+**Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-13 (C09 axe CI W9.1 Closed; C09 71% C L81.1+L81.5→3; overall ~68% C)
+**Last sync:** 2026-07-17 (Wave11 #290–#324; C05 L47→2; spawn audit partial; overall ~80% B)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -40,7 +40,10 @@
 
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
-| C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `audit/.lane-c05/C05.md` | agent-c05 |
+| C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `docs/ops/trace-multihop.md` · `docs/ops/live-pd.md` | agent-c05 |
+| C05 | L47 | Soak healthz CI | Med | W11.4 · #319 | Status: Closed | `.github/workflows/soak-soft.yml` · `scripts/load/soak_healthz.sh` | agent-c05 |
+| C05 | L48 | Chaos restart probe | Low | W11.6 · #324 | Status: Closed | `scripts/load/chaos_restart.sh` · `just chaos-soft` | agent-c05 |
+| C02 | L28 | Spawn audit JSONL rows | Med | W11.5 · #323 | Status: Closed | `src/runtime.rs` · `tests/spawn_audit.rs` (partial) | agent-c02 |
 | C02 | L21 | Federated IdP (beyond Bearer) | High | W5.1 | Status: Closed | `src/serve_auth.rs` + `docs/ops/AUTH.md` + `tests/fr012_serve_jwt_auth.rs` | maintainer |
 | C02 | L23 | Audit retention + rotation | Med | W5.2 | Status: Closed | `src/audit_log.rs` + `docs/ops/AUTH.md` | maintainer |
 | C02 | L27 | AuthN/HTTP burn alerts | Med | W5.2 | Status: Closed | `docs/ops/alertmanager/sharecli.yml` + `src/http_red.rs` | maintainer |
@@ -48,7 +51,12 @@
 | C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |
 | C06 | L56 | Container cosign publish | Low | W6.3 | Status: Gap | `docs/slsa.md` cosign roadmap | agent-c06 |
-| C06 | L53–L54 | SLSA L3 / hermetic builds | Med | backlog | Status: Gap | `audit/.lane-c06/C06.md` | agent-c06 |
+| C06 | L53–L54 | SLSA L3 / hermetic builds | Med | W11.4 | Status: Closed | `docs/ops/slsa-l3-plan.md` · `netblock-soft.yml` · `hermetic-soft.yml` | agent-c06 |
+| C08 | L71 | Harbor eval stub | Med | W11.4 · #321 | Status: Closed | `harbor-eval-stub-soft.yml` · `scripts/eval/harbor_stub.sh` | agent-c08 |
+| C09 | L81.11 | Playwright baseline policy | Low | W11.3 | Status: Closed | `docs/a11y/playwright-viewports.md` | agent-c09 |
+| C09 | L81.11 | Committed PNG baselines + hard diff | Med | W12.4 · T-430 | Status: READY | `docs/visual/golden-visual-tests.md` | agent-c09 |
+| C00 | L3 | Unified HTTP error envelope | High | W12.1 · T-400 | Status: READY | `docs/ops/error-envelope.md` | agent-c00 |
+| C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 | Status: READY | `docs/ops/config-proptest.md` | agent-c07 |
 
 ## C09 accessibility (Wave6)
 
@@ -60,7 +68,7 @@
 | C09 | L81.5 | Dashboard landmarks (`nav`/`main`) | Med | W6.1 | Status: Closed | `src/dashboard.html` · `tests/a11y/` | agent-c09 |
 | C09 | L81.6/L81.7 | Status visibility + degraded-mode recovery docs | Med | W6.4 · FR-004 | Status: Closed | `docs/a11y/status-and-recovery.md` · `src/main.rs` after_long_help | agent-c09 |
 | C09 | L81.1 | axe-core CI for dashboard | Low | W9.1 · FR-004 NFR | Status: Closed | `.github/workflows/a11y.yml` · `scripts/a11y/axe-dashboard.mjs` | agent-c09 |
-| C09 | L81.11 | Responsive TUI + viewport e2e | Low | backlog | Status: Gap | `audit/.lane-c09/C09.md` | agent-c09 |
+| C09 | L81.11 | Responsive TUI + viewport e2e | Low | W10.2 | Status: Closed | `playwright-soft.yml` · `docs/a11y/playwright-viewports.md` | agent-c09 |
 
 ## Update recipe
 

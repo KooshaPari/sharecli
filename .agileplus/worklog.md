@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (governance Wave12 sync — FR-003)
+- Status: IN_PROGRESS — WBS-PHASED Wave11+12, GAP-QA Jul-17 closures, WORK_DAG T-400..T-450, PERT-DAG-W12, RC-audit-v38-80B
+- FR: FR-003
+
 ## 2026-07-17 (C05 chaos restart soft — FR-003)
 - Status: DONE — `scripts/load/chaos_restart.sh`, `just chaos-soft`, soak-chaos.md CI-skip; L47 stays 2; L48 stays 2
 - FR: FR-003
