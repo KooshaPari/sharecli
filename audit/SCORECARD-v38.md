@@ -293,3 +293,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-14 (C08 live pool soft probe)
 - Soft `live-pool-soft.yml` probes `/healthz` + `/health/processes`; C08 cluster stays 22/30 pending agent-eval ADR supersede.
+
+### 2026-07-14 (C05 multi-hop soft — L44 evidence)
+- `docs/ops/trace-multihop.md`; L44 stays 2 (CLI/IPC/tray injectors still soft).
