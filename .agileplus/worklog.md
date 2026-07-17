@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C06 netblock soft CI — FR-003)
+- Status: DONE — netblock-soft.yml runs netblock_check.sh; network-block-build.md workflow link; L54 stays 2
+- FR: FR-003
+
 ## 2026-07-17 (C08 Harbor eval stub soft — FR-003)
 - Status: DONE — `docs/ops/harbor-eval-stub.md` + `scripts/eval/harbor_stub.sh` + `harbor-eval-stub-soft.yml`; ADR 0005 Phase 2 stub; corpus preflight + stub pass; L71 stays 3
 - FR: FR-003

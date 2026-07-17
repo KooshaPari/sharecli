@@ -12,7 +12,8 @@ after a one-time dependency fetch. Complements the fetch-then-offline contract i
 | 1 — Warm cache | Allowed once | `cargo fetch --locked` |
 | 2 — Offline compile | **Blocked** | `CARGO_NET_OFFLINE=1 cargo check --locked --offline -p sharecli` |
 | 3 — Offline build | **Blocked** | `cargo build --locked --offline -p sharecli` (same as `just hermetic` step 2) |
-| 4 — CI stand-in | Proxy poison | `hermetic-soft.yml` sets `HTTP_PROXY=http://127.0.0.1:9` during offline build |
+| 4 — CI stand-in (proxy) | Proxy poison | `hermetic-soft.yml` sets `HTTP_PROXY=http://127.0.0.1:9` during offline build |
+| 5 — CI netblock probe | Fetch then offline | [`.github/workflows/netblock-soft.yml`](../../.github/workflows/netblock-soft.yml) · [`scripts/ci/netblock_check.sh`](../../scripts/ci/netblock_check.sh) |
 
 `CARGO_NET_OFFLINE=1` tells Cargo to refuse registry access even if a proxy or
 stale config would allow it. Pair with `--offline` on build/check commands.
@@ -52,6 +53,6 @@ provenance predicate; `deny.toml` allow-list before any private mirror (L55).
 - SLSA generator L3 containerized builder — see [slsa-l3-plan.md](./slsa-l3-plan.md)
 
 Soft goal: **L54 stays 2** with agent-readable network-block + vendoring path;
-today's gate remains `hermetic-soft.yml` (`continue-on-error`).
+soft CI: `netblock-soft.yml` + `hermetic-soft.yml` (`continue-on-error`).
 
 **Status:** soft plan (Phase 0) · **FR:** FR-003 traceability · **Last sync:** 2026-07-17
