@@ -319,3 +319,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C08 eval corpus soft — L72 evidence)
 - `docs/ops/eval-corpus.md`; L72 stays 2.
+
+### 2026-07-17 (C07 portability soft — L70 evidence)
+- docs/ops/portability-freebsd-wasm.md; L70 stays 1.
