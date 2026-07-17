@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C05 soak soft CI — FR-003)
+- Status: DONE — soak-soft.yml starts serve + soak_healthz (60s soft); soak-chaos.md link; L47 1→2
+- FR: FR-003
+
 ## 2026-07-17 (C11 in-binary updater soft — FR-003)
 - Status: DONE — docs/ops/in-binary-updater.md; cross-ref auto-update.md + deploy.md; TUF sketch; L111 stays 1; hard self-update deferred until L112
 - FR: FR-003
