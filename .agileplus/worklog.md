@@ -1,10 +1,8 @@
 # AgilePlus worklog — sharecli
 
-## 2026-07-17 (C06 SLSA L3 soft plan — FR-003)
-- Status: DONE — docs/ops/slsa-l3-plan.md; L53/L54 network-block roadmap; L55/L56 evidence cross-links; no hard gate
-- FR: FR-003 supply-chain / eval evidence
-- Next: vendor spike; generator_containerized_slsa3 soft trial on release
-
+## 2026-07-17 (C00 perf budgets soft — FR-003)
+- Status: DONE — docs/ops/perf-budgets.md; L6 stays 2
+- FR: FR-003
 ## 2026-07-17 (C10 high-contrast soft — FR-003)
 - Status: DONE — docs/a11y/high-contrast.md; L104 stays 3, L105 1→2
 - FR: FR-003
