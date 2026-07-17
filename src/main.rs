@@ -383,10 +383,8 @@ async fn main() -> Result<()> {
             .unwrap_or(false);
         let filter = tracing_subscriber::filter::LevelFilter::from_level(level);
         if json {
-            let fmt_layer = tracing_subscriber::fmt::layer()
-                .json()
-                .with_ansi(false)
-                .with_filter(filter);
+            let fmt_layer =
+                tracing_subscriber::fmt::layer().json().with_ansi(false).with_filter(filter);
             let registry = tracing_subscriber::registry().with(fmt_layer);
             if let Some(otel_layer) = crate::otel::try_otel_layer() {
                 registry.with(otel_layer).init();
@@ -394,9 +392,8 @@ async fn main() -> Result<()> {
                 registry.init();
             }
         } else {
-            let fmt_layer = tracing_subscriber::fmt::layer()
-                .with_ansi(!is_no_color())
-                .with_filter(filter);
+            let fmt_layer =
+                tracing_subscriber::fmt::layer().with_ansi(!is_no_color()).with_filter(filter);
             let registry = tracing_subscriber::registry().with(fmt_layer);
             if let Some(otel_layer) = crate::otel::try_otel_layer() {
                 registry.with(otel_layer).init();
