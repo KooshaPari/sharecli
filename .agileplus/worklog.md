@@ -1,7 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C11 in-binary updater soft — FR-003)
+- Status: DONE — docs/ops/in-binary-updater.md; cross-ref auto-update.md + deploy.md; TUF sketch; L111 stays 1; hard self-update deferred until L112
+- FR: FR-003
+
 ## 2026-07-17 (C09 Playwright baseline policy soft — FR-003)
 - Status: DONE — docs/a11y/playwright-viewports.md baseline commit/artifact policy; L81.11 stays 2
+
 ## 2026-07-17 (C03 brew bottle soft — FR-003)
 - Status: DONE — docs/ops/brew-bottle.md; sha placeholder policy; release.yml cross-ref; homebrew tap sketch; L109 stays 3 until tap lands
 - FR: FR-003

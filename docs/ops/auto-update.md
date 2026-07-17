@@ -17,6 +17,8 @@ Audit-v38 **C11 L111**. No in-binary self-update / Sparkle / tauri-updater yet.
 - Sparkle / WinUI auto-updater appcast
 - Signature-verified delta updates (blocked on L112 secrets)
 
+In-binary roadmap (TUF sketch, phases deferred): [`in-binary-updater.md`](in-binary-updater.md).
+
 ## Operator checklist
 
 1. Prefer release artifacts or `cargo binstall` for binaries.

@@ -356,3 +356,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C09 Playwright baseline policy soft — L81.11 evidence)
 - `docs/a11y/playwright-viewports.md` baseline commit/artifact policy; cross-ref `golden-visual-tests.md`; L81.11 stays 2 until committed baselines + hard diff.
+### 2026-07-17 (C11 in-binary updater soft — L111 evidence)
+- `docs/ops/in-binary-updater.md`; cross-ref `auto-update.md`, `deploy.md`; TUF metadata sketch; L111 stays 1 until `self-update` or signed appcast ships (L112).

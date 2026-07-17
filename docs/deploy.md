@@ -30,7 +30,7 @@ Soft runbook: [`ops/codesign-notarize.md`](ops/codesign-notarize.md) (L112). Rel
 
 ## Auto-update (soft)
 
-Operator channels: [`ops/auto-update.md`](ops/auto-update.md) (C11 L111). Prefer crates.io / binstall / brew / checksummed Releases — no in-binary `self-update` yet.
+Operator channels: [`ops/auto-update.md`](ops/auto-update.md) (C11 L111). Prefer crates.io / binstall / brew / checksummed Releases — no in-binary `self-update` yet. Roadmap: [`ops/in-binary-updater.md`](ops/in-binary-updater.md) (TUF sketch; hard path deferred until L112).
 
 ## Native installers (soft)
 
