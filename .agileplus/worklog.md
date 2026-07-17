@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C05 soak healthz script — FR-003)
+- Status: DONE — `scripts/load/soak_healthz.sh`, `just load-soak`, soak-chaos.md link; L47 stays 1
+- FR: FR-003
 ## 2026-07-17 (C02 OAuth/SAML roadmap soft — FR-004)
 - Status: DONE — docs/ops/oauth-saml-roadmap.md; L21 stays 3; residual OAuth Code / SAML SP deferred
 - FR: FR-004

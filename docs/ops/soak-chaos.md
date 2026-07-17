@@ -7,7 +7,7 @@ Audit-v38 **C05 L47** — long-run stability evidence.
 | Phase | Script / workflow | Pass criteria |
 |-------|-------------------|---------------|
 | Load burst | `load-soft.yml` + `healthz_burst.sh` | p95 < 500ms @ 50 rps |
-| Soak 30m | `scripts/load/soak_healthz.sh` (planned) | 0 non-2xx /healthz |
+| Soak 5m (soft) | [`scripts/load/soak_healthz.sh`](../../scripts/load/soak_healthz.sh) · `just load-soak` | 0 non-2xx /healthz |
 | Chaos kill | `scripts/load/chaos_restart.sh` (planned) | serve recovers < 30s |
 
 ## Metrics
@@ -15,4 +15,11 @@ Audit-v38 **C05 L47** — long-run stability evidence.
 - RED series from `otel.md` / Grafana dashboard
 - RSS soft gate: `rss-soft.yml`
 
-L47 stays **1** until soak script lands in CI (soft required check).
+Soak script is on disk; L47 stays **1** until soak lands in CI (soft required check).
+
+```bash
+# against an already-running serve:
+SHARECLI_LOAD_URL=http://127.0.0.1:7700/healthz bash scripts/load/soak_healthz.sh
+# or local serve + 5m soft soak:
+just load-soak
+```

@@ -297,6 +297,11 @@ load-soft:
     @cargo build --locked --release -p sharecli
     @bash -c 'set -euo pipefail; ./target/release/sharecli serve --bind 127.0.0.1:9000 & pid=$!; trap "kill $$pid 2>/dev/null || true" EXIT; for i in $$(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/healthz && break; sleep 1; done; SHARECLI_LOAD_URL=http://127.0.0.1:9000/healthz SHARECLI_LOAD_N=50 bash scripts/load/healthz_burst.sh'
 
+load-soak:
+    @echo ">> soft healthz soak 5m (requires curl; starts serve on :9000)"
+    @cargo build --locked --release -p sharecli
+    @bash -c 'set -euo pipefail; ./target/release/sharecli serve --bind 127.0.0.1:9000 & pid=$!; trap "kill $$pid 2>/dev/null || true" EXIT; for i in $$(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/healthz && break; sleep 1; done; SHARECLI_LOAD_URL=http://127.0.0.1:9000/healthz SHARECLI_SOAK_SEC=300 bash scripts/load/soak_healthz.sh'
+
 # -------- C00 memory soft --------
 [group: 'ops']
 rss-soft:
