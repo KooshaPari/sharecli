@@ -308,3 +308,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-17 (C02 spawn audit soft — L28 evidence)`n- ``docs/ops/spawn-audit.md``; L28 stays 2 until JSONL spawn rows ship.
 
 ### 2026-07-17 (C06 GHCR publish soft — L58 evidence)`n- ``docs/ops/ghcr-publish.md``; L58 1→2 (release push still manual/soft).
+
+### 2026-07-17 (C05 soak/chaos soft — L47 evidence)`n- ``docs/ops/soak-chaos.md``; L47 stays 1 until soak script wired.

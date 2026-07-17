@@ -4,6 +4,9 @@
 
 
 
+## 2026-07-17 (C05 soak/chaos soft — FR-003)
+- Status: DONE — soak-chaos.md plan; L47 stays 1
+- FR: FR-003
 ## 2026-07-17 (C06 GHCR publish soft — FR-003)
 - Status: DONE — ghcr-publish.md; L58 1→2
 - FR: FR-003
