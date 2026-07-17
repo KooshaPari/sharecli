@@ -2,6 +2,10 @@
 
 
 
+
+## 2026-07-14 (C07 config proptest soft — FR-003)
+- Status: DONE — config-proptest.md plan; L66 stays 2
+- FR: FR-003
 ## 2026-07-14 (C01 secrets soft — FR-004)
 - Status: DONE — docs/ops/secrets.md; L18 stays 2
 - FR: FR-004
