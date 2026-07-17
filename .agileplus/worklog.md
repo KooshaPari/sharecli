@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C08 Harbor eval stub soft — FR-003)
+- Status: DONE — `docs/ops/harbor-eval-stub.md` + `scripts/eval/harbor_stub.sh` + `harbor-eval-stub-soft.yml`; ADR 0005 Phase 2 stub; corpus preflight + stub pass; L71 stays 3
+- FR: FR-003
+
 ## 2026-07-17 (scorecard reconcile v2 — FR-003)
 - Status: DONE — SCORECARD-v38.md C05 22→23/30 (73%→77% B); Top-3 gaps trimmed; fixed corrupted `` `n `` tail bullets; overall weighted ~80% B
 - Score: C05 L47 1→2 after soak-soft.yml (#319); unweighted ~79%; weighted ~80% B

@@ -370,3 +370,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C05 22/30 (73% C) → 23/30 (77% B):** L47 1→2 (`soak-soft.yml` + `soak_healthz.sh` on main).
 - Top-3 gaps refreshed: removed completed soak script, live pool, and SR checklist doc items from C05/C08/C09 rows.
 - Overall unweighted **~79%** (949/12); weighted **~80% B** (1285/16).
+
+### 2026-07-17 (C08 Harbor eval stub soft — L71 evidence)
+- `docs/ops/harbor-eval-stub.md` + `scripts/eval/harbor_stub.sh` + `harbor-eval-stub-soft.yml`; corpus preflight + stub pass; cross-ref ADR 0005 Phase 2; L71 stays 3; L76 stays 1 until Phase 3 soak; C08 cluster stays 22/30.
