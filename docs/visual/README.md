@@ -10,6 +10,7 @@ Design-system reference for audit-v38 **C10** (L96–L107).
 | [typography.md](typography.md) | Type-role scale + rationale |
 | [motion.md](motion.md) | Motion tokens + prefers-reduced-motion |
 | [theming.md](theming.md) | Dark / light Backbone-2 pair |
+| [golden-visual-tests.md](golden-visual-tests.md) | Screenshot / visual-regression plan (L107 soft) |
 
 **Sources of truth**
 
