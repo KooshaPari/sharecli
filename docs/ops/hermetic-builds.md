@@ -20,7 +20,7 @@ egress during the offline phase.
 | Control | Status |
 |---------|--------|
 | `cargo vendor` + committed or artifact vendor dir | Not required yet |
-| Network-blocked Actions step / hermetic builder | Deferred — see [slsa-l3-plan.md](./slsa-l3-plan.md) |
+| Network-blocked Actions step / hermetic builder | Deferred — see [network-block-build.md](./network-block-build.md) · [slsa-l3-plan.md](./slsa-l3-plan.md) |
 | Bit-identical SOURCE_DATE_EPOCH (see `docs/slsa.md`) | Seeded on release |
 
 ## Commands

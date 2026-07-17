@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C06 network-block build soft — FR-003)
+- Status: DONE — docs/ops/network-block-build.md; scripts/ci/netblock_check.sh; hermetic-builds.md cross-ref; L54 stays 2
+- FR: FR-003
 ## 2026-07-17 (C07 mutants hard-gate soft — FR-003)
 - Status: DONE — docs/ops/mutants-hard-gate.md; cross-ref mutants-threshold.md; L65 stays 2
 - FR: FR-003

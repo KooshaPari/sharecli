@@ -347,3 +347,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/ops/i18n-fluent.md`; L16 stays 1 (ADR 0003 English-primary); fluent/gettext catalogs deferred.
 ### 2026-07-17 (C07 mutants hard-gate soft — L65 evidence)
 - `docs/ops/mutants-hard-gate.md`; cross-ref `mutants-threshold.md`; L65 stays 2 until `continue-on-error` removed + branch protection.
+### 2026-07-17 (C06 network-block build soft — L54 evidence)
+- `docs/ops/network-block-build.md`; `scripts/ci/netblock_check.sh`; L54 stays 2 (offline + `CARGO_NET_OFFLINE` plan; cross-ref `hermetic-builds.md`).
