@@ -4,6 +4,10 @@
 - Status: DONE — `docs/ops/harbor-phase3-soak.md`; ADR 0005 Phase 3 checklist + cross-repo pins; harbor-eval-stub cross-ref; L76 stays 1 until soak completes
 - FR: FR-003
 
+## 2026-07-17 (C10 PNG baseline scaffold soft — FR-003)
+- Status: DONE — `tests/visual/dashboard/` placeholder + `golden-visual-tests.md` Phase B scaffold; PNG stub paths gitignored until browser seed
+- FR: FR-003
+
 ## 2026-07-17 (governance Wave12 sync — FR-003)
 - Status: IN_PROGRESS — WBS-PHASED Wave11+12, GAP-QA Jul-17 closures, WORK_DAG T-400..T-450, PERT-DAG-W12, RC-audit-v38-80B
 - FR: FR-003

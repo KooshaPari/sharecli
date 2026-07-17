@@ -386,3 +386,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (governance Wave12 planning — W11.7)
 - WBS/GAP/DAG/RC/PERT artifacts synced to ~80% B reality; Wave12 T-400..T-440 READY for parallel tick.
+
+### 2026-07-17 (C10 PNG baseline scaffold soft — L107 evidence)
+- `tests/visual/dashboard/` manifest + README stub paths; `golden-visual-tests.md` Phase B scaffold; PNGs gitignored until CI seed; L107 stays 2 until B1b commit + soft diff.
