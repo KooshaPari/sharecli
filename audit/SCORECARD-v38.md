@@ -299,3 +299,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-14 (C01 secrets soft — L18 evidence)
 - ``docs/ops/secrets.md``; L18 stays 2 (OS keyring still deferred).
+
+### 2026-07-14 (C07 config proptest soft — L66 evidence)
+- `docs/ops/config-proptest.md`; L66 stays 2 until root proptest dep lands.
