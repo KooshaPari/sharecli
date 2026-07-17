@@ -1,7 +1,8 @@
 # AgilePlus worklog — sharecli
 
-
-
+## 2026-07-17 (C04 ruleset checklist — FR-004)
+- Status: DONE — docs/ops/ruleset-checklist.md; L34/L36 org-gated steps; L34 stays 2
+- FR: FR-004
 
 
 ## 2026-07-17 (C01 gitleaks polish — FR-004) DONE.
