@@ -343,3 +343,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/ops/osv-hard-fail.md`; L38 stays 2 until hard gate; cross-ref `advisory-hard-fail.md`.
 ### 2026-07-17 (C10 golden visual soft — L107 evidence)
 - `docs/visual/golden-visual-tests.md`; cross-ref `tests/golden/*`, `assets/tokens.css`, dashboard hex drift; L107 stays 2 until PNG baselines commit.
+### 2026-07-17 (C01 i18n/fluent roadmap soft — L16 evidence)
+- `docs/ops/i18n-fluent.md`; L16 stays 1 (ADR 0003 English-primary); fluent/gettext catalogs deferred.
