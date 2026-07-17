@@ -339,3 +339,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/ops/lib-sprawl-plan.md`; L0/L1 stays 2 until crate split lands; cross-ref `error-envelope.md`.
 ### 2026-07-17 (C11 Win tray hardening soft — L110/L118 evidence)
 - `docs/ops/win-tray-hardening.md` + `deploy.md` link; L110/L118 stay 3 (Win CI `continue-on-error`; L112 signing cross-ref only).
+### 2026-07-17 (C04 OSV hard-fail soft — L38 evidence)
+- `docs/ops/osv-hard-fail.md`; L38 stays 2 until hard gate; cross-ref `advisory-hard-fail.md`.
