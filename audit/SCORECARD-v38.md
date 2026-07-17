@@ -328,3 +328,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C00 perf budgets soft — L6 evidence)
 - `docs/ops/perf-budgets.md`; L6 stays 2.
+
+### 2026-07-17 (C02 OAuth/SAML roadmap soft — L21 evidence)
+- `docs/ops/oauth-saml-roadmap.md`; L21 stays 3 (JWT resource-server); residual OAuth Code / SAML SP deferred.

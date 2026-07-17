@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C02 OAuth/SAML roadmap soft — FR-004)
+- Status: DONE — docs/ops/oauth-saml-roadmap.md; L21 stays 3; residual OAuth Code / SAML SP deferred
+- FR: FR-004
+
 ## 2026-07-17 (C00 perf budgets soft — FR-003)
 - Status: DONE — docs/ops/perf-budgets.md; L6 stays 2
 - FR: FR-003
