@@ -1,6 +1,8 @@
 # Mutation testing threshold (soft → hard path)
 
 Audit-v38 **C07 L65**. Scoped to `sharecli-thermal-tui` pure helpers (`mutants.toml`).
+Hard-gate promotion phases, branch protection, and soak checklist:
+[`mutants-hard-gate.md`](mutants-hard-gate.md).
 
 ## Current gate
 
