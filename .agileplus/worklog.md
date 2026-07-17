@@ -4,6 +4,9 @@
 
 
 
+## 2026-07-17 (C01 gitleaks polish — FR-004) DONE.
+- Status: DONE — docs/ops/gitleaks.md; L18/L19 evidence; L19 stays 3
+- FR: FR-004
 ## 2026-07-17 (C05 soak/chaos soft — FR-003)
 - Status: DONE — soak-chaos.md plan; L47 stays 1
 - FR: FR-003
