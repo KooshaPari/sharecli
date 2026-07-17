@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C02 spawn audit JSONL soft — FR-004)
+- Status: DONE — `src/runtime.rs` + `audit_log::emit_if_configured`; `tests/spawn_audit.rs`; spawn-audit.md status wired; L28 stays 2
+- FR: FR-004
+
 ## 2026-07-17 (C06 netblock soft CI — FR-003)
 - Status: DONE — netblock-soft.yml runs netblock_check.sh; network-block-build.md workflow link; L54 stays 2
 - FR: FR-003
@@ -93,6 +97,10 @@
 - FR: FR-003
 ## 2026-07-17 (C02 spawn audit soft — FR-004)
 - Status: DONE — spawn-audit.md; L28 stays 2
+- FR: FR-004
+
+## 2026-07-17 (C02 spawn audit JSONL code — FR-004)
+- Status: DONE — `ProcessPool` spawn/stop rows via `SHARECLI_AUDIT_LOG`; `tests/spawn_audit.rs`
 - FR: FR-004
 
 ## 2026-07-17 (C09 SR checklist soft — FR-003)
