@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C05 chaos restart soft — FR-003)
+- Status: DONE — `scripts/load/chaos_restart.sh`, `just chaos-soft`, soak-chaos.md CI-skip; L47 stays 2; L48 stays 2
+- FR: FR-003
+
 ## 2026-07-17 (C02 spawn audit JSONL soft — FR-004)
 - Status: DONE — `src/runtime.rs` + `audit_log::emit_if_configured`; `tests/spawn_audit.rs`; spawn-audit.md status wired; L28 stays 2
 - FR: FR-004
