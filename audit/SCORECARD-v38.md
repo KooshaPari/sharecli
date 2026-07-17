@@ -381,5 +381,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-17 (C02 spawn audit JSONL soft — L28 evidence)
 - `src/runtime.rs` + `audit_log::emit_if_configured`; `tests/spawn_audit.rs`; `docs/ops/spawn-audit.md` status wired; L28 stays 2 (partial — env-gated spawn/stop rows; signed envelopes + SIEM deferred).
 
-### 2026-07-17 (C05 chaos restart soft — L47/L48 evidence)
-- `scripts/load/chaos_restart.sh` + `just chaos-soft` + `docs/ops/soak-chaos.md` CI-skip note; L47 stays 2; L48 stays 2 (recovery probe exercises `/healthz` path referenced by alert rules).
+### 2026-07-17 (governance Wave12 planning — W11.7)
+- WBS/GAP/DAG/RC/PERT artifacts synced to ~80% B reality; Wave12 T-400..T-440 READY for parallel tick.

@@ -70,6 +70,19 @@ flowchart TD
 | — | Phase roadmap in `PLAN.md` (weeks 1–8) | superseded by this DAG |
 | — | Phased org+project WBS | `docs/ops/governance/WBS-PHASED.md` |
 | — | Gap/QA matrix | `docs/ops/governance/GAP-QA-MATRIX.md` |
+| — | PERT + parallel DAG Wave12 | `docs/ops/governance/PERT-DAG-W12.md` |
+| — | RC snapshot ~80% B | `docs/ops/governance/RC-audit-v38-80B.md` |
+
+## Wave12 backlog (READY — parallel width 5)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-450 | Governance sync WBS/GAP/DAG/RC/PERT | audit | — | S | IN_PROGRESS | W11.7 merged; headers match SCORECARD |
+| T-400 | Unify serve error envelope JSON | FR-004 · C00 L3 | T-450 | M | READY | 401/4xx/5xx match `error-envelope.md`; tests pass |
+| T-410 | proptest config roundtrip dep | FR-003 · C07 L66 | T-450 | M | READY | `proptest` in root + ≥1 config test green |
+| T-420 | traceparent inject one CLI path | FR-003 · C05 L44 | T-450 | M | READY | CLI spawn injects traceparent; doc updated |
+| T-430 | Commit dashboard PNG baseline | FR-003 · C10 L107 | T-450 | M | READY | `tests/visual/` baseline + soft CI artifact |
+| T-440 | Harbor Phase 3 soak evidence | FR-003 · C08 L76 | T-450 | S | READY | ADR 0005 Phase 3 row + 7d soak log in ops doc |
 
 ## Ownership notes
 

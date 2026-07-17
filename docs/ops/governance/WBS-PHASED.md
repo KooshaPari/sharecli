@@ -1,11 +1,12 @@
 # WBS-PHASED — sharecli + org spine
 
 **Status:** ACTIVE  
-**Target overall:** ~64% (tier-1 weighted C) · **Pinned card:** `audit/SCORECARD-v38.md`  
+**Target overall:** ~80% B (tier-1 weighted) · **Pinned card:** `audit/SCORECARD-v38.md`  
 **Spine:** [phenotype-org-audits SPINE-INDEX](https://github.com/KooshaPari/phenotype-org-audits/blob/main/docs/SPINE-INDEX.md) · rubric `audit-v38`  
-**DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
+**DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
+**FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-13 (C06+C08+C09 lifts; overall ~68% C)
+**Last sync:** 2026-07-17 (Wave11 continuous audit #290–#324; overall ~80% B)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -23,18 +24,18 @@
 
 | Cluster | Focus | Pct | Grade | Phase anchor | Status |
 |---------|-------|:---:|:-----:|--------------|--------|
-| C00 | Architecture + Module | 63% | C | Wave2 + W10 | Status: DONE |
-| C01 | CI / DX / Obs | 67% | C | Wave1–2 + W10 | Status: DONE |
-| C02 | Error / API / Governance | 80% | B | Wave2 + Wave5 | Status: DONE |
-| C03 | Agent Readiness | 92% | A | Wave1 + Wave3 | Status: DONE |
-| C04 | Security | 70% | C | Wave2 + W10 | Status: DONE |
-| C05 | Observability (deep) | 70% | C | Wave2 | Status: DONE |
-| C06 | Supply Chain | 67% | C | Wave2 + repro/deny | Status: DONE |
-| C07 | DX / QEng / Portability | 77% | B | Wave1–2 + W10 | Status: DONE |
-| C08 | Eval Coverage | 60% | C | Wave1–2 | Status: DONE |
-| C09 | Accessibility + UX | 76% | B | Wave7 + W9–W10 | Status: DONE |
-| C10 | Visual Identity | 67% | C | Wave1 | Status: DONE |
-| C11 | Packaging + Distribution | 67% | C | Wave4 | Status: IN_PROGRESS |
+| C00 | Architecture + Module | 70% | C | Wave2 + W11 | Status: IN_PROGRESS |
+| C01 | CI / DX / Obs | 80% | B | Wave1–2 + W10–W11 | Status: IN_PROGRESS |
+| C02 | Error / API / Governance | 87% | B | Wave2 + W5 + W11 | Status: IN_PROGRESS |
+| C03 | Agent Readiness | 92% | A | Wave1 + Wave3 + W11 | Status: DONE |
+| C04 | Security | 80% | B | Wave2 + W10–W11 | Status: IN_PROGRESS |
+| C05 | Observability (deep) | 77% | B | Wave2 + W11 | Status: IN_PROGRESS |
+| C06 | Supply Chain | 80% | B | Wave2 + W6 + W11 | Status: IN_PROGRESS |
+| C07 | DX / QEng / Portability | 77% | B | Wave1–2 + W10–W11 | Status: IN_PROGRESS |
+| C08 | Eval Coverage | 73% | C | Wave1–2 + W11 | Status: IN_PROGRESS |
+| C09 | Accessibility + UX | 76% | B | Wave7 + W9–W11 | Status: IN_PROGRESS |
+| C10 | Visual Identity | 86% | B | Wave1 + W11 | Status: IN_PROGRESS |
+| C11 | Packaging + Distribution | 78% | B | Wave4 + W11 | Status: IN_PROGRESS |
 
 ## Phased WBS
 
@@ -116,6 +117,31 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 | W10.4 | proptest + soft mutants/fuzz + C08 corpus/CSV | L65–L67 · L71/L74 · `mutants.toml` · `docs/eval/corpus/` | Status: DONE |
 | W10.5 | OSV scanner + Dependabot groups + container hardening | L37 · L38 · L40 · `osv.yml` · `docs/ops/container-hardening.md` | Status: DONE |
 | W10.6 | MVP finality + OS parity (macOS/Windows/Linux/WSL) | L108–L110 · `docs/deploy/FINALITY.md` · `desktop-builds.yml` | Status: DONE |
+
+### Wave11 — Continuous audit ship (Jul 17)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W11.1 | JSON logging hotfix + rustfmt | #290 · C05 | Status: DONE |
+| W11.2 | SCORECARD reconcile v1/v2 | #279 · #320 · C05 L47 1→2 | Status: DONE |
+| W11.3 | Soft runbook fleet (C01–C11 docs) | #292–#318 | Status: DONE |
+| W11.4 | Soft CI fleet (soak, netblock, harbor, live-pool, playwright) | #319–#322 · #321 | Status: DONE |
+| W11.5 | Spawn audit JSONL (code) | #323 · C02 L28 partial | Status: DONE |
+| W11.6 | Chaos restart script | #324 · C05 L48 evidence | Status: DONE |
+| W11.7 | Governance sync (WBS/GAP/DAG/RC/PERT) | T-450 · this PR | Status: IN_PROGRESS |
+
+Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
+
+### Wave12 — Code lifts toward 82% B (READY)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W12.1 | C00 error envelope unify | T-400 · `docs/ops/error-envelope.md` | Status: READY |
+| W12.2 | C07 proptest config roundtrip | T-410 · `docs/ops/config-proptest.md` | Status: READY |
+| W12.3 | C05 traceparent CLI inject | T-420 · `docs/ops/trace-multihop.md` | Status: READY |
+| W12.4 | C10 PNG dashboard baseline | T-430 · `docs/visual/golden-visual-tests.md` | Status: READY |
+| W12.5 | C08 Harbor Phase 3 soak | T-440 · ADR 0005 | Status: READY |
+| W12.4b | W4.3 codesign / notarize | C11 L112 | Status: BLOCKED |
 
 ## Sync protocol
 
