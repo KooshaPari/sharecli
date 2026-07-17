@@ -325,3 +325,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C10 high-contrast soft — L104 evidence)
 - docs/a11y/high-contrast.md; L104 stays 3, L105 1→2.
+
+### 2026-07-17 (C05 live PD soft — L48 evidence)
+- `docs/ops/live-pd.md`; L48 stays 2 until live receiver secrets + on-call roster wired.
