@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (scorecard reconcile v2 — FR-003)
+- Status: DONE — SCORECARD-v38.md C05 22→23/30 (73%→77% B); Top-3 gaps trimmed; fixed corrupted `` `n `` tail bullets; overall weighted ~80% B
+- Score: C05 L47 1→2 after soak-soft.yml (#319); unweighted ~79%; weighted ~80% B
+- FR: FR-003
+
 ## 2026-07-17 (C05 soak soft CI — FR-003)
 - Status: DONE — soak-soft.yml starts serve + soak_healthz (60s soft); soak-chaos.md link; L47 1→2
 - FR: FR-003

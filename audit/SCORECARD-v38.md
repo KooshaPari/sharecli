@@ -19,11 +19,11 @@
 | C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
-| C05 | Observability (deep) | L41–L50 | 22/30 | 73% | C | multi-hop traces; live PD; soak/chaos hard gate |
+| C05 | Observability (deep) | L41–L50 | 23/30 | 77% | B | multi-hop traces; live PD; chaos restart hard gate |
 | C06 | Supply Chain | L51–L60 | 24/30 | 80% | B | SLSA L3; network-blocked hermetic; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; config proptest; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | live HTTP pool probes; supersede ADR if agent-eval lands |
-| C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright viewports; SR checklist |
+| C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | agent-eval Phase 4 harness; bench-gate hard; thermal gate corpus |
+| C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | Playwright committed baselines; manual SR pass; axe hard required |
 | C10 | Visual Identity | L96–L107 | 31/36 | 86% | B | golden visual tests; high-contrast; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 35/45 | 78% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
 
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 80% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (70+80+80+92+80+73+80+77+73+76+86+78)/12 = 945/12 = **78.8% ≈ 79%**.)
+(Unweighted mean of cluster pcts: (70+80+80+92+80+77+80+77+73+76+86+78)/12 = 949/12 = **79.1% ≈ 79%**.)
 
-**Tier-1 double-weight (C00–C03):** (70+80+87+92)×2 + (80+73+80+77+73+76+86+78) = 658 + 623 = 1281 / 16 = **80.1% ≈ 80%** (B).
+**Tier-1 double-weight (C00–C03):** (70+80+87+92)×2 + (80+77+80+77+73+76+86+78) = 658 + 627 = 1285 / 16 = **80.3% ≈ 80%** (B).
 
 ## Headline Findings
 
@@ -303,13 +303,17 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-14 (C07 config proptest soft — L66 evidence)
 - `docs/ops/config-proptest.md`; L66 stays 2 until root proptest dep lands.
 
-### 2026-07-17 (C09 SR checklist soft — L81.11 evidence)`n- ``docs/a11y/sr-checklist.md``; L81.11 stays 2 until manual SR pass logged.
+### 2026-07-17 (C09 SR checklist soft — L81.11 evidence)
+- `docs/a11y/sr-checklist.md`; L81.11 stays 2 until manual SR pass logged.
 
-### 2026-07-17 (C02 spawn audit soft — L28 evidence)`n- ``docs/ops/spawn-audit.md``; L28 stays 2 until JSONL spawn rows ship.
+### 2026-07-17 (C02 spawn audit soft — L28 evidence)
+- `docs/ops/spawn-audit.md`; L28 stays 2 until JSONL spawn rows ship.
 
-### 2026-07-17 (C06 GHCR publish soft — L58 evidence)`n- ``docs/ops/ghcr-publish.md``; L58 1→2 (release push still manual/soft).
+### 2026-07-17 (C06 GHCR publish soft — L58 evidence)
+- `docs/ops/ghcr-publish.md`; L58 1→2 (release push still manual/soft).
 
-### 2026-07-17 (C05 soak/chaos soft — L47 evidence)`n- ``docs/ops/soak-chaos.md``; L47 stays 1 until soak script wired.
+### 2026-07-17 (C05 soak/chaos soft — L47 evidence)
+- `docs/ops/soak-chaos.md`; L47 plan seeded (script + CI follow).
 
 ### 2026-07-17 (C01 gitleaks polish soft — L19 evidence)
 - `docs/ops/gitleaks.md`; L19 stays 3, gitleaks polish documented.
@@ -332,7 +336,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-17 (C02 OAuth/SAML roadmap soft — L21 evidence)
 - `docs/ops/oauth-saml-roadmap.md`; L21 stays 3 (JWT resource-server); residual OAuth Code / SAML SP deferred.
 ### 2026-07-17 (C05 soak healthz script — L47 evidence)
-- `scripts/load/soak_healthz.sh` + `just load-soak`; L47 stays 1 until CI soak gate.
+- `scripts/load/soak_healthz.sh` + `just load-soak`; L47 stays 1 until CI soak gate lands.
 ### 2026-07-17 (C01 advisory hard-fail soft — L19 evidence)
 - `docs/ops/advisory-hard-fail.md`; L19 stays 3; hard gate deferred until RustSec backlog cleared.
 ### 2026-07-17 (C00 lib-sprawl plan soft — L0/L1 evidence)
@@ -361,3 +365,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/ops/in-binary-updater.md`; cross-ref `auto-update.md`, `deploy.md`; TUF metadata sketch; L111 stays 1 until `self-update` or signed appcast ships (L112).
 ### 2026-07-17 (C05 soak soft CI — L47 evidence)
 - `.github/workflows/soak-soft.yml` + `scripts/load/soak_healthz.sh` CI wiring (60s soft soak, `continue-on-error`); L47 1→2; chaos restart still planned.
+
+### 2026-07-17 (scorecard reconcile v2 — soak CI merged #319)
+- **C05 22/30 (73% C) → 23/30 (77% B):** L47 1→2 (`soak-soft.yml` + `soak_healthz.sh` on main).
+- Top-3 gaps refreshed: removed completed soak script, live pool, and SR checklist doc items from C05/C08/C09 rows.
+- Overall unweighted **~79%** (949/12); weighted **~80% B** (1285/16).
