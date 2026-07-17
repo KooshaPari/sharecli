@@ -1,5 +1,8 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C01 i18n/fluent roadmap soft — FR-004)
+- Status: DONE — docs/ops/i18n-fluent.md; L16 stays 1; ADR 0003 cross-ref; fluent/gettext deferred
+- FR: FR-004
 ## 2026-07-17 (C10 golden visual soft — FR-003)
 - Status: DONE — docs/visual/golden-visual-tests.md; L107 stays 2
 - FR: FR-003
