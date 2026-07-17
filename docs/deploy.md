@@ -32,6 +32,10 @@ Soft runbook: [`ops/codesign-notarize.md`](ops/codesign-notarize.md) (L112). Rel
 
 Operator channels: [`ops/auto-update.md`](ops/auto-update.md) (C11 L111). Prefer crates.io / binstall / brew / checksummed Releases — no in-binary `self-update` yet.
 
+## Native installers (soft)
+
+Planned `.dmg` / `.msi` / `.deb` paths: [`ops/dmg-msi-packaging.md`](ops/dmg-msi-packaging.md) (C11 L108). Archives today; classic installers after L112 signing unblocks.
+
 ## Quick container smoke
 
 ```bash
