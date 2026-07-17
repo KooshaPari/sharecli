@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C03 brew bottle soft — FR-003)
+- Status: DONE — docs/ops/brew-bottle.md; sha placeholder policy; release.yml cross-ref; homebrew tap sketch; L109 stays 3 until tap lands
+- FR: FR-003
+
 ## 2026-07-17 (C08 agent-eval ADR supersede soft — FR-003)
 - Status: DONE — `docs/adr/0005-agent-eval-supersede.md`; L71/L80 supersede triggers + phases; ADR 0002 stays in force until Phase 4
 - FR: FR-003
