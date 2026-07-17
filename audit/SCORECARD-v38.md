@@ -353,6 +353,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `docs/ops/mutants-hard-gate.md`; cross-ref `mutants-threshold.md`; L65 stays 2 until `continue-on-error` removed + branch protection.
 ### 2026-07-17 (C06 network-block build soft — L54 evidence)
 - `docs/ops/network-block-build.md`; `scripts/ci/netblock_check.sh`; L54 stays 2 (offline + `CARGO_NET_OFFLINE` plan; cross-ref `hermetic-builds.md`).
+### 2026-07-17 (C06 netblock soft CI — L54 evidence)
+- `.github/workflows/netblock-soft.yml` + `scripts/ci/netblock_check.sh` CI wiring (`continue-on-error`); L54 stays 2; cross-ref `hermetic-soft.yml`.
 ### 2026-07-17 (C08 agent-eval ADR supersede soft — L71/L80 evidence)
 - `docs/adr/0005-agent-eval-supersede.md`; L71/L76/L80 supersede when/how documented; ADR 0002 remains authoritative until Phase 4 harness; C08 cluster stays 22/30.
 ### 2026-07-17 (C03 brew bottle soft — L30 / C11 L109 evidence)
