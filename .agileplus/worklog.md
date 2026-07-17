@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C04 OSV hard-fail soft — FR-004)
+- Status: DONE — docs/ops/osv-hard-fail.md; L38 stays 2; hard gate deferred; cross-ref advisory-hard-fail.md
+- FR: FR-004
+
 ## 2026-07-17 (C11 Win tray hardening soft — FR-003)
 - Status: DONE — docs/ops/win-tray-hardening.md; deploy.md link; L110/L118 evidence; Win CI still soft
 - FR: FR-003
