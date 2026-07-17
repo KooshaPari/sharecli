@@ -316,3 +316,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C04 ruleset checklist soft — L34 evidence)
 - `docs/ops/ruleset-checklist.md`; L34 stays 2 until ruleset applied.
+
+### 2026-07-17 (C08 eval corpus soft — L72 evidence)
+- `docs/ops/eval-corpus.md`; L72 stays 2.
