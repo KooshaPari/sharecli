@@ -207,6 +207,11 @@ impl ProcessPool {
             (cmd.to_string(), args.to_vec(), vec![])
         };
 
+        let mut extra_env = extra_env;
+        if let Some(pair) = crate::otel::traceparent_spawn_env() {
+            extra_env.push(pair);
+        }
+
         // Propagate env-var overrides into the process environment before spawn.
         // substrate's `ProcessSpawnSpec` does not yet carry env — set them on
         // the current process so they are inherited, then restore after spawn.

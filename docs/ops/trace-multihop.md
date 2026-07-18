@@ -17,7 +17,8 @@ See [`otel.md`](otel.md).
 | Hop | Status |
 |-----|--------|
 | CLI command → serve HTTP | Soft: CLI should forward `traceparent` when calling local serve (operator/env) |
-| Serve → supervised child env | Soft future: inject `TRACEPARENT` into spawn env |
+| CLI → supervised child env | Soft wired: `ProcessPool::spawn` injects `TRACEPARENT` (`src/otel.rs`, `src/runtime.rs`) |
+| Serve → supervised child env | Soft future: inject `TRACEPARENT` into serve-side spawn env |
 | Tray / desktop → serve | Soft future: pass W3C headers on dashboard fetches |
 
 ## Operator tip
