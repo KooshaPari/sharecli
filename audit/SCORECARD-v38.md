@@ -416,6 +416,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Top-3 gaps refreshed across C00/C05/C08/C10 rows; Wave14 targets visual hard diff, seven-day soak completion, codesign.
 - Overall unweighted **~81%** (974/12); weighted **~82% B** (1315/16).
 
+### 2026-07-18 (C01 coverage evidence pin — T-620)
+- **C01 24/30 (80% B), unchanged:** L11 evidence now cites the successful `1ade83e` coverage run and records its numeric percentage as unavailable rather than inferred.
+- `coverage.yml` now exports llvm-cov JSON and retains a compact SHA-keyed snapshot; the existing 85% `--fail-under-lines` PR gate is documented. First post-T-620 numeric broad-workspace pin remains pending.
+
 ### 2026-07-18 (scorecard reconcile v3 — Wave12 merges #326–#330)
 - **C00 21/30 (70% C) → 22/30 (73% C):** L3 2→3 (`ErrorEnvelope` typed serve contract + golden 401; #330).
 - **C05 23/30 (77% B) → 24/30 (80% B):** L44 2→3 (CLI `traceparent` inject on supervised spawn; #328).
