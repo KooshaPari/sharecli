@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-18 (governance Wave13 closeout — FR-003)
+- Status: IN_PROGRESS — WBS W13.1–W13.4 DONE; GAP-QA T-500..T-530 closed; WORK_DAG T-500..T-530 completed; RC @ 6466b4e ~82% B; SCORECARD reconcile v4 (#332–#335)
+- Score: C00 77% B · C05 80% B · C08 80% B · C10 89% B · weighted ~82% B
+- FR: FR-003
+
 ## 2026-07-18 (C08 Harbor Phase 3 soak execution scaffold — FR-003)
 - Status: IN_PROGRESS — `scripts/eval/harbor_soak.sh`; `audit/.lane-c08/harbor-phase3-soak-log.md`; `harbor-soak-exec-soft.yml`; `just harbor-soak`; partial evidence documented; seven-day `main` window open post-merge; L76 stays 1
 

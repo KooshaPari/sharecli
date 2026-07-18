@@ -71,24 +71,23 @@ flowchart TD
 | — | Phased org+project WBS | `docs/ops/governance/WBS-PHASED.md` |
 | — | Gap/QA matrix | `docs/ops/governance/GAP-QA-MATRIX.md` |
 | — | PERT + parallel DAG Wave12 | `docs/ops/governance/PERT-DAG-W12.md` |
-| — | RC snapshot ~81% B | `docs/ops/governance/RC-audit-v38-80B.md` |
+| — | RC snapshot ~82% B | `docs/ops/governance/RC-audit-v38-80B.md` |
 | T-450 | Governance sync WBS/GAP/DAG/RC/PERT (#325) | DONE (2026-07-17) |
 | T-400 | Unify serve error envelope JSON (#330) | DONE (2026-07-18) |
 | T-410 | proptest config roundtrip dep (#329) | DONE (2026-07-17) |
 | T-420 | traceparent inject one CLI path (#328) | DONE (2026-07-17) |
 | T-430 | Commit dashboard PNG baseline scaffold (#327) | DONE (2026-07-17) |
 | T-440 | Harbor Phase 3 soak evidence plan (#326) | DONE (2026-07-17) |
-| T-530 | Trace IPC + tray injectors | DONE (2026-07-18) |
+| T-500 | OpenAPI ErrorEnvelope component (#332) | DONE (2026-07-18) |
+| T-510 | PNG bytes commit + soft diff (#335) | DONE (2026-07-18) |
+| T-520 | Harbor Phase 3 soak execution scaffold (#333) | DONE (2026-07-18) |
+| T-530 | Trace IPC + tray injectors (#334) | DONE (2026-07-18) |
 
-## Wave13 backlog (READY)
+## Wave13 backlog (IN_PROGRESS)
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
-| T-550 | Governance sync WBS/GAP/DAG/RC | audit | Wave12 DONE | S | READY | W13 rows match SCORECARD |
-| T-500 | OpenAPI ErrorEnvelope component | FR-004 · C00 L2 | T-400 | S | READY | `serve.yaml` schema + drift CI green |
-| T-510 | PNG bytes commit + soft diff | FR-003 · C10 L107 | T-430 | M | READY | `tests/visual/dashboard/*.png` + soft CI |
-| T-520 | Harbor Phase 3 soak execution | FR-003 · C08 L76 | T-440 | M | IN_PROGRESS | scaffold landed; 7d main log open |
-| T-530 | Trace IPC + tray injectors | FR-003 · C05 L44 | T-420 | M | DONE | multihop doc status wired + tests |
+| T-550 | Governance sync WBS/GAP/DAG/RC | audit | Wave13 W13.1–W13.4 | S | IN_PROGRESS | W13 rows match SCORECARD |
 
 ## Ownership notes
 

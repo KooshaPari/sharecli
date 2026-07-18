@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-18 (Wave12 merges #326–#330; overall ~81% B weighted)
+**Last sync:** 2026-07-18 (Wave13 merges #332–#335; overall ~82% B weighted)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -24,7 +24,7 @@
 
 | Cluster | Focus | Pct | Grade | Phase anchor | Status |
 |---------|-------|:---:|:-----:|--------------|--------|
-| C00 | Architecture + Module | 73% | C | Wave2 + W11–W12 | Status: IN_PROGRESS |
+| C00 | Architecture + Module | 77% | B | Wave2 + W11–W13 | Status: IN_PROGRESS |
 | C01 | CI / DX / Obs | 80% | B | Wave1–2 + W10–W11 | Status: IN_PROGRESS |
 | C02 | Error / API / Governance | 87% | B | Wave2 + W5 + W11 | Status: IN_PROGRESS |
 | C03 | Agent Readiness | 92% | A | Wave1 + Wave3 + W11 | Status: DONE |
@@ -32,7 +32,7 @@
 | C05 | Observability (deep) | 80% | B | Wave2 + W11–W12 | Status: IN_PROGRESS |
 | C06 | Supply Chain | 80% | B | Wave2 + W6 + W11 | Status: IN_PROGRESS |
 | C07 | DX / QEng / Portability | 77% | B | Wave1–2 + W10–W11 | Status: IN_PROGRESS |
-| C08 | Eval Coverage | 77% | B | Wave1–2 + W11–W12 | Status: IN_PROGRESS |
+| C08 | Eval Coverage | 80% | B | Wave1–2 + W11–W13 | Status: IN_PROGRESS |
 | C09 | Accessibility + UX | 76% | B | Wave7 + W9–W11 | Status: IN_PROGRESS |
 | C10 | Visual Identity | 89% | B | Wave1 + W11–W12 | Status: IN_PROGRESS |
 | C11 | Packaging + Distribution | 78% | B | Wave4 + W11 | Status: IN_PROGRESS |
@@ -143,15 +143,15 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W12.5 | C08 Harbor Phase 3 soak | T-440 · ADR 0005 · #326 | Status: DONE |
 | W12.4b | W4.3 codesign / notarize | C11 L112 | Status: BLOCKED |
 
-### Wave13 — Hard gates toward 82% B (READY)
+### Wave13 — Hard gates toward 82% B (IN_PROGRESS)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
-| W13.1 | OpenAPI `ErrorEnvelope` component | C00 L2 · `docs/openapi/serve.yaml` | Status: READY |
-| W13.2 | PNG baseline commit + soft diff | C10 L107 · `tests/visual/dashboard/` | Status: READY |
-| W13.3 | Harbor Phase 3 soak execution (7d) | C08 L76 · `docs/ops/harbor-phase3-soak.md` | Status: READY |
-| W13.4 | Trace IPC + tray injectors | C05 L44 · `docs/ops/trace-multihop.md` · T-530 | Status: DONE |
-| W13.5 | Governance sync (WBS/GAP/DAG/RC) | T-550 | Status: READY |
+| W13.1 | OpenAPI `ErrorEnvelope` component | C00 L2 · `docs/openapi/serve.yaml` · #332 | Status: DONE |
+| W13.2 | PNG baseline commit + soft diff | C10 L107 · `tests/visual/dashboard/` · #335 | Status: DONE |
+| W13.3 | Harbor Phase 3 soak execution (7d) | C08 L76 · `docs/ops/harbor-phase3-soak.md` · #333 | Status: DONE |
+| W13.4 | Trace IPC + tray injectors | C05 L44 · `docs/ops/trace-multihop.md` · T-530 · #334 | Status: DONE |
+| W13.5 | Governance sync (WBS/GAP/DAG/RC) | T-550 | Status: IN_PROGRESS |
 
 ## Sync protocol
 
