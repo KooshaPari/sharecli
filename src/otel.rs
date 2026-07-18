@@ -71,18 +71,24 @@ impl Injector for CarrierInjector<'_> {
     }
 }
 
+/// Case-sensitive env lookup (Windows `var_os` is case-insensitive).
+fn env_var_exact(key: &str) -> Option<std::ffi::OsString> {
+    std::env::vars_os().find(|(k, _)| k == key).map(|(_, v)| v)
+}
+
 /// Soft multi-hop (C05 L44): `TRACEPARENT` for CLI supervised spawns.
 ///
 /// Returns `None` when the parent already exports `TRACEPARENT` (child inherits).
 /// Otherwise maps lowercase `traceparent` from the operator env, or injects the
 /// active OTel trace context when present.
 pub fn traceparent_spawn_env() -> Option<(String, String)> {
-    if std::env::var_os("TRACEPARENT").is_some() {
+    if env_var_exact("TRACEPARENT").is_some() {
         return None;
     }
-    if let Ok(v) = std::env::var("traceparent") {
-        if !v.is_empty() {
-            return Some(("TRACEPARENT".to_string(), v));
+    if let Some(v) = env_var_exact("traceparent") {
+        let s = v.to_string_lossy();
+        if !s.is_empty() {
+            return Some(("TRACEPARENT".to_string(), s.into_owned()));
         }
     }
     ensure_trace_context_propagator();
@@ -94,6 +100,17 @@ pub fn traceparent_spawn_env() -> Option<(String, String)> {
         .get("traceparent")
         .filter(|v| !v.is_empty())
         .map(|v| ("TRACEPARENT".to_string(), v.clone()))
+}
+
+/// Apply [`traceparent_spawn_env`] to a [`std::process::Command`] before spawn.
+///
+/// Used by tray FFI (`sharecli-ffi`) and other IPC sidecar launch paths so
+/// `sharecli-ipc` inherits W3C trace context from the desktop parent.
+#[allow(dead_code)] // consumed by `sharecli-ffi` cdylib, not the `sharecli` bin
+pub fn apply_traceparent_spawn_env(cmd: &mut std::process::Command) {
+    if let Some((key, value)) = traceparent_spawn_env() {
+        cmd.env(key, value);
+    }
 }
 
 fn build_provider() -> Result<SdkTracerProvider, Box<dyn std::error::Error + Send + Sync>> {
@@ -112,6 +129,9 @@ pub fn shutdown() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn otel_disabled_without_endpoint_env() {
@@ -128,7 +148,50 @@ mod tests {
     }
 
     #[test]
+    fn apply_traceparent_spawn_env_sets_child_env() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let key = "traceparent";
+        let prev = std::env::var(key).ok();
+        let prev_upper = std::env::var("TRACEPARENT").ok();
+        std::env::remove_var("TRACEPARENT");
+        std::env::set_var(key, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+
+        let (bin, args) = traceparent_child_cmd();
+        let mut cmd = std::process::Command::new(bin);
+        cmd.args(args);
+        apply_traceparent_spawn_env(&mut cmd);
+        let output = cmd.output().expect("spawn traceparent echo child");
+        let got = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        if let Some(prev) = prev {
+            std::env::set_var(key, prev);
+        } else {
+            std::env::remove_var(key);
+        }
+        if let Some(prev) = prev_upper {
+            std::env::set_var("TRACEPARENT", prev);
+        }
+
+        assert_eq!(got, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+    }
+
+    fn traceparent_child_cmd() -> (&'static str, Vec<&'static str>) {
+        #[cfg(unix)]
+        {
+            ("printenv", vec!["TRACEPARENT"])
+        }
+        #[cfg(windows)]
+        {
+            (
+                "powershell",
+                vec!["-NoProfile", "-NonInteractive", "-Command", "Write-Output $env:TRACEPARENT"],
+            )
+        }
+    }
+
+    #[test]
     fn traceparent_spawn_env_maps_lowercase_env() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let key = "traceparent";
         let prev = std::env::var(key).ok();
         let prev_upper = std::env::var("TRACEPARENT").ok();

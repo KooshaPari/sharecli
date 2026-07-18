@@ -40,13 +40,20 @@ pub extern "C" fn sharecli_ipc_start() -> c_int {
     let exe = find_sidecar("sharecli-ipc");
     match exe {
         Some(path) => {
-            let _ = std::process::Command::new(path).spawn();
+            let _ = spawn_ipc_sidecar(&path);
             // Give it a moment to bind the socket.
             std::thread::sleep(std::time::Duration::from_millis(200));
             0
         }
         None => 1,
     }
+}
+
+/// Launch `sharecli-ipc`, injecting W3C `TRACEPARENT` for multi-hop traces.
+fn spawn_ipc_sidecar(path: &str) -> std::io::Result<std::process::Child> {
+    let mut cmd = std::process::Command::new(path);
+    sharecli::otel::apply_traceparent_spawn_env(&mut cmd);
+    cmd.spawn()
 }
 
 /// Returns the IPC socket path as a null-terminated C string.

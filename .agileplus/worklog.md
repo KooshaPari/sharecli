@@ -2,6 +2,9 @@
 
 ## 2026-07-18 (C08 Harbor Phase 3 soak execution scaffold — FR-003)
 - Status: IN_PROGRESS — `scripts/eval/harbor_soak.sh`; `audit/.lane-c08/harbor-phase3-soak-log.md`; `harbor-soak-exec-soft.yml`; `just harbor-soak`; partial evidence documented; seven-day `main` window open post-merge; L76 stays 1
+
+## 2026-07-18 (C05 trace IPC + tray injectors — FR-003)
+- Status: DONE — `apply_traceparent_spawn_env` in `src/otel.rs`; tray FFI sidecar spawn in `crates/sharecli-ffi`; `tests/c05_trace_ipc_tray_inject.rs`; `docs/ops/trace-multihop.md` IPC/tray rows wired; T-530 / W13.4
 - FR: FR-003
 
 ## 2026-07-18 (governance Wave12 closeout — FR-003)

@@ -150,7 +150,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W13.1 | OpenAPI `ErrorEnvelope` component | C00 L2 · `docs/openapi/serve.yaml` | Status: READY |
 | W13.2 | PNG baseline commit + soft diff | C10 L107 · `tests/visual/dashboard/` | Status: READY |
 | W13.3 | Harbor Phase 3 soak execution (7d) | C08 L76 · `docs/ops/harbor-phase3-soak.md` | Status: READY |
-| W13.4 | Trace IPC + tray injectors | C05 L44 · `docs/ops/trace-multihop.md` | Status: READY |
+| W13.4 | Trace IPC + tray injectors | C05 L44 · `docs/ops/trace-multihop.md` · T-530 | Status: DONE |
 | W13.5 | Governance sync (WBS/GAP/DAG/RC) | T-550 | Status: READY |
 
 ## Sync protocol

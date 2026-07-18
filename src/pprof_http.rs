@@ -10,7 +10,9 @@ use axum::extract::Query;
 #[cfg(unix)]
 use axum::http::header;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+#[cfg(unix)]
+use axum::response::IntoResponse;
+use axum::response::Response;
 use serde::Deserialize;
 
 use crate::error_envelope::ErrorEnvelope;
