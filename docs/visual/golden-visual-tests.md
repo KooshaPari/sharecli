@@ -97,7 +97,7 @@ SHARECLI_DASH_URL=http://127.0.0.1:9000/ node scripts/a11y/playwright_viewports.
 | Step | Status | Action |
 |------|--------|--------|
 | B1 | **Done** | `tests/visual/dashboard/` — `manifest.json` + README stub paths (#327) |
-| B1b | **Done** | Committed `{mobile,tablet,desktop}.png` with manifest `bytes` lock (seed @ `29c31c6`) |
+| B1b | **Done** | Committed `{mobile,tablet,desktop}.png` with manifest `bytes` lock; Ubuntu hard-gate reseed @ `91448b2` |
 | B2 | **Done** | `scripts/visual/compare_screenshots.mjs` — pixelmatch diff vs manifest thresholds |
 | B3 | **Done** | `visual-soft.yml` — blocking T-600 gate with deterministic Ubuntu capture |
 | B4 | **Done** | `UPDATE_VISUALS=1` regen path in compare script + dashboard README |

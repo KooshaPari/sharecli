@@ -73,14 +73,9 @@ for (const b of manifest.baselines) {
     continue;
   }
 
-  const diffPixels = pixelmatch(
-    expected.data,
-    actual.data,
-    null,
-    expected.width,
-    expected.height,
-    { threshold: 0.1 },
-  );
+  const diffPixels = pixelmatch(expected.data, actual.data, null, expected.width, expected.height, {
+    threshold: 0.1,
+  });
   const pct = (diffPixels / (expected.width * expected.height)) * 100;
   const max = b.max_pixel_delta_pct ?? 0.2;
   if (pct > max) {

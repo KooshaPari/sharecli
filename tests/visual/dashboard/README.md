@@ -7,9 +7,9 @@ Aligned with C09 `playwright-viewports.md` and C10 `golden-visual-tests.md`.
 
 | Baseline | Viewport | Committed path | Bytes | Phase-A artifact |
 |----------|----------|----------------|------:|------------------|
-| mobile | 375×812 | `mobile.png` | 11272 | `artifacts/playwright/mobile-375.png` |
-| tablet | 768×1024 | `tablet.png` | 14145 | `artifacts/playwright/tablet-768.png` |
-| desktop | 1280×800 | `desktop.png` | 13905 | `artifacts/playwright/desktop-1280.png` |
+| mobile | 375×812 | `mobile.png` | 11043 | `artifacts/playwright/mobile-375.png` |
+| tablet | 768×1024 | `tablet.png` | 14120 | `artifacts/playwright/tablet-768.png` |
+| desktop | 1280×800 | `desktop.png` | 14227 | `artifacts/playwright/desktop-1280.png` |
 
 `manifest.json` lists the same contract (including `bytes` lock) for tooling.
 

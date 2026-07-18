@@ -62,7 +62,10 @@ try {
       });
     }
     const page = await context.newPage();
-    await page.goto(url, { waitUntil: deterministic ? "domcontentloaded" : "networkidle", timeout: 30000 });
+    await page.goto(url, {
+      waitUntil: deterministic ? "domcontentloaded" : "networkidle",
+      timeout: 30000,
+    });
     if (deterministic) {
       await page.waitForFunction(
         () => document.querySelector("#status-label")?.textContent === "connected",
