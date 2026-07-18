@@ -78,6 +78,7 @@ flowchart TD
 | T-420 | traceparent inject one CLI path (#328) | DONE (2026-07-17) |
 | T-430 | Commit dashboard PNG baseline scaffold (#327) | DONE (2026-07-17) |
 | T-440 | Harbor Phase 3 soak evidence plan (#326) | DONE (2026-07-17) |
+| T-530 | Trace IPC + tray injectors | DONE (2026-07-18) |
 
 ## Wave13 backlog (READY)
 
@@ -87,7 +88,7 @@ flowchart TD
 | T-500 | OpenAPI ErrorEnvelope component | FR-004 · C00 L2 | T-400 | S | READY | `serve.yaml` schema + drift CI green |
 | T-510 | PNG bytes commit + soft diff | FR-003 · C10 L107 | T-430 | M | READY | `tests/visual/dashboard/*.png` + soft CI |
 | T-520 | Harbor Phase 3 soak execution | FR-003 · C08 L76 | T-440 | M | IN_PROGRESS | scaffold landed; 7d main log open |
-| T-530 | Trace IPC + tray injectors | FR-003 · C05 L44 | T-420 | M | READY | multihop doc status wired + tests |
+| T-530 | Trace IPC + tray injectors | FR-003 · C05 L44 | T-420 | M | DONE | multihop doc status wired + tests |
 
 ## Ownership notes
 
