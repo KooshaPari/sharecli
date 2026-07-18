@@ -9,7 +9,7 @@ Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for
 | CLI / TUI text goldens | **Shipped** | `tests/golden/*.txt` + `tests/golden_snapshots.rs` | `cargo test --test golden_snapshots` |
 | Splash string regression | **Shipped** | `tests/integration_cli.rs` | default test suite |
 | Rust ↔ CSS hex lock | **Shipped** | `src/theme.rs` (`backbone2_constants_match_tokens_css`) | unit tests |
-| Dashboard PNG snapshots | **Soft** | `tests/visual/dashboard/` (stub manifest; PNGs gitignored until seed) + `artifacts/playwright/` capture | `playwright-soft.yml` (artifact-only) |
+| Dashboard PNG snapshots | **Soft** | `tests/visual/dashboard/` (committed baselines + manifest bytes) + `artifacts/playwright/` capture | `playwright-soft.yml` + `visual-soft.yml` (soft diff) |
 | Dashboard hex → token alignment | **Soft** | `src/dashboard.html` → `assets/tokens.css` | manual + future computed-style assert |
 
 Eval-corpus JSON goldens (`docs/ops/eval-corpus.md`) are **not** screenshot tests — keep them separate from C10 visual gates.
@@ -96,13 +96,13 @@ SHARECLI_DASH_URL=http://127.0.0.1:9000/ node scripts/a11y/playwright_viewports.
 
 | Step | Status | Action |
 |------|--------|--------|
-| B1 | **Scaffold** | `tests/visual/dashboard/` — `manifest.json` + README stub paths; `*.png` gitignored until CI seed (no browser required for merge) |
-| B1b | Planned | Copy green `playwright-soft` artifacts → `{mobile,tablet,desktop}.png` (`git add -f`) after visual freeze |
-| B2 | Planned | Add `scripts/visual/compare_screenshots.mjs` (pixel diff, maxDiffPixels threshold) or Playwright `toHaveScreenshot()` |
-| B3 | Planned | Wire `visual-soft.yml` — soft required check; promote to hard after two green release cycles |
-| B4 | Planned | Document `UPDATE_VISUALS=1` regen path (mirror `UPDATE_GOLDENS=1`) |
+| B1 | **Done** | `tests/visual/dashboard/` — `manifest.json` + README stub paths (#327) |
+| B1b | **Done** | Committed `{mobile,tablet,desktop}.png` with manifest `bytes` lock (seed @ `29c31c6`) |
+| B2 | **Scaffold** | `scripts/visual/compare_screenshots.mjs` — pixelmatch soft diff vs manifest thresholds |
+| B3 | **Scaffold** | `visual-soft.yml` — `continue-on-error`; promote to hard after two green release cycles |
+| B4 | **Done** | `UPDATE_VISUALS=1` regen path in compare script + dashboard README |
 
-Stub contract (committed today):
+Baseline contract (committed):
 
 | Viewport | Baseline path | Artifact source |
 |----------|---------------|-----------------|
@@ -131,11 +131,11 @@ Tray / Win32 surfaces stay out of scope until L112 signing hardens (C11).
 |------|------------|---------------|
 | Text goldens | 5/5 fixtures green in CI | unchanged |
 | Hex lock | dark pair unit test | + light pair lock |
-| Dashboard PNG | artifacts uploaded, no diff | pixel diff ≤ 0.1% @ 1280; ≤ 0.2% @ 375 |
+| Dashboard PNG | soft pixel diff + manifest byte lock | pixel diff ≤ 0.1% @ 1280; ≤ 0.2% @ 375 (hard) |
 | Hex drift | documented in high-contrast.md | zero unmatched hex in `dashboard.html` |
 | axe Level A | `a11y.yml` | unchanged |
 
-L107 stays **2** until Phase B1b PNGs commit + B2 soft diff land; cluster top gap “golden visual tests” closes when PNG diff blocks merge.
+L107 stays **2** until soft diff soaks two release cycles and promotes to hard; cluster top gap “golden visual tests” closes when PNG diff blocks merge.
 
 ## Related docs
 

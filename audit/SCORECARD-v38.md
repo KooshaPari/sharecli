@@ -401,6 +401,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Top gap narrowed: typed envelope landed; OpenAPI `ErrorEnvelope` component remains.
 - FR-004 serve API contract.
 
+### 2026-07-18 (C10 PNG baseline bytes + soft diff — L107 evidence)
+- `tests/visual/dashboard/{mobile,tablet,desktop}.png` committed with manifest `bytes` lock (B1b); `scripts/visual/compare_screenshots.mjs` + `visual-soft.yml` soft scaffold (B2/B3); L107 stays 2 until hard promote.
+
 ### 2026-07-18 (scorecard reconcile v3 — Wave12 merges #326–#330)
 - **C00 21/30 (70% C) → 22/30 (73% C):** L3 2→3 (`ErrorEnvelope` typed serve contract + golden 401; #330).
 - **C05 23/30 (77% B) → 24/30 (80% B):** L44 2→3 (CLI `traceparent` inject on supervised spawn; #328).

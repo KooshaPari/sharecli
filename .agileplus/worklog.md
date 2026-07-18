@@ -5,6 +5,9 @@
 
 ## 2026-07-18 (C05 trace IPC + tray injectors — FR-003)
 - Status: DONE — `apply_traceparent_spawn_env` in `src/otel.rs`; tray FFI sidecar spawn in `crates/sharecli-ffi`; `tests/c05_trace_ipc_tray_inject.rs`; `docs/ops/trace-multihop.md` IPC/tray rows wired; T-530 / W13.4
+
+## 2026-07-18 (C10 PNG baseline bytes + soft diff — FR-003)
+- Status: DONE — committed `tests/visual/dashboard/*.png` with manifest `bytes`; `compare_screenshots.mjs` + `visual-soft.yml` scaffold; golden-visual-tests Phase B1b/B2/B3
 - FR: FR-003
 
 ## 2026-07-18 (governance Wave12 closeout — FR-003)
