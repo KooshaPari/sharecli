@@ -1,0 +1,30 @@
+{
+  "schema": "sharecli-visual-baseline/v1",
+  "surface": "src/dashboard.html",
+  "fixture": "empty-pool (fresh sharecli serve)",
+  "platform": "ubuntu-24.04 + Playwright Chromium",
+  "baselines": [
+    {
+      "name": "mobile",
+      "file": "mobile.png",
+      "viewport": { "width": 375, "height": 812 },
+      "artifact_source": "artifacts/playwright/mobile-375.png",
+      "max_pixel_delta_pct": 0.2
+    },
+    {
+      "name": "tablet",
+      "file": "tablet.png",
+      "viewport": { "width": 768, "height": 1024 },
+      "artifact_source": "artifacts/playwright/tablet-768.png",
+      "max_pixel_delta_pct": 0.1
+    },
+    {
+      "name": "desktop",
+      "file": "desktop.png",
+      "viewport": { "width": 1280, "height": 800 },
+      "artifact_source": "artifacts/playwright/desktop-1280.png",
+      "max_pixel_delta_pct": 0.1
+    }
+  ],
+  "notes": "PNG files are gitignored until seeded from CI. This manifest is the committed stub path contract."
+}

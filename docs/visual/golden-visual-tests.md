@@ -9,7 +9,7 @@ Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for
 | CLI / TUI text goldens | **Shipped** | `tests/golden/*.txt` + `tests/golden_snapshots.rs` | `cargo test --test golden_snapshots` |
 | Splash string regression | **Shipped** | `tests/integration_cli.rs` | default test suite |
 | Rust ↔ CSS hex lock | **Shipped** | `src/theme.rs` (`backbone2_constants_match_tokens_css`) | unit tests |
-| Dashboard PNG snapshots | **Soft** | planned `tests/visual/` or `artifacts/playwright/` baselines | `playwright-soft.yml` (artifact-only) |
+| Dashboard PNG snapshots | **Soft** | `tests/visual/dashboard/` (stub manifest; PNGs gitignored until seed) + `artifacts/playwright/` capture | `playwright-soft.yml` (artifact-only) |
 | Dashboard hex → token alignment | **Soft** | `src/dashboard.html` → `assets/tokens.css` | manual + future computed-style assert |
 
 Eval-corpus JSON goldens (`docs/ops/eval-corpus.md`) are **not** screenshot tests — keep them separate from C10 visual gates.
@@ -92,14 +92,26 @@ npx --yes playwright@1.49.0 install chromium
 SHARECLI_DASH_URL=http://127.0.0.1:9000/ node scripts/a11y/playwright_viewports.mjs
 ```
 
-### Phase B — committed baselines (planned)
+### Phase B — committed baselines (scaffold → seed)
 
-| Step | Action |
-|------|--------|
-| B1 | Seed `tests/visual/dashboard/{mobile,tablet,desktop}.png` from stable fixture data (empty + populated rows) |
-| B2 | Add `scripts/visual/compare_screenshots.mjs` (pixel diff, maxDiffPixels threshold) or Playwright `toHaveScreenshot()` |
-| B3 | Wire `visual-soft.yml` — soft required check; promote to hard after two green release cycles |
-| B4 | Document `UPDATE_VISUALS=1` regen path (mirror `UPDATE_GOLDENS=1`) |
+| Step | Status | Action |
+|------|--------|--------|
+| B1 | **Scaffold** | `tests/visual/dashboard/` — `manifest.json` + README stub paths; `*.png` gitignored until CI seed (no browser required for merge) |
+| B1b | Planned | Copy green `playwright-soft` artifacts → `{mobile,tablet,desktop}.png` (`git add -f`) after visual freeze |
+| B2 | Planned | Add `scripts/visual/compare_screenshots.mjs` (pixel diff, maxDiffPixels threshold) or Playwright `toHaveScreenshot()` |
+| B3 | Planned | Wire `visual-soft.yml` — soft required check; promote to hard after two green release cycles |
+| B4 | Planned | Document `UPDATE_VISUALS=1` regen path (mirror `UPDATE_GOLDENS=1`) |
+
+Stub contract (committed today):
+
+| Viewport | Baseline path | Artifact source |
+|----------|---------------|-----------------|
+| 375×812 | `tests/visual/dashboard/mobile.png` | `artifacts/playwright/mobile-375.png` |
+| 768×1024 | `tests/visual/dashboard/tablet.png` | `artifacts/playwright/tablet-768.png` |
+| 1280×800 | `tests/visual/dashboard/desktop.png` | `artifacts/playwright/desktop-1280.png` |
+
+See `tests/visual/dashboard/README.md` + `manifest.json`. Keep names aligned with
+`docs/a11y/playwright-viewports.md` committed-baseline policy.
 
 ### Phase C — theme matrix (planned)
 
@@ -123,7 +135,7 @@ Tray / Win32 surfaces stay out of scope until L112 signing hardens (C11).
 | Hex drift | documented in high-contrast.md | zero unmatched hex in `dashboard.html` |
 | axe Level A | `a11y.yml` | unchanged |
 
-L107 stays **2** until Phase B baselines land in-repo; cluster top gap “golden visual tests” closes when PNG diff blocks merge.
+L107 stays **2** until Phase B1b PNGs commit + B2 soft diff land; cluster top gap “golden visual tests” closes when PNG diff blocks merge.
 
 ## Related docs
 

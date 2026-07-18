@@ -1,0 +1,2 @@
+# Local / CI captures — commit only after seeding from green playwright-soft artifact.
+*.png
