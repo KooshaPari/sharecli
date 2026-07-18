@@ -374,6 +374,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Top-3 gaps refreshed: removed completed soak script, live pool, and SR checklist doc items from C05/C08/C09 rows.
 - Overall unweighted **~79%** (949/12); weighted **~80% B** (1285/16).
 
+### 2026-07-18 (C08 Harbor Phase 3 soak execution scaffold — L76 evidence)
+- `scripts/eval/harbor_soak.sh` + `audit/.lane-c08/harbor-phase3-soak-log.md` + `harbor-soak-exec-soft.yml` + `just harbor-soak`; partial evidence documented; seven-day `main` window open post-merge; L76 stays 1; C08 cluster stays 22/30.
+
 ### 2026-07-17 (C08 Harbor Phase 3 soak plan — L76 evidence)
 - `docs/ops/harbor-phase3-soak.md`; ADR 0005 Phase 3 checklist + portage/pheno-harness pin table; cross-ref `harbor-eval-stub.md`; L76 stays 1 until seven-day soak completes; C08 cluster stays 22/30.
 

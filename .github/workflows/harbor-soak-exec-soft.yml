@@ -1,4 +1,7 @@
-name: Harbor eval stub (soft)
+name: Harbor soak exec (soft)
+
+# C08 L76 — Phase 3 soak execution scaffold (continue-on-error).
+# Complements harbor-eval-stub-soft.yml; records local parity in CI logs.
 
 on:
   pull_request:
@@ -12,16 +15,19 @@ on:
       - 'docs/ops/harbor-phase3-soak.md'
       - '.github/workflows/harbor-eval-stub-soft.yml'
       - '.github/workflows/harbor-soak-exec-soft.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  harbor-stub:
-    name: Harbor eval stub (corpus preflight)
+  harbor-soak-exec:
+    name: Harbor soak exec (local parity)
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Run Harbor eval stub
-        run: bash scripts/eval/harbor_stub.sh
+      - name: Run Harbor soak execution scaffold
+        env:
+          SHARECLI_HARBOR_SOAK_SOURCE: github-actions
+        run: bash scripts/eval/harbor_soak.sh

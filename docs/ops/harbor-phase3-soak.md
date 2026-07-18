@@ -47,26 +47,55 @@ job `Harbor eval stub (corpus preflight)` completes with stub pass (log contains
 
 ## Phase 3 soak checklist
 
-Track in PR comments or `audit/.lane-c08/` until Phase 4 maintainer sign-off:
+Track in PR comments or [`audit/.lane-c08/harbor-phase3-soak-log.md`](../../audit/.lane-c08/harbor-phase3-soak-log.md)
+until Phase 4 maintainer sign-off:
 
 - [ ] Seven consecutive `main` workflow runs green for `harbor-eval-stub-soft.yml` (no stub regressions).
 - [ ] No merged PRs broke `scripts/eval/run-corpus.sh` preflight on `main` during the window.
-- [ ] `just harbor-stub` reproduces CI locally on `main` HEAD.
+- [x] `just harbor-soak` / `harbor_soak.sh` reproduces CI locally on branch HEAD (execution scaffold).
 - [ ] Cross-repo pins table above filled with recorded portage / pheno-harness refs.
 - [ ] Maintainer acknowledges Phase 3 complete — **does not** mark ADR 0002 superseded (Phase 4).
+
+## Execution scaffold (T-520)
+
+| Artifact | Path | Role |
+|----------|------|------|
+| Local parity runner | `scripts/eval/harbor_soak.sh` | Runs stub + corpus preflight; optional log append |
+| Checklist log template | `audit/.lane-c08/harbor-phase3-soak-log.md` | Seven `main` run rows + pin table |
+| CI soft job | `.github/workflows/harbor-soak-exec-soft.yml` | PR/push parity (`continue-on-error`) |
+| Just recipe | `just harbor-soak` | Maintainer local replay |
+
+```bash
+just harbor-soak
+# optional: append a local parity row to the checklist log
+SHARECLI_HARBOR_SOAK_LOG=audit/.lane-c08/harbor-phase3-soak-log.md \
+  SHARECLI_HARBOR_SOAK_SOURCE=local \
+  bash scripts/eval/harbor_soak.sh
+```
+
+**Partial evidence (this PR):** execution scaffold on disk; seven-day `main` soak window
+remains open post-merge. L76 stays **1** until checklist row 7 is green on `main`.
 
 ## Local parity
 
 ```bash
 just harbor-stub
+just harbor-soak
 # or: bash scripts/eval/harbor_stub.sh
+# or: bash scripts/eval/harbor_soak.sh
 ```
 
-Expected tail (unchanged from Phase 2):
+Expected tail (unchanged from Phase 2 stub step):
 
 ```
 STUB PASS: corpus valid; Harbor task runner not wired (Phase 2 soft)
 Harbor/portage env provisioning deferred — see ADR 0005 Phase 3 soak
+```
+
+Soak scaffold tail:
+
+```
+SOAK SCAFFOLD PASS: local stub + corpus preflight green (Phase 3 partial)
 ```
 
 ## Phase map (ADR 0005)
@@ -76,7 +105,7 @@ Harbor/portage env provisioning deferred — see ADR 0005 Phase 3 soak
 | 0 | Supervisor corpus + ADR 0002 | Done |
 | 1 | ADR 0005 supersede plan | Done |
 | 2 | [`harbor-eval-stub.md`](./harbor-eval-stub.md) + `harbor_stub.sh` | Done (soft) |
-| **3** | **This doc + seven-day soft soak on `main`** | **In progress (plan landed)** |
+| **3** | **This doc + seven-day soft soak on `main`** | **In progress (scaffold landed)** |
 | 4 | Mark ADR 0002 superseded; GOVERNANCE + lane re-score | Deferred |
 
 ## Audit evidence (C08 L76)
@@ -90,8 +119,9 @@ Harbor/portage env provisioning deferred — see ADR 0005 Phase 3 soak
 | Item | Status |
 |------|--------|
 | Harbor Phase 3 soak evidence plan | Done (this file) |
+| Harbor Phase 3 soak execution scaffold | Done (`harbor_soak.sh` + checklist log + soft CI) |
 | Seven-day green soak on `main` | Open (clock starts post-merge) |
 | Record portage / pheno-harness pins in soak PR | Open |
 | Mark ADR 0002 superseded | Deferred (Phase 4) |
 
-**Status:** soft plan (Phase 3) · **FR:** FR-003 traceability · **Last sync:** 2026-07-17
+**Status:** soft execution scaffold (Phase 3) · **FR:** FR-003 traceability · **Last sync:** 2026-07-18
