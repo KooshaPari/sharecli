@@ -106,6 +106,7 @@ pub fn traceparent_spawn_env() -> Option<(String, String)> {
 ///
 /// Used by tray FFI (`sharecli-ffi`) and other IPC sidecar launch paths so
 /// `sharecli-ipc` inherits W3C trace context from the desktop parent.
+#[allow(dead_code)] // consumed by `sharecli-ffi` cdylib, not the `sharecli` bin
 pub fn apply_traceparent_spawn_env(cmd: &mut std::process::Command) {
     if let Some((key, value)) = traceparent_spawn_env() {
         cmd.env(key, value);
