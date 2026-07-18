@@ -61,6 +61,7 @@
 | C08 | L71 | Harbor eval stub | Med | W11.4 · #321 | Status: Closed | `harbor-eval-stub-soft.yml` · `scripts/eval/harbor_stub.sh` | agent-c08 |
 | C09 | L81.11 | Playwright baseline policy | Low | W11.3 | Status: Closed | `docs/a11y/playwright-viewports.md` | agent-c09 |
 | C09 | L81.11 | Committed PNG baselines + soft diff | Med | W13.2 · T-510 · #335 | Status: Closed | `tests/visual/dashboard/*.png` · `visual-soft.yml` · `docs/visual/golden-visual-tests.md` | agent-c09 |
+| C10 | L107 | Deterministic dashboard PNG hard gate | Med | FR-003 · W14.1 · T-600 | Status: Closed | `visual-soft.yml` · `scripts/a11y/playwright_viewports.mjs` · `tests/visual/dashboard/*.png` | agent-c10 |
 | C00 | L2 | Unified HTTP error envelope | High | W12.1 · T-400 · #330 | Status: Closed | `src/error_envelope.rs` · `tests/c00_serve_error_envelope.rs` | agent-c00 |
 | C00 | L2 | OpenAPI `ErrorEnvelope` component | High | W13.1 · T-500 · #332 | Status: Closed | `docs/openapi/serve.yaml` · `scripts/check-openapi-drift.py` | agent-c00 |
 | C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 · #329 | Status: Closed | `docs/ops/config-proptest.md` · `config_validator.rs` | agent-c07 |

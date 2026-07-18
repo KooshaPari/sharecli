@@ -3,13 +3,13 @@
   "surface": "src/dashboard.html",
   "fixture": "empty-pool (fresh sharecli serve)",
   "platform": "ubuntu-24.04 + Playwright Chromium",
-  "seed_sha": "29c31c6",
+  "seed_sha": "91448b2",
   "seed_date": "2026-07-18",
   "baselines": [
     {
       "name": "mobile",
       "file": "mobile.png",
-      "bytes": 11272,
+      "bytes": 11043,
       "viewport": { "width": 375, "height": 812 },
       "artifact_source": "artifacts/playwright/mobile-375.png",
       "max_pixel_delta_pct": 0.2
@@ -17,7 +17,7 @@
     {
       "name": "tablet",
       "file": "tablet.png",
-      "bytes": 14145,
+      "bytes": 14120,
       "viewport": { "width": 768, "height": 1024 },
       "artifact_source": "artifacts/playwright/tablet-768.png",
       "max_pixel_delta_pct": 0.1
@@ -25,11 +25,11 @@
     {
       "name": "desktop",
       "file": "desktop.png",
-      "bytes": 13905,
+      "bytes": 14227,
       "viewport": { "width": 1280, "height": 800 },
       "artifact_source": "artifacts/playwright/desktop-1280.png",
       "max_pixel_delta_pct": 0.1
     }
   ],
-  "notes": "Phase B1b: committed PNG baselines with byte-size lock in manifest. Soft diff: scripts/visual/compare_screenshots.mjs + visual-soft.yml. Regen: UPDATE_VISUALS=1 after playwright capture."
+  "notes": "Committed Ubuntu PNG baselines with byte-size lock. Hard diff: scripts/visual/compare_screenshots.mjs + visual-soft.yml. Capture with SHARECLI_VISUAL_FIXTURE=1; regen with UPDATE_VISUALS=1 only from the ubuntu-24.04 gate."
 }

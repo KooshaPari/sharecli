@@ -82,13 +82,21 @@ flowchart TD
 | T-510 | PNG bytes commit + soft diff (#335) | DONE (2026-07-18) |
 | T-520 | Harbor Phase 3 soak execution scaffold (#333) | DONE (2026-07-18) |
 | T-530 | Trace IPC + tray injectors (#334) | DONE (2026-07-18) |
+| T-550 | Wave13 governance closeout (#336) | DONE (2026-07-18) |
+| T-600 | Deterministic dashboard visual hard gate | DONE (2026-07-18) |
 | T-620 | Coverage evidence pin + llvm-cov snapshot artifact | DONE (2026-07-18) |
 
-## Wave13 backlog (IN_PROGRESS)
+## Wave13 backlog (DONE)
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
-| T-550 | Governance sync WBS/GAP/DAG/RC | audit | Wave13 W13.1–W13.4 | S | IN_PROGRESS | W13 rows match SCORECARD |
+| T-550 | Governance sync WBS/GAP/DAG/RC | audit | Wave13 W13.1–W13.4 | S | DONE | W13 rows match SCORECARD |
+
+## Wave14 backlog (IN_PROGRESS)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-600 | Promote dashboard PNG diff to deterministic hard gate | FR-003 / C10 L107 | T-510,T-550 | S | DONE | Ubuntu capture is deterministic and visual diff blocks on failure |
 
 ## Wave14 evidence hardening (IN_PROGRESS)
 

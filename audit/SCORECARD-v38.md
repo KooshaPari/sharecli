@@ -420,6 +420,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C01 24/30 (80% B), unchanged:** L11 evidence now cites the successful `1ade83e` coverage run and records its numeric percentage as unavailable rather than inferred.
 - `coverage.yml` now exports llvm-cov JSON and retains a compact SHA-keyed snapshot; the existing 85% `--fail-under-lines` PR gate is documented. First post-T-620 numeric broad-workspace pin remains pending.
 
+### 2026-07-18 (T-600 C10 visual hard gate — L107 evidence)
+- `visual-soft.yml` is now blocking (no `continue-on-error`) and compares deterministic `ubuntu-24.04` captures against committed PNG baselines.
+- Capture inputs are fixed (locked Playwright/diff dependencies, locale/timezone/color/motion/device scale, empty-pool WebSocket fixture, font readiness); failed captures are retained for diagnosis.
+- **C10 remains 32/36 (89% B), L107 remains 3:** this closes the hard-gate remediation without overstating the already-max rubric line. Overall rollups are unchanged.
+
 ### 2026-07-18 (scorecard reconcile v3 — Wave12 merges #326–#330)
 - **C00 21/30 (70% C) → 22/30 (73% C):** L3 2→3 (`ErrorEnvelope` typed serve contract + golden 401; #330).
 - **C05 23/30 (77% B) → 24/30 (80% B):** L44 2→3 (CLI `traceparent` inject on supervised spawn; #328).
