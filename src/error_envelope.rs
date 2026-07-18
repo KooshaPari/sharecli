@@ -1,0 +1,122 @@
+//! HTTP JSON error envelope for `sharecli serve` (`docs/ops/error-envelope.md`).
+
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::Json;
+use serde::Serialize;
+
+/// Wire shape: `{ "error": { "type", "code", "message", "request_id" } }`.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ErrorEnvelope {
+    pub error: ErrorBody,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ErrorBody {
+    #[serde(rename = "type")]
+    pub error_type: String,
+    pub code: String,
+    pub message: String,
+    pub request_id: Option<String>,
+}
+
+impl ErrorEnvelope {
+    pub fn new(error_type: &str, code: &str, message: &str) -> Self {
+        Self {
+            error: ErrorBody {
+                error_type: error_type.to_string(),
+                code: code.to_string(),
+                message: message.to_string(),
+                request_id: None,
+            },
+        }
+    }
+
+    pub fn authentication(code: &str, message: &str) -> Self {
+        Self::new("authentication_error", code, message)
+    }
+
+    pub fn unauthorized(message: &str) -> Self {
+        Self::authentication("unauthorized", message)
+    }
+
+    #[allow(dead_code)] // Windows pprof 501 + future validation handlers (FR-004)
+    pub fn validation(code: &str, message: &str) -> Self {
+        Self::new("validation_error", code, message)
+    }
+
+    pub fn not_found(message: &str) -> Self {
+        Self::new("not_found_error", "not_found", message)
+    }
+
+    #[allow(dead_code)] // Windows/non-unix pprof path (FR-004)
+    pub fn not_implemented(message: &str) -> Self {
+        Self::new("not_implemented_error", "not_implemented", message)
+    }
+
+    pub fn internal() -> Self {
+        Self::new("internal_error", "internal_server_error", "an internal error occurred")
+    }
+
+    pub fn into_response(self, status: StatusCode) -> Response {
+        (status, Json(self)).into_response()
+    }
+}
+
+/// Map internal auth failure reasons to user-facing envelope messages.
+pub fn auth_failure_message(reason: &str) -> &'static str {
+    match reason {
+        "missing_authorization" => "missing or invalid bearer token",
+        "not_bearer" => "authorization header must use Bearer scheme",
+        "invalid_bearer" => "invalid bearer token",
+        "jwt_expired" => "jwt token expired",
+        "jwt_invalid_iss" => "jwt issuer mismatch",
+        "jwt_invalid_aud" => "jwt audience mismatch",
+        "jwt_nbf" => "jwt not yet valid",
+        "jwt_invalid_sig" => "jwt signature invalid",
+        "jwt_no_matching_key" => "jwt signing key not found",
+        _ if reason.starts_with("jwt_header:") => "jwt header invalid",
+        _ if reason.starts_with("jwt_invalid:") => "jwt token invalid",
+        _ if reason.starts_with("jwt_") => "jwt token invalid",
+        _ => "missing or invalid bearer token",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unauthorized_envelope_matches_contract() {
+        let body = ErrorEnvelope::unauthorized("missing or invalid bearer token");
+        let json = serde_json::to_value(&body).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "error": {
+                    "type": "authentication_error",
+                    "code": "unauthorized",
+                    "message": "missing or invalid bearer token",
+                    "request_id": null
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn internal_envelope_hides_details() {
+        let body = ErrorEnvelope::internal();
+        assert_eq!(body.error.error_type, "internal_error");
+        assert_eq!(body.error.code, "internal_server_error");
+        assert!(!body.error.message.contains("pprof"));
+    }
+
+    #[test]
+    fn auth_failure_message_maps_known_reasons() {
+        assert_eq!(
+            auth_failure_message("missing_authorization"),
+            "missing or invalid bearer token"
+        );
+        assert_eq!(auth_failure_message("jwt_expired"), "jwt token expired");
+    }
+}

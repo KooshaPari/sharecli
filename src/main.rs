@@ -16,6 +16,7 @@ mod config_validator;
 mod config_watcher;
 mod crc64;
 mod csv_writer;
+mod error_envelope;
 mod hash_util;
 mod health_check;
 mod http_red;

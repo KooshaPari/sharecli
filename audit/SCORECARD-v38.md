@@ -14,7 +14,7 @@
 
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
-| C00 | Architecture + Module | L0–L9 | 21/30 | 70% | C | lib.rs sprawl; error envelope; tight perf budgets |
+| C00 | Architecture + Module | L0–L9 | 21/30 | 70% | C | lib.rs sprawl; OpenAPI ErrorEnvelope component; tight perf budgets |
 | C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit events |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
@@ -392,3 +392,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C07 config proptest roundtrip — L66 evidence)
 - Root `Cargo.toml` `proptest = "1.6"` dev-dep; `prop_config_toml_roundtrip_max_processes_valid` TOML roundtrip + `validate_config` on `1..=10_000`; `docs/ops/config-proptest.md` status wired; L66 stays 2 (thermal-tui + config; registry expansion backlog); T-410 / W12.2 DONE.
+
+### 2026-07-17 (C00 HTTP error envelope — L2 evidence)
+- **C00 21/30 (70% C):** L2 evidence — `src/error_envelope.rs` + serve auth/handlers 4xx/5xx JSON; golden 401 test (`tests/c00_serve_error_envelope.rs`).
+- Top gap narrowed: typed envelope landed; OpenAPI `ErrorEnvelope` component remains.
+- FR-004 serve API contract.

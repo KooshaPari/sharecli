@@ -13,6 +13,8 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Deserialize;
 
+use crate::error_envelope::ErrorEnvelope;
+
 /// Parse `SHARECLI_PPROF` style values (`None`/`""`/`"0"` ⇒ off).
 pub fn pprof_enabled_from(val: Option<&str>) -> bool {
     matches!(val, Some(v) if !v.is_empty() && v != "0")
@@ -40,8 +42,8 @@ fn default_seconds() -> u64 {
 /// (route is not public).
 pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
     if !pprof_enabled() {
-        return (StatusCode::NOT_FOUND, "profiling disabled; set SHARECLI_PPROF=1 to enable")
-            .into_response();
+        return ErrorEnvelope::not_found("profiling disabled; set SHARECLI_PPROF=1 to enable")
+            .into_response(StatusCode::NOT_FOUND);
     }
 
     let seconds = q.seconds.clamp(1, 60);
@@ -54,7 +56,8 @@ pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
                     .into_response()
             }
             Err(err) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("pprof failed: {err}")).into_response()
+                tracing::warn!("pprof capture failed: {err}");
+                ErrorEnvelope::internal().into_response(StatusCode::INTERNAL_SERVER_ERROR)
             }
         }
     }
@@ -62,11 +65,10 @@ pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
     #[cfg(not(unix))]
     {
         let _ = seconds;
-        (
-            StatusCode::NOT_IMPLEMENTED,
+        ErrorEnvelope::not_implemented(
             "CPU profiling via pprof is Unix-only on this build; use samply/perf externally (see docs/ops/profiling.md)",
         )
-            .into_response()
+        .into_response(StatusCode::NOT_IMPLEMENTED)
     }
 }
 

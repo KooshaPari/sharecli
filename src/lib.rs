@@ -12,6 +12,7 @@ pub mod commands;
 pub mod config;
 pub mod config_watcher;
 pub mod coordination;
+pub mod error_envelope;
 pub mod health_check;
 pub mod http_red;
 pub mod monitoring;
