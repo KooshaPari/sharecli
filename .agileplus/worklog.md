@@ -1,5 +1,14 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-18 (governance Wave12 closeout — FR-003)
+- Status: DONE — WBS Wave11.7+Wave12 DONE; GAP-QA T-400..T-440 closed; WORK_DAG completed table; PERT-DAG-W12 DONE + Wave13 stub; RC @ 03391c4 ~81% B; SCORECARD reconcile v3 (#326–#330)
+- Score: C00 73% C · C05 80% B · C08 77% B · C10 89% B · weighted ~81% B
+- FR: FR-003
+
+## 2026-07-17 (governance Wave12 sync — FR-003)
+- Status: DONE — WBS-PHASED Wave11+12, GAP-QA Jul-17 closures, WORK_DAG T-400..T-450, PERT-DAG-W12, RC-audit-v38-80B (#325)
+- FR: FR-003
+
 ## 2026-07-17 (C08 Harbor Phase 3 soak plan — FR-003)
 - Status: DONE — `docs/ops/harbor-phase3-soak.md`; ADR 0005 Phase 3 checklist + cross-repo pins; harbor-eval-stub cross-ref; L76 stays 1 until soak completes
 - FR: FR-003
@@ -10,10 +19,6 @@
 
 ## 2026-07-17 (C07 config proptest roundtrip — FR-003)
 - Status: DONE — root `proptest = "1.6"` dev-dep; `prop_config_toml_roundtrip_max_processes_valid` in `config_validator.rs`; T-410 / W12.2; L66 stays 2 (thermal-tui + config; registry backlog)
-- FR: FR-003
-
-## 2026-07-17 (governance Wave12 sync — FR-003)
-- Status: IN_PROGRESS — WBS-PHASED Wave11+12, GAP-QA Jul-17 closures, WORK_DAG T-400..T-450, PERT-DAG-W12, RC-audit-v38-80B
 - FR: FR-003
 
 ## 2026-07-17 (C00 HTTP error envelope — FR-004)

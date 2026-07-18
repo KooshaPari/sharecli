@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-17 (Wave11 #290–#324; C05 L47→2; spawn audit partial; overall ~80% B)
+**Last sync:** 2026-07-18 (Wave12 #326–#330; C00/C05/C08/C10 lifts; overall ~81% B weighted)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -41,12 +41,14 @@
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
 | C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `docs/ops/trace-multihop.md` · `docs/ops/live-pd.md` | agent-c05 |
+| C05 | L44 | CLI traceparent inject (one hop) | Med | W12.3 · T-420 · #328 | Status: Closed | `src/otel.rs` · `src/runtime.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
 | C05 | L47 | Soak healthz CI | Med | W11.4 · #319 | Status: Closed | `.github/workflows/soak-soft.yml` · `scripts/load/soak_healthz.sh` | agent-c05 |
 | C05 | L48 | Chaos restart probe | Low | W11.6 · #324 | Status: Closed | `scripts/load/chaos_restart.sh` · `just chaos-soft` | agent-c05 |
 | C02 | L28 | Spawn audit JSONL rows | Med | W11.5 · #323 | Status: Closed | `src/runtime.rs` · `tests/spawn_audit.rs` (partial) | agent-c02 |
 | C02 | L21 | Federated IdP (beyond Bearer) | High | W5.1 | Status: Closed | `src/serve_auth.rs` + `docs/ops/AUTH.md` + `tests/fr012_serve_jwt_auth.rs` | maintainer |
 | C02 | L23 | Audit retention + rotation | Med | W5.2 | Status: Closed | `src/audit_log.rs` + `docs/ops/AUTH.md` | maintainer |
 | C02 | L27 | AuthN/HTTP burn alerts | Med | W5.2 | Status: Closed | `docs/ops/alertmanager/sharecli.yml` + `src/http_red.rs` | maintainer |
+| C08 | L76 | Harbor Phase 3 soak evidence plan | Med | W12.5 · T-440 · #326 | Status: Closed | `docs/ops/harbor-phase3-soak.md` · ADR 0005 | agent-c08 |
 | C08 | L74 | Tighter bench thresholds | Low | Wave2 | Status: READY | `docs/eval/TRENDS.md` | agent-c08 |
 | C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |
@@ -54,9 +56,9 @@
 | C06 | L53–L54 | SLSA L3 / hermetic builds | Med | W11.4 | Status: Closed | `docs/ops/slsa-l3-plan.md` · `netblock-soft.yml` · `hermetic-soft.yml` | agent-c06 |
 | C08 | L71 | Harbor eval stub | Med | W11.4 · #321 | Status: Closed | `harbor-eval-stub-soft.yml` · `scripts/eval/harbor_stub.sh` | agent-c08 |
 | C09 | L81.11 | Playwright baseline policy | Low | W11.3 | Status: Closed | `docs/a11y/playwright-viewports.md` | agent-c09 |
-| C09 | L81.11 | Committed PNG baselines + hard diff | Med | W12.4 · T-430 | Status: READY | `docs/visual/golden-visual-tests.md` | agent-c09 |
-| C00 | L3 | Unified HTTP error envelope | High | W12.1 · T-400 | Status: READY | `docs/ops/error-envelope.md` | agent-c00 |
-| C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 | Status: READY | `docs/ops/config-proptest.md` | agent-c07 |
+| C09 | L81.11 | Committed PNG baselines + hard diff | Med | W12.4 · T-430 · #327 | Status: Closed | `tests/visual/dashboard/` · `docs/visual/golden-visual-tests.md` | agent-c09 |
+| C00 | L2 | Unified HTTP error envelope | High | W12.1 · T-400 · #330 | Status: Closed | `src/error_envelope.rs` · `tests/c00_serve_error_envelope.rs` | agent-c00 |
+| C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 · #329 | Status: Closed | `docs/ops/config-proptest.md` · `config_validator.rs` | agent-c07 |
 
 ## C09 accessibility (Wave6)
 
