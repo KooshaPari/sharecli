@@ -16,6 +16,12 @@
 - Status: IN_PROGRESS — WBS-PHASED Wave11+12, GAP-QA Jul-17 closures, WORK_DAG T-400..T-450, PERT-DAG-W12, RC-audit-v38-80B
 - FR: FR-003
 
+## 2026-07-17 (C00 HTTP error envelope — FR-004)
+- Status: DONE — `src/error_envelope.rs`; serve_auth 401 + handler 4xx/5xx JSON unified; `tests/c00_serve_error_envelope.rs`
+- Score: C00 L2 evidence; cluster 21/30 (70% C) unchanged
+- FR: FR-004 serve API contract
+- Next: OpenAPI `ErrorEnvelope` component; request-id middleware
+
 ## 2026-07-17 (C05 chaos restart soft — FR-003)
 - Status: DONE — `scripts/load/chaos_restart.sh`, `just chaos-soft`, soak-chaos.md CI-skip; L47 stays 2; L48 stays 2
 - FR: FR-003

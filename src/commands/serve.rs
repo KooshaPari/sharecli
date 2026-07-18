@@ -30,6 +30,7 @@ use tracing::{info, instrument, warn, Instrument};
 
 use crate::audit_log;
 use crate::config::Config;
+use crate::error_envelope::ErrorEnvelope;
 use crate::config_watcher::ConfigWatcher;
 use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
@@ -385,7 +386,10 @@ async fn readyz(State(state): State<AppState>) -> impl IntoResponse {
 #[instrument(skip(state))]
 async fn config_handler(State(state): State<AppState>) -> impl IntoResponse {
     let cfg = state.config.read().await.clone();
-    Json(serde_json::to_value(cfg).unwrap_or_else(|_| json!({"error": "serialization failed"})))
+    match serde_json::to_value(cfg) {
+        Ok(v) => Json(v).into_response(),
+        Err(_) => ErrorEnvelope::internal().into_response(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
 
 // ---------------------------------------------------------------------------

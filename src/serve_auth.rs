@@ -23,6 +23,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 
 use crate::config::{ServeConfig, ServeJwtConfig};
+use crate::error_envelope::{auth_failure_message, ErrorEnvelope};
 
 /// Shared auth state cloned into the Axum router.
 #[derive(Clone, Debug)]
@@ -363,13 +364,12 @@ pub async fn require_bearer(
                     "reason": reason,
                 }),
             );
+            let envelope =
+                ErrorEnvelope::unauthorized(auth_failure_message(&reason));
             (
                 StatusCode::UNAUTHORIZED,
                 [(header::WWW_AUTHENTICATE, "Bearer")],
-                Json(json!({
-                    "error": "unauthorized",
-                    "hint": "Authorization: Bearer <token-or-jwt>"
-                })),
+                Json(envelope),
             )
                 .into_response()
         }
@@ -498,5 +498,17 @@ mod tests {
         let token = join_jwt(&fixture().tokens.bad_iss);
         let err = auth.check_authorization(Some(&format!("Bearer {token}"))).unwrap_err();
         assert_eq!(err, "jwt_invalid_iss");
+    }
+
+    #[test]
+    fn auth_failure_envelope_matches_contract() {
+        use crate::error_envelope::{auth_failure_message, ErrorEnvelope};
+
+        let body = ErrorEnvelope::unauthorized(auth_failure_message("missing_authorization"));
+        let json = serde_json::to_value(&body).unwrap();
+        assert_eq!(json["error"]["type"], "authentication_error");
+        assert_eq!(json["error"]["code"], "unauthorized");
+        assert_eq!(json["error"]["message"], "missing or invalid bearer token");
+        assert!(json["error"]["request_id"].is_null());
     }
 }

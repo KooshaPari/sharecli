@@ -10,6 +10,7 @@ pub mod audit_log;
 pub mod cast;
 pub mod commands;
 pub mod config;
+pub mod error_envelope;
 pub mod config_watcher;
 pub mod coordination;
 pub mod health_check;

@@ -13,6 +13,7 @@ mod cast;
 mod commands;
 mod config;
 mod config_validator;
+mod error_envelope;
 mod config_watcher;
 mod crc64;
 mod csv_writer;
