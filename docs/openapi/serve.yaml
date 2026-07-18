@@ -4,6 +4,7 @@ info:
   description: |
     Minimal OpenAPI stub for the `sharecli serve` HTTP surface.
     Paths mirror `src/commands/serve.rs` (liveness, readiness, Prometheus, config).
+    JSON errors use `ErrorEnvelope` (`src/error_envelope.rs`, `docs/ops/error-envelope.md`).
   version: 0.3.0
 servers:
   - url: http://127.0.0.1:9000
@@ -78,6 +79,8 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /metrics/prometheus:
     get:
       operationId: metricsPrometheus
@@ -87,6 +90,8 @@ paths:
         tracked process gauges plus HTTP RED series
         (`sharecli_http_requests_total`, `sharecli_http_errors_total`,
         `sharecli_http_request_duration_ms_*`).
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/Traceparent"
       responses:
@@ -107,6 +112,8 @@ paths:
                   # HELP sharecli_http_requests_total Total HTTP requests handled by sharecli serve
                   # TYPE sharecli_http_requests_total counter
                   sharecli_http_requests_total 0
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /debug/pprof/profile:
     get:
       operationId: pprofProfile
@@ -136,10 +143,14 @@ paths:
               schema:
                 type: string
                 format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Profiling disabled (`SHARECLI_PPROF` unset/`0`)
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
         "501":
-          description: Platform does not embed pprof (Windows)
+          $ref: "#/components/responses/NotImplemented"
   /config:
     get:
       operationId: getConfig
@@ -147,6 +158,8 @@ paths:
       description: |
         Returns the current in-memory config as JSON (last successful
         hot-reload of `~/.config/sharecli/config.toml`).
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: Current config object
@@ -156,6 +169,10 @@ paths:
                 type: object
                 additionalProperties: true
                 description: Serialized `Config` (projects, runtime, pool, monitoring, …)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /ws:
     get:
       operationId: websocketProcessStream
@@ -163,11 +180,15 @@ paths:
       description: |
         Upgrades to WebSocket and streams periodic ProcessSummary JSON snapshots
         (and thermal warning/critical events) for the dashboard.
+      security:
+        - bearerAuth: []
       responses:
         "101":
           description: Switching Protocols (WebSocket)
         "400":
           description: Not a WebSocket upgrade request
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   securitySchemes:
     bearerAuth:
@@ -185,6 +206,55 @@ components:
         type: string
         example: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
       description: W3C Trace Context; extracted into the `http.request` span and echoed on the response.
+  responses:
+    Unauthorized:
+      description: Bearer AuthN failure (when `SHARECLI_SERVE_TOKEN` or `config.serve.bearer_token` is set)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              type: authentication_error
+              code: unauthorized
+              message: missing or invalid bearer token
+              request_id: null
+    NotFound:
+      description: Resource not found or feature disabled
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              type: not_found_error
+              code: not_found
+              message: profiling disabled; set SHARECLI_PPROF=1 to enable
+              request_id: null
+    InternalError:
+      description: Internal server error (no internal details leaked)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              type: internal_error
+              code: internal_server_error
+              message: an internal error occurred
+              request_id: null
+    NotImplemented:
+      description: Platform or build does not implement this handler
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              type: not_implemented_error
+              code: not_implemented
+              message: CPU profiling via pprof is Unix-only on this build; use samply/perf externally (see docs/ops/profiling.md)
+              request_id: null
   schemas:
     StatusOk:
       type: object
@@ -200,3 +270,36 @@ components:
         status:
           type: string
           enum: [unavailable]
+    ErrorEnvelope:
+      type: object
+      description: |
+        Unified JSON error wire shape for `sharecli serve` (`src/error_envelope.rs`).
+        Probe routes (`/healthz`, `/readyz`) intentionally use bare `{ "status": ... }`.
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+    ErrorBody:
+      type: object
+      description: Nested error payload inside `ErrorEnvelope`.
+      required: [type, code, message, request_id]
+      properties:
+        type:
+          type: string
+          description: Stable machine class (`authentication_error`, `validation_error`, …)
+          enum:
+            - authentication_error
+            - validation_error
+            - not_found_error
+            - not_implemented_error
+            - internal_error
+        code:
+          type: string
+          description: Stable snake_case code (`unauthorized`, `not_found`, …)
+        message:
+          type: string
+          description: Human-readable English message (ADR-0003)
+        request_id:
+          type: string
+          nullable: true
+          description: Optional request correlation id (null until middleware lands)
