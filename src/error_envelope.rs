@@ -53,11 +53,7 @@ impl ErrorEnvelope {
     }
 
     pub fn internal() -> Self {
-        Self::new(
-            "internal_error",
-            "internal_server_error",
-            "an internal error occurred",
-        )
+        Self::new("internal_error", "internal_server_error", "an internal error occurred")
     }
 
     pub fn into_response(self, status: StatusCode) -> Response {

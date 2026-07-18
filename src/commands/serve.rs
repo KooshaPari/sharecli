@@ -30,8 +30,8 @@ use tracing::{info, instrument, warn, Instrument};
 
 use crate::audit_log;
 use crate::config::Config;
-use crate::error_envelope::ErrorEnvelope;
 use crate::config_watcher::ConfigWatcher;
+use crate::error_envelope::ErrorEnvelope;
 use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
 use crate::notifier::Notifier;

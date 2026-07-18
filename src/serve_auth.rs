@@ -364,13 +364,8 @@ pub async fn require_bearer(
                     "reason": reason,
                 }),
             );
-            let envelope =
-                ErrorEnvelope::unauthorized(auth_failure_message(&reason));
-            (
-                StatusCode::UNAUTHORIZED,
-                [(header::WWW_AUTHENTICATE, "Bearer")],
-                Json(envelope),
-            )
+            let envelope = ErrorEnvelope::unauthorized(auth_failure_message(&reason));
+            (StatusCode::UNAUTHORIZED, [(header::WWW_AUTHENTICATE, "Bearer")], Json(envelope))
                 .into_response()
         }
     }

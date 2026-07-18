@@ -42,10 +42,8 @@ fn default_seconds() -> u64 {
 /// (route is not public).
 pub async fn profile_handler(Query(q): Query<ProfileQuery>) -> Response {
     if !pprof_enabled() {
-        return ErrorEnvelope::not_found(
-            "profiling disabled; set SHARECLI_PPROF=1 to enable",
-        )
-        .into_response(StatusCode::NOT_FOUND);
+        return ErrorEnvelope::not_found("profiling disabled; set SHARECLI_PPROF=1 to enable")
+            .into_response(StatusCode::NOT_FOUND);
     }
 
     let seconds = q.seconds.clamp(1, 60);
