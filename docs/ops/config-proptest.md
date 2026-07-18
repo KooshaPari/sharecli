@@ -6,7 +6,7 @@ Audit-v38 **C07 L66**. Thermal-tui already has proptest; config is next.
 
 | Target | Property idea | Status |
 |--------|---------------|--------|
-| `project_limits.max_processes` | values in `1..=10_000` never emit that field error alone | Soft backlog |
+| `project_limits.max_processes` | values in `1..=10_000` never emit that field error alone | `prop_config_toml_roundtrip_max_processes_valid` |
 | `monitoring.health_check_interval_secs` | `1..=3600` accepted; `0` and `>3600` fail | Covered by unit tests today |
 | `spawn_policy.max_concurrent_builds` | `>=1` | Unit tests |
 

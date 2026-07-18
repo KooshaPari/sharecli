@@ -389,3 +389,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-17 (C10 PNG baseline scaffold soft — L107 evidence)
 - `tests/visual/dashboard/` manifest + README stub paths; `golden-visual-tests.md` Phase B scaffold; PNGs gitignored until CI seed; L107 stays 2 until B1b commit + soft diff.
+
+### 2026-07-17 (C07 config proptest roundtrip — L66 evidence)
+- Root `Cargo.toml` `proptest = "1.6"` dev-dep; `prop_config_toml_roundtrip_max_processes_valid` TOML roundtrip + `validate_config` on `1..=10_000`; `docs/ops/config-proptest.md` status wired; L66 stays 2 (thermal-tui + config; registry expansion backlog); T-410 / W12.2 DONE.
