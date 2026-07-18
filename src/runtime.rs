@@ -25,12 +25,7 @@ fn spawn_capability(cmd: &str, harness: &Option<String>) -> String {
     harness.clone().unwrap_or_else(|| cmd.to_string())
 }
 
-fn emit_spawn_audit(
-    project: &Option<String>,
-    capability: &str,
-    outcome: &str,
-    pid: Option<u32>,
-) {
+fn emit_spawn_audit(project: &Option<String>, capability: &str, outcome: &str, pid: Option<u32>) {
     let mut fields = json!({
         "project": project,
         "capability": capability,
@@ -284,11 +279,8 @@ impl ProcessPool {
         let mut procs = self.processes.write().await;
         for (pid, managed) in procs.drain() {
             let capability = spawn_capability(&managed.info.name, &managed.info.harness);
-            let outcome = if self.port.kill_group(&managed.handle).await.is_ok() {
-                "ok"
-            } else {
-                "denied"
-            };
+            let outcome =
+                if self.port.kill_group(&managed.handle).await.is_ok() { "ok" } else { "denied" };
             emit_stop_audit(&managed.info.project, &capability, pid, outcome);
         }
         Ok(())
