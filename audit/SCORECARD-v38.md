@@ -14,30 +14,31 @@
 
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
-| C00 | Architecture + Module | L0–L9 | 22/30 | 73% | C | lib.rs sprawl; OpenAPI ErrorEnvelope component; tight perf budgets |
+| C00 | Architecture + Module | L0–L9 | 23/30 | 77% | B | lib.rs sprawl; tight perf budgets; loom hard coverage |
 | C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit SIEM export |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
-| C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | IPC/tray trace inject; live PD; chaos hard gate |
+| C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | live PD; chaos hard gate; tray dashboard HTTP trace |
 | C06 | Supply Chain | L51–L60 | 24/30 | 80% | B | SLSA L3; network-blocked hermetic; GHCR publish default |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; thermal-tui proptest; freebsd/wasm |
-| C08 | Eval Coverage | L71–L80 | 23/30 | 77% | B | Harbor 7d soak execution; bench-gate hard; agent-eval Phase 4 |
-| C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | PNG hard diff; manual SR pass; axe hard required |
-| C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | committed PNG bytes; high-contrast; dashboard hex drift |
+| C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; bench-gate hard; agent-eval Phase 4 |
+| C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | visual hard diff; manual SR pass; axe hard required |
+| C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 35/45 | 78% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
 
 ## Overall
 
-**Weighted overall score:** 81% · **Overall grade:** B
+**Weighted overall score:** 82% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (73+80+87+92+80+80+80+77+77+76+89+78)/12 = 959/12 = **79.9% ≈ 80%**.)
+(Unweighted mean of cluster pcts: (77+80+87+92+80+80+80+80+80+76+89+78)/12 = 974/12 = **81.2% ≈ 81%**.)
 
-**Tier-1 double-weight (C00–C03):** (73+80+87+92)×2 + (80+80+80+77+77+76+89+78) = 664 + 637 = 1301 / 16 = **81.3% ≈ 81%** (B).
+**Tier-1 double-weight (C00–C03):** (77+80+87+92)×2 + (80+80+80+80+80+76+89+78) = 672 + 643 = 1315 / 16 = **82.2% ≈ 82%** (B).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C10 **89% B**; C02 **87% B**.
+- **Wave13:** OpenAPI `ErrorEnvelope` (#332); PNG bytes + soft diff (#335); Harbor soak scaffold (#333); IPC/tray trace (#334).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), mutants hard required check (C07 L65), ruleset “Require signed commits” (C04 L34).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
@@ -403,6 +404,14 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ### 2026-07-18 (C10 PNG baseline bytes + soft diff — L107 evidence)
 - `tests/visual/dashboard/{mobile,tablet,desktop}.png` committed with manifest `bytes` lock (B1b); `scripts/visual/compare_screenshots.mjs` + `visual-soft.yml` soft scaffold (B2/B3); L107 stays 2 until hard promote.
+
+### 2026-07-18 (scorecard reconcile v4 — Wave13 merges #332–#335)
+- **C00 22/30 (73% C) → 23/30 (77% B):** L2 2→3 (OpenAPI `ErrorEnvelope` component + drift CI; #332).
+- **C05 24/30 (80% B):** L44 evidence complete (IPC + tray `traceparent` inject; #334); cluster pct unchanged.
+- **C08 23/30 (77% B) → 24/30 (80% B):** L76 2→3 (Harbor Phase 3 soak execution scaffold + log template; #333).
+- **C10 32/36 (89% B):** L107 evidence complete (committed PNG bytes + `visual-soft.yml`; #335); cluster pct unchanged.
+- Top-3 gaps refreshed across C00/C05/C08/C10 rows; Wave14 targets visual hard diff, seven-day soak completion, codesign.
+- Overall unweighted **~81%** (974/12); weighted **~82% B** (1315/16).
 
 ### 2026-07-18 (scorecard reconcile v3 — Wave12 merges #326–#330)
 - **C00 21/30 (70% C) → 22/30 (73% C):** L3 2→3 (`ErrorEnvelope` typed serve contract + golden 401; #330).
