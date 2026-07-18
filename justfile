@@ -315,6 +315,11 @@ chaos-soft:
     @cargo build --locked --release -p sharecli
     @SHARECLI_LOAD_URL=http://127.0.0.1:9000/healthz SHARECLI_SERVE_BIND=127.0.0.1:9000 bash scripts/load/chaos_restart.sh
 
+chaos-hard:
+    @echo ">> hard chaos restart (CI parity; kill + recover /healthz < 30s)"
+    @cargo build --locked --release -p sharecli
+    @SHARECLI_LOAD_URL=http://127.0.0.1:9000/healthz SHARECLI_SERVE_BIND=127.0.0.1:9000 SHARECLI_SERVE_BIN=./target/release/sharecli bash scripts/load/chaos_restart.sh
+
 # -------- C00 memory soft --------
 [group: 'ops']
 rss-soft:

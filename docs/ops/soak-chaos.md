@@ -1,6 +1,7 @@
 # Soak & chaos (soft)
 
-Audit-v38 **C05 L47** — long-run stability evidence.
+Audit-v38 **C05 L47** — long-run stability evidence. Chaos hard-gate promotion:
+[`chaos-restart-hard-gate.md`](chaos-restart-hard-gate.md) (C05 L50 · T-630).
 
 ## Soft plan
 
@@ -30,7 +31,15 @@ SHARECLI_LOAD_URL=http://127.0.0.1:7700/healthz \
   bash scripts/load/chaos_restart.sh
 ```
 
-**CI skip:** chaos restart is intentionally **not** wired in GitHub Actions — port reuse and kill/restart timing can flake on shared runners. Run locally or in `workflow_dispatch` soak jobs when debugging L47 recovery.
+**CI hard soak (phase 2):** [`.github/workflows/chaos-restart-hard.yml`](../../.github/workflows/chaos-restart-hard.yml)
+runs `chaos_restart.sh` on PR/push `main` **without** `continue-on-error`. Branch protection
+and `ci-success` wiring remain deferred per [`chaos-restart-hard-gate.md`](chaos-restart-hard-gate.md).
+
+Local / `workflow_dispatch` fallback when debugging recovery:
+
+```bash
+just chaos-hard
+```
 
 ```bash
 # against an already-running serve:

@@ -402,6 +402,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Top gap narrowed: typed envelope landed; OpenAPI `ErrorEnvelope` component remains.
 - FR-004 serve API contract.
 
+### 2026-07-18 (C05 chaos restart hard gate — L50 evidence)
+- `docs/ops/chaos-restart-hard-gate.md` (T-630); `.github/workflows/chaos-restart-hard.yml` (no `continue-on-error`); `just chaos-hard`; L50 stays 2 until `ci-success` + branch protection.
+
 ### 2026-07-18 (C10 PNG baseline bytes + soft diff — L107 evidence)
 - `tests/visual/dashboard/{mobile,tablet,desktop}.png` committed with manifest `bytes` lock (B1b); `scripts/visual/compare_screenshots.mjs` + `visual-soft.yml` soft scaffold (B2/B3); L107 stays 2 until hard promote.
 

@@ -1,0 +1,36 @@
+name: Chaos restart (hard)
+
+# C05 L50 — SIGKILL restart recovery gate (no continue-on-error).
+# Promotion plan: docs/ops/chaos-restart-hard-gate.md
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chaos-restart-hard:
+    name: chaos restart (hard)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: chaos-restart-hard
+      - name: Build sharecli (release)
+        run: cargo build --locked --release -p sharecli
+      - name: Chaos restart /healthz recovery
+        env:
+          SHARECLI_LOAD_URL: http://127.0.0.1:9000/healthz
+          SHARECLI_SERVE_BIND: 127.0.0.1:9000
+          SHARECLI_SERVE_BIN: ./target/release/sharecli
+          SHARECLI_CHAOS_RECOVER_SEC: "30"
+        run: bash scripts/load/chaos_restart.sh

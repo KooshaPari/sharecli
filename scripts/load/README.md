@@ -7,7 +7,9 @@
 | `chaos_restart.sh` | kill + restart serve; recover `/healthz` | `SHARECLI_LOAD_URL`, `SHARECLI_SERVE_BIND`, `SHARECLI_SERVE_BIN`, `SHARECLI_CHAOS_RECOVER_SEC` |
 
 Requires a running `sharecli serve` (except `chaos_restart.sh`, which manages serve). Repro notes: [`docs/eval/REPRO.md`](../../docs/eval/REPRO.md).
-Soft CI: [`.github/workflows/load-soft.yml`](../../.github/workflows/load-soft.yml) (C05 L50); [`.github/workflows/soak-soft.yml`](../../.github/workflows/soak-soft.yml) (C05 L47). Chaos restart is local-only (see [`docs/ops/soak-chaos.md`](../../docs/ops/soak-chaos.md)).
+Soft CI: [`.github/workflows/load-soft.yml`](../../.github/workflows/load-soft.yml) (C05 L50); [`.github/workflows/soak-soft.yml`](../../.github/workflows/soak-soft.yml) (C05 L47).
+Hard CI: [`.github/workflows/chaos-restart-hard.yml`](../../.github/workflows/chaos-restart-hard.yml) (C05 L50 chaos restart, no `continue-on-error`).
+See [`docs/ops/soak-chaos.md`](../../docs/ops/soak-chaos.md) and [`docs/ops/chaos-restart-hard-gate.md`](../../docs/ops/chaos-restart-hard-gate.md).
 
 ```bash
 bash scripts/load/healthz_burst.sh
@@ -21,4 +23,7 @@ just load-soak
 bash scripts/load/chaos_restart.sh
 # or:
 just chaos-soft
+
+# CI parity (hard):
+just chaos-hard
 ```
