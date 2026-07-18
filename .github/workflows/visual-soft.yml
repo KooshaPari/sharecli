@@ -1,22 +1,21 @@
-name: Visual baseline diff (soft)
+name: Visual baseline diff
 
-# C10 L107 — soft pixel diff against committed dashboard PNG baselines.
+# C10 L107 — blocking pixel diff against deterministic Ubuntu dashboard baselines.
 
 on:
+  # Required PR checks must always report; workflow-level path filters leave
+  # skipped required checks pending indefinitely.
   pull_request:
-    paths:
-      - "src/dashboard.html"
-      - "tests/visual/dashboard/**"
-      - "scripts/visual/**"
-      - "docs/visual/golden-visual-tests.md"
-      - ".github/workflows/visual-soft.yml"
   push:
     branches: [main]
     paths:
       - "src/dashboard.html"
       - "tests/visual/dashboard/**"
       - "scripts/visual/**"
+      - "scripts/a11y/playwright_viewports.mjs"
       - "docs/visual/golden-visual-tests.md"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/visual-soft.yml"
   workflow_dispatch:
 
@@ -24,10 +23,10 @@ permissions:
   contents: read
 
 jobs:
-  visual-soft:
-    name: dashboard PNG soft diff
+  visual:
+    name: dashboard PNG hard diff
     runs-on: ubuntu-24.04
-    continue-on-error: true
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: dtolnay/rust-toolchain@stable
@@ -36,22 +35,33 @@ jobs:
           version: 0.14.1
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
-          shared-key: visual-soft
+          shared-key: visual-hard
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
-      - name: Install Playwright + diff deps
-        run: npm install --no-save playwright@1.49.0 pixelmatch@6.0.0 pngjs@7.0.0
+          cache: npm
+      - name: Install locked Node dependencies
+        run: npm ci
       - name: Build sharecli
         run: cargo build --locked --release -p sharecli
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Capture viewports and soft diff
+      - name: Capture deterministic viewports and compare
+        env:
+          SHARECLI_VISUAL_FIXTURE: "1"
         run: |
           set -euo pipefail
           ./target/release/sharecli serve --bind 127.0.0.1:9000 &
           pid=$!
           trap 'kill $pid 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/healthz && break; sleep 1; done
+          curl --fail --silent --show-error http://127.0.0.1:9000/healthz >/dev/null
           node scripts/a11y/playwright_viewports.mjs
           node scripts/visual/compare_screenshots.mjs
+      - name: Upload captures on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dashboard-visual-captures
+          path: artifacts/playwright/*.png
+          if-no-files-found: error

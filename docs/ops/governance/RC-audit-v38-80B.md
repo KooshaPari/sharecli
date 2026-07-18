@@ -20,7 +20,7 @@
 | Cluster | Pct | Grade | RC note |
 |---------|:---:|:-----:|---------|
 | C03 | 92% | A | Agent readiness — hold |
-| C10 | 89% | B | PNG bytes + soft diff (#335) |
+| C10 | 89% | B | PNG bytes + deterministic hard diff (T-600; score unchanged) |
 | C02 | 87% | B | spawn audit partial (#323) |
 | C00/C01/C04/C05/C06/C08 | 77–80% | B/C | OpenAPI component (#332); IPC/tray trace (#334); soak scaffold (#333) |
 | C07/C09/C11 | 76–78% | B | soft plans + partial CI |
@@ -43,7 +43,7 @@
 - [x] Harbor Phase 3 soak execution scaffold (T-520 · #333)
 - [x] IPC/tray traceparent inject (T-530 · #334)
 - [ ] Seven-day Harbor soak log completion (Wave14)
-- [ ] Visual-soft hard promote (Wave14)
+- [x] Visual-soft hard promote (Wave14 · T-600)
 
 ## Supersedes
 

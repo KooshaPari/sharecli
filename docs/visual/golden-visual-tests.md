@@ -1,6 +1,6 @@
-# Golden visual tests (soft)
+# Golden visual tests
 
-Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for CLI/TUI are **shipped** (T-250); dashboard PNG gates and hex-drift closure remain **soft**.
+Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for CLI/TUI are **shipped** (T-250); the dashboard PNG diff is a **blocking gate** (T-600), while hex-drift closure remains soft.
 
 ## Scope split
 
@@ -9,7 +9,7 @@ Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for
 | CLI / TUI text goldens | **Shipped** | `tests/golden/*.txt` + `tests/golden_snapshots.rs` | `cargo test --test golden_snapshots` |
 | Splash string regression | **Shipped** | `tests/integration_cli.rs` | default test suite |
 | Rust ↔ CSS hex lock | **Shipped** | `src/theme.rs` (`backbone2_constants_match_tokens_css`) | unit tests |
-| Dashboard PNG snapshots | **Soft** | `tests/visual/dashboard/` (committed baselines + manifest bytes) + `artifacts/playwright/` capture | `playwright-soft.yml` + `visual-soft.yml` (soft diff) |
+| Dashboard PNG snapshots | **Hard** | `tests/visual/dashboard/` (committed Ubuntu baselines + manifest bytes) + `artifacts/playwright/` capture | `visual-soft.yml` (blocking diff) |
 | Dashboard hex → token alignment | **Soft** | `src/dashboard.html` → `assets/tokens.css` | manual + future computed-style assert |
 
 Eval-corpus JSON goldens (`docs/ops/eval-corpus.md`) are **not** screenshot tests — keep them separate from C10 visual gates.
@@ -64,16 +64,16 @@ rg -o '#[0-9a-fA-F]{3,8}' src/dashboard.html | sort -u
 | `#f59e0b` | `--bb2-warm-amber` `#d29922` | near |
 | `#ef4444` | — (no error token) | drift |
 
-**Soft gate sequence**
+**Hex-alignment sequence**
 
 1. Refactor `dashboard.html` to `@import` or inline `assets/tokens.css` and replace hard-coded hex with `var(--bb2-*)`.
 2. Add `--bb2-error` (or map errors to warm-amber + label) in `tokens.css` + `theme.rs`.
 3. Re-run contrast spot-check (`docs/a11y/contrast.md`).
 4. Capture new Playwright baselines (below).
 
-## Soft PNG plan (Playwright)
+## Dashboard PNG gate (Playwright)
 
-Today: `.github/workflows/playwright-soft.yml` + `scripts/a11y/playwright_viewports.mjs` capture **artifacts only** (`continue-on-error`). See `docs/a11y/playwright-viewports.md`.
+`.github/workflows/visual-soft.yml` captures and compares all three committed baselines on `ubuntu-24.04`. The job has no `continue-on-error`; a missing capture, byte-lock mismatch, dimension mismatch, or over-threshold pixel delta blocks the change. `.github/workflows/playwright-soft.yml` remains the separate accessibility artifact capture. See `docs/a11y/playwright-viewports.md`.
 
 ### Phase A — baseline capture (current)
 
@@ -98,8 +98,8 @@ SHARECLI_DASH_URL=http://127.0.0.1:9000/ node scripts/a11y/playwright_viewports.
 |------|--------|--------|
 | B1 | **Done** | `tests/visual/dashboard/` — `manifest.json` + README stub paths (#327) |
 | B1b | **Done** | Committed `{mobile,tablet,desktop}.png` with manifest `bytes` lock (seed @ `29c31c6`) |
-| B2 | **Scaffold** | `scripts/visual/compare_screenshots.mjs` — pixelmatch soft diff vs manifest thresholds |
-| B3 | **Scaffold** | `visual-soft.yml` — `continue-on-error`; promote to hard after two green release cycles |
+| B2 | **Done** | `scripts/visual/compare_screenshots.mjs` — pixelmatch diff vs manifest thresholds |
+| B3 | **Done** | `visual-soft.yml` — blocking T-600 gate with deterministic Ubuntu capture |
 | B4 | **Done** | `UPDATE_VISUALS=1` regen path in compare script + dashboard README |
 
 Baseline contract (committed):
@@ -113,6 +113,10 @@ Baseline contract (committed):
 See `tests/visual/dashboard/README.md` + `manifest.json`. Keep names aligned with
 `docs/a11y/playwright-viewports.md` committed-baseline policy.
 
+### Deterministic capture contract
+
+The blocking job uses locked npm dependencies and Playwright Chromium 1.49.0. It fixes locale (`en-US`), timezone (`UTC`), dark color scheme, reduced motion, CSS scale, and device scale factor 1. `SHARECLI_VISUAL_FIXTURE=1` replaces the live WebSocket with an empty-pool fixture before dashboard code runs, waits for the fixed `connected` state and fonts, and disables animations for the screenshot. Baselines must be regenerated on the same `ubuntu-24.04` job; Windows/macOS captures are diagnostic only.
+
 ### Phase C — theme matrix (planned)
 
 After dashboard imports `tokens.css`:
@@ -125,17 +129,17 @@ After dashboard imports `tokens.css`:
 
 Tray / Win32 surfaces stay out of scope until L112 signing hardens (C11).
 
-## Pass criteria (soft → hard)
+## Pass criteria
 
-| Gate | Soft (now) | Hard (target) |
-|------|------------|---------------|
+| Gate | Current contract | Follow-up |
+|------|------------------|-----------|
 | Text goldens | 5/5 fixtures green in CI | unchanged |
 | Hex lock | dark pair unit test | + light pair lock |
-| Dashboard PNG | soft pixel diff + manifest byte lock | pixel diff ≤ 0.1% @ 1280; ≤ 0.2% @ 375 (hard) |
+| Dashboard PNG | blocking manifest byte/dimension checks; pixel diff ≤ 0.1% @ 768/1280 and ≤ 0.2% @ 375 | theme matrix |
 | Hex drift | documented in high-contrast.md | zero unmatched hex in `dashboard.html` |
 | axe Level A | `a11y.yml` | unchanged |
 
-L107 stays **2** until soft diff soaks two release cycles and promotes to hard; cluster top gap “golden visual tests” closes when PNG diff blocks merge.
+L107 remains **3**: the hard promotion strengthens existing evidence but does not justify a score above the rubric maximum or change the C10 cluster total. T-600 closes the visual-gate remediation; dashboard hex drift remains separate.
 
 ## Related docs
 

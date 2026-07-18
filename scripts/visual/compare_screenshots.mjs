@@ -1,5 +1,5 @@
 /**
- * Soft pixel diff for dashboard PNG baselines (C10 L107 phase B2 scaffold).
+ * Blocking pixel diff for dashboard PNG baselines (C10 L107 / T-600).
  *
  * Compares committed baselines under tests/visual/dashboard/ against fresh
  * Playwright captures (artifacts/playwright/*). Validates manifest byte sizes.

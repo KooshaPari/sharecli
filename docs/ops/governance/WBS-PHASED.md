@@ -143,7 +143,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W12.5 | C08 Harbor Phase 3 soak | T-440 · ADR 0005 · #326 | Status: DONE |
 | W12.4b | W4.3 codesign / notarize | C11 L112 | Status: BLOCKED |
 
-### Wave13 — Hard gates toward 82% B (IN_PROGRESS)
+### Wave13 — Hard gates toward 82% B (DONE)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
@@ -151,7 +151,15 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W13.2 | PNG baseline commit + soft diff | C10 L107 · `tests/visual/dashboard/` · #335 | Status: DONE |
 | W13.3 | Harbor Phase 3 soak execution (7d) | C08 L76 · `docs/ops/harbor-phase3-soak.md` · #333 | Status: DONE |
 | W13.4 | Trace IPC + tray injectors | C05 L44 · `docs/ops/trace-multihop.md` · T-530 · #334 | Status: DONE |
-| W13.5 | Governance sync (WBS/GAP/DAG/RC) | T-550 | Status: IN_PROGRESS |
+| W13.5 | Governance sync (WBS/GAP/DAG/RC) | T-550 · #336 | Status: DONE |
+
+### Wave14 — Remaining hard gates (IN_PROGRESS)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W14.1 | Deterministic dashboard visual hard gate | FR-003 · C10 L107 · T-600 | Status: DONE |
+| W14.2 | Seven-day Harbor soak log completion | C08 L76 | Status: READY |
+| W14.3 | Codesign / notarize | C11 L112 | Status: BLOCKED |
 
 ### Wave14 — Evidence hardening (IN_PROGRESS)
 
