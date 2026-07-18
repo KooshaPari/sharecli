@@ -40,6 +40,7 @@ impl ErrorEnvelope {
         Self::authentication("unauthorized", message)
     }
 
+    #[allow(dead_code)] // Windows pprof 501 + future validation handlers (FR-004)
     pub fn validation(code: &str, message: &str) -> Self {
         Self::new("validation_error", code, message)
     }
@@ -48,6 +49,7 @@ impl ErrorEnvelope {
         Self::new("not_found_error", "not_found", message)
     }
 
+    #[allow(dead_code)] // Windows/non-unix pprof path (FR-004)
     pub fn not_implemented(message: &str) -> Self {
         Self::new("not_implemented_error", "not_implemented", message)
     }
