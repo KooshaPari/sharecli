@@ -1,0 +1,131 @@
+# Chaos restart hard-gate promotion (soft plan)
+
+Audit-v38 **C05 L50** — promote [`chaos_restart.sh`](../../scripts/load/chaos_restart.sh) from
+**local / soft detection (today)** to a **required merge gate** without wiring
+`ci-success` or branch protection yet. Builds on the soak contract in
+[`soak-chaos.md`](soak-chaos.md).
+
+Related: [`.github/workflows/soak-soft.yml`](../../.github/workflows/soak-soft.yml) (L47 healthz soak) ·
+[`.github/workflows/load-soft.yml`](../../.github/workflows/load-soft.yml) (L50 burst) ·
+[`ruleset-checklist.md`](ruleset-checklist.md) (branch protection runbook).
+
+## Current stance (soft)
+
+| Control | Workflow / config | Gate strength | Notes |
+|---------|-------------------|---------------|-------|
+| Chaos kill/restart | `scripts/load/chaos_restart.sh` | **Local** | SIGKILL + restart; `/healthz` recover < 30s |
+| Local DX | `just chaos-soft` | Maintainer | Builds release + runs script on `:9000` |
+| Soak CI | `soak-soft.yml` | **Soft** | `continue-on-error: true`; 60s `/healthz` loop |
+| Load CI | `load-soft.yml` | **Soft** | `continue-on-error: true`; burst macrobench |
+| Chaos CI | — | **Skipped** | Documented CI skip in `soak-chaos.md` (port-reuse flake risk) |
+
+**Net:** chaos restart is **scripted and reproducible locally**, but no GitHub Actions job
+enforces recovery on PRs today.
+
+## Target stance (hard)
+
+| Control | Target |
+|---------|--------|
+| Recovery SLA | `/healthz` healthy within `SHARECLI_CHAOS_RECOVER_SEC` (default **30s**) after SIGKILL restart |
+| Bind / URL | `127.0.0.1:9000` parity with soak/load soft workflows |
+| Job mode | `chaos-restart-hard.yml` — **no** `continue-on-error` on the job |
+| `ci-success` | Add `chaos-restart-hard` to `.github/workflows/ci.yml` `needs:` |
+| Branch protection | `chaos restart (hard)` required check on `main` PRs |
+| Score | L50 **2 → 3** when hard gate is live and green for one week |
+
+L50 stays **2** until branch protection + `ci-success` wiring lands; this doc closes the
+**plan** gap on the C05 scorecard Top-3 list.
+
+## Recovery contract (inherited from soft)
+
+| Metric | Soft (today) | Hard (target) |
+|--------|--------------|---------------|
+| Initial health | serve healthy within 30s | same |
+| Kill signal | SIGKILL (`kill -9`) | same |
+| Port release wait | 1s sleep before restart | same |
+| Pass condition | `/healthz` 2xx within `RECOVER_SEC` | same → **job exit 0** |
+| Fail condition | timeout → script exit 3 | same → **job exit 1** |
+| Binary | `./target/release/sharecli` | `cargo build --locked --release -p sharecli` |
+
+Do **not** relax `RECOVER_SEC` or swap SIGKILL for SIGTERM on promotion.
+
+## Soft phases (no branch protection yet)
+
+| Phase | Deliverable | Hard gate? |
+|-------|-------------|------------|
+| **0 — today** | `chaos_restart.sh` + `just chaos-soft` + `soak-chaos.md` CI skip | No |
+| **1 — plan** | This doc + scorecard/worklog (FR-003 · T-630) | No |
+| **2 — CI soak** | `chaos-restart-hard.yml` on PR/push `main` **without** `continue-on-error` | Partial — job fails PR but not aggregated `ci-success` |
+| **3 — green soak** | Seven consecutive green `main` runs (no flake regressions) | No |
+| **4 — hard gate** | Wire `ci-success` + branch protection required check | **Yes — deferred** |
+
+Phase 0–3 are **documentation + standalone CI**. Phase 4 needs maintainer sign-off
+after phase-3 soak completes.
+
+### Phase 3 soak checklist
+
+Track in PR comments or `audit/.lane-c05/` until phase 4:
+
+- [ ] Seven consecutive `main` workflow runs green on `chaos restart (hard)`.
+- [ ] No port-reuse or timing flakes on `ubuntu-24.04` shared runners.
+- [ ] `just chaos-hard` reproduces CI locally on `main` HEAD.
+- [ ] Maintainer acknowledges bind `:9000` does not collide with parallel jobs (isolated runner).
+
+## Hard-gate wiring (phase 4 — planned)
+
+1. **Workflow** — `.github/workflows/chaos-restart-hard.yml`:
+   - Job already runs without `continue-on-error` (phase 2).
+   - Rename job display to `chaos restart (required)` when branch protection lands.
+2. **`ci-success`** — add `chaos-restart-hard` to `needs:` in `.github/workflows/ci.yml`.
+3. **Branch protection** — GitHub → Settings → Rules → `main`:
+   - Add required status check: `chaos restart (hard)` (exact name from workflow).
+   - Cross-ref [`ruleset-checklist.md`](ruleset-checklist.md).
+4. **`soak-chaos.md`** — update “Current gate” table to mark hard mode live; link here.
+5. **`scripts/load/README.md`** — list hard CI workflow alongside soft load/soak.
+
+**Do not** add `|| true`, recovery caps above 30s, or `continue-on-error` on the hard step.
+
+## Triage (flakes before hard gate)
+
+When `chaos-restart-hard` flakes during soak:
+
+| Symptom | Action |
+|---------|--------|
+| `EADDRINUSE` on restart | Increase pre-restart sleep in script (measure first); keep ≤ 3s |
+| `/healthz` timeout under load | Verify no stray serve on `:9000`; check runner port isolation |
+| Initial 30s health timeout | Profile cold-start; do not disable initial wait |
+| Intermittent curl failure | Keep `curl -fsS --max-time 2`; retry loop already 1s cadence |
+
+## Commands (local dry-run)
+
+```bash
+# Matches CI (hard)
+just chaos-hard
+
+# Explicit parity
+cargo build --locked --release -p sharecli
+SHARECLI_LOAD_URL=http://127.0.0.1:9000/healthz \
+  SHARECLI_SERVE_BIND=127.0.0.1:9000 \
+  SHARECLI_SERVE_BIN=./target/release/sharecli \
+  bash scripts/load/chaos_restart.sh
+```
+
+Expect non-zero exit when recovery exceeds `SHARECLI_CHAOS_RECOVER_SEC` — that is the
+intended hard-gate signal.
+
+## Audit evidence (C05 L50)
+
+| Line | Evidence | Score |
+|------|----------|-------|
+| **L50** Chaos/load testing | `chaos_restart.sh`, `load-soft.yml`, `soak-soft.yml`, `chaos-restart-hard.yml`, `just chaos-soft` / `just chaos-hard`, this promotion plan | **2** — unchanged until phase 4 |
+
+**Soft follow-up**
+
+| Item | Status |
+|------|--------|
+| Chaos hard-gate promotion plan | Done (this file) |
+| `chaos-restart-hard.yml` (no `continue-on-error`) | Done (phase 2) |
+| Seven-day green soak on `main` | Open |
+| Wire `ci-success` + required check | Deferred |
+
+**Status:** soft plan + CI soak (Phase 1–2) · **FR:** FR-003 traceability · **Task:** T-630 · **Last sync:** 2026-07-18
