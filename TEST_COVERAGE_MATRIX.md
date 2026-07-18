@@ -1,8 +1,8 @@
 # Test Coverage Matrix
 
 **Project**: sharecli  
-**Document Version**: 1.2  
-**Last Updated**: 2026-07-12 (T-220)
+**Document Version**: 1.3
+**Last Updated**: 2026-07-18 (T-620)
 
 ---
 
@@ -16,7 +16,33 @@
 | Test functions in `tests/` | 72 (`#[test]` / `#[tokio::test]`) |
 | Unit-ish tests in `src/` + `crates/` | ~1500+ (includes generated/large suites) |
 | Coverage Target | 85% (see `.github/workflows/quality-gate.yml` `COVERAGE_THRESHOLD`) |
-| Current Coverage | Measured in CI (`coverage.yml` / llvm-cov); not pinned in-repo — run `just coverage` |
+| Current Coverage | **Unknown — not inventing a percentage.** The successful base-SHA run below produced LCOV for Codecov but no retained report or percentage. |
+
+---
+
+## Measured coverage pin
+
+| Field | Evidence |
+|-------|----------|
+| Source revision | `1ade83efe690ed5b26143534d70d02945d9b7009` (`origin/main` for T-620) |
+| Successful CI run | [Coverage run 29640723234](https://github.com/KooshaPari/sharecli/actions/runs/29640723234), 2026-07-18 |
+| Measured line percentage | **Unknown / unavailable** |
+| Why unavailable | The run used `cargo llvm-cov --lcov --output-path lcov.info`, uploaded only to Codecov, and retained no GitHub artifact or percentage-bearing summary. The run's artifact list is empty. |
+| Automated pin after T-620 | `coverage.yml` emits llvm-cov export JSON, compacts its totals with `scripts/coverage_snapshot.py`, prints `coverage-snapshot.json` in the log, and retains it as a 30-day GitHub artifact keyed by commit SHA. |
+
+The compact snapshot records covered/count/percentage totals for lines, functions,
+regions, and branches, plus the source SHA, Actions run ID, 85% target, and whether
+the measured line percentage meets that target. A future documentation update may
+pin a numeric percentage only from one of these retained snapshots.
+
+### 85% enforcement
+
+The 85% line target is a hard PR gate in
+`.github/workflows/quality-gate.yml`: `COVERAGE_THRESHOLD=85` is passed to
+`cargo llvm-cov --fail-under-lines` for the documented unit-test scope. A result
+below 85% makes the `unit-tests` job fail. The broader workspace snapshot in
+`coverage.yml` is evidence/reporting and does not replace that hard gate; its
+`meets_lines_target` field makes target drift machine-readable.
 
 ---
 
@@ -76,8 +102,8 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ### Short-term Actions
 1. Optionally close T-310 after lane evidence sweep.
-2. Publish a measured coverage % from `just coverage` into this summary after CI green.
+2. Pin the next measured percentage from the retained `coverage-snapshot-<sha>` artifact.
 
 ---
 
-**Last Updated**: 2026-07-13
+**Last Updated**: 2026-07-18 (T-620)

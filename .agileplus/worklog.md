@@ -4,6 +4,12 @@
 - Status: DONE — `docs/ops/chaos-restart-hard-gate.md` (T-630); `chaos-restart-hard.yml` (no `continue-on-error`); `just chaos-hard`; soak-chaos.md + load README cross-refs; L50 stays 2 until ci-success + branch protection
 - FR: FR-003
 
+## 2026-07-18 (C01 coverage evidence pin — T-620 / FR-003)
+- Status: DONE — successful base-SHA Coverage run 29640723234 verified; numeric percentage explicitly recorded unknown because the run retained no percentage-bearing report.
+- Automation: `coverage.yml` now emits a compact, SHA-keyed llvm-cov snapshot artifact via `scripts/coverage_snapshot.py`; `TEST_COVERAGE_MATRIX.md` documents the 85% hard PR gate.
+- Score: C01 remains 24/30 (80% B); first post-T-620 numeric broad-workspace pin is pending.
+- FR: FR-003
+
 ## 2026-07-18 (governance Wave13 closeout — FR-003)
 - Status: IN_PROGRESS — WBS W13.1–W13.4 DONE; GAP-QA T-500..T-530 closed; WORK_DAG T-500..T-530 completed; RC @ 6466b4e ~82% B; SCORECARD reconcile v4 (#332–#335)
 - Score: C00 77% B · C05 80% B · C08 80% B · C10 89% B · weighted ~82% B

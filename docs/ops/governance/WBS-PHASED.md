@@ -153,6 +153,12 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W13.4 | Trace IPC + tray injectors | C05 L44 · `docs/ops/trace-multihop.md` · T-530 · #334 | Status: DONE |
 | W13.5 | Governance sync (WBS/GAP/DAG/RC) | T-550 | Status: IN_PROGRESS |
 
+### Wave14 — Evidence hardening (IN_PROGRESS)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W14.1 | Coverage percentage pin + llvm-cov snapshot artifact | C01 L11 · T-620 · `TEST_COVERAGE_MATRIX.md` · `coverage.yml` | Status: DONE |
+
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.

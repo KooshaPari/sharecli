@@ -11,12 +11,16 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  COVERAGE_THRESHOLD: 85
 
 jobs:
   coverage:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Test coverage snapshot parser
+        run: python -m unittest scripts/test_coverage_snapshot.py
 
       - name: Setup Rust (stable + llvm-tools)
         uses: dtolnay/rust-toolchain@stable
@@ -47,7 +51,25 @@ jobs:
       - name: Run coverage (llvm-cov)
         run: |
           cargo llvm-cov --locked --all-features --workspace \
-            --lcov --output-path lcov.info
+            --json --output-path coverage-llvm-cov.json
+          cargo llvm-cov report --lcov --output-path lcov.info
+
+      - name: Create coverage snapshot
+        run: |
+          python scripts/coverage_snapshot.py \
+            coverage-llvm-cov.json coverage-snapshot.json \
+            --git-sha "${GITHUB_SHA}" \
+            --run-id "${GITHUB_RUN_ID}" \
+            --threshold "${COVERAGE_THRESHOLD}"
+          cat coverage-snapshot.json
+
+      - name: Upload coverage snapshot
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-snapshot-${{ github.sha }}
+          path: coverage-snapshot.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload coverage
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4

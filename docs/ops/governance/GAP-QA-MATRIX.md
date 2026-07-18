@@ -40,6 +40,7 @@
 
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
+| C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-620 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` · `.github/workflows/coverage.yml` · `scripts/coverage_snapshot.py` | agent-c01 |
 | C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `docs/ops/trace-multihop.md` · `docs/ops/live-pd.md` | agent-c05 |
 | C05 | L44 | CLI traceparent inject (one hop) | Med | W12.3 · T-420 · #328 | Status: Closed | `src/otel.rs` · `src/runtime.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
 | C05 | L44 | IPC + tray traceparent inject | Med | W13.4 · T-530 | Status: Closed | `src/otel.rs` · `crates/sharecli-ffi` · `tests/c05_trace_ipc_tray_inject.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
