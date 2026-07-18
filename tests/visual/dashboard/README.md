@@ -1,32 +1,33 @@
-# Dashboard PNG baselines (phase B scaffold)
+# Dashboard PNG baselines (phase B1b)
 
 Committed screenshot baselines for `src/dashboard.html` at three viewports.
 Aligned with C09 `playwright-viewports.md` and C10 `golden-visual-tests.md`.
 
-## Expected files (stub paths)
+## Baselines
 
-| Baseline | Viewport | Committed path | Phase-A artifact |
-|----------|----------|----------------|------------------|
-| mobile | 375×812 | `mobile.png` | `artifacts/playwright/mobile-375.png` |
-| tablet | 768×1024 | `tablet.png` | `artifacts/playwright/tablet-768.png` |
-| desktop | 1280×800 | `desktop.png` | `artifacts/playwright/desktop-1280.png |
+| Baseline | Viewport | Committed path | Bytes | Phase-A artifact |
+|----------|----------|----------------|------:|------------------|
+| mobile | 375×812 | `mobile.png` | 11272 | `artifacts/playwright/mobile-375.png` |
+| tablet | 768×1024 | `tablet.png` | 14145 | `artifacts/playwright/tablet-768.png` |
+| desktop | 1280×800 | `desktop.png` | 13905 | `artifacts/playwright/desktop-1280.png` |
 
-`manifest.json` lists the same contract for tooling.
+`manifest.json` lists the same contract (including `bytes` lock) for tooling.
 
-## Git policy
+## Soft diff
 
-`*.png` in this directory is **gitignored** until a maintainer seeds from a green
-`playwright-soft` CI artifact on `main`. Without a local browser / serve stack,
-only the manifest + README ship in-repo (stub path scaffold).
+`scripts/visual/compare_screenshots.mjs` compares fresh Playwright captures against
+these baselines (pixelmatch + manifest byte check). CI: `.github/workflows/visual-soft.yml`
+(`continue-on-error`).
 
-To seed (after visual freeze):
+## Regen
 
 ```bash
-# download playwright-viewports-<sha> artifact, then:
-cp mobile-375.png tests/visual/dashboard/mobile.png
-cp tablet-768.png tests/visual/dashboard/tablet.png
-cp desktop-1280.png tests/visual/dashboard/desktop.png
-git add -f tests/visual/dashboard/*.png
+cargo build --release -p sharecli
+# terminal 1: sharecli serve --bind 127.0.0.1:9000
+npx --yes playwright@1.49.0 install chromium
+SHARECLI_DASH_URL=http://127.0.0.1:9000/ node scripts/a11y/playwright_viewports.mjs
+npm install --no-save pixelmatch@6.0.0 pngjs@7.0.0
+UPDATE_VISUALS=1 node scripts/visual/compare_screenshots.mjs
+# refresh manifest.json bytes, then:
+git add -f tests/visual/dashboard/*.png tests/visual/dashboard/manifest.json
 ```
-
-Soft pixel diff (`scripts/visual/compare_screenshots.mjs`, phase B2) is not wired yet.
