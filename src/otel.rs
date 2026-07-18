@@ -133,10 +133,7 @@ mod tests {
         let prev = std::env::var(key).ok();
         let prev_upper = std::env::var("TRACEPARENT").ok();
         std::env::remove_var("TRACEPARENT");
-        std::env::set_var(
-            key,
-            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-        );
+        std::env::set_var(key, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
         let out = traceparent_spawn_env();
         if let Some(prev) = prev {
             std::env::set_var(key, prev);
