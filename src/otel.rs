@@ -8,10 +8,13 @@
 //! Also installs the W3C `TraceContextPropagator` so HTTP middleware can
 //! extract/inject `traceparent` (audit-v38 L42 / L44).
 
+use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use opentelemetry::global;
+use opentelemetry::propagation::Injector;
 use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::Context;
 use opentelemetry_otlp::SpanExporter;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::trace::SdkTracerProvider;
@@ -60,6 +63,39 @@ pub fn ensure_trace_context_propagator() {
     global::set_text_map_propagator(TraceContextPropagator::new());
 }
 
+struct CarrierInjector<'a>(&'a mut HashMap<String, String>);
+
+impl Injector for CarrierInjector<'_> {
+    fn set(&mut self, key: &str, value: String) {
+        self.0.insert(key.to_string(), value);
+    }
+}
+
+/// Soft multi-hop (C05 L44): `TRACEPARENT` for CLI supervised spawns.
+///
+/// Returns `None` when the parent already exports `TRACEPARENT` (child inherits).
+/// Otherwise maps lowercase `traceparent` from the operator env, or injects the
+/// active OTel trace context when present.
+pub fn traceparent_spawn_env() -> Option<(String, String)> {
+    if std::env::var_os("TRACEPARENT").is_some() {
+        return None;
+    }
+    if let Ok(v) = std::env::var("traceparent") {
+        if !v.is_empty() {
+            return Some(("TRACEPARENT".to_string(), v));
+        }
+    }
+    ensure_trace_context_propagator();
+    let mut carrier = HashMap::new();
+    global::get_text_map_propagator(|prop| {
+        prop.inject_context(&Context::current(), &mut CarrierInjector(&mut carrier));
+    });
+    carrier
+        .get("traceparent")
+        .filter(|v| !v.is_empty())
+        .map(|v| ("TRACEPARENT".to_string(), v.clone()))
+}
+
 fn build_provider() -> Result<SdkTracerProvider, Box<dyn std::error::Error + Send + Sync>> {
     let exporter = SpanExporter::builder().with_http().build()?;
     let resource = Resource::builder().with_service_name("sharecli").build();
@@ -89,5 +125,30 @@ mod tests {
     fn propagator_install_is_idempotent() {
         ensure_trace_context_propagator();
         ensure_trace_context_propagator();
+    }
+
+    #[test]
+    fn traceparent_spawn_env_maps_lowercase_env() {
+        let key = "traceparent";
+        let prev = std::env::var(key).ok();
+        let prev_upper = std::env::var("TRACEPARENT").ok();
+        std::env::remove_var("TRACEPARENT");
+        std::env::set_var(key, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+        let out = traceparent_spawn_env();
+        if let Some(prev) = prev {
+            std::env::set_var(key, prev);
+        } else {
+            std::env::remove_var(key);
+        }
+        if let Some(prev) = prev_upper {
+            std::env::set_var("TRACEPARENT", prev);
+        }
+        assert_eq!(
+            out,
+            Some((
+                "TRACEPARENT".to_string(),
+                "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01".to_string()
+            ))
+        );
     }
 }
