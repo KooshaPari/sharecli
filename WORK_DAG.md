@@ -71,18 +71,23 @@ flowchart TD
 | — | Phased org+project WBS | `docs/ops/governance/WBS-PHASED.md` |
 | — | Gap/QA matrix | `docs/ops/governance/GAP-QA-MATRIX.md` |
 | — | PERT + parallel DAG Wave12 | `docs/ops/governance/PERT-DAG-W12.md` |
-| — | RC snapshot ~80% B | `docs/ops/governance/RC-audit-v38-80B.md` |
+| — | RC snapshot ~81% B | `docs/ops/governance/RC-audit-v38-80B.md` |
+| T-450 | Governance sync WBS/GAP/DAG/RC/PERT (#325) | DONE (2026-07-17) |
+| T-400 | Unify serve error envelope JSON (#330) | DONE (2026-07-18) |
+| T-410 | proptest config roundtrip dep (#329) | DONE (2026-07-17) |
+| T-420 | traceparent inject one CLI path (#328) | DONE (2026-07-17) |
+| T-430 | Commit dashboard PNG baseline scaffold (#327) | DONE (2026-07-17) |
+| T-440 | Harbor Phase 3 soak evidence plan (#326) | DONE (2026-07-17) |
 
-## Wave12 backlog (READY — parallel width 5)
+## Wave13 backlog (READY)
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
-| T-450 | Governance sync WBS/GAP/DAG/RC/PERT | audit | — | S | IN_PROGRESS | W11.7 merged; headers match SCORECARD |
-| T-400 | Unify serve error envelope JSON | FR-004 · C00 L3 | T-450 | M | READY | 401/4xx/5xx match `error-envelope.md`; tests pass |
-| T-410 | proptest config roundtrip dep | FR-003 · C07 L66 | T-450 | M | DONE | `proptest` in root + ≥1 config test green |
-| T-420 | traceparent inject one CLI path | FR-003 · C05 L44 | T-450 | M | READY | CLI spawn injects traceparent; doc updated |
-| T-430 | Commit dashboard PNG baseline | FR-003 · C10 L107 | T-450 | M | READY | `tests/visual/` baseline + soft CI artifact |
-| T-440 | Harbor Phase 3 soak evidence | FR-003 · C08 L76 | T-450 | S | READY | ADR 0005 Phase 3 row + 7d soak log in ops doc |
+| T-550 | Governance sync WBS/GAP/DAG/RC | audit | Wave12 DONE | S | READY | W13 rows match SCORECARD |
+| T-500 | OpenAPI ErrorEnvelope component | FR-004 · C00 L2 | T-400 | S | READY | `serve.yaml` schema + drift CI green |
+| T-510 | PNG bytes commit + soft diff | FR-003 · C10 L107 | T-430 | M | READY | `tests/visual/dashboard/*.png` + soft CI |
+| T-520 | Harbor Phase 3 soak execution | FR-003 · C08 L76 | T-440 | M | READY | 7d soak log in `harbor-phase3-soak.md` |
+| T-530 | Trace IPC + tray injectors | FR-003 · C05 L44 | T-420 | M | READY | multihop doc status wired + tests |
 
 ## Ownership notes
 
