@@ -167,6 +167,22 @@
   const body = document.getElementById('proc-body');
   const lastUpdate = document.getElementById('last-update');
   let reconnectTimer = null;
+  const traceparent = document.documentElement.dataset.traceparent || '';
+
+  function traceHeaders() {
+    const headers = {};
+    if (traceparent) {
+      headers['traceparent'] = traceparent;
+    }
+    return headers;
+  }
+
+  async function probeServe() {
+    if (!traceparent) return;
+    try {
+      await fetch('/healthz', { headers: traceHeaders() });
+    } catch (_) {}
+  }
 
   function connect() {
     const ws = new WebSocket('ws://localhost:9000/ws');
@@ -235,6 +251,7 @@
   }
 
   connect();
+  probeServe();
 </script>
 </body>
 </html>

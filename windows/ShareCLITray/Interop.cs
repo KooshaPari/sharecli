@@ -32,6 +32,11 @@ public static class ShareCLIInterop
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr sharecli_request(string requestJson);
 
+    /// GET a sharecli serve URL with W3C trace context propagation.
+    /// Caller frees the returned string with sharecli_free_string.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr sharecli_serve_get(string url);
+
     /// Helper: marshal C string to C# string and free it.
     private static string? MarshalCString(IntPtr ptr)
     {
@@ -60,6 +65,13 @@ public static class ShareCLIInterop
     public static string? SendRequest(string requestJson)
     {
         var ptr = sharecli_request(requestJson);
+        return MarshalCString(ptr);
+    }
+
+    /// Wrapper: GET a serve endpoint with traceparent injection.
+    public static string? ServeGet(string url)
+    {
+        var ptr = sharecli_serve_get(url);
         return MarshalCString(ptr);
     }
 }

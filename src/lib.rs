@@ -23,6 +23,7 @@ pub mod runtime;
 pub mod serve_auth;
 pub mod serve_lock;
 pub mod spawn_policy;
+pub mod tray_http;
 pub mod watchdog;
 
 pub use anyhow::Result;

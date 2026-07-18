@@ -23,6 +23,7 @@ middleware continues to extract/inject W3C `traceparent` on every request.
 |----------|----------|
 | Inbound HTTP | Read `traceparent`; attach to `http.request` span |
 | Outbound HTTP response | Echo inbound `traceparent`, or synthesize one |
+| Tray dashboard HTTP | `traceparent_http_value` + `tray_http::get` / `sharecli_serve_get` FFI; dashboard HTML embeds `data-traceparent` for `fetch` |
 | OTLP | Batch export when endpoint env is set (`src/otel.rs`) |
 
 ## Metrics (RED)

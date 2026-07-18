@@ -1,0 +1,166 @@
+//! Tray dashboard HTTP client with W3C `traceparent` injection (C05 L44 / T-610).
+//!
+//! Used by `sharecli-ffi` and integration tests when the desktop tray probes
+//! `sharecli serve` over loopback HTTP.
+#![allow(dead_code)] // The binary copy only serves HTML; FFI consumes `get` from the library.
+
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::time::Duration;
+
+use anyhow::{Context, Result};
+
+use crate::otel::traceparent_http_value;
+
+/// GET `url` over HTTP/1.1 with operator/OTel `traceparent` when configured.
+pub fn get(url: &str) -> Result<String> {
+    let (host, port, path) = parse_http_url(url)?;
+    let mut stream = TcpStream::connect((host.as_str(), port))
+        .with_context(|| format!("connect to {host}:{port}"))?;
+    let timeout = Some(Duration::from_secs(5));
+    stream.set_read_timeout(timeout).context("set HTTP read timeout")?;
+    stream.set_write_timeout(timeout).context("set HTTP write timeout")?;
+    let mut req =
+        format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\nAccept: */*\r\n");
+    if let Some(tp) = traceparent_http_value() {
+        req.push_str(&format!("traceparent: {tp}\r\n"));
+    }
+    req.push_str("\r\n");
+    stream.write_all(req.as_bytes()).context("write HTTP request")?;
+    let mut buf = Vec::new();
+    stream.read_to_end(&mut buf).context("read HTTP response")?;
+    extract_http_body(&buf)
+}
+
+fn parse_http_url(url: &str) -> Result<(String, u16, String)> {
+    let rest = url.strip_prefix("http://").context("only http:// URLs are supported")?;
+    let (authority, path) = match rest.split_once('/') {
+        Some((auth, tail)) => (auth, format!("/{tail}")),
+        None => (rest, "/".to_string()),
+    };
+    let (host, port) = match authority.split_once(':') {
+        Some((h, p)) => (h.to_string(), p.parse().context("invalid port")?),
+        None => (authority.to_string(), 80),
+    };
+    Ok((host, port, path))
+}
+
+fn extract_http_body(raw: &[u8]) -> Result<String> {
+    let text = std::str::from_utf8(raw).context("response not UTF-8")?;
+    let (_, body) = text.split_once("\r\n\r\n").context("malformed HTTP response")?;
+    Ok(body.to_string())
+}
+
+/// Inject `data-traceparent` on the dashboard root element when configured.
+pub fn inject_dashboard_traceparent(html: &str) -> String {
+    let Some(tp) = traceparent_http_value() else {
+        return html.to_string();
+    };
+    let escaped = tp.replace('&', "&amp;").replace('"', "&quot;").replace('\'', "&#39;");
+    html.replace(
+        "<html lang=\"en\">",
+        &format!("<html lang=\"en\" data-traceparent=\"{escaped}\">"),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::sync::mpsc;
+    use std::sync::Mutex;
+    use std::thread;
+    use std::time::Duration;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn inject_dashboard_traceparent_adds_data_attribute() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let lower = "traceparent";
+        let upper = "TRACEPARENT";
+        let prev_lower = std::env::var(lower).ok();
+        let prev_upper = std::env::var(upper).ok();
+        std::env::set_var(lower, "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01");
+        std::env::remove_var(upper);
+        let html = inject_dashboard_traceparent("<html lang=\"en\"><body></body></html>");
+        if let Some(previous) = prev_lower {
+            std::env::set_var(lower, previous);
+        } else {
+            std::env::remove_var(lower);
+        }
+        if let Some(previous) = prev_upper {
+            std::env::set_var(upper, previous);
+        }
+        assert!(html.contains(
+            "data-traceparent=\"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01\""
+        ));
+    }
+
+    #[test]
+    fn get_sends_traceparent_header() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let addr = listener.local_addr().unwrap();
+        let (tx, rx) = mpsc::channel();
+
+        let handle = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut request = String::new();
+            reader.read_line(&mut request).unwrap();
+            let mut headers = String::new();
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                if line == "\r\n" {
+                    break;
+                }
+                headers.push_str(&line);
+            }
+            tx.send((request, headers)).unwrap();
+            let response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok";
+            stream.write_all(response.as_bytes()).unwrap();
+        });
+
+        let lower = "traceparent";
+        let upper = "TRACEPARENT";
+        let prev_lower = std::env::var(lower).ok();
+        let prev_upper = std::env::var(upper).ok();
+        std::env::set_var(lower, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+        std::env::remove_var(upper);
+
+        let url = format!("http://{addr}/healthz");
+        let body = get(&url).expect("tray HTTP get");
+
+        if let Some(previous) = prev_lower {
+            std::env::set_var(lower, previous);
+        } else {
+            std::env::remove_var(lower);
+        }
+        if let Some(previous) = prev_upper {
+            std::env::set_var(upper, previous);
+        }
+
+        let (request, headers) = rx.recv_timeout(Duration::from_secs(5)).expect("request captured");
+        handle.join().expect("server thread");
+        assert_eq!(body, "ok");
+        assert!(request.starts_with("GET /healthz HTTP/1.1"));
+        assert!(headers
+            .contains("traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"));
+    }
+
+    #[test]
+    fn parse_http_url_defaults_port() {
+        let (host, port, path) = parse_http_url("http://127.0.0.1/healthz").unwrap();
+        assert_eq!(host, "127.0.0.1");
+        assert_eq!(port, 80);
+        assert_eq!(path, "/healthz");
+    }
+
+    #[test]
+    fn parse_http_url_rejects_https() {
+        assert!(parse_http_url("https://127.0.0.1:9000/").is_err());
+    }
+}
