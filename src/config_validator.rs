@@ -232,6 +232,7 @@ fn validate_defaults(
 mod tests {
     use super::*;
     use crate::config::{Config, DefaultHarnessConfig, PortConfig};
+    use proptest::prelude::*;
 
     fn valid_config() -> Config {
         Config::default()
@@ -339,5 +340,27 @@ mod tests {
         );
         let errs = validate_config(&cfg);
         assert!(errs.iter().any(|e| e.field == "config.defaults.testharness.max_instances"));
+    }
+
+    // --- proptest (C07 L66 / T-410) ---
+    proptest::proptest! {
+        #[test]
+        fn prop_config_toml_roundtrip_max_processes_valid(
+            max_processes in 1usize..=10_000usize,
+        ) {
+            let mut cfg = valid_config();
+            cfg.project_limits.max_processes = max_processes;
+
+            let toml_str = toml::to_string(&cfg).expect("serialize");
+            let back: Config = toml::from_str(&toml_str).expect("deserialize");
+
+            prop_assert_eq!(back.project_limits.max_processes, max_processes);
+
+            let errs = validate_config(&back);
+            prop_assert!(
+                !errs.iter().any(|e| e.field == "config.project_limits.max_processes"),
+                "unexpected max_processes validation error: {errs:?}",
+            );
+        }
     }
 }

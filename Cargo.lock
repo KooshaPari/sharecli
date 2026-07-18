@@ -4219,6 +4219,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "pprof",
+ "proptest",
  "prost 0.12.6",
  "ratatui",
  "reqwest",

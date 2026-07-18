@@ -89,6 +89,7 @@ criterion = { version = "0.8", features = ["async_tokio", "html_reports"] }
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 ratatui = "0.30"
+proptest = "1.6"
 
 [[bench]]
 name = "config_parse"

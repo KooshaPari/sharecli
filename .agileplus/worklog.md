@@ -8,6 +8,10 @@
 - Status: DONE — `tests/visual/dashboard/` placeholder + `golden-visual-tests.md` Phase B scaffold; PNG stub paths gitignored until browser seed
 - FR: FR-003
 
+## 2026-07-17 (C07 config proptest roundtrip — FR-003)
+- Status: DONE — root `proptest = "1.6"` dev-dep; `prop_config_toml_roundtrip_max_processes_valid` in `config_validator.rs`; T-410 / W12.2; L66 stays 2 (thermal-tui + config; registry backlog)
+- FR: FR-003
+
 ## 2026-07-17 (governance Wave12 sync — FR-003)
 - Status: IN_PROGRESS — WBS-PHASED Wave11+12, GAP-QA Jul-17 closures, WORK_DAG T-400..T-450, PERT-DAG-W12, RC-audit-v38-80B
 - FR: FR-003

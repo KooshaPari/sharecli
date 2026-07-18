@@ -137,7 +137,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
 | W12.1 | C00 error envelope unify | T-400 · `docs/ops/error-envelope.md` | Status: READY |
-| W12.2 | C07 proptest config roundtrip | T-410 · `docs/ops/config-proptest.md` | Status: READY |
+| W12.2 | C07 proptest config roundtrip | T-410 · `docs/ops/config-proptest.md` | Status: DONE |
 | W12.3 | C05 traceparent CLI inject | T-420 · `docs/ops/trace-multihop.md` | Status: READY |
 | W12.4 | C10 PNG dashboard baseline | T-430 · `docs/visual/golden-visual-tests.md` | Status: READY |
 | W12.5 | C08 Harbor Phase 3 soak | T-440 · ADR 0005 | Status: READY |
