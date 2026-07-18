@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-17 (C08 Harbor Phase 3 soak plan — FR-003)
+- Status: DONE — `docs/ops/harbor-phase3-soak.md`; ADR 0005 Phase 3 checklist + cross-repo pins; harbor-eval-stub cross-ref; L76 stays 1 until soak completes
+- FR: FR-003
+
 ## 2026-07-17 (governance Wave12 sync — FR-003)
 - Status: IN_PROGRESS — WBS-PHASED Wave11+12, GAP-QA Jul-17 closures, WORK_DAG T-400..T-450, PERT-DAG-W12, RC-audit-v38-80B
 - FR: FR-003

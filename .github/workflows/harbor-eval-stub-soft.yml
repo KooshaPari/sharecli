@@ -8,6 +8,7 @@ on:
       - 'docs/eval/corpus/**'
       - 'scripts/eval/**'
       - 'docs/ops/harbor-eval-stub.md'
+      - 'docs/ops/harbor-phase3-soak.md'
       - '.github/workflows/harbor-eval-stub-soft.yml'
 
 permissions:

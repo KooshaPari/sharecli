@@ -83,5 +83,6 @@ Job `corpus` runs `bash scripts/eval/run-corpus.sh` on `ubuntu-24.04` with
 Golden cases here are **deterministic JSON fixtures**, not screenshot snapshots
 (C10 `tests/golden/` is a separate visual gate). Keep scenarios small and
 supervisor-scoped; do not add agent-eval task corpora without an ADR supersede.
-Harbor Phase 2 stub: [`harbor-eval-stub.md`](./harbor-eval-stub.md) (cross-ref
+Harbor Phase 2 stub: [`harbor-eval-stub.md`](./harbor-eval-stub.md); Phase 3 soak plan:
+[`harbor-phase3-soak.md`](./harbor-phase3-soak.md) (cross-ref
 [ADR 0005](../adr/0005-agent-eval-supersede.md)).
