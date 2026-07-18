@@ -86,7 +86,7 @@ flowchart TD
 | T-550 | Governance sync WBS/GAP/DAG/RC | audit | Wave12 DONE | S | READY | W13 rows match SCORECARD |
 | T-500 | OpenAPI ErrorEnvelope component | FR-004 · C00 L2 | T-400 | S | READY | `serve.yaml` schema + drift CI green |
 | T-510 | PNG bytes commit + soft diff | FR-003 · C10 L107 | T-430 | M | READY | `tests/visual/dashboard/*.png` + soft CI |
-| T-520 | Harbor Phase 3 soak execution | FR-003 · C08 L76 | T-440 | M | READY | 7d soak log in `harbor-phase3-soak.md` |
+| T-520 | Harbor Phase 3 soak execution | FR-003 · C08 L76 | T-440 | M | IN_PROGRESS | scaffold landed; 7d main log open |
 | T-530 | Trace IPC + tray injectors | FR-003 · C05 L44 | T-420 | M | READY | multihop doc status wired + tests |
 
 ## Ownership notes

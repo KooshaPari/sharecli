@@ -46,10 +46,11 @@ Workflow: [`.github/workflows/harbor-eval-stub-soft.yml`](../../.github/workflow
 | 0 | Supervisor corpus + ADR 0002 | Done |
 | 1 | ADR 0005 supersede plan | Done |
 | **2** | **This doc + `harbor_stub.sh`** | **Done (soft)** |
-| 3 | [`harbor-phase3-soak.md`](./harbor-phase3-soak.md) + seven-day soft soak on `main` | In progress (plan landed) |
+| 3 | [`harbor-phase3-soak.md`](./harbor-phase3-soak.md) + seven-day soft soak on `main` | In progress (scaffold landed) |
 | 4 | Mark ADR 0002 superseded; GOVERNANCE + lane re-score | Deferred |
 
 Phase 3 soak evidence plan: [`harbor-phase3-soak.md`](./harbor-phase3-soak.md) (cross-repo
-pins, seven-day checklist). Cross-repo assets stay **out of repo** until Phase 4.
+pins, seven-day checklist, `harbor_soak.sh` execution scaffold). Cross-repo assets stay
+**out of repo** until Phase 4.
 
-**Status:** soft stub (Phase 2) · **FR:** FR-003 traceability · **Last sync:** 2026-07-17
+**Status:** soft stub (Phase 2) · **FR:** FR-003 traceability · **Last sync:** 2026-07-18
