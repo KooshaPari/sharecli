@@ -3,12 +3,14 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c10-l101-c07-l64",
+  "commit": "pending-c08-l76-na-rescore",
   "date": "2026-07-19",
   "overall_pct": 91,
   "grade": "A",
+  "unweighted_overall_pct": 89.8,
+  "unweighted_grade": "B",
   "weighted_overall_pct": 91,
-  "wave_note": "C10 L101 + C07 L64 2→3: disconnect error view; e2e/chaos test tier.",
+  "wave_note": "C08 L76 Harbor N/A honest rescore (score 1): 24/30 80% B → 22/30 73% C; unweighted 89.8% B; weighted 91.1% A.",
   "clusters": {
     "C00": {
       "pct": 97,
@@ -51,9 +53,9 @@
       "score": "27/30"
     },
     "C08": {
-      "pct": 80,
-      "grade": "B",
-      "score": "24/30"
+      "pct": 73,
+      "grade": "C",
+      "score": "22/30"
     },
     "C09": {
       "pct": 93,

@@ -105,6 +105,8 @@ criterion = { version = "0.8", features = ["async_tokio", "html_reports"] }
 # Golden snapshot suite (T-250 / L30.7) needs headless thermal TUI renders.
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
 sharecli-fleet = { path = "crates/sharecli-fleet" }
+sharecli-core = { path = "crates/sharecli-core" }
+sharecli-ipc = { path = "crates/sharecli-ipc" }
 ratatui = "0.30"
 proptest = "1.6"
 

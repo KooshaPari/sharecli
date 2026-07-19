@@ -18,11 +18,11 @@
 | C01 | CI, DX, Observability | L10–L19 | 28/30 | 93% | A | fluent catalogs deferred; advisory hard-fail; anyhow→SharecliError migration |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
-| C04 | Security | L31–L40 | 26/30 | 87% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
+| C04 | Security | L31–L40 | 26/30 | 87% | B | Verified commit evidence for L34 (ruleset 19181236 active); org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 26/30 | 87% | B | live PD roster; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 26/30 | 87% | B | SLSA L3; build provenance L3; vendor/mirror |
 | C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
-| C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 N/A here (ADR 0002); bench tighten remains |
+| C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
 | C10 | Visual Identity | L96–L107 | 34/36 | 94% | A | L99 skeletons; dashboard hex drift; error illustration tier-1 |
 | C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
@@ -31,17 +31,18 @@
 
 **Weighted overall score:** 91% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+90+80+93+94+87)/12 = 1085/12 = **90.4% A**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+90+73+93+94+87)/12 = 1078/12 = **89.8% B**.)
 
-**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+87+80+93+92+87) = 760 + 700 = 1460 / 16 = **91.3%** (A).
+**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+90+73+93+94+87) = 760 + 698 = 1458 / 16 = **91.1%** (A).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C01 **93% A**.
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb` — unweighted **90% A**.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), ruleset “Require signed commits” (C04 L34).
+- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112; zero repo secrets confirmed), SLSA L3 network-block (C06), Verified commit evidence for L34 lift (ruleset 19181236 already active).
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
+- **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**; unweighted **90.4% A → 89.8% B**.
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
@@ -50,6 +51,12 @@
 Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 30-pillar auto-scan for fleet ranking.
 
 ## Post-audit remediations
+
+### 2026-07-19 (C08 L76 Harbor N/A honest rescore)
+
+- **C08 24/30 (80% B) → 22/30 (73% C):** L76 2/3 → **1** (seeded N/A per ADR 0002/0005; Harbor/agent-eval lives in benchora/`portage-temp` — not a sharecli product gap).
+- Unweighted **90.4% A → 89.8% B** (1078/12); tier-1 weighted **91.1% A** (1458/16) from Category Scores table.
+- Headline: L76 N/A correction only — no code change.
 
 ### 2026-07-19 (C00 L4/L6 — async shutdown + tight perf budgets)
 

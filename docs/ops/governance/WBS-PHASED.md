@@ -32,7 +32,7 @@
 | C05 | Observability (deep) | 80% | B | Wave2 + W11–W12 | Status: IN_PROGRESS |
 | C06 | Supply Chain | 80% | B | Wave2 + W6 + W11 | Status: IN_PROGRESS |
 | C07 | DX / QEng / Portability | 77% | B | Wave1–2 + W10–W11 | Status: IN_PROGRESS |
-| C08 | Eval Coverage | 80% | B | Wave1–2 + W11–W13 | Status: IN_PROGRESS |
+| C08 | Eval Coverage | 73% | C | Wave1–2 + W11–W13; L76 N/A=1 (ADR 0002/0005) | Status: IN_PROGRESS |
 | C09 | Accessibility + UX | 76% | B | Wave7 + W9–W11 | Status: IN_PROGRESS |
 | C10 | Visual Identity | 89% | B | Wave1 + W11–W12 | Status: IN_PROGRESS |
 | C11 | Packaging + Distribution | 78% | B | Wave4 + W11 | Status: IN_PROGRESS |
@@ -63,7 +63,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 |-----|------|-------|--------|
 | W4.1 | Unsigned GH Release attach + SBOM in-archive | C11 L118 · C04 L32 · `release.yml` | Status: DONE |
 | W4.2 | Homebrew bottle sha (replace PLACEHOLDER) | C11 · `Formula/sharecli.rb` | Status: DONE |
-| W4.3 | Codesign / notarize | C11 L112 | Status: BLOCKED |
+| W4.3 | Codesign / notarize | C11 L112 | Status: BLOCKED — zero repo secrets (`gh secret list` empty 2026-07-19) |
 | W4.4 | Declare MSRV (`rust-version`) | C11 L119 | Status: DONE |
 
 ### Wave5 — AuthN federation
@@ -142,7 +142,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W12.3 | C05 traceparent CLI inject | T-420 · `docs/ops/trace-multihop.md` · #328 | Status: DONE |
 | W12.4 | C10 PNG dashboard baseline | T-430 · `docs/visual/golden-visual-tests.md` · #327 | Status: DONE |
 | W12.5 | C08 Harbor Phase 3 soak | T-440 · ADR 0005 · #326 | Status: DONE |
-| W12.4b | W4.3 codesign / notarize | C11 L112 | Status: BLOCKED |
+| W12.4b | W4.3 codesign / notarize | C11 L112 | Status: BLOCKED — zero repo secrets |
 
 ### Wave13 — Hard gates toward 82% B (DONE)
 
@@ -160,7 +160,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 |-----|------|-------|--------|
 | W14.1 | Deterministic dashboard visual hard gate | FR-003 · C10 L107 · T-600 | Status: DONE |
 | W14.2 | Seven-day Harbor soak log completion | C08 L76 · T-650 · EXTRACTED → benchora `harbor-soft` / `portage-temp` | Status: EXTRACTED |
-| W14.3 | Codesign / notarize | C11 L112 | Status: BLOCKED |
+| W14.3 | Codesign / notarize | C11 L112 | Status: BLOCKED — zero repo secrets |
 
 ### Wave14 — Evidence hardening (IN_PROGRESS)
 

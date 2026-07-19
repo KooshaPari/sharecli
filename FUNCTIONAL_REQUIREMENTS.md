@@ -132,12 +132,11 @@ replacing the agent executable as the primary detection path.
 
 **Acceptance:**
 
-- Unit/integration coverage for pattern registry + scan (promote into
-  `docs/specs/FR.md` when tests land). Evidence today: hypervisor entry in
-  `crates/sharecli-core`.
+- `tests/fr006_agent_detection.rs` — AC-006.1..AC-006.3
+- `crates/sharecli-core/src/detect.rs` — pattern registry unit tests
 
-**Source:** `crates/sharecli-core`, `crates/sharecli-fleet`  
-**Detail:** PRD E1; amend `docs/specs/FR.md` in a follow-up PR when AC tests land.
+**Source:** `crates/sharecli-core` (`detect`, Hypervisor)  
+**Detail:** PRD E1; `docs/specs/FR.md` may lag — root FR doc is authoritative for FR-006.
 
 ---
 
@@ -152,10 +151,9 @@ FUSE intercept is enabled, IO paths used by coalesce.
 
 **Acceptance:**
 
-- Status/thermal surfaces: `sharecli-fleet` ThermalGovernor,
-  `sharecli-core` SystemThermalGate; FUSE: `sharecli-fuse`.
+- `tests/fr007_resource_thermal_watch.rs` — AC-007.1..AC-007.3
 
-**Source:** `crates/sharecli-core`, `crates/sharecli-fleet`, `crates/sharecli-fuse`  
+**Source:** `crates/sharecli-core`, `crates/sharecli-fleet`, `src/monitoring.rs`  
 **Detail:** PRD E2.
 
 ---
@@ -172,8 +170,7 @@ work.
 
 **Acceptance:**
 
-- `crates/sharecli-ipc` CoalesceCache; `crates/sharecli-core` Hypervisor +
-  thermal gate + coalesce orchestration; optional FUSE cwd share.
+- `tests/fr008_coalesce_mesh.rs` — AC-008.1..AC-008.4
 
 **Source:** `crates/sharecli-ipc`, `crates/sharecli-core`, `crates/sharecli-fuse`  
 **Detail:** PRD E3.
