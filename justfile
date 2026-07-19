@@ -331,6 +331,12 @@ chaos-hard:
     @cargo build --locked --release -p sharecli
     @SHARECLI_LOAD_URL=http://127.0.0.1:9000/healthz SHARECLI_SERVE_BIND=127.0.0.1:9000 SHARECLI_SERVE_BIN=./target/release/sharecli bash scripts/load/chaos_restart.sh
 
+[group: 'parity']
+packaging-deb:
+    @echo ">> build unsigned .deb (C11 L108 phase 3)"
+    @cargo build --locked --release -p sharecli
+    @bash scripts/packaging/build_deb.sh
+
 # -------- C00 memory soft --------
 [group: 'ops']
 rss-soft:

@@ -14,9 +14,9 @@ certs land.
 | Tray binary in-tree | **Done** | `windows/ShareCLITray/` WinUI 3 + `sharecli_ffi` P/Invoke |
 | Release attach | **Soft** | `sharecli-tray-windows-x64.zip` + `.sha256` on tag; job `continue-on-error` |
 | PR smoke | **Soft** | `desktop-builds.yml` `tray-windows` also `continue-on-error` |
-| Single-instance | **Open** | Second launch can spawn duplicate IPC/tray |
-| Elevation / UAC | **Open** | No explicit `requestedExecutionLevel` in manifest |
-| Application manifest | **Partial** | `app.manifest` present; not yet wired via `ApplicationManifest` in csproj |
+| Single-instance | **Done** | `App.xaml.cs` named mutex `Local\ShareCLITray.SingleInstance` |
+| Elevation / UAC | **Done** | `app.manifest` `requestedExecutionLevel` = `asInvoker` |
+| Application manifest | **Done** | `ApplicationManifest` wired in `ShareCLITray.csproj` |
 | Authenticode signing | **Blocked** | Cross-ref L112 only — [`codesign-notarize.md`](codesign-notarize.md) |
 
 ## Hardening checklist
@@ -66,7 +66,7 @@ the first hardening PR after this doc lands.
 | Phase | Gate | Status |
 |-------|------|--------|
 | 1 — unsigned zip attach | `release.yml` `tray-windows` → `github-release` | **Done** (soft) |
-| 2 — harden tray runtime | this doc + mutex + manifest + elevation | **Next** |
+| 2 — harden tray runtime | this doc + mutex + manifest + elevation | **Done** |
 | 3 — remove `continue-on-error` | green `desktop-builds.yml` + `release.yml` on `windows-latest` | **Next** |
 | 4 — signed tray binary | `signtool` after L112 secrets | **Blocked** — [`codesign-notarize.md`](codesign-notarize.md) |
 

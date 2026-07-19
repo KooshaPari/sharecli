@@ -25,15 +25,15 @@
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 36/45 | 80% | B | live VO/NVDA soft; visual hard diff residual |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
-| C11 | Packaging + Distribution | L108–L122 | 35/45 | 78% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
+| C11 | Packaging + Distribution | L108–L122 | 38/45 | 84% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
 ## Overall
 
-**Weighted overall score:** 82% · **Overall grade:** B
+**Weighted overall score:** 83% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (80+80+87+92+80+80+83+80+80+80+89+78)/12 with C06 **83%** + C07 **80%** + C09 **80%** = 989/12 = **82.4% ≈ 82%**.)
+(Unweighted mean of cluster pcts: (80+80+87+92+80+80+83+80+80+80+89+84)/12 with C06 **83%** + C07 **80%** + C09 **80%** + C11 **84%** = 992/12 = **82.7% ≈ 83%**.)
 
-**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (80+80+83+80+80+80+89+78) = 678 + 650 = 1328 / 16 = **83.0% ≈ 83%** (B). C00 L1 util facade (Phase 1) lands in the tier-1 bucket.
+**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (80+80+83+80+80+80+89+84) = 678 + 656 = 1334 / 16 = **83.4% ≈ 83%** (B).
 
 ## Headline Findings
 
@@ -42,7 +42,7 @@
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), ruleset “Require signed commits” (C04 L34).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
-- **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
+- **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
 ## Supersedes
 
@@ -462,3 +462,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Evidence: `tests/c00_lib_sprawl_facade.rs`, `docs/ops/lib-sprawl-plan.md` Phase 1 DONE; fuzz `toml_lite` → `sharecli::util::toml_lite`.
 - Top-3 C00 gaps: crate-split Phases 2–4; tight perf budgets; loom hard coverage.
 - Tier-1 weighted **~83% B**; unweighted overall **~82% B**.
+
+### 2026-07-18 (C11 packaging lift — L108/L116/L120 + uninstall)
+- **C11 35/45 (78% B) → 38/45 (84% B):** L108 2→3 (`packaging-soft.yml` + `scripts/packaging/build_deb.sh` unsigned `.deb`); L116 2→3 (`docs/deploy.md` proven matrix); L120 2→3 (README CI/crates/release badges).
+- L121 evidence: `sharecli uninstall` + `--purge-data` (`src/commands/uninstall.rs`, `tests/c11_uninstall.rs` FR-003).
+- L110 evidence: Win tray mutex + `asInvoker` manifest (`windows/ShareCLITray/`).
+- Overall unweighted **~83% B** (992/12); weighted **~83% B** (1334/16).

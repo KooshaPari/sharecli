@@ -8,6 +8,14 @@
   />
   <description>sharecli Windows Tray Application</description>
 
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
   <!-- Windows 10+ compatibility -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>

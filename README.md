@@ -4,6 +4,11 @@
   <a href="assets/icons/sharecli-512x512.png"><img src="assets/icons/sharecli-512x512.png" alt="sharecli" width="160" height="160"></a>
 </p>
 <p align="center"><em>Shared CLI process manager for multi-project agent orchestration — declarative, hot-reload, observable.</em></p>
+<p align="center">
+  <a href="https://github.com/KooshaPari/sharecli/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KooshaPari/sharecli/ci.yml?branch=main&label=CI" alt="CI"></a>
+  <a href="https://crates.io/crates/sharecli"><img src="https://img.shields.io/crates/v/sharecli.svg" alt="crates.io"></a>
+  <a href="https://github.com/KooshaPari/sharecli/releases"><img src="https://img.shields.io/github/v/release/KooshaPari/sharecli?label=release" alt="GitHub release"></a>
+</p>
 <p align="center"><sub>Backbone-2 graphite palette · brand SVG ships in `sharecli-iconset` worktree (Backbone-2 source-of-truth) · <a href="docs/assets/identity/">visual identity demo</a></sub></p>
 
 ---
@@ -29,12 +34,20 @@ cargo binstall sharecli
 ```
 
 Homebrew formula lives at `Formula/sharecli.rb` (version tracks `Cargo.toml` /
-latest tag `v0.3.0`). The `sha256` remains `PLACEHOLDER` until a darwin
-release asset is published — see [`docs/deploy.md`](docs/deploy.md).
+latest tag `v0.3.0`). Bottle `sha256` is filled for `v0.3.0` darwin — see
+[`docs/ops/brew-bottle.md`](docs/ops/brew-bottle.md) and [`docs/deploy.md`](docs/deploy.md).
 
 ```bash
-# After the formula is published to a tap with a real sha256:
+brew install --HEAD Formula/sharecli.rb
+# or from tap when published:
 brew install sharecli
+```
+
+Remove local config/state after uninstalling the binary:
+
+```bash
+sharecli uninstall              # package-manager guidance + path listing
+sharecli uninstall --purge-data # delete ~/.config/sharecli and state dirs
 ```
 
 Container (non-root + `/healthz` healthcheck):

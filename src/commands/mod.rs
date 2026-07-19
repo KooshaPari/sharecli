@@ -3,6 +3,7 @@
 pub mod cast;
 pub mod report;
 pub mod serve;
+pub mod uninstall;
 use std::path::PathBuf;
 use std::sync::Arc;
 

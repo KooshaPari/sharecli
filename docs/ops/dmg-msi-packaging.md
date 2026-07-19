@@ -44,7 +44,7 @@ cargo deb --no-build                                               # Linux .deb
 |-------|------|--------|
 | 1 — archives | `release.yml` matrix → tar.gz/zip + sha256 | **Done** |
 | 2 — soft plan | this doc + `deploy.md` link | **Done** (soft) |
-| 3 — unsigned installers | `packaging-soft.yml` asserts doc + `cargo dist` dry-run | **Next** |
+| 3 — unsigned installers | `packaging-soft.yml` + `scripts/packaging/build_deb.sh` | **Done** (unsigned `.deb`; dmg/msi follow) |
 | 4 — signed installers | `release.yml` + L112 secrets (`codesign-notarize.md`) | **Blocked** on org certs |
 
 Phase 4 intentionally **does not** embed certificate values or secret names beyond
