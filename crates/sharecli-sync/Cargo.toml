@@ -1,0 +1,15 @@
+[package]
+name = "sharecli-sync"
+version = "0.1.0"
+edition = "2021"
+description = "Loom-verified sync primitives for sharecli ProcessPool (C00 L7)"
+license = "MIT"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(loom)"] }
+
+[target.'cfg(loom)'.dependencies]
+loom = { version = "0.7", features = ["futures"] }
+
+[dev-dependencies]
+loom = { version = "0.7", features = ["futures"] }

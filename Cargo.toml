@@ -47,6 +47,7 @@ spawn-core-sys = { path = "crates/spawn-core-sys" }
 
 # Fleet: device registry + thermal governor
 sharecli-fleet = { path = "crates/sharecli-fleet" }
+sharecli-sync = { path = "crates/sharecli-sync" }
 
 # Thermal TUI
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
@@ -175,6 +176,7 @@ strip = true
 [workspace]
 members = [
     "crates/harness-native",
+    "crates/sharecli-sync",
     "crates/sharecli-ipc",
     "crates/sharecli-ffi",
     "crates/sharecli-tray-linux",

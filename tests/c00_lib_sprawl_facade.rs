@@ -31,6 +31,7 @@ const ROOT_PUB_MOD_ALLOWLIST: &[&str] = &[
     "otel",
     "paths",
     "pprof_http",
+    "pool_index",
     "proc_table",
     "runtime",
     "scheduler",

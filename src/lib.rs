@@ -25,6 +25,9 @@ pub mod metrics;
 pub mod monitoring;
 pub mod notifier;
 pub mod otel;
+pub mod pool_index {
+    pub use sharecli_sync::PoolIndex;
+}
 pub mod paths;
 pub mod pprof_http;
 pub mod proc_table;
