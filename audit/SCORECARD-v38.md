@@ -18,7 +18,7 @@
 | C01 | CI, DX, Observability | L10–L19 | 28/30 | 93% | A | fluent catalogs deferred; advisory hard-fail; anyhow→SharecliError migration |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
-| C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
+| C04 | Security | L31–L40 | 26/30 | 87% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 25/30 | 83% | B | live PD; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 25/30 | 83% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 90% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+83+83+83+83+80+91+89+84)/12 = 1057/12 = **88.1% ≈ 88%**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+87+83+83+83+80+91+89+84)/12 = 1060/12 = **88.3% ≈ 88%**.)
 
-**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (83+83+83+83+80+91+89+84) = 760 + 676 = 1436 / 16 = **89.75% ≈ 90%** (A).
+**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+83+83+83+80+91+89+84) = 760 + 680 = 1440 / 16 = **90.0%** (A).
 
 ## Headline Findings
 
@@ -540,3 +540,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C03 33/36 (92% A) → 36/36 (100% A):** L30.1 2→3 (FR-001..005 on-disk acceptance + `docs/specs/FR.md`); L30.3 2→3 (FR-002..005 suites + 83.48% pin + nextest CI); L30.9 2→3 (AGENTS claim-lock table + WORK_DAG protocol); `tests/c03_l30_agent_readiness_gate.rs`.
 - Top-3 C03 gaps: optional FR-CAST formalization; automated claim-lock CI bot; VISUAL_SPEC soft.
 - Overall unweighted **~87% B** (1038/12); tier-1 weighted **~88% B** (1410/16).
+
+### 2026-07-19 (C04 L31 dual secret scanners — FR-003)
+- **C04 25/30 (83% B) → 26/30 (87% B):** L31 2→3 — `security.yml` trufflehog job; `.pre-commit-config.yaml` gitleaks + trufflehog; `.trufflehog.yml`; `scripts/ci/secret_scan.sh` + `just secret-scan`; `tests/c04_l31_dual_secret_scan.rs`.
+- Top-3 C04 gaps: signed commits ruleset (L34 org-gated); org 2FA enforce (L36); artifact cosign releases (L35).
+- Overall unweighted **~88% B** (1060/12); tier-1 weighted **90% A** (1440/16).

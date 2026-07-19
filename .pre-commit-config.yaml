@@ -1,1 +1,18 @@
-../shelf-infra/hooks
+# Secret scanning pre-commit hooks (C04 L31).
+# CI enforces the same scanners via security.yml; hooks catch accidents before push.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.22.1
+    hooks:
+      - id: gitleaks
+        args: [--verbose, --redact, --config, gitleaks.toml]
+
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.93.6
+    hooks:
+      - id: trufflehog
+        name: TruffleHog (verified only)
+        entry: trufflehog filesystem . --fail --only-verified
+        language: golang
+        pass_filenames: false
+        stages: [pre-push]

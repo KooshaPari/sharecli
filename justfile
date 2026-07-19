@@ -52,6 +52,11 @@ vale:
     @echo ">> vale inclusive-language (C09 L81.10)"
     @./scripts/lint/vale.sh
 
+[group: 'lint']
+secret-scan:
+    @echo ">> gitleaks + trufflehog (C04 L31)"
+    @bash scripts/ci/secret_scan.sh
+
 # -------- build --------
 [group: 'build']
 build:

@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c00-l4-l6",
+  "commit": "pending-c04-l31",
   "date": "2026-07-19",
   "overall_pct": 88,
-  "grade": "A",
+  "grade": "B",
   "weighted_overall_pct": 90,
-  "wave_note": "C00 L4/L6 2→3 (29/30 97% A): CancellationToken graceful shutdown + 10% bench-gate + profiler CI artifacts. Unweighted ~88% B; tier-1 weighted 90% A (A+).",
+  "wave_note": "C04 L31 2→3 (26/30 87% B): gitleaks + trufflehog CI + pre-commit + local secret-scan. Unweighted ~88% B; tier-1 weighted 90% A (A+).",
   "clusters": {
     "C00": {
       "pct": 97,
@@ -31,9 +31,9 @@
       "score": "36/36"
     },
     "C04": {
-      "pct": 83,
+      "pct": 87,
       "grade": "B",
-      "score": "25/30"
+      "score": "26/30"
     },
     "C05": {
       "pct": 83,
