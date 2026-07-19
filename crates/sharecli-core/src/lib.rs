@@ -63,6 +63,9 @@ use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
 use tracing::{debug, warn};
 
+pub mod detect;
+pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
+
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
 // ---------------------------------------------------------------------------

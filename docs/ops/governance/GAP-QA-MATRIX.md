@@ -34,7 +34,7 @@
 | C11 | L118 | GH Release asset attach | High | W4.1 · L118 | Status: Closed | `release.yml` `github-release` job | agent-c11 |
 | C11 | L119 | MSRV rust-version | Med | W4.4 | Status: Closed | `Cargo.toml` `rust-version = "1.89"` | agent-c11 |
 | C11 | L108/L120 | Homebrew bottle sha PLACEHOLDER | High | W4.2 | Status: Closed | `Formula/sharecli.rb` sha256 from v0.3.0 darwin | agent-c11 |
-| C11 | L112 | Codesign / notarize | High | W4.3 | Status: Blocked | Apple secrets | maintainer |
+| C11 | L112 | Codesign / notarize | High | W4.3 | Status: Blocked | Zero repo secrets (`gh secret list` empty 2026-07-19); needs `APPLE_*` / `WINDOWS_CERT_*` | maintainer |
 
 ## Cluster residual gaps
 
