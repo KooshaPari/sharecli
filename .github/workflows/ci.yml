@@ -137,22 +137,51 @@ jobs:
       - name: Build (release)
         run: cargo build --release --locked --all-features
 
+  # C07 L65 — cargo-mutants hard gate (T-640 / FR-003). Parity with mutants.yml.
+  mutants:
+    name: cargo-mutants (required)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: mutants
+      - name: Install cargo-mutants
+        run: cargo install --locked cargo-mutants
+      - name: Run cargo mutants (examine set; fail-on-survivors)
+        run: |
+          set -euo pipefail
+          cargo mutants --timeout 60 --jobs 2 \
+            --file 'crates/sharecli-thermal-tui/src/lib.rs' \
+            --json-outfile mutants-hard.json \
+            -- --locked -p sharecli-thermal-tui
+      - name: Upload mutants JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutants-ci-${{ github.sha }}
+          path: mutants-hard.json
+          if-no-files-found: ignore
+          retention-days: 14
+
   ci-success:
     name: CI Success
-    needs: [fmt, clippy, test, build]
+    needs: [fmt, clippy, test, build, mutants]
     if: always()
     runs-on: ubuntu-24.04
     steps:
       - name: Verify all required jobs passed
-        if: needs.fmt.result == 'success' && needs.clippy.result == 'success' && needs.test.result == 'success' && needs.build.result == 'success'
+        if: needs.fmt.result == 'success' && needs.clippy.result == 'success' && needs.test.result == 'success' && needs.build.result == 'success' && needs.mutants.result == 'success'
         run: |
           echo "CI pipeline complete"
           echo "fmt:     ${{ needs.fmt.result }}"
           echo "clippy:  ${{ needs.clippy.result }}"
           echo "test:    ${{ needs.test.result }}"
           echo "build:   ${{ needs.build.result }}"
+          echo "mutants: ${{ needs.mutants.result }}"
       - name: Fail if any required job did not succeed
-        if: needs.fmt.result != 'success' || needs.clippy.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success'
+        if: needs.fmt.result != 'success' || needs.clippy.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success' || needs.mutants.result != 'success'
         run: |
-          echo "fmt=${{ needs.fmt.result }} clippy=${{ needs.clippy.result }} test=${{ needs.test.result }} build=${{ needs.build.result }}"
+          echo "fmt=${{ needs.fmt.result }} clippy=${{ needs.clippy.result }} test=${{ needs.test.result }} build=${{ needs.build.result }} mutants=${{ needs.mutants.result }}"
           exit 1

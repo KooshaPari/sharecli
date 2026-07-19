@@ -85,6 +85,7 @@ flowchart TD
 | T-550 | Wave13 governance closeout (#336) | DONE (2026-07-18) |
 | T-600 | Deterministic dashboard visual hard gate | DONE (2026-07-18) |
 | T-620 | Coverage evidence pin + llvm-cov snapshot artifact | DONE (2026-07-18) |
+| T-640 | cargo-mutants soft→hard gate (C07 L65) | DONE (2026-07-18) |
 | T-645 | Sync audit_scorecard.json to live SCORECARD | DONE (2026-07-19) |
 
 ## Wave13 backlog (DONE)
@@ -99,7 +100,7 @@ flowchart TD
 |----|------|-------------|------|--------|--------|-----------|
 | T-600 | Promote dashboard PNG diff to deterministic hard gate | FR-003 / C10 L107 | T-510,T-550 | S | DONE | Ubuntu capture is deterministic and visual diff blocks on failure |
 | T-645 | Sync machine `audit_scorecard.json` to live SCORECARD | audit | T-550 | S | DONE | JSON cluster pct/grade/score + overall_pct/grade/date match `audit/SCORECARD-v38.md` Category Scores |
-| T-640 | Mutants soft→hard gate (C07 L65) | FR-003 / C07 L65 | T-550 | M | IN_PROGRESS | PR #341 open — hard gate landed on branch; merge + L65 2→3 re-score pending |
+| T-640 | Mutants soft→hard gate (C07 L65) | FR-003 / C07 L65 | T-550 | M | DONE | No `continue-on-error`; `ci-success` needs `mutants`; L65 2→3; C07 80% B |
 | T-650 | Seven-day Harbor soak log completion (W14.2) | FR-003 / C08 L76 | T-520 | M | IN_PROGRESS | Seven consecutive `main` `harbor-eval-stub-soft.yml` STUB PASS rows logged; local soft soak alone does not close |
 | T-660 | GHCR cosign sign/attest hard publish (C06 L56) | C06 L56 | T-550 | M | READY | Keyless cosign on GHCR; soft→hard; L56 2→3 |
 

@@ -1,25 +1,33 @@
 name: Mutation Testing
 
+# C07 L65 — cargo-mutants hard gate (T-640 / FR-003).
+# Promotion: docs/ops/mutants-hard-gate.md phase 4.
+# Aggregated into CI Success via .github/workflows/ci.yml `mutants` job.
+
 on:
   schedule:
     - cron: "30 7 * * *"
   workflow_dispatch:
-  pull_request:
+  # PR coverage lives in ci.yml `mutants` (ci-success aggregator). This workflow
+  # keeps cron/dispatch + path-filtered main push for drift detection without
+  # double-running mutants on every PR.
+  push:
+    branches: [main]
     paths:
       - "crates/sharecli-thermal-tui/**"
       - "mutants.toml"
       - "docs/ops/mutants-threshold.md"
+      - "docs/ops/mutants-hard-gate.md"
       - ".github/workflows/mutants.yml"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
 
 jobs:
-  mutants-soft:
-    name: cargo-mutants (soft threshold)
+  mutants:
+    name: cargo-mutants (required)
     runs-on: ubuntu-24.04
-    # Soft until examine set stays green on main for one week (docs/ops/mutants-threshold.md).
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: dtolnay/rust-toolchain@stable
@@ -28,20 +36,19 @@ jobs:
           shared-key: mutants
       - name: Install cargo-mutants
         run: cargo install --locked cargo-mutants
-      - name: Run cargo mutants (examine set; soft fail-on-survivors)
+      - name: Run cargo mutants (examine set; fail-on-survivors)
         run: |
           set -euo pipefail
           cargo mutants --timeout 60 --jobs 2 \
             --file 'crates/sharecli-thermal-tui/src/lib.rs' \
-            --json-outfile mutants-soft.json \
+            --json-outfile mutants-hard.json \
             -- --locked -p sharecli-thermal-tui
-          # cargo-mutants exits non-zero if survivors remain — that fails this step
-          # while the job stays soft via continue-on-error.
-      - name: Upload mutants JSON (soft artifact)
+          # cargo-mutants exits non-zero if survivors remain — that fails this job.
+      - name: Upload mutants JSON
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: mutants-soft-${{ github.sha }}
-          path: mutants-soft.json
+          name: mutants-hard-${{ github.sha }}
+          path: mutants-hard.json
           if-no-files-found: ignore
           retention-days: 14
