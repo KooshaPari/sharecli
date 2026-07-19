@@ -11,21 +11,20 @@ cargo build --locked --release -p sharecli --features dhat-heap
 BIN="./target/release/sharecli"
 rm -f dhat-heap.json
 
-# Short-lived CLI smoke so Profiler drops cleanly and writes dhat-heap.json.
-"$BIN" --help >/dev/null
+# Use a subcommand that returns normally (clap --help exits via process::exit).
+stderr=$("$BIN" completions bash 2>&1 >/dev/null || true)
 
 if [[ ! -f dhat-heap.json ]]; then
   echo "dhat-soft: missing dhat-heap.json artifact" >&2
+  echo "$stderr" | tail -5 >&2
   exit 2
 fi
 
-total=$(python3 - <<'PY'
-import json
-from pathlib import Path
-data = json.loads(Path("dhat-heap.json").read_text())
-print(int(data.get("total_bytes", data.get("total", 0))))
-PY
-)
+total=$(echo "$stderr" | sed -n 's/^dhat: Total:[[:space:]]*\([0-9,]*\) bytes.*/\1/p' | tr -d ',')
+if [[ -z "$total" ]]; then
+  echo "dhat-soft: could not parse dhat Total line" >&2
+  exit 2
+fi
 
 echo "dhat-soft: total_bytes=$total budget_bytes=$BUDGET_BYTES"
 rm -f dhat-heap.json
