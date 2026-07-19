@@ -51,14 +51,20 @@ Numbers are starting targets for local/daemon ops; tighten once scrape history e
 | `/readyz` | Readiness | 200 while serving; 503 once shutdown requested |
 | `/metrics/prometheus` | Scrape | 200 + required metric name prefixes |
 
+## Error budget policy
+
+Formal MWMB burn-rate policy, escalation tiers, and alert-pair mapping:
+[`error-budget-policy.md`](error-budget-policy.md) (C05 L46).
+
 ## Out of scope (for now)
 
 - Continuous profiling push agent (Pyroscope); opt-in pprof HTTP is in `docs/ops/profiling.md`
 - Live PagerDuty routing keys committed to git (use env / secret store)
 - Formal signed on-call roster
 
-Alert **rule pack + severity routing + runbooks** ship in
-`docs/ops/alertmanager/sharecli.yml` and `docs/ops/alerting.md`.
+Alert **rule pack + MWMB burn pairs + severity routing + runbooks** ship in
+`docs/ops/alertmanager/sharecli.yml`, [`error-budget-policy.md`](error-budget-policy.md),
+and `docs/ops/alerting.md`.
 
 ## Bench-linked targets (C08)
 

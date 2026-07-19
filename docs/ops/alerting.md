@@ -47,7 +47,14 @@ are not running a full Prom stack:
 # example: SHARECLI_NOTIFY_WEBHOOK=https://hooks.slack.com/services/...
 ```
 
-See `docs/ops/SLO.md` for error-budget policy that these alerts enforce.
+See [`error-budget-policy.md`](error-budget-policy.md) and [`SLO.md`](SLO.md) for
+MWMB burn-rate policy these alerts enforce.
+
+## MWMB burn windows
+
+Fast burns (`burn_window: fast`, `severity: critical`) page immediately.
+Slow burns (`burn_window: slow`, `severity: warning`) open tickets. See
+[`error-budget-policy.md`](error-budget-policy.md) for multiplier math.
 
 ## Runbooks
 
@@ -56,6 +63,18 @@ See `docs/ops/SLO.md` for error-budget policy that these alerts enforce.
 1. `curl -sf http://127.0.0.1:9000/healthz`
 2. Check serve lock / PID (`sharecli serve` still holding bind).
 3. Inspect `SHARECLI_AUDIT_LOG` for `serve_stop` / crash.
+
+### SharecliSlo1AvailabilityBurnSlow
+
+1. Confirm `up{job="sharecli-serve"}` history in Prometheus (6h window).
+2. Correlate with deploys, thermal shutdowns, or host maintenance.
+3. If budget < 25%, freeze non-critical merges per error-budget policy.
+
+### SharecliHttpErrorBudgetBurnFast
+
+1. Page on-call — 5xx rate exceeded 72% (MWMB fast window).
+2. Scrape `/metrics/prometheus` — inspect `sharecli_http_errors_total`.
+3. Roll back last deploy if error spike correlates with SHA.
 
 ### SharecliHttpErrorBudgetBurn
 
@@ -68,6 +87,12 @@ See `docs/ops/SLO.md` for error-budget policy that these alerts enforce.
 1. Confirm load (scripts/load).
 2. Optional: `SHARECLI_PPROF=1` + `GET /debug/pprof/profile?seconds=15`.
 3. Compare Criterion gate on the PR that last touched serve hot paths.
+
+### SharecliAuthFailBurnFast
+
+1. Page on-call — 401 rate exceeded 50% (MWMB fast window).
+2. Check for credential rotation, JWKS fetch failures, or brute-force.
+3. Temporarily tighten `SHARECLI_SERVE_TOKEN` / JWT issuer allowlist.
 
 ### SharecliAuthFailBurn
 
@@ -84,6 +109,7 @@ webhook volume; budget is ≤2 restarts / day (`docs/ops/SLO.md`).
 ## Related
 
 - Rules: `docs/ops/alertmanager/sharecli.yml`
+- Error budgets: `docs/ops/error-budget-policy.md`
 - SLOs: `docs/ops/SLO.md`
 - Grafana: `docs/ops/grafana/sharecli-serve.json`
 - RED metrics: `docs/ops/otel.md`

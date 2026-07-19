@@ -26,11 +26,16 @@ that each alert protects.
 
 | Alert (`sharecli.yml`) | SLO | Severity | Error-budget note |
 |------------------------|-----|----------|-------------------|
-| `SharecliHealthzDown` | [SLO-1](./SLO.md#slo-1--liveness-availability) | `critical` | Liveness probe failure; page immediately |
-| `SharecliReadyzDrainingStorm` | [SLO-2](./SLO.md#slo-2--controlled-restart--readiness-drain) | `info` | Restart storm; investigate if >2/day budget burns |
-| `SharecliHttpErrorBudgetBurn` | [SLO-3](./SLO.md#slo-3--metrics-scrape-freshness) / RED | `warning` | 5xx burn >5% for 10m |
-| `SharecliAuthFailBurn` | [SLO-4](./SLO.md#slo-4--authn-failure-burn) | `warning` | 401 rate >10% for 10m |
+| `SharecliHealthzDown` | [SLO-1](./SLO.md#slo-1--liveness-availability) | `critical` / fast | Liveness probe failure; page immediately |
+| `SharecliSlo1AvailabilityBurnSlow` | [SLO-1](./SLO.md#slo-1--liveness-availability) | `warning` / slow | 6h availability < 99.5% |
+| `SharecliReadyzDrainingStorm` | [SLO-2](./SLO.md#slo-2--controlled-restart--readiness-drain) | `info` / slow | Restart storm; investigate if >2/day budget burns |
+| `SharecliHttpErrorBudgetBurnFast` | [SLO-3](./SLO.md#slo-3--metrics-scrape-freshness) / RED | `critical` / fast | 5xx burn >72% for 2m (14.4× budget) |
+| `SharecliHttpErrorBudgetBurn` | [SLO-3](./SLO.md#slo-3--metrics-scrape-freshness) / RED | `warning` / slow | 5xx burn >5% for 10m |
+| `SharecliAuthFailBurnFast` | [SLO-4](./SLO.md#slo-4--authn-failure-burn) | `critical` / fast | 401 rate >50% for 2m |
+| `SharecliAuthFailBurn` | [SLO-4](./SLO.md#slo-4--authn-failure-burn) | `warning` / slow | 401 rate >10% for 10m |
 | `SharecliHttpLatencyP99High` | [BENCH targets](./SLO.md#bench-linked-targets-c08) | `warning` | p99 >500ms for 15m |
+
+MWMB policy: [`error-budget-policy.md`](./error-budget-policy.md).
 
 Full probe table: [`SLO.md` — Mapping to probes](./SLO.md#mapping-to-probes).
 
