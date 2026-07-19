@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c07-l66-proptest-expand",
+  "commit": "pending-c09-l81-keyboard-design-system",
   "date": "2026-07-19",
-  "overall_pct": 85,
+  "overall_pct": 86,
   "grade": "B",
   "weighted_overall_pct": 86,
-  "wave_note": "C07 L66 2\u21923 proptest expand (25/30 83% B): config boundary props, cast registry/address roundtrip, proptest-regressions replay. C09 84% B post #363. Unweighted ~85% B; tier-1 weighted ~86% B.",
+  "wave_note": "C09 L81.3+L81.8 2\u21923 (40/45 89% B): Playwright Tab-cycle CI + design-system doc. Unweighted ~86% B; tier-1 weighted ~86% B.",
   "clusters": {
     "C00": {
       "pct": 87,
@@ -56,9 +56,9 @@
       "score": "24/30"
     },
     "C09": {
-      "pct": 84,
+      "pct": 89,
       "grade": "B",
-      "score": "38/45"
+      "score": "40/45"
     },
     "C10": {
       "pct": 89,
