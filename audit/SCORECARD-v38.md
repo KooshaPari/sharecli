@@ -17,7 +17,7 @@
 | C00 | Architecture + Module | L0–L9 | 27/30 | 90% | A | crate-split Phases 2–4; tight perf budgets; async pool loom |
 | C01 | CI, DX, Observability | L10–L19 | 26/30 | 87% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
-| C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
+| C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 25/30 | 83% | B | live PD; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
@@ -31,13 +31,13 @@
 
 **Weighted overall score:** 88% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (90+87+90+92+83+83+83+83+80+91+89+84)/12 = 1035/12 = **86.3% ≈ 87%**.)
+(Unweighted mean of cluster pcts: (90+87+90+100+83+83+83+83+80+91+89+84)/12 = 1038/12 = **86.5% ≈ 87%**.)
 
-**Tier-1 double-weight (C00–C03):** (90+87+90+92)×2 + (83+83+83+83+80+91+89+84) = 718 + 676 = 1394 / 16 = **87.1% ≈ 88%** (B).
+**Tier-1 double-weight (C00–C03):** (90+87+90+100)×2 + (83+83+83+83+80+91+89+84) = 734 + 676 = 1410 / 16 = **88.1% ≈ 88%** (B).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (92% A); C02 **90% A**; C10 **89% B**.
+- **Strongest:** C03 Agent Readiness (**100% A**); C02 **90% A**; C00 **90% A**.
 - **Wave13:** OpenAPI `ErrorEnvelope` (#332); PNG bytes + soft diff (#335); Harbor soak scaffold (#333); IPC/tray trace (#334).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), ruleset “Require signed commits” (C04 L34).
@@ -525,3 +525,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C01 25/30 (83% B) → 26/30 (87% B):** L12 2→3 — `FUNCTIONAL_REQUIREMENTS.md` on-disk Acceptance refs for FR-001..005; `tests/c01_fr_ssot_gate.rs`; TRACEABILITY + matrix parity gate.
 - Top-3 C01 gaps: fluent catalogs deferred; gitleaks polish; advisory hard-fail.
 - Overall unweighted **~86% B** (1030/12); tier-1 weighted **~87% B** (1388/16).
+
+### 2026-07-19 (C03 L30.1/L30.3/L30.9 stale re-score — T-311 / FR-003)
+- **C03 33/36 (92% A) → 36/36 (100% A):** L30.1 2→3 (FR-001..005 on-disk acceptance + `docs/specs/FR.md`); L30.3 2→3 (FR-002..005 suites + 83.48% pin + nextest CI); L30.9 2→3 (AGENTS claim-lock table + WORK_DAG protocol); `tests/c03_l30_agent_readiness_gate.rs`.
+- Top-3 C03 gaps: optional FR-CAST formalization; automated claim-lock CI bot; VISUAL_SPEC soft.
+- Overall unweighted **~87% B** (1038/12); tier-1 weighted **~88% B** (1410/16).

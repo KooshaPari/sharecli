@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-19 (C03 L30.1/L30.3/L30.9 stale re-score — T-311 / FR-003)
+- Status: DONE — L30.1/L30.3/L30.9 2→3; `tests/c03_l30_agent_readiness_gate.rs`; lane + SCORECARD sync
+- Score: C03 33/36 (92% A) → 36/36 (100% A); unweighted overall ~87% B; tier-1 weighted ~88% B
+- FR: FR-003 · C03 L30.1/L30.3/L30.9 · T-311
+
 ## 2026-07-19 (C01 L12 FR↔test SSOT — T-670 / FR-003)
 - Status: DONE — `FUNCTIONAL_REQUIREMENTS.md` on-disk Acceptance refs FR-001..005; `tests/c01_fr_ssot_gate.rs`; TRACEABILITY + matrix parity
 - Score: C01 25/30 (83% B) → 26/30 (87% B); L12 2→3; unweighted overall ~86% B; tier-1 weighted ~87% B

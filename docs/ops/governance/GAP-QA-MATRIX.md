@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-19 (audit_scorecard ~86% B unweighted / ~87% B tier-1; C01 L12 FR SSOT → 87% B)
+**Last sync:** 2026-07-19 (audit_scorecard ~87% B unweighted / ~88% B tier-1; C03 L30.1/L30.3/L30.9 → 100% A)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -22,7 +22,7 @@
 | C03 | L30.12 | Unhappy-path friction suite | Med | T-300 · W3.5 | Status: Covered | `tests/fr_invalid_missing_friction.rs` | agent-c03 |
 | C03 | L30.9 | Multi-agent claim-lock | Low | T-260 | Status: Covered | `AGENTS.md` Claim-lock protocol | agent-c03 |
 | C03 | L30.10 | Local loop timing budgets | Low | T-270 | Status: Covered | `docs/ops/LOCAL_LOOP_BUDGETS.md` | agent-c03 |
-| C03 | audit | C03 re-score after FR suites | Low | T-310 · W3.6 | Status: Covered | `audit/.lane-c03/C03.md` · SCORECARD 92% A | agent-c03 |
+| C03 | audit | C03 re-score after FR suites | Low | T-311 · W3.6 | Status: Covered | `audit/.lane-c03/C03.md` · `tests/c03_l30_agent_readiness_gate.rs` · SCORECARD 100% A | agent-c03 |
 
 ## Security / packaging closures
 
