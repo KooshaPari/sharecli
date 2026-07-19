@@ -3,6 +3,7 @@ mod alloc;
 mod plugins;
 
 use anyhow::Result;
+use crate::error::SharecliError;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use sharecli_thermal_tui as thermal_tui;
@@ -17,6 +18,7 @@ mod config_validator;
 mod config_watcher;
 mod crc64;
 mod csv_writer;
+mod error;
 mod error_envelope;
 mod hash_util;
 mod health_check;
@@ -376,17 +378,33 @@ fn is_no_color() -> bool {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
+    if let Err(err) = run().await {
+        match err.downcast::<SharecliError>() {
+            Ok(domain) => {
+                domain.eprint();
+                std::process::exit(i32::from(domain.exit_code()));
+            }
+            Err(err) => {
+                let domain = SharecliError::from(err);
+                domain.eprint();
+                std::process::exit(i32::from(domain.exit_code()));
+            }
+        }
+    }
+}
+
+async fn run() -> Result<()> {
     #[cfg(feature = "dhat-heap")]
     let _dhat_profiler = dhat::Profiler::new_heap();
 
     let cli = Cli::parse();
     let tokens = theme::Tokens::from_name(&cli.theme).ok_or_else(|| {
-        anyhow::anyhow!(
+        SharecliError::user_input(format!(
             "unknown theme '{}': expected backbone-2 / bb2 / dark or backbone-2-light / light",
             cli.theme,
-        )
-    })?;
+        ))
+    }).map_err(|e| anyhow::Error::new(e))?;
     eprintln!("{}", tokens.panel.ansi_fg());
 
     // Initialise global config (must happen before any command handler)

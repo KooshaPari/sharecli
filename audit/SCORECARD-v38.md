@@ -15,7 +15,7 @@
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 27/30 | 90% | A | crate-split Phases 2–4; tight perf budgets; async pool loom |
-| C01 | CI, DX, Observability | L10–L19 | 26/30 | 87% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
+| C01 | CI, DX, Observability | L10–L19 | 28/30 | 93% | A | fluent catalogs deferred; advisory hard-fail; anyhow→SharecliError migration |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
@@ -29,11 +29,11 @@
 
 ## Overall
 
-**Weighted overall score:** 88% · **Overall grade:** B
+**Weighted overall score:** 89% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (90+87+90+100+83+83+83+83+80+91+89+84)/12 = 1038/12 = **86.5% ≈ 87%**.)
+(Unweighted mean of cluster pcts: (90+93+90+100+83+83+83+83+80+91+89+84)/12 = 1050/12 = **87.5% ≈ 88%**.)
 
-**Tier-1 double-weight (C00–C03):** (90+87+90+100)×2 + (83+83+83+83+80+91+89+84) = 734 + 676 = 1410 / 16 = **88.1% ≈ 88%** (B).
+**Tier-1 double-weight (C00–C03):** (90+93+90+100)×2 + (83+83+83+83+80+91+89+84) = 746 + 676 = 1422 / 16 = **88.9% ≈ 89%** (B).
 
 ## Headline Findings
 
@@ -49,6 +49,10 @@
 Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 30-pillar auto-scan for fleet ranking.
 
 ## Post-audit remediations
+
+### 2026-07-19 (C01 L14/L18 — errors + secrets runtime contract)
+- **C01 26/30 (87% B) → 28/30 (93% A):** L14 2→3 (`src/error.rs` thiserror + CLI exit codes); L18 2→3 (`docs/ops/secrets.md` bearer/JWT runtime contract + gate tests).
+- **Weighted overall 88% → 89% B** (tier-1 double-weight).
 
 ### 2026-07-09
 - `ci-success` now fails when any required job fails (false-green closed).
