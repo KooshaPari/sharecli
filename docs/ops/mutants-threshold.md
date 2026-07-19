@@ -17,7 +17,7 @@ Hard-gate promotion (phase 4 live):
 
 | Metric | Hard (enforced) |
 |--------|-----------------|
-| Scope | `examine_re` / `--file` thermal-tui lib |
+| Scope | `examine_globs` / `-p` thermal-tui lib |
 | Outcome | **zero surviving mutants** in examine set + **required** / aggregated check |
 | Timeout | 60s per mutant |
 | Fail mode | step fails → job fails → `ci-success` fails |
@@ -30,6 +30,6 @@ Do not reintroduce `continue-on-error` or `|| true` on the mutants step.
 just mutants
 # or:
 cargo mutants --timeout 60 --jobs 2 \
-  --file 'crates/sharecli-thermal-tui/src/lib.rs' \
-  -- --locked -p sharecli-thermal-tui
+  -p sharecli-thermal-tui \
+  -- --locked
 ```

@@ -16,6 +16,7 @@ on:
     paths:
       - "crates/sharecli-thermal-tui/**"
       - "mutants.toml"
+      - ".cargo/mutants.toml"
       - "docs/ops/mutants-threshold.md"
       - "docs/ops/mutants-hard-gate.md"
       - ".github/workflows/mutants.yml"
@@ -40,9 +41,9 @@ jobs:
         run: |
           set -euo pipefail
           cargo mutants --timeout 60 --jobs 2 \
-            --file 'crates/sharecli-thermal-tui/src/lib.rs' \
+            -p sharecli-thermal-tui \
             --json-outfile mutants-hard.json \
-            -- --locked -p sharecli-thermal-tui
+            -- --locked
           # cargo-mutants exits non-zero if survivors remain — that fails this job.
       - name: Upload mutants JSON
         if: always()
