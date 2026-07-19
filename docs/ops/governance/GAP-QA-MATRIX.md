@@ -79,6 +79,8 @@
 | C09 | L81.5 | Dashboard landmarks (`nav`/`main`) | Med | W6.1 | Status: Closed | `src/dashboard.html` · `tests/a11y/` | agent-c09 |
 | C09 | L81.6/L81.7 | Status visibility + degraded-mode recovery docs | Med | W6.4 · FR-004 | Status: Closed | `docs/a11y/status-and-recovery.md` · `src/main.rs` after_long_help | agent-c09 |
 | C09 | L81.1 | axe-core CI for dashboard | Low | W9.1 · FR-004 NFR | Status: Closed | `.github/workflows/a11y.yml` · `scripts/a11y/axe-dashboard.mjs` | agent-c09 |
+| C09 | L81.4 | Screen-reader procedure + automated evidence | Med | W9.3 · FR-004 NFR | Status: Closed | `docs/a11y/sr-pass-evidence.md` · `docs/a11y/sr-checklist.md` · `tests/a11y/` | agent-c09 |
+| C09 | L81.4 | Live VoiceOver/NVDA per-release checkbox | Low | W9.3 soft · FR-004 NFR | Status: READY | release checklist AT notes | agent-c09 |
 | C09 | L81.11 | Responsive TUI + viewport e2e | Low | W10.2 | Status: Closed | `playwright-soft.yml` · `docs/a11y/playwright-viewports.md` | agent-c09 |
 
 ## Update recipe
