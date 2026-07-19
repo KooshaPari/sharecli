@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "description": "Measured Criterion mean baselines for the hard-ish C08 perf gate. Values are nanoseconds (Criterion point estimates). Seeded 2026-07-11 from local cargo bench (sample-size 10); CI gate fails above mean_ns * (1 + max_regression). Refresh via scripts/seed-bench-baseline.py after ubuntu-latest cargo bench. default_max_regression tightened 2026-07-18 from 0.5→0.25 using criterion-trends.csv peak-to-peak evidence (see docs/eval/TRENDS.md).",
+  "description": "Measured Criterion mean baselines for the hard-ish C00/C08 perf gate. Values are nanoseconds (Criterion point estimates). Seeded 2026-07-11 from local cargo bench (sample-size 10); CI gate fails above mean_ns * (1 + max_regression). Refresh via scripts/seed-bench-baseline.py after ubuntu-latest cargo bench. default_max_regression tightened 2026-07-19 from 0.25→0.10 (C00 L6; see docs/ops/perf-budgets.md).",
   "unit": "ns",
-  "default_max_regression": 0.25,
+  "default_max_regression": 0.10,
   "runner": "windows-local-seed-then-ci",
   "measured_at": "2026-07-11",
   "sample_args": "--sample-size 10 --warm-up-time 1 --measurement-time 2",

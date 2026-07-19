@@ -2,7 +2,7 @@ name: Bench
 
 # C08 perf surface:
 #   - criterion (soft): advisory; continue-on-error
-#   - bench-gate (hard-ish): fails on >25% mean regression vs committed baseline
+#   - bench-gate (hard-ish): fails on >10% mean regression vs committed baseline
 # Bench flake quarantine: docs/testing/flake-policy.md § Bench / Criterion flakes
 
 on:
@@ -83,7 +83,7 @@ jobs:
           echo "rustc=$(rustc --version)"
           echo "seed=${SHARECLI_BENCH_SEED}"
           echo "baseline=docs/eval/baselines/criterion-baseline.json"
-          echo "threshold=25%"
+          echo "threshold=10%"
 
       - name: Run Criterion benches
         run: |
@@ -92,12 +92,23 @@ jobs:
           cargo bench --locked --bench prometheus_render -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
           cargo bench --locked --bench jwt_auth_validate -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
 
-      - name: Compare against committed baseline (25% max regression)
+      - name: Compare against committed baseline (10% max regression)
         run: |
           python3 scripts/check-bench-baseline.py \
             --baseline docs/eval/baselines/criterion-baseline.json \
             --criterion-dir target/criterion \
-            --threshold 0.25
+            --threshold 0.10
+
+      - name: Upload Criterion profiler artifacts (C00 L6)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: criterion-profiler-${{ github.sha }}
+          path: |
+            target/criterion/**/estimates.json
+            target/criterion/**/sample.json
+          if-no-files-found: warn
+          retention-days: 14
 
   # Longitudinal trend store (does not gate merges). Runs on cron + manual.
   bench-nightly:

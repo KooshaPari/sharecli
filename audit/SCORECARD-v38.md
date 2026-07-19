@@ -14,7 +14,7 @@
 
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
-| C00 | Architecture + Module | L0–L9 | 27/30 | 90% | A | crate-split Phases 2–4; tight perf budgets; async pool loom |
+| C00 | Architecture + Module | L0–L9 | 29/30 | 97% | A | crate-split Phases 2–4; L0 ADR; L5 OTel hot paths |
 | C01 | CI, DX, Observability | L10–L19 | 28/30 | 93% | A | fluent catalogs deferred; advisory hard-fail; anyhow→SharecliError migration |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
@@ -29,15 +29,15 @@
 
 ## Overall
 
-**Weighted overall score:** 89% · **Overall grade:** B
+**Weighted overall score:** 90% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (90+93+90+100+83+83+83+83+80+91+89+84)/12 = 1050/12 = **87.5% ≈ 88%**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+83+83+83+83+80+91+89+84)/12 = 1057/12 = **88.1% ≈ 88%**.)
 
-**Tier-1 double-weight (C00–C03):** (90+93+90+100)×2 + (83+83+83+83+80+91+89+84) = 746 + 676 = 1422 / 16 = **88.9% ≈ 89%** (B).
+**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (83+83+83+83+80+91+89+84) = 760 + 676 = 1436 / 16 = **89.75% ≈ 90%** (A).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (**100% A**); C02 **90% A**; C00 **90% A**.
+- **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C01 **93% A**.
 - **Wave13:** OpenAPI `ErrorEnvelope` (#332); PNG bytes + soft diff (#335); Harbor soak scaffold (#333); IPC/tray trace (#334).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), ruleset “Require signed commits” (C04 L34).
@@ -49,6 +49,12 @@
 Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 30-pillar auto-scan for fleet ranking.
 
 ## Post-audit remediations
+
+### 2026-07-19 (C00 L4/L6 — async shutdown + tight perf budgets)
+
+- **C00 27/30 (90% A) → 29/30 (97% A):** L4 2→3 (`CancellationToken` + `with_graceful_shutdown` + scoped spawn env); L6 2→3 (10% `bench-gate` + Criterion profiler CI artifacts).
+- **Weighted overall 89% B → 90% A** (tier-1 double-weight crosses A+ bar).
+- Top-3 C00 gaps: crate-split Phases 2–4; L0 ADR; L5 OTel `#[instrument]` hot paths.
 
 ### 2026-07-19 (C01 L14/L18 — errors + secrets runtime contract)
 - **C01 26/30 (87% B) → 28/30 (93% A):** L14 2→3 (`src/error.rs` thiserror + CLI exit codes); L18 2→3 (`docs/ops/secrets.md` bearer/JWT runtime contract + gate tests).

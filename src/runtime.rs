@@ -64,8 +64,8 @@ struct EnvGuard {
 impl Drop for EnvGuard {
     fn drop(&mut self) {
         match &self.prev {
-            Some(v) => std::env::set_var(&self.key, v),
-            None => std::env::remove_var(&self.key),
+            Some(v) => unsafe { std::env::set_var(&self.key, v) },
+            None => unsafe { std::env::remove_var(&self.key) },
         }
     }
 }
@@ -212,30 +212,44 @@ impl ProcessPool {
             extra_env.push(pair);
         }
 
-        // Propagate env-var overrides into the process environment before spawn.
-        // substrate's `ProcessSpawnSpec` does not yet carry env — set them on
-        // the current process so they are inherited, then restore after spawn.
-        let _env_guards: Vec<EnvGuard> = extra_env
-            .into_iter()
-            .map(|(k, v)| {
-                let prev = std::env::var(&k).ok();
-                std::env::set_var(&k, &v);
-                EnvGuard { key: k, prev }
-            })
-            .collect();
-
+        // Propagate env-var overrides into the child environment before spawn.
+        // substrate's `ProcessSpawnSpec` does not yet carry env — apply scoped overrides
+        // on a blocking thread so we never hold `set_var` across async yield points
+        // (C00 L4 — see `docs/ops/async-shutdown.md`).
         let spec =
             ProcessSpawnSpec { program: effective_cmd.clone(), args: effective_args.clone(), cwd };
-
+        let port = self.port.clone();
         let capability = spawn_capability(cmd, &harness);
-        let handle = match self.port.spawn(&spec).await {
+        let spawn_program = effective_cmd.clone();
+        let handle = match tokio::task::spawn_blocking(move || -> anyhow::Result<ProcessHandle> {
+            let _env_guards: Vec<EnvGuard> = extra_env
+                .into_iter()
+                .map(|(k, v)| {
+                    let prev = std::env::var(&k).ok();
+                    // SAFETY: env mutation is serialized to this blocking thread only.
+                    unsafe { std::env::set_var(&k, &v) };
+                    EnvGuard { key: k, prev }
+                })
+                .collect();
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| anyhow::anyhow!("spawn runtime: {e}"))?;
+            rt.block_on(async {
+                port.spawn(&spec)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("spawn {}: {e}", spec.program))
+            })
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("spawn_blocking join: {e}"))?
+        {
             Ok(handle) => handle,
             Err(e) => {
                 emit_spawn_audit(&project, &capability, "denied", None);
-                return Err(anyhow::anyhow!("spawn {}: {e}", effective_cmd));
+                return Err(anyhow::anyhow!("spawn {spawn_program}: {e}"));
             }
         };
-        // _env_guards drops here, restoring env vars before any async point.
 
         let pid = handle.pid;
 

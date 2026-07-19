@@ -4341,6 +4341,7 @@ dependencies = [
  "tikv-jemallocator",
  "tokio",
  "tokio-tungstenite 0.30.0",
+ "tokio-util",
  "toml",
  "tracing",
  "tracing-appender",
@@ -5097,6 +5098,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]

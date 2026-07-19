@@ -40,6 +40,7 @@ mod runtime;
 mod serve_auth;
 mod serve_lock;
 mod serve_rate_limit;
+mod shutdown;
 mod skiplist;
 mod spawn_policy;
 mod theme;

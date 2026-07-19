@@ -37,6 +37,7 @@ pub mod scheduler;
 pub mod serve_auth;
 pub mod serve_lock;
 pub mod serve_rate_limit;
+mod shutdown;
 pub mod signals;
 pub mod spawn_policy;
 pub mod tray_http;

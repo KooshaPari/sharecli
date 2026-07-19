@@ -39,6 +39,8 @@ use crate::runtime::ProcessPool;
 use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 use crate::serve_rate_limit::{is_probe_path, ServeRateLimit, ServeRateLimitState};
+use crate::shutdown::serve_shutdown_signal;
+use tokio_util::sync::CancellationToken;
 
 // ---------------------------------------------------------------------------
 // Pressure parsing (pure; tested without I/O)
@@ -134,6 +136,9 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
 
     let (thermal_tx, _) = broadcast::channel::<ThermalEvent>(64);
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
+    let cancel = CancellationToken::new();
+    let thermal_cancel = cancel.child_token();
+    let config_cancel = cancel.child_token();
 
     // Build the live config and start the hot-reload watcher.
     let initial_config = Config::load().unwrap_or_default();
@@ -155,10 +160,21 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     // Spawn a task that propagates config-reload signals into the shared RwLock.
     let config_arc_writer = Arc::clone(&config_arc);
     tokio::spawn(async move {
-        while cfg_rx.changed().await.is_ok() {
-            let new_cfg = cfg_rx.borrow().clone();
-            *config_arc_writer.write().await = new_cfg;
-            info!("serve: config hot-reloaded");
+        loop {
+            tokio::select! {
+                _ = config_cancel.cancelled() => {
+                    info!("serve: config reload task cancelled");
+                    return;
+                }
+                changed = cfg_rx.changed() => {
+                    if changed.is_err() {
+                        return;
+                    }
+                    let new_cfg = cfg_rx.borrow().clone();
+                    *config_arc_writer.write().await = new_cfg;
+                    info!("serve: config hot-reloaded");
+                }
+            }
         }
     });
 
@@ -207,7 +223,11 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     };
 
     // Spawn background thermal poller (uses parse_pressure_level as the canonical parser).
-    tokio::spawn(thermal_poll_task(Arc::clone(&state.thermal_tx), Arc::clone(&state.shutdown_tx)));
+    tokio::spawn(thermal_poll_task(
+        Arc::clone(&state.thermal_tx),
+        Arc::clone(&state.shutdown_tx),
+        thermal_cancel,
+    ));
 
     println!("sharecli serve listening on {url}");
 
@@ -227,19 +247,11 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
 
     let listener = tokio::net::TcpListener::bind(bind).await?;
 
-    tokio::select! {
-        result = axum::serve(listener, app) => {
-            result?;
-        }
-        _ = tokio::signal::ctrl_c() => {
-            info!("sharecli serve: shutdown requested (Ctrl-C)");
-            println!("sharecli serve shutting down (Ctrl-C)");
-        }
-        _ = wait_for_shutdown(shutdown_rx) => {
-            info!("sharecli serve: shutdown requested (thermal critical)");
-            println!("sharecli serve shutting down (thermal critical)");
-        }
-    }
+    axum::serve(listener, app)
+        .with_graceful_shutdown(serve_shutdown_signal(cancel.clone(), shutdown_rx))
+        .await?;
+
+    cancel.cancel();
 
     // Explicit drop for clarity; drop order would handle it anyway.
     drop(lock);
@@ -247,21 +259,6 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     audit_log::emit("serve_stop", json!({ "bind": bind }));
     crate::otel::shutdown();
     Ok(())
-}
-
-/// Wait until the shutdown watch channel is set to `true`.
-async fn wait_for_shutdown(mut rx: watch::Receiver<bool>) {
-    loop {
-        if *rx.borrow() {
-            return;
-        }
-        if rx.changed().await.is_err() {
-            return;
-        }
-        if *rx.borrow() {
-            return;
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -284,10 +281,17 @@ fn read_raw_pressure() -> anyhow::Result<u8> {
 async fn thermal_poll_task(
     tx: Arc<broadcast::Sender<ThermalEvent>>,
     shutdown_tx: Arc<watch::Sender<bool>>,
+    cancel: CancellationToken,
 ) {
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
     loop {
-        interval.tick().await;
+        tokio::select! {
+            _ = cancel.cancelled() => {
+                info!("thermal poll task cancelled");
+                return;
+            }
+            _ = interval.tick() => {}
+        }
         let level = match read_raw_pressure() {
             Ok(raw) => parse_pressure_level(raw),
             Err(e) => {
