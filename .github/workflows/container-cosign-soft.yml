@@ -1,7 +1,7 @@
 name: Container cosign (soft)
 
-# C06 L56 — build Containerfile + soft cosign sign-blob (no GHCR secrets).
-# Hard GHCR publish + cosign sign remains deferred until image registry lands.
+# C06 L56 — build Containerfile + soft cosign sign-blob (no GHCR required).
+# Hard GHCR publish + cosign sign/attest/verify: container-cosign.yml (T-660).
 
 on:
   push:

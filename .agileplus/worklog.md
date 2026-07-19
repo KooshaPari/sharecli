@@ -1,5 +1,11 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-18 (T-660 C06 container cosign hard — L56 / FR-003)
+- Status: DONE — soft→hard GHCR keyless cosign sign+attest+verify (`container-cosign.yml`, `container-cosign-hard.sh`, `container-cosign-verify.sh`); soft sign-blob retained; docs/slsa.md + ghcr-publish.md; GAP L56 Closed
+- Score: C06 24/30 (80% B) → 25/30 (83% B); L56 2→3
+- Note: first live GHCR push may need org package ACL for `GITHUB_TOKEN`; `skip_push` dry-run documented
+- FR: FR-003
+
 ## 2026-07-18 (C05 chaos restart hard gate — FR-003)
 - Status: DONE — `docs/ops/chaos-restart-hard-gate.md` (T-630); `chaos-restart-hard.yml` (no `continue-on-error`); `just chaos-hard`; soak-chaos.md + load README cross-refs; L50 stays 2 until ci-success + branch protection
 - FR: FR-003
