@@ -4377,6 +4377,7 @@ dependencies = [
  "sharecli-fleet",
  "sharecli-fuse",
  "sharecli-ipc",
+ "sysinfo",
  "tempfile",
  "tokio",
  "tracing",

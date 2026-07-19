@@ -133,10 +133,12 @@ replacing the agent executable as the primary detection path.
 **Acceptance:**
 
 - `tests/fr006_agent_detection.rs` — AC-006.1..AC-006.3
-- `crates/sharecli-core/src/detect.rs` — pattern registry unit tests
+- `tests/fr006_proc_tree.rs` — AC-006.4..AC-006.6 (process-tree walk / scan)
+- `crates/sharecli-core/src/detect.rs` — pattern registry
+- `crates/sharecli-core/src/proc_scan.rs` — `/proc` + ancestor walk (`HostProcSource`)
 
-**Source:** `crates/sharecli-core` (`detect`, Hypervisor)  
-**Detail:** PRD E1; `docs/specs/FR.md` may lag — root FR doc is authoritative for FR-006.
+**Source:** `crates/sharecli-core` (`detect`, `proc_scan`, Hypervisor)  
+**Detail:** PRD E1; origin thesis process-tree `/proc/$PPID/comm` walk.
 
 ---
 

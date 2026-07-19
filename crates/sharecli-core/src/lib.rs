@@ -64,7 +64,12 @@ use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
 use tracing::{debug, warn};
 
 pub mod detect;
+pub mod proc_scan;
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
+pub use proc_scan::{
+    is_under_agent, scan_agents, scan_host_agents, walk_agent_ancestors, DetectedAgent,
+    FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
+};
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
