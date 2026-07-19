@@ -14,7 +14,7 @@
 
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
-| C00 | Architecture + Module | L0–L9 | 26/30 | 87% | B | crate-split Phases 2–4; tight perf budgets; async pool loom |
+| C00 | Architecture + Module | L0–L9 | 27/30 | 90% | A | crate-split Phases 2–4; tight perf budgets; async pool loom |
 | C01 | CI, DX, Observability | L10–L19 | 26/30 | 87% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
@@ -29,11 +29,11 @@
 
 ## Overall
 
-**Weighted overall score:** 86% · **Overall grade:** B
+**Weighted overall score:** 88% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (87+87+90+92+83+83+83+83+80+91+89+84)/12 = 1030/12 = **85.8% ≈ 86%**.)
+(Unweighted mean of cluster pcts: (90+87+90+92+83+83+83+83+80+91+89+84)/12 = 1035/12 = **86.3% ≈ 87%**.)
 
-**Tier-1 double-weight (C00–C03):** (87+87+90+92)×2 + (83+83+83+83+80+91+89+84) = 712 + 676 = 1388 / 16 = **86.8% ≈ 87%** (B).
+**Tier-1 double-weight (C00–C03):** (90+87+90+92)×2 + (83+83+83+83+80+91+89+84) = 718 + 676 = 1394 / 16 = **87.1% ≈ 88%** (B).
 
 ## Headline Findings
 
@@ -477,6 +477,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C09 37/45 (82% B) → 38/45 (84% B):** L81.7 2→3 — `indicatif` dep; `src/progress.rs` `StepProgress` with ETA; batch `stop`/`project stop`/`prune --force`; `tests/c09_l81_indicatif_eta.rs`; `docs/a11y/status-and-recovery.md`.
 - Top-3 C09 gaps: live VO/NVDA soft (W9.3); Playwright Tab-cycle (L81.3); L81.8 design-system doc.
 - Overall unweighted **~85% B** (1018/12); tier-1 weighted **~85% B**.
+
+### 2026-07-19 (C00 L9 SBOM-in-release gate — FR-003)
+- **C00 26/30 (87% B) → 27/30 (90% A):** L9 2→3 — `.github/workflows/release.yml` embeds `sharecli.cdx.json` in platform archives; `sbom.yml` CycloneDX 1.5 on main; `tests/c00_l9_sbom_release_gate.rs` FR-003 evidence gate; SOURCE_DATE_EPOCH + SLSA attest job cited.
+- Top-3 C00 gaps: crate-split Phases 2–4; tight perf budgets; async pool loom.
+- Overall unweighted **~87% B** (1035/12); tier-1 weighted **~88% B** (1394/16).
 
 ### 2026-07-19 (C09 L81.6 stop --force confirm — FR-004)
 - **C09 36/45 (80% B) → 37/45 (82% B):** L81.6 2→3 — `stop` / `project stop` `--force` dry-run preview unless `--yes`; `tests/c09_l81_stop_force_confirm.rs`; `docs/a11y/status-and-recovery.md` recovery row.
