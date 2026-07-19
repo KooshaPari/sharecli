@@ -63,7 +63,8 @@ use runtime::ProcessPool;
     about = "Shared CLI process manager for multi-project agent orchestration",
     version = "0.1.0",
     after_long_help = "Accessibility (C09): docs/a11y/README.md — NO_COLOR/TERM=dumb degrade ANSI color; \
-FR-004 status via `sharecli status` and GET /health. Degraded-mode notes: docs/a11y/status-and-recovery.md"
+FR-004 status via `sharecli status` and GET /health. Degraded-mode notes: docs/a11y/status-and-recovery.md\n\
+Help & FAQ (C09 L81.13): docs/faq.md — top troubleshooting answers; `man sharecli` after `just man`."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -287,6 +288,13 @@ enum Commands {
     Completions {
         /// Shell to generate completions for
         shell: Shell,
+    },
+
+    /// Generate roff man page for sharecli(1) (clap_mangen)
+    Man {
+        /// Write to share/man/man1/sharecli.1 instead of stdout
+        #[arg(long)]
+        install: bool,
     },
 
     /// Exercise the bundled utility modules (base85, csv, crc, hash, json, sha, uuid, xml, markdown, trie/skiplist)
@@ -514,6 +522,7 @@ async fn run() -> Result<()> {
             let mut cmd = Cli::command();
             clap_complete::generate(*shell, &mut cmd, "sharecli", &mut std::io::stdout());
         }
+        Commands::Man { install } => cli_man(*install)?,
         Commands::Util { cmd } => cmd.run()?,
         Commands::List { json } => cli_list(*json)?,
         Commands::Version => cli_version()?,
@@ -522,6 +531,34 @@ async fn run() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+/// `sharecli man` — emit sharecli(1) via clap_mangen (C09 L81.13).
+fn cli_man(install: bool) -> Result<()> {
+    use clap::CommandFactory;
+    use clap_mangen::Man;
+    use std::io::Write;
+
+    let man = Man::new(Cli::command());
+    let mut buffer: Vec<u8> = Vec::new();
+    man.render(&mut buffer)
+        .map_err(|e| anyhow::anyhow!("man page render failed: {e}"))?;
+    let rendered = String::from_utf8(buffer).map_err(|e| anyhow::anyhow!("man page utf-8: {e}"))?;
+
+    if install {
+        let path = std::path::Path::new("share/man/man1/sharecli.1");
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(path, &rendered)?;
+        println!("Wrote {}", path.display());
+        return Ok(());
+    }
+
+    std::io::stdout()
+        .write_all(rendered.as_bytes())
+        .map_err(|e| anyhow::anyhow!("man page stdout: {e}"))?;
     Ok(())
 }
 
@@ -799,6 +836,19 @@ async fn prune(idle_seconds: u64, force: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_man_page_contains_th_sharecli() {
+        let man = clap_mangen::Man::new(Cli::command());
+        let mut buf = Vec::new();
+        man.render(&mut buf).expect("render man page");
+        let output = String::from_utf8(buf).expect("valid utf-8");
+        assert!(
+            output.contains(".TH \"sharecli\"") || output.contains(".TH sharecli"),
+            "man page should declare sharecli(1), got prefix: {}",
+            &output[..output.len().min(200)]
+        );
+    }
 
     #[test]
     fn test_completions_zsh_contains_compdef() {

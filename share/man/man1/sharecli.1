@@ -1,0 +1,109 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH sharecli 1  "sharecli 0.1.0" 
+.SH NAME
+sharecli \- Shared CLI process manager for multi\-project agent orchestration
+.SH SYNOPSIS
+\fBsharecli\fR [\fB\-v\fR|\fB\-\-verbose\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-theme\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Shared CLI process manager for multi\-project agent orchestration
+.SH OPTIONS
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Enable verbose output
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR
+Quiet mode
+.TP
+\fB\-\-theme\fR \fI<NAME>\fR [default: backbone\-2]
+Color theme: `backbone\-2` / `bb2` / `dark` (default) or `backbone\-2\-light` / `light`. Maps to Backbone\-2 dark/light families in tokens.css
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+sharecli\-ps(1)
+List managed processes
+.TP
+sharecli\-start(1)
+Start a harness process
+.TP
+sharecli\-stop(1)
+Stop managed processes
+.TP
+sharecli\-status(1)
+Check process health
+.TP
+sharecli\-health(1)
+Run a runtime health probe
+.TP
+sharecli\-config(1)
+Configuration management
+.TP
+sharecli\-project(1)
+Project management
+.TP
+sharecli\-optimize(1)
+Optimize resource usage
+.TP
+sharecli\-prune(1)
+Prune idle processes
+.TP
+sharecli\-pool(1)
+Show shared runtime pool status
+.TP
+sharecli\-run(1)
+Run using pooled runtime
+.TP
+sharecli\-limits(1)
+Set project resource limits
+.TP
+sharecli\-check(1)
+Check project resource limits
+.TP
+sharecli\-thermal(1)
+Live thermal\-gate / hypervisor state monitor (TUI)
+.TP
+sharecli\-serve(1)
+Start the HTTP + WebSocket dashboard server
+.TP
+sharecli\-report(1)
+Print a fleet analytics snapshot (one\-shot or live watch mode)
+.TP
+sharecli\-fleet(1)
+Fleet device management
+.TP
+sharecli\-cast(1)
+Cross\-machine text injection into registered terminal panes
+.TP
+sharecli\-proc\-compose(1)
+process\-compose.yaml integration
+.TP
+sharecli\-completions(1)
+Generate shell completion script
+.TP
+sharecli\-man(1)
+Generate roff man page for sharecli(1) (clap_mangen)
+.TP
+sharecli\-util(1)
+Exercise the bundled utility modules (base85, csv, crc, hash, json, sha, uuid, xml, markdown, trie/skiplist)
+.TP
+sharecli\-list(1)
+Enumerate available CLI surfaces (cast modules + utility modules)
+.TP
+sharecli\-version(1)
+Print version + Backbone\-2 ASCII splash
+.TP
+sharecli\-uninstall(1)
+Print uninstall guidance and optionally purge local config/state
+.TP
+sharecli\-help(1)
+Print this message or the help of the given subcommand(s)
+.SH EXTRA
+Accessibility (C09): docs/a11y/README.md — NO_COLOR/TERM=dumb degrade ANSI color; FR\-004 status via `sharecli status` and GET /health. Degraded\-mode notes: docs/a11y/status\-and\-recovery.md
+Help & FAQ (C09 L81.13): docs/faq.md — top troubleshooting answers; `man sharecli` after `just man`.
+.SH VERSION
+v0.1.0

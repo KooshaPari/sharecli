@@ -23,7 +23,7 @@
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 25/30 | 83% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
-| C09 | Accessibility + UX | L81–L95 | 41/45 | 91% | A | live VO/NVDA soft; L81.9 undo; L81.13 FAQ/man |
+| C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 38/45 | 84% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
@@ -545,3 +545,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C04 25/30 (83% B) → 26/30 (87% B):** L31 2→3 — `security.yml` trufflehog job; `.pre-commit-config.yaml` gitleaks + trufflehog; `.trufflehog.yml`; `scripts/ci/secret_scan.sh` + `just secret-scan`; `tests/c04_l31_dual_secret_scan.rs`.
 - Top-3 C04 gaps: signed commits ruleset (L34 org-gated); org 2FA enforce (L36); artifact cosign releases (L35).
 - Overall unweighted **~88% B** (1060/12); tier-1 weighted **90% A** (1440/16).
+
+### 2026-07-19 (C09 L81.13 FAQ + man page — T-653 / FR-004)
+- **C09 41/45 (91% A) → 42/45 (93% A):** L81.13 2→3 — `docs/faq.md` top-5 FAQ; `clap_mangen` `sharecli man` + `share/man/man1/sharecli.1`; `just man`; `tests/c09_l81_13_faq_man.rs`.
+- Top-3 C09 gaps: live VO/NVDA soft (W9.3); L81.9 undo model; L81.15 aesthetic CTA tokens.
+- Overall unweighted **~88% B** (1062/12); tier-1 weighted **90% A** (1442/16).
