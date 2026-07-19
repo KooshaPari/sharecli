@@ -8,7 +8,7 @@
 //! ## Examples
 //!
 //! ```
-//! use sharecli::url_safe_base64::{encode, encode_unpadded, decode, decode_unchecked};
+//! use sharecli::util::url_safe_base64::{encode, encode_unpadded, decode, decode_unchecked};
 //!
 //! assert_eq!(encode(b"hello world"), "aGVsbG8gd29ybGQ=");
 //! assert_eq!(encode_unpadded(b"hello world"), "aGVsbG8gd29ybGQ");

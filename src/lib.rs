@@ -6,211 +6,188 @@
 //! - Process management via local runtime types
 //! - Multi-project orchestration
 
+// --- Tier A/B: product + ops (root pub surface) ---
 pub mod audit_log;
 pub mod cast;
 pub mod commands;
 pub mod config;
+pub mod config_loader;
+pub mod config_merger;
 pub mod config_watcher;
 pub mod coordination;
+pub mod env_manager;
 pub mod error_envelope;
+pub mod health;
 pub mod health_check;
 pub mod http_red;
+pub mod log_sink;
+pub mod metrics;
 pub mod monitoring;
 pub mod notifier;
 pub mod otel;
 pub mod pprof_http;
+pub mod proc_table;
 pub mod runtime;
+pub mod scheduler;
 pub mod serve_auth;
 pub mod serve_lock;
+pub mod signals;
 pub mod spawn_policy;
 pub mod tray_http;
 pub mod watchdog;
+
+/// Parity / expansion utilities. C00 L1 Phase 1 — `docs/ops/lib-sprawl-plan.md`.
+pub mod util;
 
 pub use anyhow::Result;
 pub use runtime::{
     ManagedProcess, ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources,
     SharedRuntime,
 };
-pub mod config_loader;
-pub mod env_manager;
-pub mod health;
-pub mod log_sink;
-pub mod metrics;
-pub mod proc_table;
-pub mod scheduler;
-pub mod signals;
 
-pub mod api;
-pub mod argparse;
-pub mod astar;
-pub mod backoff;
-pub mod base64_util;
-pub mod binary_search;
-pub mod bloom;
-pub mod cache;
-pub mod config_merger;
-pub mod credit_card;
-pub mod cron_parser;
-pub mod csv_util;
-pub mod deque;
-pub mod disjoint_set;
-pub mod erf;
-pub mod feature_flags;
-pub mod graph;
-pub mod hash_util;
-pub mod ipv4_util;
-pub mod itoa;
-pub mod jsonpath_lite;
-pub mod lazy;
-pub mod levenshtein;
-pub mod lru;
-pub mod matrix;
-pub mod money;
-pub mod object_pool;
-pub mod perm;
-pub mod pin;
-pub mod priority_queue;
-pub mod queue;
-pub mod queue2;
-pub mod rate_limiter;
-pub mod rational;
-pub mod retry;
-pub mod ring_buffer;
-pub mod slice_ext;
-pub mod sliding_window;
-pub mod sorted_vec;
-pub mod sortedset;
-pub mod stack;
-pub mod stats;
-pub mod stopwatch;
-pub mod stream;
-pub mod tar_util;
-pub mod template;
-pub mod text_slab;
-pub mod trim;
-pub mod typed_id;
-pub mod utf8v;
-pub mod uuid;
-pub mod vlq;
-pub mod xml_escape;
-
-pub mod color;
-pub mod distance;
-
-pub mod bucks;
-pub mod md_table;
-
-pub mod jsonschema_subset;
-pub mod radix_trie;
-
-pub mod binary_search_ex;
-pub mod kmp_search;
-
-pub mod bloom_filter;
-pub mod lru_cache_ext;
-
-pub mod skiplist;
-pub mod trie_compressed;
-
-pub mod flatbuffers_lite;
-pub mod lz4_block;
-
-pub mod crc64;
-pub mod glob_pattern;
-
-pub mod base85;
-pub mod xxhash3;
-
-pub mod apfs_uuid;
-pub mod xxtea;
-
-pub mod base_n_radix;
-pub mod word_count;
-
-pub mod csv_writer;
-pub mod mime_qp;
-
-pub mod html_escape;
-pub mod ipaddr_validation;
-
-pub mod json_pointer;
-pub mod markdown_inline;
-
-pub mod dhcp_options;
-pub mod dhcpv6_msg;
-pub mod dns_zone;
-pub mod ini_parser;
-pub mod json5;
-pub mod macho_parse;
-pub mod msgpack;
-pub mod ntp_timestamp;
-pub mod s_expression;
-pub mod ssh_known_hosts;
-pub mod tar_header;
-pub mod toml_lite;
-pub mod url_safe_base64;
-pub mod wasm_opcode;
-pub mod zip_crc32;
-
-pub mod bitcoin_bech32;
-pub mod ldap_filter;
-pub mod oauth1_signature;
-pub mod pem_decode;
-pub mod ssh_packet;
-pub mod uuid_v7;
-pub mod x509_chain;
-
-pub mod flac_metadata_block;
-pub mod m3u8_playlist;
-
-pub mod cue_sheet;
-pub mod imap_response;
-pub mod mp4_box;
-pub mod smtp_envelope;
-
-// L138: sharecli library expansion — Keccak / SHA-3 hash + segment tree + Bellman-Ford + matrix ops
-pub mod bellman_ford;
-pub mod keccak;
-pub mod matrix_ops;
-pub mod segment_tree_basic;
-
-// L130: sharecli library expansion — ANSI terminal codes + CRC checksums
-pub mod ansi;
-pub mod cyclic_check;
-pub mod webmanifest;
-pub mod webvtt_cue;
-
-// L139: sharecli library expansion — file listing + URL-safe base64 + Roman numerals
-pub mod asn1_ber;
-pub mod asn1_ber_parity;
-pub mod base64url;
-pub mod bip39_mnemonic;
-pub mod bip39_wordlist;
-pub mod bmp_image;
-pub mod cdp_meraki_discovery;
-pub mod coap_option_parse;
-pub mod dns_query_parser;
-pub mod dnssec_chain;
-pub mod ipsec_esp_parse;
-pub mod mapi_props;
-pub mod mapi_props_parity;
-pub mod natural_sort;
-pub mod pres_header_parity;
-pub mod pres_header_parse;
-pub mod qoi_image;
-pub mod rdp_neg;
-pub mod roman_numeral;
-pub mod snmpv3_msg;
-pub mod x12_edi_segment;
-
-// L137: sharecli parity expansion — FIPS 202 SHA-3 + RFC 5869 HKDF + RFC 7693 BLAKE2 + RFC 8439 ChaCha20
-pub mod blake2;
-pub mod chacha20;
-pub mod hkdf;
-pub mod sha3_keccak;
-
-// L139: sharecli library expansion — Kahn/DFS topological sort + integer square root + Catalan numbers + 3D vector math
-pub mod catalan_number;
-pub mod sqrt_integer;
-pub mod topological_sort;
-pub mod vector_3d;
+// Compatibility re-exports (Phase 1 non-breaking): legacy `sharecli::<mod>` paths.
+pub use util::api;
+pub use util::argparse;
+pub use util::astar;
+pub use util::backoff;
+pub use util::base64_util;
+pub use util::binary_search;
+pub use util::bloom;
+pub use util::cache;
+pub use util::credit_card;
+pub use util::cron_parser;
+pub use util::csv_util;
+pub use util::deque;
+pub use util::disjoint_set;
+pub use util::erf;
+pub use util::feature_flags;
+pub use util::graph;
+pub use util::hash_util;
+pub use util::ipv4_util;
+pub use util::itoa;
+pub use util::jsonpath_lite;
+pub use util::lazy;
+pub use util::levenshtein;
+pub use util::lru;
+pub use util::matrix;
+pub use util::money;
+pub use util::object_pool;
+pub use util::perm;
+pub use util::pin;
+pub use util::priority_queue;
+pub use util::queue;
+pub use util::queue2;
+pub use util::rate_limiter;
+pub use util::rational;
+pub use util::retry;
+pub use util::ring_buffer;
+pub use util::slice_ext;
+pub use util::sliding_window;
+pub use util::sorted_vec;
+pub use util::sortedset;
+pub use util::stack;
+pub use util::stats;
+pub use util::stopwatch;
+pub use util::stream;
+pub use util::tar_util;
+pub use util::template;
+pub use util::text_slab;
+pub use util::trim;
+pub use util::typed_id;
+pub use util::utf8v;
+pub use util::uuid;
+pub use util::vlq;
+pub use util::xml_escape;
+pub use util::color;
+pub use util::distance;
+pub use util::bucks;
+pub use util::md_table;
+pub use util::jsonschema_subset;
+pub use util::radix_trie;
+pub use util::binary_search_ex;
+pub use util::kmp_search;
+pub use util::bloom_filter;
+pub use util::lru_cache_ext;
+pub use util::skiplist;
+pub use util::trie_compressed;
+pub use util::flatbuffers_lite;
+pub use util::lz4_block;
+pub use util::crc64;
+pub use util::glob_pattern;
+pub use util::base85;
+pub use util::xxhash3;
+pub use util::apfs_uuid;
+pub use util::xxtea;
+pub use util::base_n_radix;
+pub use util::word_count;
+pub use util::csv_writer;
+pub use util::mime_qp;
+pub use util::html_escape;
+pub use util::ipaddr_validation;
+pub use util::json_pointer;
+pub use util::markdown_inline;
+pub use util::dhcp_options;
+pub use util::dhcpv6_msg;
+pub use util::dns_zone;
+pub use util::ini_parser;
+pub use util::json5;
+pub use util::macho_parse;
+pub use util::msgpack;
+pub use util::ntp_timestamp;
+pub use util::s_expression;
+pub use util::ssh_known_hosts;
+pub use util::tar_header;
+pub use util::toml_lite;
+pub use util::url_safe_base64;
+pub use util::wasm_opcode;
+pub use util::zip_crc32;
+pub use util::bitcoin_bech32;
+pub use util::ldap_filter;
+pub use util::oauth1_signature;
+pub use util::pem_decode;
+pub use util::ssh_packet;
+pub use util::uuid_v7;
+pub use util::x509_chain;
+pub use util::flac_metadata_block;
+pub use util::m3u8_playlist;
+pub use util::cue_sheet;
+pub use util::imap_response;
+pub use util::mp4_box;
+pub use util::smtp_envelope;
+pub use util::bellman_ford;
+pub use util::keccak;
+pub use util::matrix_ops;
+pub use util::segment_tree_basic;
+pub use util::ansi;
+pub use util::cyclic_check;
+pub use util::webmanifest;
+pub use util::webvtt_cue;
+pub use util::asn1_ber;
+pub use util::asn1_ber_parity;
+pub use util::base64url;
+pub use util::bip39_mnemonic;
+pub use util::bip39_wordlist;
+pub use util::bmp_image;
+pub use util::cdp_meraki_discovery;
+pub use util::coap_option_parse;
+pub use util::dns_query_parser;
+pub use util::dnssec_chain;
+pub use util::ipsec_esp_parse;
+pub use util::mapi_props;
+pub use util::mapi_props_parity;
+pub use util::natural_sort;
+pub use util::pres_header_parity;
+pub use util::pres_header_parse;
+pub use util::qoi_image;
+pub use util::rdp_neg;
+pub use util::roman_numeral;
+pub use util::snmpv3_msg;
+pub use util::x12_edi_segment;
+pub use util::blake2;
+pub use util::chacha20;
+pub use util::hkdf;
+pub use util::sha3_keccak;
+pub use util::catalan_number;
+pub use util::sqrt_integer;
+pub use util::topological_sort;
+pub use util::vector_3d;

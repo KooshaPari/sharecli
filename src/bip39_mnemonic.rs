@@ -26,7 +26,7 @@
 
 use sha2::{Digest, Sha256};
 
-use crate::bip39_wordlist::WORDLIST;
+use crate::util::bip39_wordlist::WORDLIST;
 
 const VALID_ENTROPY_BITS: &[usize] = &[128, 160, 192, 224, 256];
 

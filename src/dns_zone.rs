@@ -25,7 +25,7 @@
 //! ## Example
 //!
 //! ```
-//! use sharecli::dns_zone::{parse, RecordType};
+//! use sharecli::util::dns_zone::{parse, RecordType};
 //!
 //! let zone_text = "$TTL 60\n@ IN A 192.0.2.1\n";
 //! let zone = parse(zone_text).unwrap();

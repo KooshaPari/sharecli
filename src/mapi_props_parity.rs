@@ -68,7 +68,7 @@ pub fn build_entry_32bit(tag: u32, flags: u16, value: &[u8]) -> Vec<u8> {
 /// assertion is strict: tag, flags, and value must all match exactly.
 pub fn assert_round_trip(tag: u32, flags: u16, value: &[u8]) {
     let bytes = build_entry(tag, flags, value);
-    let props = crate::mapi_props::parse(&bytes, false).expect("re-parse must succeed");
+    let props = crate::util::mapi_props::parse(&bytes, false).expect("re-parse must succeed");
     assert_eq!(props.len(), 1, "expected 1 record, got {}", props.len());
     let p = &props[0];
     assert_eq!(p.tag, tag, "tag mismatch: 0x{:08x} != 0x{:08x}", p.tag, tag);
@@ -79,7 +79,7 @@ pub fn assert_round_trip(tag: u32, flags: u16, value: &[u8]) {
 /// Verify round-trip for the 32-bit (Unicode) tag layout.
 pub fn assert_round_trip_32bit(tag: u32, flags: u16, value: &[u8]) {
     let bytes = build_entry_32bit(tag, flags, value);
-    let props = crate::mapi_props::parse(&bytes, true).expect("re-parse must succeed");
+    let props = crate::util::mapi_props::parse(&bytes, true).expect("re-parse must succeed");
     assert_eq!(props.len(), 1, "expected 1 record, got {}", props.len());
     let p = &props[0];
     assert_eq!(p.tag, tag, "tag mismatch: 0x{:08x} != 0x{:08x}", p.tag, tag);
@@ -109,7 +109,7 @@ pub fn build_stream_32bit(entries: &[(u32, u16, &[u8])]) -> Vec<u8> {
 /// the same entries (in the same order).
 pub fn assert_stream_round_trip(entries: &[(u32, u16, &[u8])]) {
     let bytes = build_stream(entries);
-    let props = crate::mapi_props::parse(&bytes, false).expect("re-parse must succeed");
+    let props = crate::util::mapi_props::parse(&bytes, false).expect("re-parse must succeed");
     assert_eq!(props.len(), entries.len(), "entry count mismatch");
     for (i, (tag, flags, value)) in entries.iter().enumerate() {
         assert_eq!(props[i].tag, *tag, "entry {i}: tag mismatch");
@@ -121,7 +121,7 @@ pub fn assert_stream_round_trip(entries: &[(u32, u16, &[u8])]) {
 /// Same as `assert_stream_round_trip` but for the 32-bit (Unicode) layout.
 pub fn assert_stream_round_trip_32bit(entries: &[(u32, u16, &[u8])]) {
     let bytes = build_stream_32bit(entries);
-    let props = crate::mapi_props::parse(&bytes, true).expect("re-parse must succeed");
+    let props = crate::util::mapi_props::parse(&bytes, true).expect("re-parse must succeed");
     assert_eq!(props.len(), entries.len(), "entry count mismatch");
     for (i, (tag, flags, value)) in entries.iter().enumerate() {
         assert_eq!(props[i].tag, *tag, "entry {i}: tag mismatch");
@@ -172,25 +172,25 @@ mod tests {
     #[test]
     fn round_trip_subject_string() {
         // PidTagSubject = 0x0037 (PT_UNICODE = 0x001f) per [MS-OXPROPS].
-        let tag = crate::mapi_props::pack_tag(0x001f, 0x0037);
+        let tag = crate::util::mapi_props::pack_tag(0x001f, 0x0037);
         assert_round_trip(tag, 0, "Hello, world!".as_bytes());
     }
 
     #[test]
     fn round_trip_with_non_zero_flags() {
-        let tag = crate::mapi_props::pack_tag(0x0102, 0x0002);
+        let tag = crate::util::mapi_props::pack_tag(0x0102, 0x0002);
         assert_round_trip(tag, 0xCAFE, &[0xDE, 0xAD, 0xBE, 0xEF]);
     }
 
     #[test]
     fn round_trip_empty_value() {
-        let tag = crate::mapi_props::pack_tag(0x001f, 0x0037);
+        let tag = crate::util::mapi_props::pack_tag(0x001f, 0x0037);
         assert_round_trip(tag, 0, b"");
     }
 
     #[test]
     fn round_trip_long_value() {
-        let tag = crate::mapi_props::pack_tag(0x0102, 0x0002);
+        let tag = crate::util::mapi_props::pack_tag(0x0102, 0x0002);
         let value = vec![0xAAu8; 1024];
         assert_round_trip(tag, 0, &value);
     }
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn round_trip_32bit_subject() {
-        let tag = crate::mapi_props::pack_tag(0x001f, 0x0037);
+        let tag = crate::util::mapi_props::pack_tag(0x001f, 0x0037);
         assert_round_trip_32bit(tag, 0, "hi".as_bytes());
     }
 
@@ -221,17 +221,17 @@ mod tests {
     #[test]
     fn stream_round_trip_two_entries() {
         let entries: &[(u32, u16, &[u8])] = &[
-            (crate::mapi_props::pack_tag(0x001f, 0x0037), 0, b"hello".as_slice()),
-            (crate::mapi_props::pack_tag(0x0003, 0x0e08), 1, &42i32.to_le_bytes()),
+            (crate::util::mapi_props::pack_tag(0x001f, 0x0037), 0, b"hello".as_slice()),
+            (crate::util::mapi_props::pack_tag(0x0003, 0x0e08), 1, &42i32.to_le_bytes()),
         ];
         assert_stream_round_trip(entries);
     }
 
     #[test]
     fn stream_round_trip_32bit_three_entries() {
-        let a = crate::mapi_props::pack_tag(0x001f, 0x0037);
-        let b = crate::mapi_props::pack_tag(0x0102, 0x0002);
-        let c = crate::mapi_props::pack_tag(0x000b, 0x0001);
+        let a = crate::util::mapi_props::pack_tag(0x001f, 0x0037);
+        let b = crate::util::mapi_props::pack_tag(0x0102, 0x0002);
+        let c = crate::util::mapi_props::pack_tag(0x000b, 0x0001);
         let entries: &[(u32, u16, &[u8])] =
             &[(a, 0, b"a".as_slice()), (b, 1, &[0xFFu8]), (c, 2, &[1u8])];
         assert_stream_round_trip_32bit(entries);
