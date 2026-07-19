@@ -40,3 +40,17 @@ fn c00_l8_memory_docs_reference_features() {
     assert!(memory.contains("jemalloc"), "memory.md must document jemalloc feature");
     assert!(memory.contains("dhat"), "memory.md must document dhat profiling");
 }
+
+#[test]
+fn c00_l8_dhat_soft_avoids_clap_help_exit() {
+    // FR-003 — clap --help uses process::exit and skips dhat Profiler Drop.
+    let script = include_str!("../scripts/ops/dhat_soft.sh");
+    assert!(
+        !script.contains("\"$BIN\" --help"),
+        "dhat_soft must not invoke --help (skips Drop / no dhat-heap.json)"
+    );
+    assert!(
+        script.contains("completions bash"),
+        "dhat_soft must use a normal-returning CLI path"
+    );
+}

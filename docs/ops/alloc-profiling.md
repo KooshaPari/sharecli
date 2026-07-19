@@ -17,7 +17,11 @@ just serve-jemalloc
 ### dhat (dev heap profile)
 
 Feature `dhat-heap` installs `dhat::Alloc` as the global allocator and emits
-`dhat-heap.json` on process exit.
+`dhat-heap.json` when the process returns from `main` (Profiler `Drop`).
+
+Do **not** use `sharecli --help` / `--version` for sampling: clap exits via
+`process::exit`, which skips destructors and leaves no JSON artifact. The soft
+script runs `sharecli completions bash` so `main` returns normally.
 
 ```bash
 just dhat-soft
