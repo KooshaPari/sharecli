@@ -8,7 +8,7 @@
   "overall_pct": 91,
   "grade": "A",
   "weighted_overall_pct": 91,
-  "wave_note": "C10 L101 2→3: dashboard disconnect error view + recovery CTA.",
+  "wave_note": "C10 L101 + C07 L64 2→3: disconnect error view; e2e/chaos test tier.",
   "clusters": {
     "C00": {
       "pct": 97,
@@ -46,9 +46,9 @@
       "score": "26/30"
     },
     "C07": {
-      "pct": 87,
-      "grade": "B",
-      "score": "26/30"
+      "pct": 90,
+      "grade": "A",
+      "score": "27/30"
     },
     "C08": {
       "pct": 80,

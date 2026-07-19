@@ -134,6 +134,12 @@ test-nextest:
     @cargo nextest run --locked --all-features --profile ci
 
 [group: 'test']
+test-e2e:
+    @echo ">> cargo nextest run e2e/chaos tier (C07 L64)"
+    @command -v cargo-nextest >/dev/null 2>&1 || cargo install --locked cargo-nextest
+    @cargo nextest run --locked --all-features --profile e2e -E 'test(/_e2e_/)'
+
+[group: 'test']
 test-doc:
     @echo ">> cargo test --doc"
     @cargo test --doc --locked --all-features
