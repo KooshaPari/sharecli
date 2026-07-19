@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-18 (C04 OSV hard gate — T-655 / FR-003)
+- Status: DONE — removed `continue-on-error` + soft pass shim; `ci.yml` `osv` + `ci-success` needs; `scripts/ci/osv_scan.sh` + `just osv-scan`; `tests/c04_osv_hard_gate.rs`
+- Score: C04 24/30 (80% B) → 25/30 (83% B); L38 2→3; unweighted overall ~83% B; tier-1 weighted ~84% B
+- FR: FR-003 · C04 L38 · T-655
+
 ## 2026-07-18 (C09 SR procedure pass — L81.4 / FR-004)
 - Status: DONE — documented SR checklist + evidence (`docs/a11y/sr-checklist.md`, `sr-pass-evidence.md`); axe 0 violations; `dashboard_sr_table_and_skip_link` test; L81.4 2→3; C09 34→36/45 (80% B)
 - Soft READY: live VoiceOver/NVDA per-release checkbox (W9.3)

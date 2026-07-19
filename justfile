@@ -149,6 +149,11 @@ deny:
     @command -v cargo-deny >/dev/null 2>&1 || cargo install --locked cargo-deny
     @cargo deny check
 
+[group: 'security']
+osv-scan:
+    @echo ">> osv-scanner HIGH/CRITICAL on Cargo.lock (C04 L38 hard parity)"
+    @bash scripts/ci/osv_scan.sh
+
 # -------- doc --------
 [group: 'doc']
 doc:

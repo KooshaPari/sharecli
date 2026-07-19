@@ -18,7 +18,7 @@
 | C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit SIEM export |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
-| C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
+| C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | live PD; chaos hard gate; tray dashboard HTTP trace |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_re widen |
@@ -29,11 +29,11 @@
 
 ## Overall
 
-**Weighted overall score:** 83% · **Overall grade:** B
+**Weighted overall score:** 84% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (80+80+87+92+80+80+83+80+80+80+89+84)/12 with C06 **83%** + C07 **80%** + C09 **80%** + C11 **84%** = 992/12 = **82.7% ≈ 83%**.)
+(Unweighted mean of cluster pcts: (80+80+87+92+83+80+83+80+80+80+89+84)/12 with C04 **83%** + C06 **83%** + C07 **80%** + C09 **80%** + C11 **84%** = 995/12 = **82.9% ≈ 83%**.)
 
-**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (80+80+83+80+80+80+89+84) = 678 + 656 = 1334 / 16 = **83.4% ≈ 83%** (B).
+**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (83+80+83+80+80+80+89+84) = 678 + 659 = 1337 / 16 = **83.6% ≈ 84%** (B).
 
 ## Headline Findings
 
@@ -468,3 +468,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - L121 evidence: `sharecli uninstall` + `--purge-data` (`src/commands/uninstall.rs`, `tests/c11_uninstall.rs` FR-003).
 - L110 evidence: Win tray mutex + `asInvoker` manifest (`windows/ShareCLITray/`).
 - Overall unweighted **~83% B** (992/12); weighted **~83% B** (1334/16).
+
+### 2026-07-18 (C04 OSV hard gate — L38)
+- **C04 24/30 (80% B) → 25/30 (83% B):** L38 2→3 — removed `continue-on-error` + soft pass shim; `ci.yml` `osv` job + `ci-success` needs; `scripts/ci/osv_scan.sh` + `just osv-scan`; `tests/c04_osv_hard_gate.rs` (FR-003 · T-655).
+- Baseline: `osv-scanner --severity=HIGH,CRITICAL` clean on `Cargo.lock` (1 MEDIUM `jsonwebtoken` tracked separately).
+- Overall unweighted **~83% B** (995/12); tier-1 weighted **~84% B** (1337/16).
