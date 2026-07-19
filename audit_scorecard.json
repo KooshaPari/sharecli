@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c09-l81-13",
+  "commit": "pending-c10-l100",
   "date": "2026-07-19",
-  "overall_pct": 88,
+  "overall_pct": 89,
   "grade": "B",
   "weighted_overall_pct": 90,
-  "wave_note": "C09 L81.13 2→3 (42/45 93% A): docs/faq.md + clap_mangen sharecli.1 + just man. Unweighted ~88% B; tier-1 weighted 90% A.",
+  "wave_note": "C10 L100 2→3 (33/36 92% A): dashboard empty-state panel + ps CTAs + docs/visual/empty-states.md. Unweighted ~89% B; tier-1 weighted 90% A.",
   "clusters": {
     "C00": {
       "pct": 97,
@@ -61,9 +61,9 @@
       "score": "42/45"
     },
     "C10": {
-      "pct": 89,
-      "grade": "B",
-      "score": "32/36"
+      "pct": 92,
+      "grade": "A",
+      "score": "33/36"
     },
     "C11": {
       "pct": 84,

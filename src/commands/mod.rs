@@ -63,7 +63,27 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
     let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
     println!("\nTotal: {} processes, {} MB memory", processes.len(), total_mem);
 
+    if processes.is_empty() {
+        print_ps_empty_hint(project, harness);
+    }
+
     Ok(())
+}
+
+/// Actionable empty-pool copy for `ps` (C10 L100).
+fn print_ps_empty_hint(project: Option<&str>, harness: Option<&str>) {
+    if let Some(p) = project {
+        println!(
+            "\nNo processes match project '{p}'. Try: sharecli start {p} <harness>"
+        );
+    } else if let Some(h) = harness {
+        println!(
+            "\nNo processes match harness '{h}'. Try: sharecli start <project> {h}"
+        );
+    } else {
+        println!("\nNo managed processes yet. Get started: sharecli start <project> <harness>");
+        println!("Or open the dashboard: sharecli serve");
+    }
 }
 
 /// Start a harness process
