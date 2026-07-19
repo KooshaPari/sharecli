@@ -78,20 +78,21 @@ mod tests {
     #[test]
     fn inject_dashboard_traceparent_adds_data_attribute() {
         let _guard = ENV_LOCK.lock().unwrap();
-        let lower = "traceparent";
-        let upper = "TRACEPARENT";
-        let prev_lower = std::env::var(lower).ok();
-        let prev_upper = std::env::var(upper).ok();
-        std::env::set_var(lower, "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01");
-        std::env::remove_var(upper);
+        let key = "traceparent";
+        let prev = std::env::var(key).ok();
+        let prev_upper = std::env::var("TRACEPARENT").ok();
+        // On Windows env keys are case-insensitive: remove before set so we do
+        // not clear the value we just wrote via remove_var("TRACEPARENT").
+        std::env::remove_var("TRACEPARENT");
+        std::env::set_var(key, "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01");
         let html = inject_dashboard_traceparent("<html lang=\"en\"><body></body></html>");
-        if let Some(previous) = prev_lower {
-            std::env::set_var(lower, previous);
+        if let Some(previous) = prev {
+            std::env::set_var(key, previous);
         } else {
-            std::env::remove_var(lower);
+            std::env::remove_var(key);
         }
         if let Some(previous) = prev_upper {
-            std::env::set_var(upper, previous);
+            std::env::set_var("TRACEPARENT", previous);
         }
         assert!(html.contains(
             "data-traceparent=\"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01\""
@@ -124,23 +125,23 @@ mod tests {
             stream.write_all(response.as_bytes()).unwrap();
         });
 
-        let lower = "traceparent";
-        let upper = "TRACEPARENT";
-        let prev_lower = std::env::var(lower).ok();
-        let prev_upper = std::env::var(upper).ok();
-        std::env::set_var(lower, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
-        std::env::remove_var(upper);
+        let key = "traceparent";
+        let prev = std::env::var(key).ok();
+        let prev_upper = std::env::var("TRACEPARENT").ok();
+        // Windows: remove before set (case-insensitive env slot).
+        std::env::remove_var("TRACEPARENT");
+        std::env::set_var(key, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
 
         let url = format!("http://{addr}/healthz");
         let body = get(&url).expect("tray HTTP get");
 
-        if let Some(previous) = prev_lower {
-            std::env::set_var(lower, previous);
+        if let Some(previous) = prev {
+            std::env::set_var(key, previous);
         } else {
-            std::env::remove_var(lower);
+            std::env::remove_var(key);
         }
         if let Some(previous) = prev_upper {
-            std::env::set_var(upper, previous);
+            std::env::set_var("TRACEPARENT", previous);
         }
 
         let (request, headers) = rx.recv_timeout(Duration::from_secs(5)).expect("request captured");

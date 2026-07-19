@@ -264,6 +264,9 @@ mod tests {
         );
     }
 
+    // Distinct `traceparent` vs `TRACEPARENT` slots exist only on case-sensitive
+    // platforms. Windows collapses them into one env entry.
+    #[cfg(unix)]
     #[test]
     fn traceparent_http_value_prefers_lowercase_over_uppercase_env() {
         let _guard = ENV_LOCK.lock().unwrap();
@@ -290,23 +293,43 @@ mod tests {
         );
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn traceparent_http_value_reads_case_insensitive_env_slot() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let prev = std::env::var("TRACEPARENT").ok();
+        std::env::remove_var("TRACEPARENT");
+        std::env::set_var("traceparent", "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01");
+        let out = traceparent_http_value();
+        if let Some(prev) = prev {
+            std::env::set_var("TRACEPARENT", prev);
+        } else {
+            std::env::remove_var("TRACEPARENT");
+        }
+        assert_eq!(
+            out,
+            Some("00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01".to_string())
+        );
+    }
+
     #[test]
     fn traceparent_http_value_rejects_invalid_env_header() {
         let _guard = ENV_LOCK.lock().unwrap();
-        let lower = "traceparent";
-        let upper = "TRACEPARENT";
-        let prev_lower = std::env::var(lower).ok();
-        let prev_upper = std::env::var(upper).ok();
-        std::env::set_var(lower, "not-a-trace\r\nx-injected: true");
-        std::env::remove_var(upper);
+        let key = "traceparent";
+        let prev = std::env::var(key).ok();
+        let prev_upper = std::env::var("TRACEPARENT").ok();
+        // Windows: remove before set so remove_var("TRACEPARENT") does not
+        // clear the invalid value under test.
+        std::env::remove_var("TRACEPARENT");
+        std::env::set_var(key, "not-a-trace\r\nx-injected: true");
         let out = traceparent_http_value();
-        if let Some(prev) = prev_lower {
-            std::env::set_var(lower, prev);
+        if let Some(prev) = prev {
+            std::env::set_var(key, prev);
         } else {
-            std::env::remove_var(lower);
+            std::env::remove_var(key);
         }
         if let Some(prev) = prev_upper {
-            std::env::set_var(upper, prev);
+            std::env::set_var("TRACEPARENT", prev);
         }
         assert_eq!(out, None);
     }
