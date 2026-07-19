@@ -183,6 +183,7 @@ fn is_valid_machine(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn is_valid_machine_accepts_typical_names() {
@@ -227,5 +228,51 @@ mod tests {
         let (p, w, host) = peel_pane_window("ssh:koosha@10.0.0.5:0:3").expect("ok");
         assert_eq!((p, w), (3, 0));
         assert_eq!(host, "ssh:koosha@10.0.0.5");
+    }
+
+    // --- proptest (C07 L66 / T-650) ---
+    proptest::proptest! {
+        #![proptest_config(crate::proptest_util::config())]
+
+        #[test]
+        fn prop_valid_machine_chars(name in prop_valid_machine_name()) {
+            prop_assert!(is_valid_machine(&name));
+        }
+
+        #[test]
+        fn prop_local_address_display_parse_roundtrip(
+            machine in prop_valid_machine_name(),
+            window in 0u32..256,
+            pane in 0u32..256,
+        ) {
+            let addr = PaneAddress {
+                machine: machine.clone(),
+                host: Host::Local,
+                window,
+                pane,
+            };
+            let rendered = addr.to_string();
+            let back = PaneAddress::parse(&rendered).expect("parse roundtrip");
+            prop_assert_eq!(back, addr);
+        }
+
+        #[test]
+        fn prop_peel_pane_window_roundtrip_indices(
+            window in 0u32..1000,
+            pane in 0u32..1000,
+        ) {
+            let host = format!("local:{window}:{pane}");
+            let (p, w, remainder) = peel_pane_window(&host).expect("peel");
+            prop_assert_eq!((p, w), (pane, window));
+            prop_assert_eq!(remainder, "local");
+        }
+    }
+
+    fn prop_valid_machine_name() -> impl Strategy<Value = String> {
+        prop::collection::vec(
+            prop::sample::select(vec!['m', 'b', 'p', '1', '-', '_', '.']),
+            1..16usize,
+        )
+        .prop_map(|chars| chars.into_iter().collect())
     }
 }

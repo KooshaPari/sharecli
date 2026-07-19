@@ -684,6 +684,13 @@ mod tests {
 
     // --- proptest (C07 L66) ---
     proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config {
+            failure_persistence: Some(Box::new(
+                proptest::test_runner::FileFailurePersistence::SourceParallel("proptest-regressions"),
+            )),
+            ..proptest::test_runner::Config::default()
+        })]
+
         #[test]
         fn prop_slot_ratio_bounded(active in 0u32..10_000u32, cap in 0u32..10_000u32) {
             let r = slot_ratio(active, cap);

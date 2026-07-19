@@ -21,7 +21,7 @@
 | C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 25/30 | 83% | B | live PD; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
-| C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_re widen |
+| C07 | DX, QEng, Portability | L61–L70 | 25/30 | 83% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 38/45 | 84% | B | live VO/NVDA soft; Playwright Tab-cycle; L81.8 design-system doc |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
@@ -29,11 +29,11 @@
 
 ## Overall
 
-**Weighted overall score:** 85% · **Overall grade:** B
+**Weighted overall score:** 86% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (87+83+90+92+83+83+83+80+80+84+89+84)/12 = 1018/12 = **84.8% ≈ 85%**.)
+(Unweighted mean of cluster pcts: (87+83+90+92+83+83+83+83+80+84+89+84)/12 = 1021/12 = **85.1% ≈ 85%**.)
 
-**Tier-1 double-weight (C00–C03):** (87+83+90+92)×2 + (83+83+83+80+80+84+89+84) = 704 + 666 = 1370 / 16 = **85.6% ≈ 86%** (B).
+**Tier-1 double-weight (C00–C03):** (87+83+90+92)×2 + (83+83+83+83+80+84+89+84) = 704 + 669 = 1373 / 16 = **85.8% ≈ 86%** (B).
 
 ## Headline Findings
 
@@ -500,3 +500,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C00 25/30 (83% B) → 26/30 (87% B):** L7 2→3 — `crates/sharecli-sync` + loom CI hard gate; `just loom`; `tests/c00_l7_loom.rs`; `docs/ops/concurrency.md`.
 - Top-3 C00 gaps: crate-split Phases 2–4; tight perf budgets; full async ProcessPool loom.
 - Overall unweighted **~85% B** (1014/12); tier-1 weighted **~85% B** (1366/16).
+
+### 2026-07-19 (C07 L66 proptest expand — T-650 / FR-003)
+- **C07 24/30 (80% B) → 25/30 (83% B):** L66 2→3 — config boundary props + cast registry/address roundtrip; `proptest-regressions/config_validator.txt` replay; `src/proptest_util.rs`; `tests/c07_l66_proptest_expand.rs`.
+- Top-3 C07 gaps: freebsd/wasm; examine_re widen; e2e/chaos tier.
+- Overall unweighted **~85% B** (1021/12); tier-1 weighted **~86% B** (1373/16).

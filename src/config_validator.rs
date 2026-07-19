@@ -342,8 +342,10 @@ mod tests {
         assert!(errs.iter().any(|e| e.field == "config.defaults.testharness.max_instances"));
     }
 
-    // --- proptest (C07 L66 / T-410) ---
+    // --- proptest (C07 L66 / T-410 / T-650) ---
     proptest::proptest! {
+        #![proptest_config(crate::proptest_util::config())]
+
         #[test]
         fn prop_config_toml_roundtrip_max_processes_valid(
             max_processes in 1usize..=10_000usize,
@@ -360,6 +362,66 @@ mod tests {
             prop_assert!(
                 !errs.iter().any(|e| e.field == "config.project_limits.max_processes"),
                 "unexpected max_processes validation error: {errs:?}",
+            );
+        }
+
+        #[test]
+        fn prop_health_check_interval_boundary(
+            secs in 1u64..=3600u64,
+        ) {
+            let mut cfg = valid_config();
+            cfg.monitoring.health_check_interval_secs = secs;
+
+            let errs = validate_config(&cfg);
+            prop_assert!(
+                !errs.iter().any(|e| e.field == "config.monitoring.health_check_interval_secs"),
+                "valid interval {secs} rejected: {errs:?}",
+            );
+        }
+
+        #[test]
+        fn prop_health_check_interval_out_of_range_fails(
+            secs in prop_oneof![Just(0u64), 3601u64..=10_000u64],
+        ) {
+            let mut cfg = valid_config();
+            cfg.monitoring.health_check_interval_secs = secs;
+
+            let errs = validate_config(&cfg);
+            prop_assert!(
+                errs.iter().any(|e| e.field == "config.monitoring.health_check_interval_secs"),
+                "out-of-range interval {secs} should fail: {errs:?}",
+            );
+        }
+
+        #[test]
+        fn prop_pool_idle_timeout_boundary(
+            secs in 1u64..=3600u64,
+        ) {
+            let mut cfg = valid_config();
+            cfg.pool.idle_timeout_secs = secs;
+
+            let errs = validate_config(&cfg);
+            prop_assert!(
+                !errs.iter().any(|e| e.field == "config.pool.idle_timeout_secs"),
+                "valid idle_timeout {secs} rejected: {errs:?}",
+            );
+        }
+
+        #[test]
+        fn prop_spawn_policy_concurrent_builds_valid(
+            n in 1usize..=256usize,
+        ) {
+            let mut cfg = valid_config();
+            cfg.spawn_policy.max_concurrent_builds = n;
+
+            let toml_str = toml::to_string(&cfg).expect("serialize");
+            let back: Config = toml::from_str(&toml_str).expect("deserialize");
+            prop_assert_eq!(back.spawn_policy.max_concurrent_builds, n);
+
+            let errs = validate_config(&back);
+            prop_assert!(
+                !errs.iter().any(|e| e.field == "config.spawn_policy.max_concurrent_builds"),
+                "unexpected spawn_policy error: {errs:?}",
             );
         }
     }
