@@ -571,6 +571,12 @@ mod tests {
         assert_eq!(slot_color(3, 4), Color::Yellow); // 0.75 → yellow
     }
 
+    /// FR-003 / C07 L65 — catch `< 0.9` vs `<= 0.9` mutant (exact 90% is red).
+    #[test]
+    fn test_slot_color_red_at_exact_90_percent() {
+        assert_eq!(slot_color(9, 10), Color::Red); // 0.9 → red (not yellow)
+    }
+
     #[test]
     fn test_slot_color_red_at_cap() {
         assert_eq!(slot_color(4, 4), Color::Red); // 1.0 → red

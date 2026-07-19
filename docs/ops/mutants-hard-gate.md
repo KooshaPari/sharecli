@@ -12,7 +12,7 @@ Related: [`config-proptest.md`](config-proptest.md) (L66 property tests) ·
 | Control | Workflow / config | Gate strength | Notes |
 |---------|-------------------|---------------|-------|
 | `cargo mutants` examine set | `.github/workflows/mutants.yml` + `ci.yml` `mutants` | **Hard** | No `continue-on-error`; survivors fail the job |
-| Scope | `mutants.toml` `examine_re` | Fixed | `crates/sharecli-thermal-tui/src/lib.rs` pure helpers |
+| Scope | `mutants.toml` `examine_globs` | Fixed | `crates/sharecli-thermal-tui/src/lib.rs` pure helpers |
 | Survivor threshold | step exit code | **Enforced** | Zero survivors required |
 | `ci-success` | `.github/workflows/ci.yml` | Aggregator | `needs:` includes `mutants` |
 | Triggers | All PRs via `ci.yml`; cron/dispatch + path-filtered `main` push via `mutants.yml` | Full | Aggregator always reports on PRs |
@@ -26,7 +26,7 @@ the aggregator) on `main` PRs.
 
 | Control | Target |
 |---------|--------|
-| Survivor threshold | **Zero** surviving mutants in `examine_re` set |
+| Survivor threshold | **Zero** surviving mutants in `examine_globs` set |
 | Timeout | 60s per mutant (`mutants.toml` / CI parity) |
 | Job mode | No `continue-on-error` on mutants jobs |
 | `ci-success` | `mutants` in `.github/workflows/ci.yml` `needs:` |
@@ -40,14 +40,14 @@ Inherited from [`mutants-threshold.md`](mutants-threshold.md) — do not relax:
 
 | Metric | Hard (live) |
 |--------|-------------|
-| Examine scope | `examine_re` thermal-tui `lib.rs` |
+| Examine scope | `examine_globs` thermal-tui `lib.rs` |
 | Pass condition | 0 survivors |
 | Fail condition | any survivor → step/job exit 1 |
 | Timeout | 60s / mutant |
 | Parallelism | `--jobs 2` |
 | Lockfile | `--locked -p sharecli-thermal-tui` |
 
-Widening `examine_re` is a **separate** PR after the hard gate stays green on the
+Widening `examine_globs` is a **separate** PR after the hard gate stays green on the
 current examine set for one week on `main`.
 
 ## Phases (complete through 4)
@@ -102,12 +102,12 @@ just mutants
 
 # Explicit parity
 cargo mutants --timeout 60 --jobs 2 \
-  --file 'crates/sharecli-thermal-tui/src/lib.rs' \
+  -p sharecli-thermal-tui \
   --json-outfile mutants-local.json \
-  -- --locked -p sharecli-thermal-tui
+  -- --locked
 
 # Inspect survivors
-cargo mutants --list --file 'crates/sharecli-thermal-tui/src/lib.rs'
+cargo mutants --list -p sharecli-thermal-tui
 ```
 
 Expect non-zero exit when survivors remain — that is the intended hard-gate signal.
@@ -125,6 +125,6 @@ Expect non-zero exit when survivors remain — that is the intended hard-gate si
 | Mutants hard-gate promotion | Done (T-640) |
 | Remove `continue-on-error` + `ci-success` wiring | Done |
 | Branch protection confirm `CI Success` / named check | Maintainer ops |
-| Expand `examine_re` beyond thermal-tui | Deferred (post-hard) |
+| Expand `examine_globs` beyond thermal-tui | Deferred (post-hard) |
 
 **Status:** hard gate live (Phase 4) · **FR:** FR-003 · **Last sync:** 2026-07-18 · **T-640**

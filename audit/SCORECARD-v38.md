@@ -21,7 +21,7 @@
 | C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | live PD; chaos hard gate; tray dashboard HTTP trace |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
-| C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_re widen |
+| C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_globs widen |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; bench-gate hard; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | visual hard diff; manual SR pass; axe hard required |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
@@ -443,5 +443,5 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-18 (C07 mutants hard gate — T-640 / L65)
 - **C07 23/30 (77% B) → 24/30 (80% B):** L65 2→3 — removed `continue-on-error`; `ci.yml` `mutants` job wired into `ci-success`; `mutants.yml` renamed to `cargo-mutants (required)`.
 - Evidence: `docs/ops/mutants-hard-gate.md` phase 4 live; `mutants-threshold.md`; `mutants.toml` header.
-- Top-3 C07 gaps: dropped mutants hard gate; residual proptest expand / freebsd-wasm / examine_re widen.
+- Top-3 C07 gaps: dropped mutants hard gate; residual proptest expand / freebsd-wasm / examine_globs widen.
 - Combined with T-660 C06 83%: unweighted **~82%** (982/12); weighted **~82% B** (1318/16).
