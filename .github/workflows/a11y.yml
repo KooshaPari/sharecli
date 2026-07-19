@@ -1,6 +1,6 @@
 name: Accessibility
 
-# C09 L81.1 / L81.5 — axe-core WCAG 2.x Level A scan for src/dashboard.html (FR-004 NFR).
+# C09 L81.1 / L81.3 / L81.5 — axe-core WCAG 2.x Level A + Playwright Tab-cycle for dashboard.
 # Tags: wcag2a, wcag21a, wcag22a. Hard-fail on serious/critical violations.
 
 on:
@@ -35,3 +35,36 @@ jobs:
 
       - name: Run axe on dashboard.html
         run: npm run a11y:dashboard
+
+  keyboard-dashboard:
+    name: dashboard keyboard Tab-cycle
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: a11y-keyboard
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install a11y deps
+        run: npm ci
+      - name: Build sharecli
+        run: cargo build --locked --release -p sharecli
+      - name: Install Playwright Chromium
+        run: npx --yes playwright@1.49.0 install --with-deps chromium
+      - name: Run keyboard Tab-cycle
+        env:
+          SHARECLI_VISUAL_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          ./target/release/sharecli serve --bind 127.0.0.1:9000 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/healthz && break; sleep 1; done
+          npm run a11y:keyboard

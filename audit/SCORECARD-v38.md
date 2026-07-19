@@ -23,7 +23,7 @@
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 25/30 | 83% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
-| C09 | Accessibility + UX | L81–L95 | 38/45 | 84% | B | live VO/NVDA soft; Playwright Tab-cycle; L81.8 design-system doc |
+| C09 | Accessibility + UX | L81–L95 | 40/45 | 89% | B | live VO/NVDA soft; L81.9 undo; L81.10 Vale/help golden |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 38/45 | 84% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 86% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (87+83+90+92+83+83+83+83+80+84+89+84)/12 = 1021/12 = **85.1% ≈ 85%**.)
+(Unweighted mean of cluster pcts: (87+83+90+92+83+83+83+83+80+89+89+84)/12 = 1026/12 = **85.5% ≈ 86%**.)
 
-**Tier-1 double-weight (C00–C03):** (87+83+90+92)×2 + (83+83+83+83+80+84+89+84) = 704 + 669 = 1373 / 16 = **85.8% ≈ 86%** (B).
+**Tier-1 double-weight (C00–C03):** (87+83+90+92)×2 + (83+83+83+83+80+89+89+84) = 704 + 674 = 1378 / 16 = **86.1% ≈ 86%** (B).
 
 ## Headline Findings
 
@@ -505,3 +505,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C07 24/30 (80% B) → 25/30 (83% B):** L66 2→3 — config boundary props + cast registry/address roundtrip; `proptest-regressions/config_validator.txt` replay; `src/proptest_util.rs`; `tests/c07_l66_proptest_expand.rs`.
 - Top-3 C07 gaps: freebsd/wasm; examine_re widen; e2e/chaos tier.
 - Overall unweighted **~85% B** (1021/12); tier-1 weighted **~86% B** (1373/16).
+
+### 2026-07-19 (C09 L81.3 + L81.8 keyboard + design-system — T-651 / FR-004)
+- **C09 38/45 (84% B) → 40/45 (89% B):** L81.3 2→3 — Playwright Tab-cycle (`scripts/a11y/playwright_keyboard.mjs`); `a11y.yml` keyboard job; `#main-content tabindex="-1"`. L81.8 2→3 — `docs/a11y/design-system.md` (tokens, components, terminology).
+- Top-3 C09 gaps: live VO/NVDA soft (W9.3); L81.9 undo model; L81.10 Vale/help golden.
+- Overall unweighted **~86% B** (1026/12); tier-1 weighted **~86% B** (1378/16).

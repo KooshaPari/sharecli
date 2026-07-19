@@ -80,7 +80,8 @@
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
 | C09 | L81.1 | WCAG Level A baseline + landmark tests | Med | W6.1 · FR-004 NFR | Status: Closed | `docs/a11y/README.md` · `tests/a11y/dashboard_landmarks.rs` | agent-c09 |
 | C09 | L81.2 | Contrast ratios for theme tokens | Med | W6.2 | Status: Closed | `docs/a11y/contrast.md` · `assets/tokens.css` | agent-c09 |
-| C09 | L81.3 | TUI keyboard quit-key matrix + unit tests | Med | W6.3 | Status: Closed | `docs/a11y/keyboard.md` · `crates/sharecli-thermal-tui` `is_quit_key` | agent-c09 |
+| C09 | L81.3 | Playwright Tab-cycle + TUI quit-key matrix | Med | W6.3 | Status: Closed | `scripts/a11y/playwright_keyboard.mjs` · `docs/a11y/keyboard.md` · `a11y.yml` | agent-c09 |
+| C09 | L81.8 | Design-system doc (tokens, components, terminology) | Low | W7.4 | Status: Closed | `docs/a11y/design-system.md` | agent-c09 |
 | C09 | L81.5 | Dashboard landmarks (`nav`/`main`) | Med | W6.1 | Status: Closed | `src/dashboard.html` · `tests/a11y/` | agent-c09 |
 | C09 | L81.6/L81.7 | Status visibility + degraded-mode recovery docs | Med | W6.4 · FR-004 | Status: Closed | `docs/a11y/status-and-recovery.md` · `src/main.rs` after_long_help | agent-c09 |
 | C09 | L81.1 | axe-core CI for dashboard | Low | W9.1 · FR-004 NFR | Status: Closed | `.github/workflows/a11y.yml` · `scripts/a11y/axe-dashboard.mjs` | agent-c09 |

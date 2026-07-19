@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "docs:build": "vitepress build docs",
-    "a11y:dashboard": "node scripts/a11y/axe-dashboard.mjs"
+    "a11y:dashboard": "node scripts/a11y/axe-dashboard.mjs",
+    "a11y:keyboard": "node scripts/a11y/playwright_keyboard.mjs"
   },
   "devDependencies": {
     "axe-core": "4.12.1",

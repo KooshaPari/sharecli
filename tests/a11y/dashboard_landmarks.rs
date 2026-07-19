@@ -22,6 +22,10 @@ fn dashboard_has_lang_and_landmarks() {
         "nav should have aria-label"
     );
     assert!(html.contains("id=\"main-content\""), "main needs skiplink target id");
+    assert!(
+        html.contains(r#"id="main-content" tabindex="-1""#),
+        "main must be focusable skip-link target"
+    );
 }
 
 #[test]
