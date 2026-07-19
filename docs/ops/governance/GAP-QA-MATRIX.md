@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-19 (audit_scorecard ~82% B / 82% weighted; T-660 C06 83% + T-640 C07 L65 → 80% B; W14.1 T-610 tray HTTP trace evidence; W14.2 Harbor soak 0/7)
+**Last sync:** 2026-07-19 (audit_scorecard ~84% B / 84% weighted; T-625 C01 L11 → 83% B; T-630 C05 L50 → 83% B)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -40,7 +40,7 @@
 
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
-| C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-620 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` · `.github/workflows/coverage.yml` · `scripts/coverage_snapshot.py` | agent-c01 |
+| C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-620/T-625 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` (83.48% pin) · `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json` · `tests/c01_coverage_pin_gate.rs` | agent-c01 |
 | C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `docs/ops/trace-multihop.md` · `docs/ops/live-pd.md` | agent-c05 |
 | C05 | L44 | CLI traceparent inject (one hop) | Med | W12.3 · T-420 · #328 | Status: Closed | `src/otel.rs` · `src/runtime.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
 | C05 | L44 | IPC + tray traceparent inject | Med | W13.4 · T-530 | Status: Closed | `src/otel.rs` · `crates/sharecli-ffi` · `tests/c05_trace_ipc_tray_inject.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
