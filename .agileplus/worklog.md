@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-19 (C01 coverage numeric pin — T-625 / FR-003)
+- Status: DONE — pinned broad-workspace **83.48%** lines at `d3cb7c4`; `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json`; `tests/c01_coverage_pin_gate.rs`; golden `cli_help.txt` `uninstall` sync
+- Score: C01 24/30 (80% B) → 25/30 (83% B); L11 2→3; unweighted overall ~84% B; tier-1 weighted ~84% B
+- FR: FR-003 · C01 L11 · T-625
+
 ## 2026-07-18 (C05 chaos ci-success hard gate — T-630 / FR-003)
 - Status: DONE — `ci.yml` `chaos-restart-hard` job + `ci-success` needs; `chaos-restart-hard.yml` cron/dispatch parity; `tests/c05_chaos_restart_hard_gate.rs`
 - Score: C05 24/30 (80% B) → 25/30 (83% B); L50 2→3; unweighted overall ~83% B; tier-1 weighted ~84% B

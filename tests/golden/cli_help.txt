@@ -26,6 +26,7 @@ Commands:
   util          Exercise the bundled utility modules (base85, csv, crc, hash, json, sha, uuid, xml, markdown, trie/skiplist)
   list          Enumerate available CLI surfaces (cast modules + utility modules)
   version       Print version + Backbone-2 ASCII splash
+  uninstall     Print uninstall guidance and optionally purge local config/state
   help          Print this message or the help of the given subcommand(s)
 
 Options:

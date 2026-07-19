@@ -1,0 +1,67 @@
+//! C01 L11 — measured broad-workspace coverage pin (FR-003).
+//!
+//! FR: FR-003
+
+use std::fs;
+use std::path::PathBuf;
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
+/// FR-003 / C01 L11 — matrix cites a retained llvm-cov snapshot with a numeric line %.
+#[test]
+fn fr003_coverage_matrix_pins_numeric_line_percent() {
+    let matrix = fs::read_to_string(repo_root().join("TEST_COVERAGE_MATRIX.md"))
+        .expect("read TEST_COVERAGE_MATRIX.md");
+
+    assert!(
+        matrix.contains("83.48%"),
+        "TEST_COVERAGE_MATRIX must pin measured broad-workspace line coverage"
+    );
+    assert!(
+        matrix.contains("audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json"),
+        "TEST_COVERAGE_MATRIX must cite retained snapshot artifact path"
+    );
+}
+
+/// FR-003 / C01 L11 — retained snapshot is machine-readable and matches the matrix pin.
+#[test]
+fn fr003_coverage_snapshot_artifact_matches_pin() {
+    let path = repo_root().join("audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json");
+    let raw = fs::read_to_string(&path).expect("read coverage snapshot artifact");
+    let snapshot: serde_json::Value =
+        serde_json::from_str(&raw).expect("parse coverage snapshot JSON");
+
+    let lines_percent = snapshot["coverage"]["lines"]["percent"]
+        .as_f64()
+        .expect("lines.percent");
+    assert!(
+        (lines_percent - 83.48).abs() < 0.01,
+        "snapshot lines.percent must match matrix pin; got {lines_percent}"
+    );
+
+    let sha = snapshot["source"]["git_sha"]
+        .as_str()
+        .expect("source.git_sha");
+    assert!(
+        sha.starts_with("d3cb7c4"),
+        "snapshot git_sha must match filename pin; got {sha}"
+    );
+}
+
+/// FR-003 / C01 L11 — coverage workflow retains compact llvm-cov snapshot artifact.
+#[test]
+fn fr003_coverage_yml_emits_snapshot_artifact() {
+    let workflow = fs::read_to_string(repo_root().join(".github/workflows/coverage.yml"))
+        .expect("read coverage.yml");
+
+    assert!(
+        workflow.contains("scripts/coverage_snapshot.py"),
+        "coverage.yml must run coverage_snapshot.py"
+    );
+    assert!(
+        workflow.contains("coverage-snapshot-"),
+        "coverage.yml must upload SHA-keyed coverage-snapshot artifact"
+    );
+}

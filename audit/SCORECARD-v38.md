@@ -15,7 +15,7 @@
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 24/30 | 80% | B | crate-split Phases 2–4; tight perf budgets; loom hard coverage |
-| C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
+| C01 | CI, DX, Observability | L10–L19 | 25/30 | 83% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit SIEM export |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 84% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (80+80+87+92+83+83+83+80+80+80+89+84)/12 with C05 **83%** = 1001/12 = **83.4% ≈ 83%**.)
+(Unweighted mean of cluster pcts: (80+83+87+92+83+83+83+80+80+80+89+84)/12 with C01 **83%** = 1004/12 = **83.7% ≈ 84%**.)
 
-**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (83+83+83+80+80+80+80+89+84) = 678 + 662 = 1340 / 16 = **83.8% ≈ 84%** (B).
+**Tier-1 double-weight (C00–C03):** (80+83+87+92)×2 + (83+83+83+80+80+80+80+89+84) = 684 + 662 = 1346 / 16 = **84.1% ≈ 84%** (B).
 
 ## Headline Findings
 
@@ -472,3 +472,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-18 (C05 chaos restart ci-success hard gate — L50)
 - **C05 24/30 (80% B) → 25/30 (83% B):** L50 2→3 — `ci.yml` `chaos-restart-hard` job + `ci-success` needs; `chaos-restart-hard.yml` PR triggers removed (cron/dispatch parity); `tests/c05_chaos_restart_hard_gate.rs` (FR-003 · T-630).
 - Overall unweighted **~83% B** (1001/12); tier-1 weighted **~84% B** (1340/16). Branch protection required check still deferred.
+
+### 2026-07-19 (C01 coverage numeric pin — L11)
+- **C01 24/30 (80% B) → 25/30 (83% B):** L11 2→3 — broad-workspace **83.48%** lines pinned at `d3cb7c4`; `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json`; `tests/c01_coverage_pin_gate.rs` (FR-003 · T-625); golden `cli_help.txt` sync for `uninstall` subcommand.
+- Codecov supplementary policy documented in `TEST_COVERAGE_MATRIX.md` (70% project / 80% patch vs 85% unit hard gate).
+- Overall unweighted **~84% B** (1004/12); tier-1 weighted **~84% B** (1346/16).
