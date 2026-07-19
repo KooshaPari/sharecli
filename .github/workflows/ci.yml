@@ -188,24 +188,48 @@ jobs:
           sarif_file: osv-results.sarif
         continue-on-error: true
 
+  # C05 L50 — chaos restart hard gate (T-630 / FR-003). Parity with chaos-restart-hard.yml.
+  chaos-restart-hard:
+    name: chaos restart (required)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: chaos-restart-hard
+      - name: Build sharecli (release)
+        run: cargo build --locked --release -p sharecli
+      - name: Chaos restart /healthz recovery
+        env:
+          SHARECLI_LOAD_URL: http://127.0.0.1:9000/healthz
+          SHARECLI_SERVE_BIND: 127.0.0.1:9000
+          SHARECLI_SERVE_BIN: ./target/release/sharecli
+          SHARECLI_CHAOS_RECOVER_SEC: "30"
+        run: bash scripts/load/chaos_restart.sh
+
   ci-success:
     name: CI Success
-    needs: [fmt, clippy, test, build, mutants, osv]
+    needs: [fmt, clippy, test, build, mutants, osv, chaos-restart-hard]
     if: always()
     runs-on: ubuntu-24.04
     steps:
       - name: Verify all required jobs passed
-        if: needs.fmt.result == 'success' && needs.clippy.result == 'success' && needs.test.result == 'success' && needs.build.result == 'success' && needs.mutants.result == 'success' && needs.osv.result == 'success'
+        if: needs.fmt.result == 'success' && needs.clippy.result == 'success' && needs.test.result == 'success' && needs.build.result == 'success' && needs.mutants.result == 'success' && needs.osv.result == 'success' && needs.chaos-restart-hard.result == 'success'
         run: |
           echo "CI pipeline complete"
-          echo "fmt:     ${{ needs.fmt.result }}"
-          echo "clippy:  ${{ needs.clippy.result }}"
-          echo "test:    ${{ needs.test.result }}"
-          echo "build:   ${{ needs.build.result }}"
-          echo "mutants: ${{ needs.mutants.result }}"
-          echo "osv:     ${{ needs.osv.result }}"
+          echo "fmt:               ${{ needs.fmt.result }}"
+          echo "clippy:            ${{ needs.clippy.result }}"
+          echo "test:              ${{ needs.test.result }}"
+          echo "build:             ${{ needs.build.result }}"
+          echo "mutants:           ${{ needs.mutants.result }}"
+          echo "osv:               ${{ needs.osv.result }}"
+          echo "chaos-restart-hard: ${{ needs.chaos-restart-hard.result }}"
       - name: Fail if any required job did not succeed
-        if: needs.fmt.result != 'success' || needs.clippy.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success' || needs.mutants.result != 'success' || needs.osv.result != 'success'
+        if: needs.fmt.result != 'success' || needs.clippy.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success' || needs.mutants.result != 'success' || needs.osv.result != 'success' || needs.chaos-restart-hard.result != 'success'
         run: |
-          echo "fmt=${{ needs.fmt.result }} clippy=${{ needs.clippy.result }} test=${{ needs.test.result }} build=${{ needs.build.result }} mutants=${{ needs.mutants.result }} osv=${{ needs.osv.result }}"
+          echo "fmt=${{ needs.fmt.result }} clippy=${{ needs.clippy.result }} test=${{ needs.test.result }} build=${{ needs.build.result }} mutants=${{ needs.mutants.result }} osv=${{ needs.osv.result }} chaos-restart-hard=${{ needs.chaos-restart-hard.result }}"
           exit 1

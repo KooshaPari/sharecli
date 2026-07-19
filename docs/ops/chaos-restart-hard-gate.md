@@ -1,26 +1,27 @@
-# Chaos restart hard-gate promotion (soft plan)
+# Chaos restart hard-gate promotion
 
-Audit-v38 **C05 L50** — promote [`chaos_restart.sh`](../../scripts/load/chaos_restart.sh) from
-**local / soft detection (today)** to a **required merge gate** without wiring
-`ci-success` or branch protection yet. Builds on the soak contract in
+Audit-v38 **C05 L50** — [`chaos_restart.sh`](../../scripts/load/chaos_restart.sh) is a **required merge gate**
+via `ci-success` on PR/push `main`. Builds on the soak contract in
 [`soak-chaos.md`](soak-chaos.md).
 
 Related: [`.github/workflows/soak-soft.yml`](../../.github/workflows/soak-soft.yml) (L47 healthz soak) ·
 [`.github/workflows/load-soft.yml`](../../.github/workflows/load-soft.yml) (L50 burst) ·
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) `chaos-restart-hard` job ·
 [`ruleset-checklist.md`](ruleset-checklist.md) (branch protection runbook).
 
-## Current stance (soft)
+## Current stance (hard via ci-success)
 
 | Control | Workflow / config | Gate strength | Notes |
 |---------|-------------------|---------------|-------|
-| Chaos kill/restart | `scripts/load/chaos_restart.sh` | **Local** | SIGKILL + restart; `/healthz` recover < 30s |
-| Local DX | `just chaos-soft` | Maintainer | Builds release + runs script on `:9000` |
+| Chaos kill/restart | `scripts/load/chaos_restart.sh` | **Hard** | SIGKILL + restart; `/healthz` recover < 30s |
+| PR CI | `ci.yml` `chaos-restart-hard` + `ci-success` | **Hard** | Aggregator fails when recovery times out |
+| Local DX | `just chaos-hard` | Maintainer | Builds release + runs script on `:9000` |
+| Drift CI | `chaos-restart-hard.yml` | Cron/dispatch | Path-filtered `main` push; no double PR run |
 | Soak CI | `soak-soft.yml` | **Soft** | `continue-on-error: true`; 60s `/healthz` loop |
 | Load CI | `load-soft.yml` | **Soft** | `continue-on-error: true`; burst macrobench |
-| Chaos CI | — | **Skipped** | Documented CI skip in `soak-chaos.md` (port-reuse flake risk) |
 
-**Net:** chaos restart is **scripted and reproducible locally**, but no GitHub Actions job
-enforces recovery on PRs today.
+**Net:** chaos restart recovery is enforced on every PR via `ci-success`. Branch protection
+required check on `chaos restart (required)` remains a maintainer follow-up.
 
 ## Target stance (hard)
 
@@ -28,13 +29,10 @@ enforces recovery on PRs today.
 |---------|--------|
 | Recovery SLA | `/healthz` healthy within `SHARECLI_CHAOS_RECOVER_SEC` (default **30s**) after SIGKILL restart |
 | Bind / URL | `127.0.0.1:9000` parity with soak/load soft workflows |
-| Job mode | `chaos-restart-hard.yml` — **no** `continue-on-error` on the job |
-| `ci-success` | Add `chaos-restart-hard` to `.github/workflows/ci.yml` `needs:` |
-| Branch protection | `chaos restart (hard)` required check on `main` PRs |
-| Score | L50 **2 → 3** when hard gate is live and green for one week |
-
-L50 stays **2** until branch protection + `ci-success` wiring lands; this doc closes the
-**plan** gap on the C05 scorecard Top-3 list.
+| Job mode | `ci.yml` `chaos-restart-hard` — **no** `continue-on-error` |
+| `ci-success` | `chaos-restart-hard` in `.github/workflows/ci.yml` `needs:` | **Live (T-630)** |
+| Branch protection | `chaos restart (required)` required check on `main` PRs | Deferred |
+| Score | L50 **3** — hard gate live via `ci-success` |
 
 ## Recovery contract (inherited from soft)
 
@@ -57,7 +55,7 @@ Do **not** relax `RECOVER_SEC` or swap SIGKILL for SIGTERM on promotion.
 | **1 — plan** | This doc + scorecard/worklog (FR-003 · T-630) | No |
 | **2 — CI soak** | `chaos-restart-hard.yml` on PR/push `main` **without** `continue-on-error` | Partial — job fails PR but not aggregated `ci-success` |
 | **3 — green soak** | Seven consecutive green `main` runs (no flake regressions) | No |
-| **4 — hard gate** | Wire `ci-success` + branch protection required check | **Yes — deferred** |
+| **4 — hard gate** | Wire `ci-success` + branch protection required check | **Partial — ci-success live (T-630)** |
 
 Phase 0–3 are **documentation + standalone CI**. Phase 4 needs maintainer sign-off
 after phase-3 soak completes.
@@ -71,17 +69,17 @@ Track in PR comments or `audit/.lane-c05/` until phase 4:
 - [ ] `just chaos-hard` reproduces CI locally on `main` HEAD.
 - [ ] Maintainer acknowledges bind `:9000` does not collide with parallel jobs (isolated runner).
 
-## Hard-gate wiring (phase 4 — planned)
+## Hard-gate wiring (phase 4 — live)
 
-1. **Workflow** — `.github/workflows/chaos-restart-hard.yml`:
-   - Job already runs without `continue-on-error` (phase 2).
-   - Rename job display to `chaos restart (required)` when branch protection lands.
-2. **`ci-success`** — add `chaos-restart-hard` to `needs:` in `.github/workflows/ci.yml`.
+1. **Workflow** — `.github/workflows/ci.yml`:
+   - `chaos-restart-hard` job runs without `continue-on-error` on every PR.
+   - Display name: `chaos restart (required)`.
+2. **`ci-success`** — `chaos-restart-hard` in `needs:` (done).
 3. **Branch protection** — GitHub → Settings → Rules → `main`:
-   - Add required status check: `chaos restart (hard)` (exact name from workflow).
-   - Cross-ref [`ruleset-checklist.md`](ruleset-checklist.md).
-4. **`soak-chaos.md`** — update “Current gate” table to mark hard mode live; link here.
-5. **`scripts/load/README.md`** — list hard CI workflow alongside soft load/soak.
+   - Add required status check: `chaos restart (required)` (exact name from workflow).
+   - Cross-ref [`ruleset-checklist.md`](ruleset-checklist.md). **Deferred.**
+4. **`soak-chaos.md`** — updated to mark hard mode live via `ci-success`.
+5. **`scripts/load/README.md`** — lists hard CI workflow alongside soft load/soak.
 
 **Do not** add `|| true`, recovery caps above 30s, or `continue-on-error` on the hard step.
 
@@ -117,15 +115,16 @@ intended hard-gate signal.
 
 | Line | Evidence | Score |
 |------|----------|-------|
-| **L50** Chaos/load testing | `chaos_restart.sh`, `load-soft.yml`, `soak-soft.yml`, `chaos-restart-hard.yml`, `just chaos-soft` / `just chaos-hard`, this promotion plan | **2** — unchanged until phase 4 |
+| **L50** Chaos/load testing | `chaos_restart.sh`, `load-soft.yml`, `soak-soft.yml`, `ci.yml` `chaos-restart-hard`, `chaos-restart-hard.yml`, `just chaos-hard`, `tests/c05_chaos_restart_hard_gate.rs`, this doc | **3** — hard via `ci-success` |
 
 **Soft follow-up**
 
 | Item | Status |
 |------|--------|
 | Chaos hard-gate promotion plan | Done (this file) |
-| `chaos-restart-hard.yml` (no `continue-on-error`) | Done (phase 2) |
-| Seven-day green soak on `main` | Open |
-| Wire `ci-success` + required check | Deferred |
+| `ci.yml` `chaos-restart-hard` + `ci-success` | Done (phase 4) |
+| `chaos-restart-hard.yml` cron/dispatch parity | Done |
+| Branch protection required check | Open |
+| Seven-day green soak on `main` | In progress |
 
-**Status:** soft plan + CI soak (Phase 1–2) · **FR:** FR-003 traceability · **Task:** T-630 · **Last sync:** 2026-07-18
+**Status:** hard gate via `ci-success` (phase 4) · **FR:** FR-003 traceability · **Task:** T-630 · **Last sync:** 2026-07-18

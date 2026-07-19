@@ -31,9 +31,10 @@ SHARECLI_LOAD_URL=http://127.0.0.1:7700/healthz \
   bash scripts/load/chaos_restart.sh
 ```
 
-**CI hard soak (phase 2):** [`.github/workflows/chaos-restart-hard.yml`](../../.github/workflows/chaos-restart-hard.yml)
-runs `chaos_restart.sh` on PR/push `main` **without** `continue-on-error`. Branch protection
-and `ci-success` wiring remain deferred per [`chaos-restart-hard-gate.md`](chaos-restart-hard-gate.md).
+**CI hard gate (phase 4):** `.github/workflows/ci.yml` `chaos-restart-hard` job runs
+`chaos_restart.sh` on every PR via `ci-success` **without** `continue-on-error`.
+Cron/dispatch drift detection: [`.github/workflows/chaos-restart-hard.yml`](../../.github/workflows/chaos-restart-hard.yml).
+Branch protection required check remains deferred per [`chaos-restart-hard-gate.md`](chaos-restart-hard-gate.md).
 
 Local / `workflow_dispatch` fallback when debugging recovery:
 
