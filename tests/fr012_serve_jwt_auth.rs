@@ -45,6 +45,7 @@ fn jwt_auth() -> ServeAuth {
             jwks_path: None,
             jwks: Some(fixture().jwks.to_string()),
         }),
+        ..ServeConfig::default()
     };
     unsafe {
         std::env::remove_var("SHARECLI_SERVE_TOKEN");

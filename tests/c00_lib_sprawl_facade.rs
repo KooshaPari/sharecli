@@ -36,6 +36,7 @@ const ROOT_PUB_MOD_ALLOWLIST: &[&str] = &[
     "scheduler",
     "serve_auth",
     "serve_lock",
+    "serve_rate_limit",
     "signals",
     "spawn_policy",
     "tray_http",

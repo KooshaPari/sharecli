@@ -49,6 +49,10 @@ impl ErrorEnvelope {
         Self::new("not_found_error", "not_found", message)
     }
 
+    pub fn rate_limited(message: &str) -> Self {
+        Self::new("rate_limit_error", "rate_limited", message)
+    }
+
     #[allow(dead_code)] // Windows/non-unix pprof path (FR-004)
     pub fn not_implemented(message: &str) -> Self {
         Self::new("not_implemented_error", "not_implemented", message)
