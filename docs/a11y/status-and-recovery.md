@@ -21,6 +21,7 @@ Use `--verbose` on CLI commands for additional stderr detail during troubleshoot
 |---------|----------------------|---------------|
 | Invalid config | Field-path error on stderr, non-zero exit | Fix path noted in message; run `sharecli config validate` |
 | Unknown subcommand | `error: unrecognized subcommand` + suggestion | Run `sharecli --help` or `sharecli <cmd> --help` |
+| Force-kill without confirm | `Would force-kill …` preview; no processes killed | Re-run with `--yes` (e.g. `sharecli stop --all --force --yes`) |
 | WebSocket down | Dashboard: `disconnected — reconnecting in 3s` | Ensure `sharecli serve` is running on port 9000 |
 | Thermal poll failure | TUI assumes GREEN, continues | Check platform thermal APIs; see README thermal section |
 | Auth failure on `serve` | HTTP 401 + metric `sharecli_http_unauthorized_total` | See `docs/ops/AUTH.md` |

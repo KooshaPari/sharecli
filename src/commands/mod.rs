@@ -108,27 +108,51 @@ pub async fn start(project: &str, harness: &str, cwd: Option<&str>, args: &[Stri
     Ok(())
 }
 
+/// When `force` is set, destructive SIGKILL requires explicit `--yes` (C09 L81.6).
+fn force_kill_requires_confirmation(force: bool, yes: bool) -> bool {
+    force && !yes
+}
+
+/// Preview lines printed before aborting an unconfirmed force-kill.
+fn force_kill_preview(target_label: &str, count: usize) {
+    println!("Would force-kill (SIGKILL) {target_label} ({count} process(es)).");
+    println!("Pass --yes to confirm. Prefer graceful stop without --force when possible.");
+}
+
 /// Stop processes
 pub async fn stop(
     pid: Option<u32>,
     project: Option<&str>,
     harness: Option<&str>,
     all: bool,
-    _force: bool,
+    force: bool,
+    yes: bool,
 ) -> Result<()> {
     let pool = ProcessPool::new();
 
     if all {
-        println!("Stopping all managed processes...");
+        if force_kill_requires_confirmation(force, yes) {
+            let count = pool.list().await.len();
+            force_kill_preview("all managed processes", count);
+            return Ok(());
+        }
+        println!(
+            "Stopping all managed processes{}...",
+            if force { " (force)" } else { "" }
+        );
         pool.kill_all().await?;
         println!("All processes stopped.");
         return Ok(());
     }
 
     if let Some(p) = pid {
-        println!("Stopping process {}...", p);
+        if force_kill_requires_confirmation(force, yes) {
+            force_kill_preview(&format!("PID {p}"), 1);
+            return Ok(());
+        }
+        println!("Stopping process {p}{}...", if force { " (force)" } else { "" });
         pool.kill(p).await?;
-        println!("Process {} stopped.", p);
+        println!("Process {p} stopped.");
         return Ok(());
     }
 
@@ -141,6 +165,16 @@ pub async fn stop(
     };
 
     let processes = pool.find(filter).await;
+    if force_kill_requires_confirmation(force, yes) {
+        let label = if let Some(proj) = project {
+            format!("project '{proj}'")
+        } else {
+            format!("harness '{}'", harness.unwrap_or(""))
+        };
+        force_kill_preview(&label, processes.len());
+        return Ok(());
+    }
+
     for proc in processes {
         pool.kill(proc.pid).await?;
         println!("Stopped {} ({})", proc.pid, proc.name);
@@ -333,11 +367,11 @@ pub async fn project(proj_cmd: &ProjectCmd) -> Result<()> {
         ProjectCmd::Start { name, harness } => {
             project_group_start(name, harness.as_deref()).await?;
         }
-        ProjectCmd::Stop { name, force } => {
-            project_group_stop(name, *force).await?;
+        ProjectCmd::Stop { name, force, yes } => {
+            project_group_stop(name, *force, *yes).await?;
         }
-        ProjectCmd::Restart { name, harness, force } => {
-            project_group_stop(name, *force).await?;
+        ProjectCmd::Restart { name, harness, force, yes } => {
+            project_group_stop(name, *force, *yes).await?;
             project_group_start(name, harness.as_deref()).await?;
         }
         ProjectCmd::Status { name, json } => {
@@ -387,7 +421,7 @@ async fn project_group_start(name: &str, harness: Option<&str>) -> Result<()> {
 /// Returns the number of processes killed.  Collects failures and reports
 /// them after attempting every process so that a single bad PID does not
 /// prevent the rest from being stopped.
-async fn project_group_stop(name: &str, _force: bool) -> Result<()> {
+async fn project_group_stop(name: &str, force: bool, yes: bool) -> Result<()> {
     let pool = ProcessPool::new();
     let processes = pool.find(ProcessFilter::ByProject(name.to_string())).await;
 
@@ -397,6 +431,10 @@ async fn project_group_stop(name: &str, _force: bool) -> Result<()> {
     }
 
     let total = processes.len();
+    if force_kill_requires_confirmation(force, yes) {
+        force_kill_preview(&format!("project '{name}'"), total);
+        return Ok(());
+    }
     let mut stopped = 0usize;
     let mut failures: Vec<String> = Vec::new();
 
@@ -701,5 +739,20 @@ mod project_group_tests {
         assert_eq!(p.name, "my-proc");
         assert_eq!(p.harness.as_deref(), Some("cargo"));
         assert_eq!(p.memory_mb, 100);
+    }
+
+    #[test]
+    fn force_kill_requires_confirmation_when_force_without_yes() {
+        assert!(super::force_kill_requires_confirmation(true, false));
+    }
+
+    #[test]
+    fn force_kill_skips_confirmation_when_yes() {
+        assert!(!super::force_kill_requires_confirmation(true, true));
+    }
+
+    #[test]
+    fn force_kill_skips_confirmation_when_not_force() {
+        assert!(!super::force_kill_requires_confirmation(false, false));
     }
 }

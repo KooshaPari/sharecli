@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c00-l7-loom",
+  "commit": "pending-c09-l81-stop-force-confirm",
   "date": "2026-07-19",
   "overall_pct": 85,
   "grade": "B",
   "weighted_overall_pct": 85,
-  "wave_note": "C00 83%→87% B: L7 loom hard gate on pool_index + metrics atomics. Unweighted ~85% B; tier-1 weighted ~85% B.",
+  "wave_note": "C09 80%→82% B: L81.6 stop --force requires --yes (dry-run preview). Unweighted ~85% B; tier-1 weighted ~85% B.",
   "clusters": {
     "C00": { "pct": 87, "grade": "B", "score": "26/30" },
     "C01": { "pct": 83, "grade": "B", "score": "25/30" },
@@ -19,7 +19,7 @@
     "C06": { "pct": 83, "grade": "B", "score": "25/30" },
     "C07": { "pct": 80, "grade": "B", "score": "24/30" },
     "C08": { "pct": 80, "grade": "B", "score": "24/30" },
-    "C09": { "pct": 80, "grade": "B", "score": "36/45" },
+    "C09": { "pct": 82, "grade": "B", "score": "37/45" },
     "C10": { "pct": 89, "grade": "B", "score": "32/36" },
     "C11": { "pct": 84, "grade": "B", "score": "38/45" }
   },
