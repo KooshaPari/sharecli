@@ -47,6 +47,11 @@ lint-pedantic:
     @echo ">> cargo clippy pedantic"
     @cargo clippy --all-targets --all-features --locked -- -W clippy::pedantic -D warnings
 
+[group: 'lint']
+vale:
+    @echo ">> vale inclusive-language (C09 L81.10)"
+    @./scripts/lint/vale.sh
+
 # -------- build --------
 [group: 'build']
 build:

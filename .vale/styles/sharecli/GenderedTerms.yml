@@ -1,0 +1,9 @@
+extends: existence
+message: "Prefer gender-neutral phrasing instead of '%s'."
+level: warning
+ignorecase: true
+tokens:
+  - guys
+  - manpower
+  - chairman
+  - mankind

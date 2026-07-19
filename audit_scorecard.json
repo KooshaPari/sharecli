@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c09-l81-keyboard-design-system",
+  "commit": "pending-c09-l81-10-vale-help",
   "date": "2026-07-19",
   "overall_pct": 86,
   "grade": "B",
   "weighted_overall_pct": 86,
-  "wave_note": "C09 L81.3+L81.8 2\u21923 (40/45 89% B): Playwright Tab-cycle CI + design-system doc. Unweighted ~86% B; tier-1 weighted ~86% B.",
+  "wave_note": "C09 L81.10 2\u21923 (41/45 91% A): Vale inclusive-language CI + help.txt golden + style guide. Unweighted ~86% B; tier-1 weighted ~86% B.",
   "clusters": {
     "C00": {
       "pct": 87,
@@ -56,9 +56,9 @@
       "score": "24/30"
     },
     "C09": {
-      "pct": 89,
-      "grade": "B",
-      "score": "40/45"
+      "pct": 91,
+      "grade": "A",
+      "score": "41/45"
     },
     "C10": {
       "pct": 89,
