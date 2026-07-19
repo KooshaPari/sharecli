@@ -28,6 +28,12 @@ description = "Audit dependencies"
 run = "cargo audit"
 
 
+[tasks.osv]
+description = "OSV/GHSA lockfile scan (HIGH/CRITICAL hard parity)"
+
+run = "bash scripts/ci/osv_scan.sh"
+
+
 [tasks.docs:build]
 description = "Build documentation"
 

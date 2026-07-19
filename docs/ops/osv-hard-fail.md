@@ -8,19 +8,18 @@ Related: [`advisory-hard-fail.md`](advisory-hard-fail.md) (C01 L19 RustSec /
 `cargo-deny` lane — shared backlog and phase-4 coupling) · [`container-hardening.md`](container-hardening.md)
 (L40 runtime boundary) · `SECURITY.md` (dependency scanning overview).
 
-## Current stance (soft)
+## Current stance (hard on HIGH/CRITICAL)
 
 | Control | Workflow / config | Gate strength | Notes |
 |---------|-------------------|---------------|-------|
-| OSV-Scanner | `osv.yml` | **Soft** | `continue-on-error: true` on scan step |
-| SARIF upload | `osv.yml` → Code Scanning | Advisory | `continue-on-error: true`; findings visible in Security tab |
-| Soft pass shim | `osv.yml` `Soft gate (always pass)` | Soft | `exit 0` regardless of scan outcome |
-| Triggers | PR + push `main` + weekly cron | Broad | Runs on every PR (no path filter) |
+| OSV-Scanner | `ci.yml` `osv` + `osv.yml` | **Hard** | `--severity=HIGH,CRITICAL`; no soft pass shim |
+| SARIF upload | `osv.yml` / `ci.yml` → Code Scanning | Advisory | `continue-on-error: true` on upload only; findings in Security tab |
+| Soft pass shim | — | **Removed** | Phase 4 live (T-655) |
+| Triggers | PR/push `main` via `ci.yml`; weekly cron via `osv.yml` | Broad | PR gate via `ci-success` aggregator |
 | RustSec overlap | `audit.yml` / `deny.yml` | Partial hard | Path-filtered; see advisory-hard-fail doc |
-| Local DX | — | Missing | No `mise` / `just` OSV task yet |
+| Local DX | `just osv-scan` / `mise run osv` | Maintainer | `scripts/ci/osv_scan.sh` mirrors CI args |
 
-**Net:** OSV/GHSA findings are **subscribed and surfaced** (score **2**), but the
-workflow never fails CI. Branch protection does not require `OSV / GHSA lockfile scan`.
+**Net:** OSV/GHSA **HIGH/CRITICAL** findings block merge via `ci-success`. L38 score **3**.
 
 ## Target stance (hard)
 
@@ -58,7 +57,7 @@ may miss. Promotion rule: **do not duplicate ignores** — resolve or document i
 | **1 — backlog burn** | Clear RustSec ignores per advisory-hard-fail checklist (`quick-xml`, `async-nats`/`gix`) | No |
 | **2 — local DX** | `mise run osv` or `just osv-scan` mirroring CI args | No |
 | **3 — dry-run hard** | Remove soft shim on a feature branch; fix findings; revert to soft on `main` | No — experiment only |
-| **4 — hard gate** | Remove soft shim on `main`; add to `ci-success` + branch protection | **Yes — deferred** |
+| **4 — hard gate** | Remove soft shim on `main`; add to `ci-success` + branch protection | **Yes — live (T-655)** |
 
 Phase 0–3 are **documentation + soft CI** only. Phase 4 needs maintainer sign-off
 after [`advisory-hard-fail.md`](advisory-hard-fail.md) phase 1 backlog is cleared
@@ -106,14 +105,15 @@ Optional follow-up: NVD webhook / GitHub Advisory watch for out-of-band notifica
 # Install (maintainer one-time)
 go install github.com/google/osv-scanner/cmd/osv-scanner@latest
 
-# CI parity (soft today — fails locally, does not block merge)
-osv-scanner --lockfile=Cargo.lock
+# Local hard gate (HIGH/CRITICAL parity)
+just osv-scan
+# or: mise run osv
 
-# SARIF output (matches osv.yml)
-osv-scanner --lockfile=Cargo.lock --format=sarif --output=osv-results.sarif
+# Full table output (includes MEDIUM advisories)
+osv-scanner scan -L Cargo.lock
 
-# Severity-filtered (phase-4 target)
-osv-scanner --lockfile=Cargo.lock --severity=HIGH,CRITICAL
+# SARIF output (matches osv.yml / ci.yml)
+osv-scanner scan -L Cargo.lock -f sarif --output-file=osv-results.sarif
 ```
 
 Expect failure until phase-1 backlog items in [`advisory-hard-fail.md`](advisory-hard-fail.md)
@@ -123,7 +123,7 @@ are resolved; do not add `|| true` or `exit 0` shims in CI.
 
 | Line | Evidence | Score |
 |------|----------|-------|
-| **L38** CVE feed subscribed | `osv.yml`, SARIF upload, `SECURITY.md`, this promotion plan | **2** — unchanged; hard gate deferred |
+| **L38** CVE feed subscribed | `osv.yml`, `ci.yml` `osv`, SARIF upload, `SECURITY.md`, `scripts/ci/osv_scan.sh`, this doc | **3** — hard HIGH/CRITICAL via `ci-success` |
 
 **Soft follow-up**
 
@@ -131,6 +131,6 @@ are resolved; do not add `|| true` or `exit 0` shims in CI.
 |------|--------|
 | OSV hard-fail promotion plan | Done (this file) |
 | RustSec backlog burn (shared with C01 L19) | Open — see advisory-hard-fail.md |
-| Local `mise` / `just` OSV task | Open |
-| Remove soft shim + required check | Deferred |
-| L38 score lift (2 → 3) | Deferred |
+| Local `mise` / `just` OSV task | Done (`just osv-scan`, `mise run osv`) |
+| Remove soft shim + required check | Done (`ci.yml` `osv` + `ci-success`) |
+| L38 score lift (2 → 3) | Done (T-655) |
