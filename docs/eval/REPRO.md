@@ -78,7 +78,7 @@ The soft `criterion` job stays advisory; the `bench-gate` job in
 | Pin | Value |
 |-----|-------|
 | **Baseline file** | `docs/eval/baselines/criterion-baseline.json` |
-| **Threshold** | `0.5` (50% regression) — generous for shared `ubuntu-latest` |
+| **Threshold** | `0.25` (25% regression) — tightened 2026-07-18 from 50% using `criterion-trends.csv` peak-to-peak ≤ 3.20% (`docs/eval/TRENDS.md`) |
 | **Checker** | `python3 scripts/check-bench-baseline.py` |
 | **Seeder** | `python3 scripts/seed-bench-baseline.py` (after local/CI `cargo bench`) |
 
@@ -86,8 +86,8 @@ Local Criterion HTML compare (does **not** fail the process; gate still uses JSO
 
 ```bash
 cargo bench --locked --bench config_parse -- --save-baseline ci
-cargo bench --locked --bench config_parse -- --baseline ci --noise-threshold 0.5
-python3 scripts/check-bench-baseline.py --threshold 0.5
+cargo bench --locked --bench config_parse -- --baseline ci --noise-threshold 0.25
+python3 scripts/check-bench-baseline.py --threshold 0.25
 ```
 
 Refresh committed means only after a clean ubuntu-latest (or matching) run, then

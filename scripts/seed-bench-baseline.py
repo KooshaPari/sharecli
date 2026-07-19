@@ -50,7 +50,7 @@ def main() -> int:
     parser.add_argument(
         "--max-regression",
         type=float,
-        default=0.5,
+        default=0.25,
         help="default_max_regression written into the baseline file",
     )
     args = parser.parse_args()

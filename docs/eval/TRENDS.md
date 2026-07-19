@@ -26,7 +26,7 @@ Each nightly run uploads `bench-trend-<sha>.json` containing:
 
 Download from the Actions run → Artifacts. Per-PR regression gating remains
 `scripts/check-bench-baseline.py` against `docs/eval/baselines/criterion-baseline.json`
-(50% threshold) — trends are longitudinal, not the merge gate.
+(25% threshold; see below) — trends are longitudinal, not the merge gate.
 
 ## Committed multi-week CSV
 
@@ -36,6 +36,24 @@ In-repo seed (three weekly rows derived from measured baselines):
 
 Append nightly JSON rows over time; CSV is the human-readable longitudinal store
 for L74 soft-goal evidence.
+
+## Threshold tighten (2026-07-18, C08 L74)
+
+Gate `default_max_regression` moved **0.50 → 0.25** using only committed CSV
+means (no invented CI numbers). Peak-to-peak across the three seed weeks:
+
+| Bench | Means (ns) | Peak-to-peak |
+|-------|------------|--------------|
+| `config_toml_from_str` | 20349 → 21000 → 20800 | **3.20%** |
+| `pool_new_and_list_empty` | 54272000 → 55000000 → 54800000 | 1.34% |
+| `prometheus_render_32` | 29971 → 30500 → 30100 | 1.77% |
+| `jwt_validate_rs256` | 5000000 → 5100000 → 5050000 | 2.00% |
+
+Max observed week-to-week swing is **3.20%**. A **25%** gate is ~8× that
+noise floor while still far below the prior 50% slack (and still under the
+~2× headroom already baked into each `mean_ns`). Score stays **L74 = 3** —
+tighten closes the GAP row; it is not a 2→3 lift (already complete). Further
+5–10% tighten waits on real `ubuntu-24.04` nightly artifact rows, not seeds.
 
 ## Hyperfine /healthz JSON
 

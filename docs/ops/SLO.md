@@ -80,6 +80,7 @@ out of scope per [`docs/adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval
 |------|-----|---------|----------|------|
 | 2026-07-10 | _(pending first soft bench.yml run)_ | BENCH-1..3 + LOAD-1 | budgets declared; no baseline yet | ubuntu-latest (CI) |
 | 2026-07-10 | _(feat/sharecli-w2-perf-gate)_ | BENCH-1..3 gate | seeded baseline JSON = SLO p95 budgets; `bench-gate` fails if mean > 1.5× baseline (50% regression); soft `criterion` job retained | ubuntu-latest (CI) |
+| 2026-07-18 | _(feat/sharecli-c08-bench-tighten)_ | BENCH-1..4 gate | `default_max_regression` 0.50→0.25 (mean ≤ 1.25× baseline); justified by `criterion-trends.csv` max peak-to-peak 3.20% | seed CSV + docs |
 
 ### Baseline gate notes (append-only)
 
@@ -93,3 +94,6 @@ out of scope per [`docs/adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval
   `scripts/seed-bench-baseline.py`. Criterion `--save-baseline ci-gate`
   is used in CI for local HTML compare artifacts; exit status comes from
   the Python checker, not Criterion itself.
+- **2026-07-18:** Tightened default max regression **50% → 25%** from committed
+  trend CSV peak-to-peak (max 3.20% on `config_toml_from_str`). See
+  `docs/eval/TRENDS.md`. L74 score unchanged (already 3).
