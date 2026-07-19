@@ -298,10 +298,11 @@ repro-check:
 # -------- C07 DevEx (append-only) --------
 [group: 'devex']
 dev: install-tools
-    @echo ">> one-command local bootstrap (Rust + Zig + smoke)"
+    @echo ">> one-command local bootstrap (Rust + Zig + smoke + seed verify)"
     @command -v zig >/dev/null 2>&1 || { echo "error: zig 0.14.1 required (see .devcontainer/post-create.sh)"; exit 1; }
     @cargo build --locked --all-features
     @cargo run --locked --quiet -- --help >/dev/null
+    @bash scripts/dev/verify_seed.sh
     @echo ">> ready — next: just test-nextest | just gate"
 
 [group: 'devex']

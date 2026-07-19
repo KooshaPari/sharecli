@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c05-l46",
+  "commit": "pending-c06-c07-c11-90pct",
   "date": "2026-07-19",
-  "overall_pct": 89,
-  "grade": "B",
+  "overall_pct": 90,
+  "grade": "A",
   "weighted_overall_pct": 90,
-  "wave_note": "C05 L46 2→3 (26/30 87% B): MWMB burn-rate pairs + error-budget-policy.md + gate test. Unweighted ~89% B; tier-1 weighted 90% A.",
+  "wave_note": "C06 L54 + C07 L70 + C11 L115 2→3 (unweighted 90% A): netblock hard gate, dev seed verify, systemd in .deb.",
   "clusters": {
     "C00": {
       "pct": 97,
@@ -41,14 +41,14 @@
       "score": "26/30"
     },
     "C06": {
-      "pct": 83,
+      "pct": 87,
       "grade": "B",
-      "score": "25/30"
+      "score": "26/30"
     },
     "C07": {
-      "pct": 83,
+      "pct": 87,
       "grade": "B",
-      "score": "25/30"
+      "score": "26/30"
     },
     "C08": {
       "pct": 80,
@@ -66,9 +66,9 @@
       "score": "33/36"
     },
     "C11": {
-      "pct": 84,
+      "pct": 87,
       "grade": "B",
-      "score": "38/45"
+      "score": "39/45"
     }
   },
   "governance": {

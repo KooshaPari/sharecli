@@ -1,6 +1,13 @@
-# sharecli — sample systemd unit (soft)
+# sharecli — sample systemd unit (C11 L115)
 
-Audit-v38 **C11 L115**. Optional self-host sample; not a hard packaging claim.
+Audit-v38 **C11 L115**. Packaged in unsigned `.deb` artifacts at
+`lib/systemd/system/sharecli.service` (see `scripts/packaging/build_deb.sh`).
+
+Inspect packaged unit:
+
+```bash
+dpkg-deb -c dist/sharecli_*.deb | grep sharecli.service
+```
 
 ```ini
 [Unit]

@@ -20,7 +20,9 @@ trap 'rm -rf "$PKG_ROOT"' EXIT
 
 install -d "$PKG_ROOT/DEBIAN"
 install -d "$PKG_ROOT/usr/bin"
+install -d "$PKG_ROOT/lib/systemd/system"
 install -m 755 "$BINARY" "$PKG_ROOT/usr/bin/sharecli"
+install -m 0644 "$ROOT/docs/deploy/systemd/sharecli.service" "$PKG_ROOT/lib/systemd/system/sharecli.service"
 
 cat >"$PKG_ROOT/DEBIAN/control" <<EOF
 Package: sharecli

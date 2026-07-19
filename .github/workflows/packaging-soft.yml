@@ -45,6 +45,7 @@ jobs:
           deb="$(ls -1 dist/sharecli_*.deb | head -1)"
           test -s "$deb"
           dpkg-deb -c "$deb" | grep -q '/usr/bin/sharecli'
+          dpkg-deb -c "$deb" | grep -q 'lib/systemd/system/sharecli.service'
       - name: Upload .deb artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
