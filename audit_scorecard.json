@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c06-c07-c11-90pct",
+  "commit": "pending-c10-l101-c07-l64",
   "date": "2026-07-19",
-  "overall_pct": 90,
+  "overall_pct": 91,
   "grade": "A",
-  "weighted_overall_pct": 90,
-  "wave_note": "C06 L54 + C07 L70 + C11 L115 2→3 (unweighted 90% A): netblock hard gate, dev seed verify, systemd in .deb.",
+  "weighted_overall_pct": 91,
+  "wave_note": "C10 L101 2→3: dashboard disconnect error view + recovery CTA.",
   "clusters": {
     "C00": {
       "pct": 97,
@@ -61,9 +61,9 @@
       "score": "42/45"
     },
     "C10": {
-      "pct": 92,
+      "pct": 94,
       "grade": "A",
-      "score": "33/36"
+      "score": "34/36"
     },
     "C11": {
       "pct": 87,

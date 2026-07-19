@@ -24,14 +24,14 @@
 | C07 | DX, QEng, Portability | L61–L70 | 26/30 | 87% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
-| C10 | Visual Identity | L96–L107 | 33/36 | 92% | A | L99 skeletons; L101 error views; dashboard hex drift |
+| C10 | Visual Identity | L96–L107 | 34/36 | 94% | A | L99 skeletons; dashboard hex drift; error illustration tier-1 |
 | C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
 ## Overall
 
 **Weighted overall score:** 91% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+87+80+93+92+87)/12 = 1080/12 = **90.0% A**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+87+80+93+94+87)/12 = 1082/12 = **90.2% A**.)
 
 **Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+87+80+93+92+87) = 760 + 700 = 1460 / 16 = **91.3%** (A).
 
@@ -566,3 +566,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C09 41/45 (91% A) → 42/45 (93% A):** L81.13 2→3 — `docs/faq.md` top-5 FAQ; `clap_mangen` `sharecli man` + `share/man/man1/sharecli.1`; `just man`; `tests/c09_l81_13_faq_man.rs`.
 - Top-3 C09 gaps: live VO/NVDA soft (W9.3); L81.9 undo model; L81.15 aesthetic CTA tokens.
 - Overall unweighted **~88% B** (1062/12); tier-1 weighted **90% A** (1442/16).
+
+### 2026-07-19 (C10 L101 dashboard disconnect error view — FR-003)
+- **C10 33/36 (92% A) → 34/36 (94% A):** L101 2→3 — `error-state` disconnect panel + Retry CTA; `docs/visual/error-states.md`; `tests/c10_l101_error_states.rs`.
+- Top-3 C10 gaps: L99 skeletons; dashboard hex drift; error illustration tier-1.
+- Overall unweighted **90.2% A** (1082/12); tier-1 weighted **91% A** (1462/16).
