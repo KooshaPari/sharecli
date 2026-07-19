@@ -33,6 +33,6 @@ These are **not** hard merge gates yet (soft CI uses `continue-on-error`).
 ## Follow-ups
 
 - Hard RSS gate after jemalloc soak on main.
-- Loom tests for `ProcessPool` / `serve_lock` (C00 L7).
+- Loom tests for `ProcessPool` / `serve_lock` (C00 L7): `crates/sharecli-sync` + `just loom` / `ci.yml` `loom` job.
 - Soft RSS sample: `just rss-soft` / `.github/workflows/rss-soft.yml`.
 - Soft dhat sample: `just dhat-soft` / `.github/workflows/dhat-soft.yml`.

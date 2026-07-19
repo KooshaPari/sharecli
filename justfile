@@ -353,6 +353,12 @@ dhat-soft:
     @echo ">> soft dhat heap sample (docs/ops/alloc-profiling.md)"
     @bash scripts/ops/dhat_soft.sh
 
+# C00 L7 — loom model of ProcessPool pid index (hard gate parity)
+[group: 'gate']
+loom:
+    @echo ">> loom pool_index + relaxed counter (C00 L7)"
+    @RUSTFLAGS="--cfg loom" cargo test --release --locked -p sharecli-sync --test loom_pool_index
+
 serve-jemalloc:
     @echo ">> build serve binary with jemalloc (C00 L8)"
     @cargo build --locked --release -p sharecli --features jemalloc
