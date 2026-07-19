@@ -45,6 +45,13 @@ try {
               const event = new Event("open");
               this.onopen?.(event);
               this.dispatchEvent(event);
+              queueMicrotask(() => {
+                const payload = new MessageEvent("message", {
+                  data: JSON.stringify({ processes: [] }),
+                });
+                this.onmessage?.(payload);
+                this.dispatchEvent(payload);
+              });
             });
           }
 

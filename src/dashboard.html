@@ -56,11 +56,56 @@
   td.pid { color: #94a3b8; }
   td.mem { color: #f59e0b; }
   td.status { color: #22c55e; }
-  #empty-row td {
-    color: #4a5568;
+  #loading-row td {
+    color: #94a3b8;
     text-align: center;
     padding: 24px;
     font-style: italic;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 32px 16px;
+    border: 1px dashed #2d2d4e;
+    border-radius: 8px;
+    background: #161b22;
+  }
+  .empty-state-icon {
+    font-size: 28px;
+    color: #a371f7;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .empty-state-title {
+    font-size: 14px;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+  .empty-state-body {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    max-width: 28rem;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+  .empty-state-cta {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 4px;
+    background: #22c55e;
+    color: #0a0d12;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .empty-state-cta:hover,
+  .empty-state-cta:focus {
+    background: #3fb950;
+    outline: 2px solid #a78bfa;
+    outline-offset: 2px;
   }
   #last-update {
     margin-top: 12px;
@@ -122,6 +167,7 @@
     header { flex-wrap: wrap; gap: 8px; }
     #thermal-status { margin-left: 0; }
     tbody td { white-space: normal; }
+    .empty-state { padding: 24px 12px; }
   }
   @media (max-width: 375px) {
     body { padding: 8px; font-size: 11px; }
@@ -155,7 +201,7 @@
     </tr>
   </thead>
   <tbody id="proc-body">
-    <tr id="empty-row"><td colspan="5">waiting for data...</td></tr>
+    <tr id="loading-row"><td colspan="5">waiting for data...</td></tr>
   </tbody>
 </table>
 <div id="last-update" aria-live="polite"></div>
@@ -167,7 +213,23 @@
   const body = document.getElementById('proc-body');
   const lastUpdate = document.getElementById('last-update');
   let reconnectTimer = null;
+  let hadProcesses = false;
   const traceparent = document.documentElement.dataset.traceparent || '';
+
+  const EMPTY_STATES = {
+    'first-run': {
+      title: 'No processes yet',
+      body: 'Start your first harness to see live status in this table.',
+      cta: 'sharecli start &lt;project&gt; &lt;harness&gt;',
+      href: 'https://github.com/KooshaPari/sharecli#quick-start',
+    },
+    cleared: {
+      title: 'All processes stopped',
+      body: 'Processes were running earlier but the pool is empty now.',
+      cta: 'sharecli ps',
+      href: '#main-content',
+    },
+  };
 
   function traceHeaders() {
     const headers = {};
@@ -196,7 +258,6 @@
     ws.onmessage = (evt) => {
       let data;
       try { data = JSON.parse(evt.data); } catch { return; }
-      // Handle thermal events
       if (data.event === 'thermal_warning') {
         setThermal('warning', '⚠️ Warning');
         return;
@@ -219,11 +280,25 @@
     };
   }
 
+  function renderEmptyState(kind) {
+    const spec = EMPTY_STATES[kind] || EMPTY_STATES['first-run'];
+    body.innerHTML = `<tr><td colspan="5">
+      <div class="empty-state" role="status" data-empty-kind="${kind}" aria-live="polite">
+        <div class="empty-state-icon" aria-hidden="true">&#x25C8;</div>
+        <div class="empty-state-title">${spec.title}</div>
+        <p class="empty-state-body">${spec.body}</p>
+        <code class="empty-state-cta" role="button" tabindex="0">${spec.cta}</code>
+      </div>
+    </td></tr>`;
+  }
+
   function renderTable(procs) {
     if (procs.length === 0) {
-      body.innerHTML = '<tr id="empty-row"><td colspan="5">no processes found</td></tr>';
+      const kind = hadProcesses ? 'cleared' : 'first-run';
+      renderEmptyState(kind);
       return;
     }
+    hadProcesses = true;
     body.innerHTML = procs.map(p => {
       const name    = esc(p.name    ?? '—');
       const pid     = esc(String(p.pid ?? '—'));

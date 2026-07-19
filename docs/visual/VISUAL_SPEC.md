@@ -20,7 +20,14 @@ See [typography.md](typography.md). Dashboard/CLI prefer intentional mono stacks
 
 ## 3. Empty / zero-data
 
-CLI and dashboard should state *what is missing* and the next command (e.g. start a process), not a blank panel.
+CLI and dashboard state *what is missing* and the next command (not a blank panel or headers-only table).
+
+| Surface | First-run | Filtered / cleared |
+|---------|-----------|-------------------|
+| `sharecli ps` | `No managed processes yet` + `sharecli start …` + `sharecli serve` | `--project` / `--harness` match hints |
+| Dashboard | `data-empty-kind="first-run"` panel + start CTA | `data-empty-kind="cleared"` when pool was non-empty |
+
+Contract: [empty-states.md](empty-states.md). Tests: `tests/c10_l100_empty_states.rs`.
 
 ## 4. Loading
 
