@@ -1,0 +1,50 @@
+Shared CLI process manager for multi-project agent orchestration
+
+Usage: sharecli [OPTIONS] <COMMAND>
+
+Commands:
+  ps            List managed processes
+  start         Start a harness process
+  stop          Stop managed processes
+  status        Check process health
+  health        Run a runtime health probe
+  config        Configuration management
+  project       Project management
+  optimize      Optimize resource usage
+  prune         Prune idle processes
+  pool          Show shared runtime pool status
+  run           Run using pooled runtime
+  limits        Set project resource limits
+  check         Check project resource limits
+  thermal       Live thermal-gate / hypervisor state monitor (TUI)
+  serve         Start the HTTP + WebSocket dashboard server
+  report        Print a fleet analytics snapshot (one-shot or live watch mode)
+  fleet         Fleet device management
+  cast          Cross-machine text injection into registered terminal panes
+  proc-compose  process-compose.yaml integration
+  completions   Generate shell completion script
+  util          Exercise the bundled utility modules (base85, csv, crc, hash, json, sha, uuid, xml, markdown, trie/skiplist)
+  list          Enumerate available CLI surfaces (cast modules + utility modules)
+  version       Print version + Backbone-2 ASCII splash
+  uninstall     Print uninstall guidance and optionally purge local config/state
+  help          Print this message or the help of the given subcommand(s)
+
+Options:
+  -v, --verbose
+          Enable verbose output
+
+  -q, --quiet
+          Quiet mode
+
+      --theme <NAME>
+          Color theme: `backbone-2` / `bb2` / `dark` (default) or `backbone-2-light` / `light`. Maps to Backbone-2 dark/light families in tokens.css
+          
+          [default: backbone-2]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+Accessibility (C09): docs/a11y/README.md — NO_COLOR/TERM=dumb degrade ANSI color; FR-004 status via `sharecli status` and GET /health. Degraded-mode notes: docs/a11y/status-and-recovery.md

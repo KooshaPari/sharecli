@@ -83,6 +83,7 @@ fn golden_cli_help() {
     assert!(out.status.success(), "stderr: {}", String::from_utf8_lossy(&out.stderr));
     let actual = normalize_cli(&String::from_utf8_lossy(&out.stdout));
     assert_or_update("cli_help.txt", &actual);
+    assert_or_update("help.txt", &actual);
     assert!(actual.contains("Usage: sharecli"), "help MUST name the binary");
     assert!(actual.contains("thermal"), "help MUST list thermal TUI");
 }

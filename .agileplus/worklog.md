@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-19 (C09 L81.10 Vale inclusive-language + help golden — FR-004)
+- Status: DONE — `.vale.ini` + Microsoft rules; `docs/style-guide.md`; `scripts/lint/vale.sh`; `tests/golden/help.txt`; `tests/c09_l81_inclusive_language.rs`; `a11y.yml` vale job
+- Score: C09 40/45 (89% B) → 41/45 (91% A); L81.10 2→3; unweighted overall ~86% B
+- FR: FR-004 · C09 L81.10
+
 ## 2026-07-19 (C09 L81.7 indicatif ETA — FR-004)
 - Status: DONE — `indicatif` dep; `src/progress.rs` StepProgress ETA; batch stop/project stop/prune; `tests/c09_l81_indicatif_eta.rs`
 - Score: C09 37/45 (82% B) → 38/45 (84% B); L81.7 2→3; unweighted overall ~85% B

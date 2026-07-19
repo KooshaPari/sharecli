@@ -38,6 +38,9 @@ agileplus.db
 # Node (a11y axe tooling)
 node_modules/
 
+# Vale synced packages (CI runs `vale sync`; commit only project styles/vocab)
+.vale/styles/Microsoft/
+
 
 docs/.vitepress/dist/
 

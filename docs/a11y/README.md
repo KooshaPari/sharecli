@@ -44,6 +44,7 @@ See [`status-and-recovery.md`](./status-and-recovery.md) for FR-004 health surfa
 - [High contrast / forced-colors](./high-contrast.md) — `prefers-contrast` posture, token pairs, dashboard hex audit (C10 L104/L105)
 - [Keyboard bindings](./keyboard.md) — TUI quit keys and dashboard focus order
 - [Design system](./design-system.md) — tokens, dashboard/tray/TUI components, terminology (C09 L81.8)
+- [Style guide](../style-guide.md) — inclusive language + plain help (C09 L81.10; `just vale`)
 - [Responsive layout](./responsive.md) — TUI compact mode + dashboard 375/768 breakpoints
 - [Status & recovery](./status-and-recovery.md) — health endpoints, validation hints, degraded mode
 

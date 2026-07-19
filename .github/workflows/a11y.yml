@@ -1,6 +1,6 @@
 name: Accessibility
 
-# C09 L81.1 / L81.3 / L81.5 — axe-core WCAG 2.x Level A + Playwright Tab-cycle for dashboard.
+# C09 L81.1 / L81.3 / L81.5 / L81.10 — axe-core WCAG 2.x Level A + Playwright Tab-cycle + Vale inclusive language.
 # Tags: wcag2a, wcag21a, wcag22a. Hard-fail on serious/critical violations.
 
 on:
@@ -68,3 +68,19 @@ jobs:
           trap 'kill $pid 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/healthz && break; sleep 1; done
           npm run a11y:keyboard
+
+  vale-inclusive-language:
+    name: vale inclusive-language (docs)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Vale docs policy check
+        uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c
+        with:
+          files: |
+            README.md
+            CONTRIBUTING.md
+            docs/a11y
+            docs/journeys
+          vale_flags: "--config=.vale.ini"
+          fail_on_error: true

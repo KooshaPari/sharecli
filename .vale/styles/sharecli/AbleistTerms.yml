@@ -1,0 +1,13 @@
+extends: existence
+message: "Use inclusive language; avoid ableist term '%s' in user-facing copy."
+link: https://docs.microsoft.com/en-us/style-guide/a11y/accessible-language
+level: error
+ignorecase: true
+tokens:
+  - blindly
+  - cripple
+  - crippled
+  - idiot
+  - stupid
+  - dumb down
+  - sanity check

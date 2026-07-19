@@ -25,6 +25,7 @@ UPDATE_GOLDENS=1 cargo test --test golden_snapshots
 | Fixture | Surface | Asserts |
 |---------|---------|---------|
 | `cli_help.txt` | `sharecli --help` | Command inventory + `--theme` flag |
+| `help.txt` | `sharecli --help` | Canonical help golden (L81.10; mirrors `cli_help.txt`) |
 | `cli_ps_help.txt` | `sharecli ps --help` | FR-001 list surface documents `--project` |
 | `thermal_green.txt` | TUI headless (ratatui `TestBackend` 80×24) | GREEN / ADMIT |
 | `thermal_yellow.txt` | same | YELLOW / ADMIT |
