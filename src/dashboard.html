@@ -107,6 +107,66 @@
     outline: 2px solid #a78bfa;
     outline-offset: 2px;
   }
+  .error-state {
+    text-align: center;
+    padding: 32px 16px;
+    border: 1px dashed #ef4444;
+    border-radius: 8px;
+    background: #1c1017;
+  }
+  .error-state-icon {
+    font-size: 28px;
+    color: #ef4444;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .error-state-title {
+    font-size: 14px;
+    color: #fca5a5;
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+  .error-state-body {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    max-width: 28rem;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+  .error-state-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+  }
+  .error-state-cta {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 4px;
+    background: #a371f7;
+    color: #0a0d12;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .error-state-cta:hover,
+  .error-state-cta:focus {
+    background: #a78bfa;
+    outline: 2px solid #fca5a5;
+    outline-offset: 2px;
+  }
+  .error-state-hint {
+    font-size: 11px;
+    color: #64748b;
+    font-family: inherit;
+  }
   #last-update {
     margin-top: 12px;
     font-size: 11px;
@@ -214,6 +274,7 @@
   const lastUpdate = document.getElementById('last-update');
   let reconnectTimer = null;
   let hadProcesses = false;
+  let disconnectShown = false;
   const traceparent = document.documentElement.dataset.traceparent || '';
 
   const EMPTY_STATES = {
@@ -252,6 +313,7 @@
     ws.onopen = () => {
       dot.classList.add('connected');
       label.textContent = 'connected';
+      disconnectShown = false;
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     };
 
@@ -274,10 +336,37 @@
     ws.onclose = ws.onerror = () => {
       dot.classList.remove('connected');
       label.textContent = 'disconnected — reconnecting in 3s';
+      renderDisconnectError();
       if (!reconnectTimer) {
         reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, 3000);
       }
     };
+  }
+
+  function renderDisconnectError() {
+    if (disconnectShown) return;
+    disconnectShown = true;
+    body.innerHTML = `<tr><td colspan="5">
+      <div class="error-state" role="alert" data-error-kind="disconnect" aria-live="assertive">
+        <div class="error-state-icon" aria-hidden="true">&#x26A0;</div>
+        <div class="error-state-title">Dashboard disconnected</div>
+        <p class="error-state-body">
+          Cannot reach the WebSocket feed. Confirm <code>sharecli serve</code> is running on this host.
+        </p>
+        <div class="error-state-actions">
+          <button type="button" class="error-state-cta" id="error-retry">Retry now</button>
+          <code class="error-state-hint">sharecli serve --bind 127.0.0.1:9000</code>
+        </div>
+      </div>
+    </td></tr>`;
+    const retry = document.getElementById('error-retry');
+    if (retry) {
+      retry.addEventListener('click', () => {
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        disconnectShown = false;
+        connect();
+      });
+    }
   }
 
   function renderEmptyState(kind) {
