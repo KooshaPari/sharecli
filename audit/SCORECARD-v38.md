@@ -21,7 +21,7 @@
 | C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | live PD; chaos hard gate; tray dashboard HTTP trace |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
-| C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; thermal-tui proptest; freebsd/wasm |
+| C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_re widen |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; bench-gate hard; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | visual hard diff; manual SR pass; axe hard required |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
@@ -31,16 +31,16 @@
 
 **Weighted overall score:** 82% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (77+80+87+92+80+80+83+80+80+76+89+78)/12 = 977/12 = **81.4% ≈ 81%**.)
+(Unweighted mean of cluster pcts: (77+80+87+92+80+80+83+80+80+76+89+78)/12 with C06 **83%** + C07 **80%** = 982/12 = **81.8% ≈ 82%**.)
 
-**Tier-1 double-weight (C00–C03):** (77+80+87+92)×2 + (80+83+80+80+80+76+89+78) = 672 + 646 = 1318 / 16 = **82.4% ≈ 82%** (B).
+**Tier-1 double-weight (C00–C03):** (77+80+87+92)×2 + (80+80+83+80+80+76+89+78) = 672 + 646 = 1318 / 16 = **82.4% ≈ 82%** (B). C06 L56 (T-660) + C07 L65 (T-640) lifts both land in the non-tier-1 bucket.
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (92% A); C10 **89% B**; C02 **87% B**.
 - **Wave13:** OpenAPI `ErrorEnvelope` (#332); PNG bytes + soft diff (#335); Harbor soak scaffold (#333); IPC/tray trace (#334).
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), mutants hard required check (C07 L65), ruleset “Require signed commits” (C04 L34).
+- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), ruleset “Require signed commits” (C04 L34).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** brew bottle sha filled (W4.2); L112 signing still Blocked.
 
@@ -439,3 +439,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C10 31/36 (86% B) → 32/36 (89% B):** L107 2→3 (dashboard PNG scaffold + manifest; #327).
 - Top-3 gaps refreshed across C00/C05/C08/C10 rows; Wave13 targets OpenAPI component, PNG bytes, Harbor soak execution.
 - Overall unweighted **~80%** (959/12); weighted **~81% B** (1301/16).
+
+### 2026-07-18 (C07 mutants hard gate — T-640 / L65)
+- **C07 23/30 (77% B) → 24/30 (80% B):** L65 2→3 — removed `continue-on-error`; `ci.yml` `mutants` job wired into `ci-success`; `mutants.yml` renamed to `cargo-mutants (required)`.
+- Evidence: `docs/ops/mutants-hard-gate.md` phase 4 live; `mutants-threshold.md`; `mutants.toml` header.
+- Top-3 C07 gaps: dropped mutants hard gate; residual proptest expand / freebsd-wasm / examine_re widen.
+- Combined with T-660 C06 83%: unweighted **~82%** (982/12); weighted **~82% B** (1318/16).

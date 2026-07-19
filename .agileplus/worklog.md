@@ -1,5 +1,9 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-18 (C07 mutants hard gate — T-640 / FR-003)
+- Status: DONE — removed `continue-on-error`; `ci.yml` `mutants` + `ci-success` needs; `mutants.yml` → `cargo-mutants (required)`; examine_globs + `-p sharecli-thermal-tui`; L65 2→3; C07 23→24/30 (80% B)
+- FR: FR-003 · C07 L65 · T-640
+
 ## 2026-07-18 (T-660 C06 container cosign hard — L56 / FR-003)
 - Status: DONE — soft→hard GHCR keyless cosign sign+attest+verify (`container-cosign.yml`, `container-cosign-hard.sh`, `container-cosign-verify.sh`); soft sign-blob retained; docs/slsa.md + ghcr-publish.md; GAP L56 Closed
 - Score: C06 24/30 (80% B) → 25/30 (83% B); L56 2→3

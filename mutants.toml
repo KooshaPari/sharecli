@@ -1,6 +1,7 @@
-# cargo-mutants config — C07 L65 (soft CI / local smoke)
+# cargo-mutants config — C07 L65 (hard CI gate + local smoke)
 # Focus on pure TUI transforms so mutants finish quickly.
-# Threshold / hard-promotion path: docs/ops/mutants-threshold.md
+# Hard gate live (T-640): docs/ops/mutants-hard-gate.md
+# Threshold contract: docs/ops/mutants-threshold.md
 
 test_timeout = 60
 jobs = 2

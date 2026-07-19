@@ -286,7 +286,7 @@ dev: install-tools
 
 [group: 'devex']
 mutants:
-    @echo ">> cargo-mutants soft smoke (thermal-tui examine set; not a required check)"
+    @echo ">> cargo-mutants hard gate (thermal-tui examine set; zero survivors)"
     @command -v cargo-mutants >/dev/null 2>&1 || cargo install --locked cargo-mutants
     @cargo mutants --timeout 60 --jobs 2 --file 'crates/sharecli-thermal-tui/src/lib.rs' -- --locked -p sharecli-thermal-tui
 
