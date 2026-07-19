@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-t640-mutants-hard",
+  "commit": "pending-c09-sr-pass",
   "date": "2026-07-19",
   "overall_pct": 82,
   "grade": "B",
   "weighted_overall_pct": 82,
-  "wave_note": "T-645 baseline + T-660 C06 L56 2→3 (80%→83% B) + T-640 C07 L65 2→3 (77%→80% B). Unweighted ~81.8%≈82%; tier-1 weighted ~82% B. Strongest: C03 92% A, C10 89% B, C02 87% B. Lowest: C09 76% B.",
+  "wave_note": "C09 L81.4 2→3 (76%→80% B) via SR procedure + axe/landmarks evidence; live VO/NVDA soft READY. Prior T-640/T-660 rollups retained. Strongest: C03 92% A, C10 89% B, C02 87% B. Lowest cluster no longer C09-only (C11 78%).",
   "clusters": {
     "C00": { "pct": 77, "grade": "B", "score": "23/30" },
     "C01": { "pct": 80, "grade": "B", "score": "24/30" },
@@ -19,7 +19,7 @@
     "C06": { "pct": 83, "grade": "B", "score": "25/30" },
     "C07": { "pct": 80, "grade": "B", "score": "24/30" },
     "C08": { "pct": 80, "grade": "B", "score": "24/30" },
-    "C09": { "pct": 76, "grade": "B", "score": "34/45" },
+    "C09": { "pct": 80, "grade": "B", "score": "36/45" },
     "C10": { "pct": 89, "grade": "B", "score": "32/36" },
     "C11": { "pct": 78, "grade": "B", "score": "35/45" }
   },

@@ -106,6 +106,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 |-----|------|-------|--------|
 | W9.1 | axe-core CI for dashboard (WCAG 2.x Level A) | L81.1 · L81.5 · FR-004 NFR · `.github/workflows/a11y.yml` · `scripts/a11y/axe-dashboard.mjs` | Status: DONE |
 | W9.2 | C09 re-score after axe CI | L81.1 · L81.5 · `audit/.lane-c09/C09.md` | Status: DONE |
+| W9.3 | SR procedure pass (axe+landmarks) + live VO/NVDA soft | L81.4 · FR-004 NFR · `docs/a11y/sr-pass-evidence.md` | Status: DONE (acceptance); live AT Status: READY |
 
 ### Wave10 — CI hygiene (C01) + C09 adaptive
 

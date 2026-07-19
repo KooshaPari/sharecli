@@ -46,8 +46,11 @@ See [`status-and-recovery.md`](./status-and-recovery.md) for FR-004 health surfa
 - [Responsive layout](./responsive.md) — TUI compact mode + dashboard 375/768 breakpoints
 - [Status & recovery](./status-and-recovery.md) — health endpoints, validation hints, degraded mode
 
-## Screen-reader / assistive-tech checklist (manual)
+## Screen-reader / assistive-tech checklist
 
-1. **Dashboard:** VoiceOver/NVDA — verify `nav` announces connection status; `main` table headers are read in order.
-2. **CLI:** Run `sharecli list --json` and pipe to your tooling; avoid parsing colorized `ps` output.
-3. **Tray (macOS):** `accessibilityDescription: "ShareCLI"` on menu-bar icon (`desktop/ShareCLITray`).
+Procedure + automated evidence: [`sr-checklist.md`](./sr-checklist.md) · [`sr-pass-evidence.md`](./sr-pass-evidence.md) (C09 L81.4 / FR-004 NFR).
+
+1. **Dashboard (automated):** axe Level A CI + landmark/SR structure tests (`cargo test --test a11y`); skip link + `aria-live` status/thermal.
+2. **Dashboard (manual / soft):** VoiceOver/NVDA — verify `nav` announces connection status; `main` table headers are read in order (still READY for per-release AT).
+3. **CLI:** Run `sharecli list --json` and pipe to your tooling; avoid parsing colorized `ps` output.
+4. **Tray (macOS):** `accessibilityDescription: "ShareCLI"` on menu-bar icon (`desktop/ShareCLITray`).

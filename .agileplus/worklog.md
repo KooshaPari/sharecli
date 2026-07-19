@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-18 (C09 SR procedure pass — L81.4 / FR-004)
+- Status: DONE — documented SR checklist + evidence (`docs/a11y/sr-checklist.md`, `sr-pass-evidence.md`); axe 0 violations; `dashboard_sr_table_and_skip_link` test; L81.4 2→3; C09 34→36/45 (80% B)
+- Soft READY: live VoiceOver/NVDA per-release checkbox (W9.3)
+- FR: FR-004 NFR · C09 L81.4
+
 ## 2026-07-18 (C07 mutants hard gate — T-640 / FR-003)
 - Status: DONE — removed `continue-on-error`; `ci.yml` `mutants` + `ci-success` needs; `mutants.yml` → `cargo-mutants (required)`; examine_globs + `-p sharecli-thermal-tui`; L65 2→3; C07 23→24/30 (80% B)
 - FR: FR-003 · C07 L65 · T-640

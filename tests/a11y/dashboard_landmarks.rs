@@ -1,5 +1,5 @@
-//! Level A landmark checks for the embedded serve dashboard.
-//! FR: NFR (C09 L81.1 / L81.5)
+//! Level A landmark + screen-reader structure checks for the embedded serve dashboard.
+//! FR: FR-004 NFR (C09 L81.1 / L81.4 / L81.5)
 
 use std::fs;
 use std::path::PathBuf;
@@ -28,6 +28,32 @@ fn dashboard_has_lang_and_landmarks() {
 fn dashboard_announces_live_status() {
     let html = dashboard_html();
     assert!(html.contains("aria-live"), "connection/status updates should use aria-live");
+}
+
+#[test]
+fn dashboard_sr_table_and_skip_link() {
+    // L81.4 acceptance: labeled table + skip link target for SR/keyboard entry.
+    let html = dashboard_html();
+    assert!(
+        html.contains(r#"aria-label="Managed processes""#),
+        "process table needs aria-label for SR announcement"
+    );
+    assert!(
+        html.contains(r#"aria-labelledby="dashboard-title""#),
+        "main should be labelled by the page title"
+    );
+    assert!(
+        html.matches("scope=\"col\"").count() >= 5,
+        "every column header needs scope=col"
+    );
+    assert!(
+        html.contains("href=\"#main-content\"") && html.contains("Skip to process table"),
+        "skip link must target main content"
+    );
+    assert!(
+        !html.contains("<img "),
+        "dashboard must not ship bare <img> without alt (none expected)"
+    );
 }
 
 #[test]
