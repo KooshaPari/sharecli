@@ -121,4 +121,4 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ---
 
-**Last Updated**: 2026-07-18 (T-620)
+**Last Updated**: 2026-07-19 (T-670 FR SSOT gate)

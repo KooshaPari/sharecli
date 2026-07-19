@@ -14,7 +14,7 @@
    acceptance test.
 
 **Phase:** 3 (spec+test+traceability e2e)
-**Last updated:** 2026-07-13 (T-230)
+**Last updated:** 2026-07-19 (T-670 FR SSOT gate)
 
 ---
 

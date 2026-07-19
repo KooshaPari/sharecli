@@ -56,8 +56,8 @@ registrations.
 
 **Acceptance:**
 
-- Target: `tests/fr002_config_load.rs`, `tests/fr002_config_init.rs`
-  (see TRACEABILITY; files are claimable work if missing)
+- `tests/fr002_config_init.rs` — AC-002.1..AC-002.2
+- `tests/fr002_config_load.rs` — AC-002.3..AC-002.5
 
 **Source:** `src/config.rs`, `src/commands/mod.rs`  
 **Detail:** [`docs/specs/FR.md#fr-002`](docs/specs/FR.md)
@@ -75,7 +75,8 @@ remove, and discover (recursive `.git` scan).
 
 **Acceptance:**
 
-- Target: `tests/fr003_project_registry.rs`, `tests/fr003_project_discover.rs`
+- `tests/fr003_project_registry.rs` — AC-003.1..AC-003.3, AC-003.5
+- `tests/fr003_project_discover.rs` — AC-003.4
 
 **Source:** `src/config.rs`, `src/commands/mod.rs`  
 **Detail:** [`docs/specs/FR.md#fr-003`](docs/specs/FR.md)
@@ -93,7 +94,8 @@ memory, and HEALTHY/DEGRADED health.
 
 **Acceptance:**
 
-- Target: `tests/fr004_status_health.rs`, `tests/fr004_pool_status.rs`
+- `tests/fr004_status_health.rs` — AC-004.1, AC-004.4..AC-004.5
+- `tests/fr004_pool_status.rs` — AC-004.2..AC-004.3
 
 **Source:** `src/runtime.rs`, `src/monitoring.rs`, `src/commands/mod.rs`  
 **Detail:** [`docs/specs/FR.md#fr-004`](docs/specs/FR.md)
@@ -110,7 +112,8 @@ limits with a check command, **so that** one project cannot starve the host.
 
 **Acceptance:**
 
-- Target: `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs`
+- `tests/fr005_project_limits.rs` — AC-005.1..AC-005.3
+- `tests/fr005_resource_check.rs` — AC-005.4..AC-005.5
 
 **Source:** `src/runtime.rs`, `src/commands/mod.rs`  
 **Detail:** [`docs/specs/FR.md#fr-005`](docs/specs/FR.md)

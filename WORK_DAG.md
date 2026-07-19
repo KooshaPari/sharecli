@@ -87,6 +87,7 @@ flowchart TD
 | T-620 | Coverage evidence pin + llvm-cov snapshot artifact | DONE (2026-07-18) |
 | T-640 | cargo-mutants soft→hard gate (C07 L65) | DONE (2026-07-18) |
 | T-645 | Sync audit_scorecard.json to live SCORECARD | DONE (2026-07-19) |
+| T-670 | C01 L12 FR SSOT gate | DONE (2026-07-19) |
 | T-650 | C07 L66 proptest boundary + registry + replay | DONE (2026-07-19) |
 
 ## Wave13 backlog (DONE)
@@ -106,6 +107,7 @@ flowchart TD
 | T-630 | Chaos restart ci-success hard gate (C05 L50) | FR-003 / C05 L50 | T-550 | S | DONE | `ci.yml` `chaos-restart-hard` + `ci-success`; L50 2→3; C05 83% B |
 | T-650 | Seven-day Harbor soak log completion (W14.2) | FR-003 / C08 L76 | T-520 | M | IN_PROGRESS | Seven consecutive `main` `harbor-eval-stub-soft.yml` STUB PASS rows logged; local soft soak alone does not close |
 | T-625 | Broad-workspace coverage numeric pin (C01 L11) | FR-003 / C01 L11 | T-620 | S | DONE | Matrix pins 83.48% lines; `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json`; L11 2→3; C01 83% B |
+| T-670 | FR↔acceptance-test SSOT gate (C01 L12) | FR-003 / C01 L12 | T-625 | S | DONE | `tests/c01_fr_ssot_gate.rs`; FR-001..005 Acceptance refs on disk; L12 2→3; C01 87% B |
 | T-660 | GHCR cosign sign/attest hard publish (C06 L56) | C06 L56 | T-550 | M | READY | Keyless cosign on GHCR; soft→hard; L56 2→3 |
 
 ## Wave14 evidence hardening (IN_PROGRESS)
