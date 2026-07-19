@@ -350,7 +350,8 @@ const DASHBOARD_HTML: &str = include_str!("../dashboard.html");
 
 #[instrument]
 async fn dashboard() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], DASHBOARD_HTML)
+    let html = crate::tray_http::inject_dashboard_traceparent(DASHBOARD_HTML);
+    ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], html)
 }
 
 /// Pure liveness JSON body (unit-tested without spinning the HTTP server).

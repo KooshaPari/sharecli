@@ -24,6 +24,10 @@ char *sharecli_health_json(void);
 /// Free result with sharecli_free_string.
 char *sharecli_request(const char *request_json);
 
+/// GET a sharecli serve URL with W3C trace context propagation.
+/// Free result with sharecli_free_string.
+char *sharecli_serve_get(const char *url);
+
 #ifdef __cplusplus
 }
 #endif

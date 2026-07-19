@@ -167,6 +167,14 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 |-----|------|-------|--------|
 | W14.1 | Coverage percentage pin + llvm-cov snapshot artifact | C01 L11 · T-620 · `TEST_COVERAGE_MATRIX.md` · `coverage.yml` | Status: DONE |
 
+### Wave14 — Residual hardening (IN_PROGRESS)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W14.1 | Tray dashboard HTTP traceparent inject | C05 L44 · T-610 · FR-003 · `tests/c05_trace_tray_http_inject.rs` | Status: DONE |
+
+T-610 adds evidence for the existing L44 score; it does not change the C05 or overall score.
+
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.

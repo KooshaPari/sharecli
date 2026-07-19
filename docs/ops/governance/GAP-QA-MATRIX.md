@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-19 (audit_scorecard ~82% B / 82% weighted; T-660 C06 83% + T-640 C07 L65 → 80% B; W14.2 Harbor soak 0/7)
+**Last sync:** 2026-07-19 (audit_scorecard ~82% B / 82% weighted; T-660 C06 83% + T-640 C07 L65 → 80% B; W14.1 T-610 tray HTTP trace evidence; W14.2 Harbor soak 0/7)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -32,7 +32,7 @@
 | C04 | L32 | SBOM in release tarball | Med | W4.1 · L32 | Status: Closed | `release.yml` package embeds `sharecli.cdx.json` | agent-c04 |
 | C02 | L20 | STRIDE attack surface | Med | L20 | Status: Closed | `THREAT_MODEL.md` · `SECURITY.md` | agent-c04 |
 | C11 | L118 | GH Release asset attach | High | W4.1 · L118 | Status: Closed | `release.yml` `github-release` job | agent-c11 |
-| C11 | L119 | MSRV rust-version | Med | W4.4 · L119 | Status: Closed | `Cargo.toml` `rust-version = "1.89"` | agent-c11 |
+| C11 | L119 | MSRV rust-version | Med | W4.4 | Status: Closed | `Cargo.toml` `rust-version = "1.89"` | agent-c11 |
 | C11 | L108/L120 | Homebrew bottle sha PLACEHOLDER | High | W4.2 | Status: Closed | `Formula/sharecli.rb` sha256 from v0.3.0 darwin | agent-c11 |
 | C11 | L112 | Codesign / notarize | High | W4.3 | Status: Blocked | Apple secrets | maintainer |
 
@@ -44,6 +44,7 @@
 | C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `docs/ops/trace-multihop.md` · `docs/ops/live-pd.md` | agent-c05 |
 | C05 | L44 | CLI traceparent inject (one hop) | Med | W12.3 · T-420 · #328 | Status: Closed | `src/otel.rs` · `src/runtime.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
 | C05 | L44 | IPC + tray traceparent inject | Med | W13.4 · T-530 | Status: Closed | `src/otel.rs` · `crates/sharecli-ffi` · `tests/c05_trace_ipc_tray_inject.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
+| C05 | L44 | Tray dashboard HTTP traceparent inject | Med | W14.1 · T-610 · FR-003 | Status: Closed | `src/tray_http.rs` · `crates/sharecli-ffi::sharecli_serve_get` · `src/dashboard.html` · `tests/c05_trace_tray_http_inject.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
 | C05 | L47 | Soak healthz CI | Med | W11.4 · #319 | Status: Closed | `.github/workflows/soak-soft.yml` · `scripts/load/soak_healthz.sh` | agent-c05 |
 | C05 | L50 | Chaos restart hard CI | Low | W14 · T-630 | Status: In progress | `.github/workflows/chaos-restart-hard.yml` · `docs/ops/chaos-restart-hard-gate.md` · `just chaos-hard` | agent-c05 |
 | C05 | L48 | Chaos restart probe | Low | W11.6 · #324 | Status: Closed | `scripts/load/chaos_restart.sh` · `just chaos-soft` | agent-c05 |

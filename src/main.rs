@@ -34,6 +34,7 @@ mod serve_lock;
 mod skiplist;
 mod spawn_policy;
 mod theme;
+mod tray_http;
 mod util_cmd;
 mod xml_escape;
 mod xxhash3;

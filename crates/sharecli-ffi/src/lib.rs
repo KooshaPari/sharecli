@@ -163,6 +163,39 @@ pub extern "C" fn sharecli_request(request_json: *const c_char) -> *mut c_char {
     }
 }
 
+/// GET an HTTP URL from the tray (e.g. `http://127.0.0.1:9000/healthz`), injecting
+/// W3C `traceparent` when the operator env or active OTel context provides one.
+/// Returns the response body (must free with `sharecli_free_string`) or null on error.
+#[no_mangle]
+pub extern "C" fn sharecli_serve_get(url: *const c_char) -> *mut c_char {
+    if url.is_null() {
+        eprintln!("sharecli_serve_get: null url pointer");
+        return std::ptr::null_mut();
+    }
+    let url_str = unsafe {
+        match CStr::from_ptr(url).to_str() {
+            Ok(s) => s,
+            Err(err) => {
+                eprintln!("sharecli_serve_get: url is not valid UTF-8 ({err})");
+                return std::ptr::null_mut();
+            }
+        }
+    };
+    match sharecli::tray_http::get(url_str) {
+        Ok(body) => match CString::new(body) {
+            Ok(c) => c.into_raw(),
+            Err(err) => {
+                eprintln!("sharecli_serve_get: response contains interior NUL ({err})");
+                std::ptr::null_mut()
+            }
+        },
+        Err(err) => {
+            eprintln!("sharecli_serve_get: {err:#}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
