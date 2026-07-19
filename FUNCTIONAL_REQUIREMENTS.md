@@ -8,7 +8,8 @@
 
 - IDs are stable: `FR-NNN`. Do not renumber published entries.
 - Each FR below uses: title, role story, MUST statement, acceptance test refs.
-- Phase 3 covers **FR-001..FR-005**. Append new IDs (FR-006+) in later phases.
+- Phase 3 covers **FR-001..FR-005** (supervise surface). **FR-006..FR-008**
+  capture the OS-adjacent runtime thesis (detect / watch / coalesce+mesh).
 - PRs that change behavior MUST cite at least one `FR-NNN` in the PR body.
 
 **Legacy alias map** (pre-FR-NNN root doc → current IDs)
@@ -120,13 +121,75 @@ limits with a check command, **so that** one project cannot starve the host.
 
 ---
 
-## Related surfaces (non-Phase-3 IDs)
+## FR-006 — Agent Detection (proc scan, no bin wrap)
 
-Cast/pane tests use `FR-CAST-00N` annotations in `tests/cast_*.rs`. Treat those
-as extension FRs until promoted into `docs/specs/FR.md` as FR-006+.
+**As a** multi-agent host operator, **I want** sharecli to discover running
+agents by scanning processes and matching known patterns, **so that** agents
+are observed without wrapping vendor binaries (for example Claude Code).
+
+**MUST:** Detect agents via process/pattern scan; MUST NOT require wrapping or
+replacing the agent executable as the primary detection path.
+
+**Acceptance:**
+
+- Unit/integration coverage for pattern registry + scan (promote into
+  `docs/specs/FR.md` when tests land). Evidence today: hypervisor entry in
+  `crates/sharecli-core`.
+
+**Source:** `crates/sharecli-core`, `crates/sharecli-fleet`  
+**Detail:** PRD E1; amend `docs/specs/FR.md` in a follow-up PR when AC tests land.
+
+---
+
+## FR-007 — Resource & Syscall-Relevant Watch
+
+**As an** operator under agent load, **I want** CPU, memory, network, FD, and
+IO/syscall-relevant activity watched for detected/managed agents, **so that**
+contention is visible before coalesce fires.
+
+**MUST:** Expose resource watch signals (CPU/MEM/Net/FD at minimum) and, when
+FUSE intercept is enabled, IO paths used by coalesce.
+
+**Acceptance:**
+
+- Status/thermal surfaces: `sharecli-fleet` ThermalGovernor,
+  `sharecli-core` SystemThermalGate; FUSE: `sharecli-fuse`.
+
+**Source:** `crates/sharecli-core`, `crates/sharecli-fleet`, `crates/sharecli-fuse`  
+**Detail:** PRD E2.
+
+---
+
+## FR-008 — Speculative Coalesce & Agent Mesh
+
+**As a** host running many agents on overlapping worktrees, **I want**
+redundant concurrent IO/work coalesced and coordinated on a shared substrate,
+**so that** agents do not thrash the same files/locks unnecessarily.
+
+**MUST:** Provide coalesce primitives (for example CoalesceCache) and a mesh /
+substrate coordination path under contention; thermal gate before speculative
+work.
+
+**Acceptance:**
+
+- `crates/sharecli-ipc` CoalesceCache; `crates/sharecli-core` Hypervisor +
+  thermal gate + coalesce orchestration; optional FUSE cwd share.
+
+**Source:** `crates/sharecli-ipc`, `crates/sharecli-core`, `crates/sharecli-fuse`  
+**Detail:** PRD E3.
+
+---
+
+## Related surfaces
+
+Cast/pane tests use `FR-CAST-00N` annotations in `tests/cast_*.rs` (extension
+FRs). Harbor/agent-eval soft harness is **out of sharecli FRs** — see ADR 0002
+and `phenotype-tooling/crates/benchora/harbor-soft`.
 
 ## NFR notes
 
 - **NFR-001** Platform: Linux, macOS, Windows (`#[cfg(unix)]` / `#[cfg(windows)]`).
 - **NFR-002** Observability: structured `tracing` logs (`--verbose` / `--quiet`).
 - **NFR-003** Errors: commands return `anyhow::Result<()>`; missing config → default.
+- **NFR-004** Eval boundary: Harbor soak is not a sharecli product acceptance
+  criterion (ADR 0002).

@@ -70,7 +70,9 @@ and `docs/ops/alerting.md`.
 
 Draft performance budgets tied to Criterion benches and load scripts.
 Reproduce via [`docs/eval/REPRO.md`](../eval/REPRO.md). Harbor/SWE-bench remain
-out of scope per [`docs/adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval-surface-out-of-scope.md).
+out of scope for sharecli per
+[`docs/adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval-surface-out-of-scope.md);
+soft Harbor CI/soak live in benchora `harbor-soft` / `portage-temp` (not this repo).
 
 | ID | Surface | Budget | Harness |
 |----|---------|--------|---------|

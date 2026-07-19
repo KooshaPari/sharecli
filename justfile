@@ -328,14 +328,6 @@ fuzz:
 eval-corpus:
     bash scripts/eval/run-corpus.sh
 
-# Soft: ADR 0005 Phase 2 Harbor stub (corpus preflight + stub pass)
-harbor-stub:
-    bash scripts/eval/harbor_stub.sh
-
-# Soft: ADR 0005 Phase 3 Harbor soak execution scaffold (local parity)
-harbor-soak:
-    bash scripts/eval/harbor_soak.sh
-
 # -------- C05 load (soft) --------
 [group: 'ops']
 load-soft:
