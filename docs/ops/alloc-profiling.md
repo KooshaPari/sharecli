@@ -1,31 +1,40 @@
 # Allocation profiling (soft)
 
 Audit-v38 **C00 L8**. Operator memory budgets live in [`memory.md`](memory.md).
-This note seeds **jemalloc / dhat** follow-ups without wiring always-on allocators.
 
-## Soft recipes
+## Wired paths
 
-### dhat (dev profile)
+### jemalloc (serve production)
+
+`tikv-jemallocator` behind feature `jemalloc` for Linux/macOS `sharecli serve` deployments.
+Windows MSVC builds keep the system allocator.
 
 ```bash
-# Example: profile a short serve smoke under dhat (nightly / feature-gated when added)
-RUSTFLAGS='--cfg dhat_heap' cargo +nightly build -p sharecli
-# Follow-up: feature `dhat-heap` behind cfg; upload dhat-heap.json as soft CI artifact
+cargo build --locked --release -p sharecli --features jemalloc
+just serve-jemalloc
 ```
 
-### jemalloc (serve optional)
+### dhat (dev heap profile)
 
-Prefer documenting `tikv-jemallocator` behind feature `jemalloc` for Linux/macOS
-`sharecli serve` only after RSS budgets in `memory.md` show pressure. Windows
-stays system allocator.
+Feature `dhat-heap` installs `dhat::Alloc` as the global allocator and emits
+`dhat-heap.json` on process exit.
 
-## Soft CI follow-up
+```bash
+just dhat-soft
+# or
+bash scripts/ops/dhat_soft.sh
+```
+
+Do **not** enable `jemalloc` and `dhat-heap` together (both require `#[global_allocator]`).
+
+## Soft CI
 
 | Step | Status |
 |------|--------|
 | RSS budget docs | Done (`memory.md`) |
 | Soft idle RSS sample | Done (`rss-soft.yml` / `scripts/ops/rss_soft.sh`) |
-| Feature-gated jemallocator | Not wired |
-| Soft dhat sample job | Deferred |
+| Feature-gated jemallocator | Done (`src/alloc.rs`, `jemalloc` feature) |
+| Soft dhat sample job | Done (`dhat-soft.yml` / `scripts/ops/dhat_soft.sh`) |
 
-Do not enable global jemalloc on all bins until spawn/Zig hot-core alloc ownership is reviewed.
+Do not enable global jemalloc on all bins until spawn/Zig hot-core alloc ownership is reviewed;
+container + documented serve builds use the feature explicitly.

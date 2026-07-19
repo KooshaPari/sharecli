@@ -1,31 +1,33 @@
-name: RSS sample (soft)
+name: dhat heap sample (soft)
 
-# C00 L8 — soft idle RSS sample for sharecli serve (continue-on-error).
+# C00 L8 — soft dhat heap profile for sharecli serve (continue-on-error).
 
 on:
   pull_request:
     paths:
-      - "src/**"
+      - "src/alloc.rs"
+      - "Cargo.toml"
       - "docs/ops/memory.md"
       - "docs/ops/alloc-profiling.md"
-      - ".github/workflows/rss-soft.yml"
-      - "scripts/ops/rss_soft.sh"
+      - ".github/workflows/dhat-soft.yml"
+      - "scripts/ops/dhat_soft.sh"
   push:
     branches: [main]
     paths:
-      - "src/**"
+      - "src/alloc.rs"
+      - "Cargo.toml"
       - "docs/ops/memory.md"
       - "docs/ops/alloc-profiling.md"
-      - ".github/workflows/rss-soft.yml"
-      - "scripts/ops/rss_soft.sh"
+      - ".github/workflows/dhat-soft.yml"
+      - "scripts/ops/dhat_soft.sh"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  rss-soft:
-    name: idle RSS soft budget
+  dhat-soft:
+    name: dhat heap soft budget
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
@@ -36,8 +38,6 @@ jobs:
           version: 0.14.1
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
-          shared-key: rss-soft
-      - name: Build sharecli (release, jemalloc)
-        run: cargo build --locked --release -p sharecli --features jemalloc
-      - name: Sample idle RSS vs soft budget
-        run: bash scripts/ops/rss_soft.sh
+          shared-key: dhat-soft
+      - name: Sample heap profile vs soft budget
+        run: bash scripts/ops/dhat_soft.sh

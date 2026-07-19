@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-19 (audit_scorecard ~84% B / 85% weighted; C02 L25 → 90% A; C01 L11 → 83% B)
+**Last sync:** 2026-07-19 (audit_scorecard ~84% B / 85% weighted; C00 L8 → 83% B; C02 L25 → 90% A)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -68,6 +68,7 @@
 | C00 | L2 | Unified HTTP error envelope | High | W12.1 · T-400 · #330 | Status: Closed | `src/error_envelope.rs` · `tests/c00_serve_error_envelope.rs` | agent-c00 |
 | C00 | L2 | OpenAPI `ErrorEnvelope` component | High | W13.1 · T-500 · #332 | Status: Closed | `docs/openapi/serve.yaml` · `scripts/check-openapi-drift.py` | agent-c00 |
 | C00 | L1 | lib.rs util facade (Phase 1) | High | lib-sprawl Phase 1 · FR-003 | Status: Closed | `src/util/mod.rs` · `tests/c00_lib_sprawl_facade.rs` · `docs/ops/lib-sprawl-plan.md` | agent-c00 |
+| C00 | L8 | jemalloc serve + dhat soft heap sample | Med | W14 · FR-003 | Status: Closed | `src/alloc.rs` · `docs/ops/memory.md` · `dhat-soft.yml` · `tests/c00_l8_allocator.rs` | agent-c00 |
 | C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 · #329 | Status: Closed | `docs/ops/config-proptest.md` · `config_validator.rs` | agent-c07 |
 | C07 | L65 | cargo-mutants hard gate | Med | W14 · T-640 · FR-003 | Status: Closed | `mutants.yml` · `ci.yml` mutants+ci-success · `docs/ops/mutants-hard-gate.md` | agent-c07 |
 
