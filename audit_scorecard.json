@@ -3,17 +3,17 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c01-l12-fr-ssot",
+  "commit": "pending-c00-l9-sbom-release-gate",
   "date": "2026-07-19",
-  "overall_pct": 86,
+  "overall_pct": 87,
   "grade": "B",
-  "weighted_overall_pct": 87,
-  "wave_note": "C01 L12 2→3 (26/30 87% B): FR↔test SSOT gate + FUNCTIONAL_REQUIREMENTS acceptance refs. Unweighted ~86% B; tier-1 weighted ~87% B.",
+  "weighted_overall_pct": 88,
+  "wave_note": "C00 L9 2→3 (27/30 90% A): SBOM-in-release gate + tests/c00_l9_sbom_release_gate.rs. Unweighted ~87% B; tier-1 weighted ~88% B.",
   "clusters": {
     "C00": {
-      "pct": 87,
-      "grade": "B",
-      "score": "26/30"
+      "pct": 90,
+      "grade": "A",
+      "score": "27/30"
     },
     "C01": {
       "pct": 87,
