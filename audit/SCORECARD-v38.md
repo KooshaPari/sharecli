@@ -19,7 +19,7 @@
 | C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit SIEM export |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
-| C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | live PD; chaos hard gate; tray dashboard HTTP trace |
+| C05 | Observability (deep) | L41–L50 | 25/30 | 83% | B | live PD; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_re widen |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 84% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (80+80+87+92+83+80+83+80+80+80+89+84)/12 with C04 **83%** + C06 **83%** + C07 **80%** + C09 **80%** + C11 **84%** = 995/12 = **82.9% ≈ 83%**.)
+(Unweighted mean of cluster pcts: (80+80+87+92+83+83+83+80+80+80+89+84)/12 with C05 **83%** = 1001/12 = **83.4% ≈ 83%**.)
 
-**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (83+80+83+80+80+80+89+84) = 678 + 659 = 1337 / 16 = **83.6% ≈ 84%** (B).
+**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (83+83+83+80+80+80+80+89+84) = 678 + 662 = 1340 / 16 = **83.8% ≈ 84%** (B).
 
 ## Headline Findings
 
@@ -469,7 +469,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - L110 evidence: Win tray mutex + `asInvoker` manifest (`windows/ShareCLITray/`).
 - Overall unweighted **~83% B** (992/12); weighted **~83% B** (1334/16).
 
-### 2026-07-18 (C04 OSV hard gate — L38)
-- **C04 24/30 (80% B) → 25/30 (83% B):** L38 2→3 — removed `continue-on-error` + soft pass shim; `ci.yml` `osv` job + `ci-success` needs; `scripts/ci/osv_scan.sh` + `just osv-scan`; `tests/c04_osv_hard_gate.rs` (FR-003 · T-655).
-- Baseline: `osv-scanner --severity=HIGH,CRITICAL` clean on `Cargo.lock` (1 MEDIUM `jsonwebtoken` tracked separately).
-- Overall unweighted **~83% B** (995/12); tier-1 weighted **~84% B** (1337/16).
+### 2026-07-18 (C05 chaos restart ci-success hard gate — L50)
+- **C05 24/30 (80% B) → 25/30 (83% B):** L50 2→3 — `ci.yml` `chaos-restart-hard` job + `ci-success` needs; `chaos-restart-hard.yml` PR triggers removed (cron/dispatch parity); `tests/c05_chaos_restart_hard_gate.rs` (FR-003 · T-630).
+- Overall unweighted **~83% B** (1001/12); tier-1 weighted **~84% B** (1340/16). Branch protection required check still deferred.

@@ -102,6 +102,7 @@ flowchart TD
 | T-645 | Sync machine `audit_scorecard.json` to live SCORECARD | audit | T-550 | S | DONE | JSON cluster pct/grade/score + overall_pct/grade/date match `audit/SCORECARD-v38.md` Category Scores |
 | T-640 | Mutants soft→hard gate (C07 L65) | FR-003 / C07 L65 | T-550 | M | DONE | No `continue-on-error`; `ci-success` needs `mutants`; L65 2→3; C07 80% B |
 | T-655 | OSV/GHSA hard gate (C04 L38) | FR-003 / C04 L38 | T-550 | S | DONE | No soft shim; `ci.yml` `osv` + `ci-success`; L38 2→3; C04 83% B |
+| T-630 | Chaos restart ci-success hard gate (C05 L50) | FR-003 / C05 L50 | T-550 | S | DONE | `ci.yml` `chaos-restart-hard` + `ci-success`; L50 2→3; C05 83% B |
 | T-650 | Seven-day Harbor soak log completion (W14.2) | FR-003 / C08 L76 | T-520 | M | IN_PROGRESS | Seven consecutive `main` `harbor-eval-stub-soft.yml` STUB PASS rows logged; local soft soak alone does not close |
 | T-660 | GHCR cosign sign/attest hard publish (C06 L56) | C06 L56 | T-550 | M | READY | Keyless cosign on GHCR; soft→hard; L56 2→3 |
 

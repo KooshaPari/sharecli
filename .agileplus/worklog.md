@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-18 (C05 chaos ci-success hard gate — T-630 / FR-003)
+- Status: DONE — `ci.yml` `chaos-restart-hard` job + `ci-success` needs; `chaos-restart-hard.yml` cron/dispatch parity; `tests/c05_chaos_restart_hard_gate.rs`
+- Score: C05 24/30 (80% B) → 25/30 (83% B); L50 2→3; unweighted overall ~83% B; tier-1 weighted ~84% B
+- FR: FR-003 · C05 L50 · T-630
+
 ## 2026-07-18 (C04 OSV hard gate — T-655 / FR-003)
 - Status: DONE — removed `continue-on-error` + soft pass shim; `ci.yml` `osv` + `ci-success` needs; `scripts/ci/osv_scan.sh` + `just osv-scan`; `tests/c04_osv_hard_gate.rs`
 - Score: C04 24/30 (80% B) → 25/30 (83% B); L38 2→3; unweighted overall ~83% B; tier-1 weighted ~84% B

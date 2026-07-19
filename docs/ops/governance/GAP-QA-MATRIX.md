@@ -46,7 +46,7 @@
 | C05 | L44 | IPC + tray traceparent inject | Med | W13.4 · T-530 | Status: Closed | `src/otel.rs` · `crates/sharecli-ffi` · `tests/c05_trace_ipc_tray_inject.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
 | C05 | L44 | Tray dashboard HTTP traceparent inject | Med | W14.1 · T-610 · FR-003 | Status: Closed | `src/tray_http.rs` · `crates/sharecli-ffi::sharecli_serve_get` · `src/dashboard.html` · `tests/c05_trace_tray_http_inject.rs` · `docs/ops/trace-multihop.md` | agent-c05 |
 | C05 | L47 | Soak healthz CI | Med | W11.4 · #319 | Status: Closed | `.github/workflows/soak-soft.yml` · `scripts/load/soak_healthz.sh` | agent-c05 |
-| C05 | L50 | Chaos restart hard CI | Low | W14 · T-630 | Status: In progress | `.github/workflows/chaos-restart-hard.yml` · `docs/ops/chaos-restart-hard-gate.md` · `just chaos-hard` | agent-c05 |
+| C05 | L50 | Chaos restart hard CI | Low | W14 · T-630 | Status: Closed | `ci.yml` `chaos-restart-hard` + `ci-success` · `chaos-restart-hard.yml` · `tests/c05_chaos_restart_hard_gate.rs` | agent-c05 |
 | C05 | L48 | Chaos restart probe | Low | W11.6 · #324 | Status: Closed | `scripts/load/chaos_restart.sh` · `just chaos-soft` | agent-c05 |
 | C02 | L28 | Spawn audit JSONL rows | Med | W11.5 · #323 | Status: Closed | `src/runtime.rs` · `tests/spawn_audit.rs` (partial) | agent-c02 |
 | C02 | L21 | Federated IdP (beyond Bearer) | High | W5.1 | Status: Closed | `src/serve_auth.rs` + `docs/ops/AUTH.md` + `tests/fr012_serve_jwt_auth.rs` | maintainer |
