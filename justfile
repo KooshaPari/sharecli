@@ -175,6 +175,11 @@ doc-build:
     @echo ">> cargo doc (build only)"
     @cargo doc --no-deps --locked --all-features
 
+[group: 'doc']
+man:
+    @echo ">> clap_mangen → share/man/man1/sharecli.1 (C09 L81.13)"
+    @cargo run --locked --bin sharecli -- man --install
+
 # -------- quality gates --------
 [group: 'gate']
 gate: lint test audit deny fmt-check
