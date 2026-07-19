@@ -21,7 +21,7 @@
 | C04 | Security | L31–L40 | 26/30 | 87% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 26/30 | 87% | B | live PD roster; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 26/30 | 87% | B | SLSA L3; build provenance L3; vendor/mirror |
-| C07 | DX, QEng, Portability | L61–L70 | 26/30 | 87% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
+| C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
 | C10 | Visual Identity | L96–L107 | 34/36 | 94% | A | L99 skeletons; dashboard hex drift; error illustration tier-1 |
@@ -31,7 +31,7 @@
 
 **Weighted overall score:** 91% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+87+80+93+94+87)/12 = 1082/12 = **90.2% A**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+90+80+93+94+87)/12 = 1085/12 = **90.4% A**.)
 
 **Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+87+80+93+92+87) = 760 + 700 = 1460 / 16 = **91.3%** (A).
 
@@ -571,3 +571,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C10 33/36 (92% A) → 34/36 (94% A):** L101 2→3 — `error-state` disconnect panel + Retry CTA; `docs/visual/error-states.md`; `tests/c10_l101_error_states.rs`.
 - Top-3 C10 gaps: L99 skeletons; dashboard hex drift; error illustration tier-1.
 - Overall unweighted **90.2% A** (1082/12); tier-1 weighted **91% A** (1462/16).
+
+### 2026-07-19 (C07 L64 e2e/chaos test pyramid tier — FR-003)
+- **C07 26/30 (87% B) → 27/30 (90% A):** L64 2→3 — `tests/e2e_serve_healthz.rs` + `tests/e2e_chaos_recovery.rs`; `just test-e2e`; `docs/testing/e2e-tier.md`; `tests/c07_l64_e2e_tier_gate.rs`.
+- Top-3 C07 gaps: freebsd/wasm; examine_re widen; flake-tracker stats.
+- Overall unweighted **90.4% A** (1085/12); tier-1 weighted **91% A** (1465/16).
