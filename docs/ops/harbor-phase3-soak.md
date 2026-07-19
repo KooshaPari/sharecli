@@ -120,8 +120,8 @@ SOAK SCAFFOLD PASS: local stub + corpus preflight green (Phase 3 partial)
 |------|--------|
 | Harbor Phase 3 soak evidence plan | Done (this file) |
 | Harbor Phase 3 soak execution scaffold | Done (`harbor_soak.sh` + checklist log + soft CI) |
-| Seven-day green soak on `main` | Open (clock starts post-merge) |
+| Seven-day green soak on `main` | Open — **0/7 complete · 7 remaining** (local soft L1 2026-07-19 recorded; does not count) |
 | Record portage / pheno-harness pins in soak PR | Open |
 | Mark ADR 0002 superseded | Deferred (Phase 4) |
 
-**Status:** soft execution scaffold (Phase 3) · **FR:** FR-003 traceability · **Last sync:** 2026-07-18
+**Status:** Phase 3 soak IN_PROGRESS (W14.2 / T-650) · **FR:** FR-003 traceability · **Last sync:** 2026-07-19
