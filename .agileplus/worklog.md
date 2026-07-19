@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-19 (C09 L81.7 indicatif ETA — FR-004)
+- Status: DONE — `indicatif` dep; `src/progress.rs` StepProgress ETA; batch stop/project stop/prune; `tests/c09_l81_indicatif_eta.rs`
+- Score: C09 37/45 (82% B) → 38/45 (84% B); L81.7 2→3; unweighted overall ~85% B
+- FR: FR-004 · C09 L81.7
+
 ## 2026-07-19 (C00 L8 jemalloc + dhat soft — FR-003)
 - Status: DONE — `src/alloc.rs` jemalloc/dhat-heap features; Containerfile jemalloc build; `dhat-soft.yml`; `tests/c00_l8_allocator.rs`
 - Score: C00 24/30 (80% B) → 25/30 (83% B); L8 2→3; unweighted overall ~84% B; tier-1 weighted ~85% B

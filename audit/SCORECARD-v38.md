@@ -23,7 +23,7 @@
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_re widen |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
-| C09 | Accessibility + UX | L81–L95 | 37/45 | 82% | B | live VO/NVDA soft; visual hard diff residual |
+| C09 | Accessibility + UX | L81–L95 | 38/45 | 84% | B | live VO/NVDA soft; Playwright Tab-cycle; L81.8 design-system doc |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 38/45 | 84% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 85% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (87+83+90+92+83+83+83+80+80+80+80+89+84)/12 = 1014/12 = **84.5% ≈ 85%**.)
+(Unweighted mean of cluster pcts: (87+83+90+92+83+83+83+80+80+84+89+84)/12 = 1018/12 = **84.8% ≈ 85%**.)
 
-**Tier-1 double-weight (C00–C03):** (87+83+90+92)×2 + (83+83+83+80+80+80+80+89+84) = 704 + 662 = 1366 / 16 = **85.4% ≈ 85%** (B).
+**Tier-1 double-weight (C00–C03):** (87+83+90+92)×2 + (83+83+83+80+80+84+89+84) = 704 + 666 = 1370 / 16 = **85.6% ≈ 86%** (B).
 
 ## Headline Findings
 
@@ -472,6 +472,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-18 (C05 chaos restart ci-success hard gate — L50)
 - **C05 24/30 (80% B) → 25/30 (83% B):** L50 2→3 — `ci.yml` `chaos-restart-hard` job + `ci-success` needs; `chaos-restart-hard.yml` PR triggers removed (cron/dispatch parity); `tests/c05_chaos_restart_hard_gate.rs` (FR-003 · T-630).
 - Overall unweighted **~83% B** (1001/12); tier-1 weighted **~84% B** (1340/16). Branch protection required check still deferred.
+
+### 2026-07-19 (C09 L81.7 indicatif ETA — FR-004)
+- **C09 37/45 (82% B) → 38/45 (84% B):** L81.7 2→3 — `indicatif` dep; `src/progress.rs` `StepProgress` with ETA; batch `stop`/`project stop`/`prune --force`; `tests/c09_l81_indicatif_eta.rs`; `docs/a11y/status-and-recovery.md`.
+- Top-3 C09 gaps: live VO/NVDA soft (W9.3); Playwright Tab-cycle (L81.3); L81.8 design-system doc.
+- Overall unweighted **~85% B** (1018/12); tier-1 weighted **~85% B**.
 
 ### 2026-07-19 (C09 L81.6 stop --force confirm — FR-004)
 - **C09 36/45 (80% B) → 37/45 (82% B):** L81.6 2→3 — `stop` / `project stop` `--force` dry-run preview unless `--yes`; `tests/c09_l81_stop_force_confirm.rs`; `docs/a11y/status-and-recovery.md` recovery row.

@@ -32,6 +32,7 @@ Config validation prints field paths before exit (`src/config_validator.rs`). In
 
 - `sharecli serve`: Ctrl-C triggers clean shutdown (`src/commands/serve.rs`).
 - `sharecli report --watch`: Ctrl-C cancels watch mode.
+- `sharecli stop` / `sharecli project stop` / `sharecli prune --force`: batch operations show an **indicatif** progress bar with ETA on stderr when stderr is a TTY and the batch has ≥3 items; piped/CI output stays one line per process (`src/progress.rs`).
 - TUI: progress via gauge + footer poll counter (no silent blocking).
 
-Future: `indicatif` ETA bars for multi-minute CLI ops (tracked in C09 backlog).
+Use `--verbose` for additional stderr detail during troubleshooting.

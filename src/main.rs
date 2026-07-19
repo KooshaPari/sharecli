@@ -29,6 +29,7 @@ mod otel;
 mod paths;
 mod pprof_http;
 mod proc_compose;
+mod progress;
 mod radix_trie;
 mod rate_limiter;
 mod runtime;
@@ -48,6 +49,7 @@ use commands::{
     cast as cast_cmd, check_limits, config as config_cmd, health, pool_status,
     project as project_cmd, ps, run_pool, serve_run, set_limits, start, status, stop,
 };
+use progress::StepProgress;
 use runtime::ProcessPool;
 
 #[derive(Parser, Debug)]
@@ -733,23 +735,37 @@ async fn prune(idle_seconds: u64, force: bool) -> Result<()> {
     sys.refresh_all();
 
     let processes = pool.list().await;
-    let mut pruned = 0;
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
-    for proc in processes {
-        if proc.start_time > 0 && (now - proc.start_time) > idle_seconds {
-            if force {
-                pool.kill(proc.pid).await?;
+    let candidates: Vec<_> = processes
+        .into_iter()
+        .filter(|proc| proc.start_time > 0 && (now - proc.start_time) > idle_seconds)
+        .collect();
+
+    let total = candidates.len();
+    let progress = StepProgress::new("Pruning idle processes", total);
+    let line_mode = progress.uses_line_output();
+    let mut pruned = 0usize;
+
+    for proc in candidates {
+        if force {
+            pool.kill(proc.pid).await?;
+            progress.inc(Some(&format!("{} ({})", proc.pid, proc.name)));
+            if line_mode {
                 println!("Pruned process {} ({})", proc.pid, proc.name);
-            } else {
-                println!("Would prune: {} ({})", proc.pid, proc.name);
             }
+            pruned += 1;
+        } else {
+            println!("Would prune: {} ({})", proc.pid, proc.name);
             pruned += 1;
         }
     }
 
     if force {
-        println!("\nPruned {} processes.", pruned);
+        progress.finish(&format!("Pruned {pruned} processes"));
+        if line_mode {
+            println!("\nPruned {} processes.", pruned);
+        }
     } else {
         println!("\nWould prune {} processes (use --force to apply).", pruned);
     }
