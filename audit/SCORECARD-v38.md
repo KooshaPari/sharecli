@@ -15,7 +15,7 @@
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 26/30 | 87% | B | crate-split Phases 2–4; tight perf budgets; async pool loom |
-| C01 | CI, DX, Observability | L10–L19 | 25/30 | 83% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
+| C01 | CI, DX, Observability | L10–L19 | 26/30 | 87% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 25/30 | 83% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 86% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (87+83+90+92+83+83+83+83+80+91+89+84)/12 = 1028/12 = **85.7% ≈ 86%**.)
+(Unweighted mean of cluster pcts: (87+87+90+92+83+83+83+83+80+91+89+84)/12 = 1030/12 = **85.8% ≈ 86%**.)
 
-**Tier-1 double-weight (C00–C03):** (87+83+90+92)×2 + (83+83+83+83+80+91+89+84) = 704 + 676 = 1380 / 16 = **86.3% ≈ 86%** (B).
+**Tier-1 double-weight (C00–C03):** (87+87+90+92)×2 + (83+83+83+83+80+91+89+84) = 712 + 676 = 1388 / 16 = **86.8% ≈ 87%** (B).
 
 ## Headline Findings
 
@@ -515,3 +515,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C09 40/45 (89% B) → 41/45 (91% A):** L81.10 2→3 — `.vale.ini` + Microsoft rules; `docs/style-guide.md`; `scripts/lint/vale.sh`; `tests/golden/help.txt`; `tests/c09_l81_inclusive_language.rs`; `a11y.yml` `vale-inclusive-language` job.
 - Top-3 C09 gaps: live VO/NVDA soft (W9.3); L81.9 undo model; L81.13 FAQ/man page.
 - Overall unweighted **~86% B** (1028/12); tier-1 weighted **~86% B** (1380/16).
+
+### 2026-07-19 (C01 L12 FR↔test SSOT — T-670 / FR-003)
+- **C01 25/30 (83% B) → 26/30 (87% B):** L12 2→3 — `FUNCTIONAL_REQUIREMENTS.md` on-disk Acceptance refs for FR-001..005; `tests/c01_fr_ssot_gate.rs`; TRACEABILITY + matrix parity gate.
+- Top-3 C01 gaps: fluent catalogs deferred; gitleaks polish; advisory hard-fail.
+- Overall unweighted **~86% B** (1030/12); tier-1 weighted **~87% B** (1388/16).

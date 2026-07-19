@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-19 (C01 L12 FR↔test SSOT — T-670 / FR-003)
+- Status: DONE — `FUNCTIONAL_REQUIREMENTS.md` on-disk Acceptance refs FR-001..005; `tests/c01_fr_ssot_gate.rs`; TRACEABILITY + matrix parity
+- Score: C01 25/30 (83% B) → 26/30 (87% B); L12 2→3; unweighted overall ~86% B; tier-1 weighted ~87% B
+- FR: FR-003 · C01 L12 · T-670
+
 ## 2026-07-19 (C09 L81.10 Vale inclusive-language + help golden — FR-004)
 - Status: DONE — `.vale.ini` + Microsoft rules; `docs/style-guide.md`; `scripts/lint/vale.sh`; `tests/golden/help.txt`; `tests/c09_l81_inclusive_language.rs`; `a11y.yml` vale job
 - Score: C09 40/45 (89% B) → 41/45 (91% A); L81.10 2→3; unweighted overall ~86% B
