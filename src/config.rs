@@ -515,6 +515,9 @@ pub enum ProjectCmd {
         /// Force-kill processes instead of graceful stop
         #[arg(long)]
         force: bool,
+        /// Confirm destructive force-kill without interactive prompt
+        #[arg(long)]
+        yes: bool,
     },
     /// Stop then start all processes in a project group
     Restart {
@@ -526,6 +529,9 @@ pub enum ProjectCmd {
         /// Force-kill on stop phase
         #[arg(long)]
         force: bool,
+        /// Confirm destructive force-kill on stop phase
+        #[arg(long)]
+        yes: bool,
     },
     /// Show status table for all processes in a project group
     Status {

@@ -132,6 +132,10 @@ enum Commands {
         /// Force kill (SIGKILL)
         #[arg(short, long)]
         force: bool,
+
+        /// Confirm destructive force-kill without interactive prompt
+        #[arg(long)]
+        yes: bool,
     },
 
     /// Check process health
@@ -433,8 +437,8 @@ async fn main() -> Result<()> {
         Commands::Start { project, harness, cwd, args } => {
             start(project, harness, cwd.as_deref(), args).await?
         }
-        Commands::Stop { pid, project, harness, all, force } => {
-            stop(*pid, project.as_deref(), harness.as_deref(), *all, *force).await?
+        Commands::Stop { pid, project, harness, all, force, yes } => {
+            stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose } => status(*verbose).await?,
         Commands::Config { cmd } => config_cmd(cmd)?,
