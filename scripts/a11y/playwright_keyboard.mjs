@@ -6,6 +6,9 @@
  * SHARECLI_VISUAL_FIXTURE=1 for deterministic WebSocket mock (CI).
  */
 import { chromium } from "playwright";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 const url = process.env.SHARECLI_DASH_URL || "http://127.0.0.1:9000/";
 const deterministic = process.env.SHARECLI_VISUAL_FIXTURE === "1";
@@ -15,7 +18,62 @@ function fail(message) {
   process.exit(1);
 }
 
-const browser = await chromium.launch();
+/**
+ * Launch order: env override → Playwright chromium/headless-shell → system Edge/Chrome.
+ * Local macOS often lacks a complete ms-playwright cache (partial downloads).
+ */
+function launchOptions() {
+  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+    return { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH };
+  }
+  if (process.env.PLAYWRIGHT_CHANNEL) {
+    return { channel: process.env.PLAYWRIGHT_CHANNEL };
+  }
+  const cache = path.join(os.homedir(), "Library/Caches/ms-playwright");
+  const headless = path.join(
+    cache,
+    "chromium_headless_shell-1148",
+    "chrome-mac",
+    "headless_shell",
+  );
+  if (fs.existsSync(headless)) {
+    return {};
+  }
+  const full = path.join(
+    cache,
+    "chromium-1148",
+    "chrome-mac",
+    "Chromium.app",
+    "Contents",
+    "MacOS",
+    "Chromium",
+  );
+  const framework = path.join(
+    cache,
+    "chromium-1148",
+    "chrome-mac",
+    "Chromium.app",
+    "Contents",
+    "Frameworks",
+    "Chromium Framework.framework",
+  );
+  if (fs.existsSync(full) && fs.existsSync(framework)) {
+    return { executablePath: full };
+  }
+  for (const channel of ["msedge", "chrome", "chromium"]) {
+    const candidates = {
+      msedge: "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+      chrome: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      chromium: "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    };
+    if (fs.existsSync(candidates[channel])) {
+      return { channel };
+    }
+  }
+  return {};
+}
+
+const browser = await chromium.launch(launchOptions());
 try {
   const context = await browser.newContext({
     colorScheme: "dark",
