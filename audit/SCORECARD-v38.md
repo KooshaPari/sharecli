@@ -22,7 +22,7 @@
 | C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | live PD; chaos hard gate; tray dashboard HTTP trace |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 24/30 | 80% | B | thermal-tui proptest expand; freebsd/wasm; examine_re widen |
-| C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; bench-gate hard; agent-eval Phase 4 |
+| C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 36/45 | 80% | B | live VO/NVDA soft; visual hard diff residual |
 | C10 | Visual Identity | L96–L107 | 32/36 | 89% | B | visual hard diff; high-contrast; dashboard hex drift |
 | C11 | Packaging + Distribution | L108–L122 | 35/45 | 78% | B | hard codesign/notarize; dmg/msi; harden Win tray; in-binary updater |
@@ -450,3 +450,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C09 34/45 (76% B) → 36/45 (80% B):** L81.4 2→3 (documented SR procedure + axe 0 + landmark/SR structure tests; live VO/NVDA soft READY W9.3). Lane already had L81.11 at 3 (prior soft evidence); scorecard synced.
 - Evidence: `docs/a11y/sr-pass-evidence.md`, `docs/a11y/sr-checklist.md`, `tests/a11y/dashboard_landmarks.rs` `dashboard_sr_table_and_skip_link`.
 - Soft gap: live VoiceOver/NVDA per-release checkbox (does not block acceptance score).
+
+### 2026-07-18 (C08 L74 bench-gate tighten — FR-003)
+- `default_max_regression` **0.50 → 0.25** from `criterion-trends.csv` peak-to-peak evidence (max **3.20%** on `config_toml_from_str`; ~8× noise margin).
+- Wired through `criterion-baseline.json`, `bench.yml` `bench-gate`, `check-bench-baseline.py` / seeder defaults, `docs/eval/{TRENDS,REPRO}.md`, GAP-QA L74 Closed.
+- **L74 score unchanged (already 3)** — not a 2→3 lift; C08 stays **24/30 (80% B)**; `audit_scorecard.json` overall **82% B** unchanged.
+- Residual: 5–10% tighten after real `ubuntu-24.04` nightly rows replace seed CSV.

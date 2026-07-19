@@ -55,7 +55,7 @@
 | C08 | L76 | Harbor Phase 3 soak evidence plan | Med | W12.5 · T-440 · #326 | Status: Closed | `docs/ops/harbor-phase3-soak.md` · ADR 0005 | agent-c08 |
 | C08 | L76 | Harbor Phase 3 soak execution scaffold | Med | W13.3 · T-520 · #333 | Status: Closed | `scripts/eval/harbor_soak.sh` · `harbor-soak-exec-soft.yml` · `audit/.lane-c08/harbor-phase3-soak-log.md` | agent-c08 |
 | C08 | L76 | Seven-day Harbor soak log completion | Med | W14.2 · T-650 | Status: IN_PROGRESS | `audit/.lane-c08/harbor-phase3-soak-log.md` local L1 2026-07-19; **0/7 main · 7 remaining** | agent-c08 |
-| C08 | L74 | Tighter bench thresholds | Low | Wave2 | Status: READY | `docs/eval/TRENDS.md` | agent-c08 |
+| C08 | L74 | Tighter bench thresholds | Low | Wave2 · FR-003 | Status: Closed | `docs/eval/TRENDS.md` (0.50→0.25; max CSV p-t-p 3.20%); `criterion-baseline.json`; `bench.yml` | agent-c08 |
 | C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |
 | C06 | L56 | Container cosign publish | Low | W6.3 · T-660 | Status: Closed | `container-cosign.yml` · `container-cosign-hard.sh` · `container-cosign-verify.sh` · `docs/slsa.md` | agent-c06 |

@@ -2,7 +2,7 @@ name: Bench
 
 # C08 perf surface:
 #   - criterion (soft): advisory; continue-on-error
-#   - bench-gate (hard-ish): fails on >50% mean regression vs committed baseline
+#   - bench-gate (hard-ish): fails on >25% mean regression vs committed baseline
 # Bench flake quarantine: docs/testing/flake-policy.md § Bench / Criterion flakes
 
 on:
@@ -83,7 +83,7 @@ jobs:
           echo "rustc=$(rustc --version)"
           echo "seed=${SHARECLI_BENCH_SEED}"
           echo "baseline=docs/eval/baselines/criterion-baseline.json"
-          echo "threshold=50%"
+          echo "threshold=25%"
 
       - name: Run Criterion benches
         run: |
@@ -92,12 +92,12 @@ jobs:
           cargo bench --locked --bench prometheus_render -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
           cargo bench --locked --bench jwt_auth_validate -- --sample-size 10 --warm-up-time 1 --measurement-time 2 --save-baseline ci-gate
 
-      - name: Compare against committed baseline (50% max regression)
+      - name: Compare against committed baseline (25% max regression)
         run: |
           python3 scripts/check-bench-baseline.py \
             --baseline docs/eval/baselines/criterion-baseline.json \
             --criterion-dir target/criterion \
-            --threshold 0.5
+            --threshold 0.25
 
   # Longitudinal trend store (does not gate merges). Runs on cron + manual.
   bench-nightly:

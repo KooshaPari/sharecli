@@ -2,8 +2,9 @@
 """Compare Criterion estimates.json means against a committed baseline.
 
 Fails (exit 1) when any bench mean exceeds baseline_mean * (1 + threshold).
-Default threshold is 0.5 (50% regression) — generous to avoid CI flake on
-ubuntu-latest shared runners.
+Default threshold is baseline ``default_max_regression`` (0.25 / 25% as of
+2026-07-18) — tightened from 50% using committed trend peak-to-peak evidence
+(see docs/eval/TRENDS.md). Fallback if the key is absent remains 0.5.
 
 Criterion's --save-baseline / --baseline is useful locally for HTML reports,
 but does not exit non-zero on regression; this script is the merge gate.
@@ -82,7 +83,7 @@ def main() -> int:
         "--threshold",
         type=float,
         default=None,
-        help="max allowed relative regression (default: baseline default_max_regression or 0.5)",
+        help="max allowed relative regression (default: baseline default_max_regression or 0.25)",
     )
     parser.add_argument(
         "--strict-missing",

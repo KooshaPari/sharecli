@@ -8,7 +8,7 @@ existing harnesses; it does **not** add new hard merge gates.
 
 | Pillar | Surface | Gate posture |
 |--------|---------|--------------|
-| **L6** | Criterion microbenches (`config_parse`, `pool_list`, `prometheus_render`) | Soft advisory + hard-ish `bench-gate` (50% mean regression) |
+| **L6** | Criterion microbenches (`config_parse`, `pool_list`, `prometheus_render`) | Soft advisory + hard-ish `bench-gate` (25% mean regression) |
 | **L6** | Agent / FR local loops | Soft wall clocks — see [`LOCAL_LOOP_BUDGETS.md`](LOCAL_LOOP_BUDGETS.md) |
 | **L8** | `sharecli serve` idle RSS | Soft sample — see [`memory.md`](memory.md) + `rss-soft.yml` |
 
@@ -22,7 +22,7 @@ eval corpus / load harness expansion; C00 owns the cross-linked operator map her
 | Job | Required? | Behavior |
 |-----|-----------|----------|
 | `criterion` | No (`continue-on-error: true`) | Runs three benches with `--sample-size 10`; advisory on PR/main |
-| `bench-gate` | Yes | Fails when Criterion mean exceeds **50%** over `docs/eval/baselines/criterion-baseline.json` |
+| `bench-gate` | Yes | Fails when Criterion mean exceeds **25%** over `docs/eval/baselines/criterion-baseline.json` |
 
 Checker: `scripts/check-bench-baseline.py` against
 `target/criterion/<bench>/new/estimates.json`. Seed pin: `SHARECLI_BENCH_SEED=42`.
@@ -30,15 +30,16 @@ Reproduce locally per [`docs/eval/REPRO.md`](../eval/REPRO.md).
 
 ### Tight budgets (target state)
 
-Current gate tolerates **50%** mean regression so CI stays non-flaky on
-ubuntu-latest. Tighten toward **5–10%** only after three consecutive green main
-runs with re-seeded baselines (`scripts/seed-bench-baseline.py`).
+Gate tolerates **25%** mean regression (tightened 2026-07-18 from 50% using
+`criterion-trends.csv` peak-to-peak ≤ 3.20%; see [`TRENDS.md`](../eval/TRENDS.md)).
+Tighten toward **5–10%** only after real `ubuntu-24.04` nightly rows replace
+seed CSV means (`scripts/seed-bench-baseline.py`).
 
 | ID | Bench | SLO p95 (draft) | Gate today | Tight target |
 |----|-------|-----------------|------------|--------------|
-| BENCH-1 | `config_parse` | < 1 ms | mean ≤ 1.5× baseline | ≤ 10% regression |
-| BENCH-2 | `pool_list` | < 100 ms | mean ≤ 1.5× baseline | ≤ 10% regression |
-| BENCH-3 | `prometheus_render` | < 500 µs | mean ≤ 1.5× baseline | ≤ 10% regression |
+| BENCH-1 | `config_parse` | < 1 ms | mean ≤ 1.25× baseline | ≤ 10% regression |
+| BENCH-2 | `pool_list` | < 100 ms | mean ≤ 1.25× baseline | ≤ 10% regression |
+| BENCH-3 | `prometheus_render` | < 500 µs | mean ≤ 1.25× baseline | ≤ 10% regression |
 
 ### Local quick check
 
@@ -50,7 +51,7 @@ cargo bench --locked --bench config_parse -- --sample-size 10 --warm-up-time 1 -
 python3 scripts/check-bench-baseline.py \
   --baseline docs/eval/baselines/criterion-baseline.json \
   --criterion-dir target/criterion \
-  --threshold 0.5
+  --threshold 0.25
 ```
 
 Do **not** block FR lanes on full Criterion suites — see agent guidance in
@@ -101,11 +102,11 @@ blockers. Allocator follow-ups: [`alloc-profiling.md`](alloc-profiling.md).
 
 | Check | L6 / L8 | Hard? |
 |-------|---------|-------|
-| `bench-gate` | L6 | Yes (50% regression) |
+| `bench-gate` | L6 | Yes (25% regression; was 50% until 2026-07-18) |
 | `criterion` job | L6 | No |
 | `rss-soft.yml` | L8 | No |
-| Tight 5–10% bench threshold | L6 | Planned — docs only |
+| Tight 5–10% bench threshold | L6 / L74 | Planned — needs real nightly ubuntu rows |
 
-**Soft goal:** L6 stays **2** until profiler artifacts + tighter threshold land;
-L8 stays **2** until jemalloc/dhat optional paths wire. Cluster C00 unchanged at
-70% C pending hard tight gates.
+**Soft goal:** L6 stays **2** until profiler artifacts + 5–10% threshold land;
+L8 stays **2** until jemalloc/dhat optional paths wire. C08 L74 is already **3**
+(25% gate + trends); cluster C00 unchanged at 70% C pending hard tight gates.
