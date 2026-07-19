@@ -1,26 +1,28 @@
-# Hermetic builds (soft)
+# Hermetic builds (C06 L54)
 
 Audit-v38 **C06 L54**. Goal: reproducible offline builds after dependency fetch.
 
-## Soft contract (today)
+## Contract (hard + soft)
 
 1. **`Cargo.lock` + `--locked`** on CI builds (already required).
 2. **Fetch then offline:** `cargo fetch --locked` then `cargo build --locked --offline`.
-3. Soft CI: `.github/workflows/hermetic-soft.yml` (`continue-on-error`), including a
-   **poisoned-proxy** step (`HTTP_PROXY=http://127.0.0.1:9`) that still succeeds under
-   `--offline` — soft stand-in for a network-blocked runner.
-4. Local: `just hermetic` (same fetch → offline build).
+3. **Required CI gate:** `.github/workflows/ci.yml` `netblock` job runs
+   [`scripts/ci/netblock_check.sh`](../../scripts/ci/netblock_check.sh) and is aggregated into
+   `ci-success` (no `continue-on-error`).
+4. **Soft advisory:** `.github/workflows/hermetic-soft.yml` poisoned-proxy smoke
+   (`HTTP_PROXY=http://127.0.0.1:9`) and `.github/workflows/netblock-soft.yml` mirror the
+   same probe with `continue-on-error: true` for drift signal.
+5. **Local:** `just hermetic` (fetch → offline build) and `bash scripts/ci/netblock_check.sh`.
 
-This is **not** a fully network-blocked Actions runner or vendored `vendor/` tree yet.
-The soft gate proves: lockfile completeness for offline compile + resilience to broken
-egress during the offline phase.
+This is **not** a fully network-blocked Actions runner or committed `vendor/` tree yet.
+The hard gate proves lockfile completeness for offline compile on every PR.
 
 ## Hard follow-up
 
 | Control | Status |
 |---------|--------|
 | `cargo vendor` + committed or artifact vendor dir | Not required yet |
-| Network-blocked Actions step / hermetic builder | Deferred — see [network-block-build.md](./network-block-build.md) · [slsa-l3-plan.md](./slsa-l3-plan.md) |
+| Network-blocked Actions step / hermetic builder | Partial — `CARGO_NET_OFFLINE` enforced in CI |
 | Bit-identical SOURCE_DATE_EPOCH (see `docs/slsa.md`) | Seeded on release |
 
 ## Commands
@@ -30,4 +32,5 @@ cargo fetch --locked
 cargo build --locked --offline -p sharecli
 # or:
 just hermetic
+bash scripts/ci/netblock_check.sh
 ```

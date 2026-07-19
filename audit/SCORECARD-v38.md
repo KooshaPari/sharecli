@@ -20,25 +20,25 @@
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 26/30 | 87% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 26/30 | 87% | B | live PD roster; tray dashboard HTTP trace; branch protection |
-| C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
-| C07 | DX, QEng, Portability | L61–L70 | 25/30 | 83% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
+| C06 | Supply Chain | L51–L60 | 26/30 | 87% | B | SLSA L3; build provenance L3; vendor/mirror |
+| C07 | DX, QEng, Portability | L61–L70 | 26/30 | 87% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
 | C10 | Visual Identity | L96–L107 | 33/36 | 92% | A | L99 skeletons; L101 error views; dashboard hex drift |
-| C11 | Packaging + Distribution | L108–L122 | 38/45 | 84% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
+| C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
 ## Overall
 
-**Weighted overall score:** 90% · **Overall grade:** A
+**Weighted overall score:** 91% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+87+87+83+83+80+93+92+84)/12 = 1069/12 = **89.1% ≈ 89%**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+87+80+93+92+87)/12 = 1080/12 = **90.0% A**.)
 
-**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+83+83+83+80+91+89+84) = 760 + 680 = 1440 / 16 = **90.0%** (A).
+**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+87+80+93+92+87) = 760 + 700 = 1460 / 16 = **91.3%** (A).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C01 **93% A**.
-- **Wave13:** OpenAPI `ErrorEnvelope` (#332); PNG bytes + soft diff (#335); Harbor soak scaffold (#333); IPC/tray trace (#334).
+- **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb` — unweighted **90% A**.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), ruleset “Require signed commits” (C04 L34).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
@@ -555,6 +555,12 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C05 25/30 (83% B) → 26/30 (87% B):** L46 2→3 — `docs/ops/error-budget-policy.md`; MWMB fast/slow pairs in `alertmanager/sharecli.yml`; `tests/c05_l46_error_budget_mwmb.rs`; `just slo-alerts-validate`.
 - Top-3 C05 gaps: live PD roster; tray dashboard HTTP trace; branch protection chaos check.
 - Overall unweighted **~89% B** (1069/12); tier-1 weighted **90% A** (1449/16).
+
+### 2026-07-19 (C06 L54 + C07 L70 + C11 L115 — unweighted 90% A)
+- **C06 25/30 (83% B) → 26/30 (87% B):** L54 2→3 — `ci.yml` `netblock` required job + `ci-success`; `tests/c06_l54_netblock_gate.rs`; `docs/ops/hermetic-builds.md`.
+- **C07 25/30 (83% B) → 26/30 (87% B):** L70 2→3 — `fixtures/dev-seed/config.toml`; `scripts/dev/verify_seed.sh`; `just dev` seed verify; `tests/c07_l70_dev_seed.rs`.
+- **C11 38/45 (84% B) → 39/45 (87% B):** L115 2→3 — systemd unit in unsigned `.deb`; packaging-soft assert; `tests/c11_l115_systemd_packaging.rs`.
+- Overall unweighted **90% A** (1080/12); tier-1 weighted **91% A** (1460/16).
 
 ### 2026-07-19 (C09 L81.13 FAQ + man page — T-653 / FR-004)
 - **C09 41/45 (91% A) → 42/45 (93% A):** L81.13 2→3 — `docs/faq.md` top-5 FAQ; `clap_mangen` `sharecli man` + `share/man/man1/sharecli.1`; `just man`; `tests/c09_l81_13_faq_man.rs`.

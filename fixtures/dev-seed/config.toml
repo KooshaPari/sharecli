@@ -1,0 +1,39 @@
+# Dev seed fixture — C07 L70 one-command+verify+seed-data.
+# Parsed by `scripts/dev/verify_seed.sh` and `tests/c07_l70_dev_seed.rs`.
+
+[project_limits]
+memory_limit_mb = 1024
+max_processes = 8
+
+[pool]
+enabled = true
+max_per_type = 3
+idle_timeout_secs = 120
+max_age_secs = 1800
+spawn_delay_ms = 50
+
+[monitoring]
+health_check_interval_secs = 15
+idle_threshold_secs = 180
+high_memory_threshold_mb = 2048
+idle_process_threshold = 3
+per_process_warn_memory_bytes = 536870912
+
+[spawn]
+default_harness = "claude"
+prune_idle_seconds = 300
+
+[spawn_policy]
+nice_level = 10
+max_concurrent_builds = 2
+use_sccache = false
+
+[cast]
+default_transport = "clipboard"
+handshake_timeout_ms = 200
+max_retry_attempts = 2
+retry_backoff_ms = 100
+
+[serve]
+rate_limit_max = 120
+rate_limit_window_secs = 60

@@ -52,7 +52,7 @@ provenance predicate; `deny.toml` allow-list before any private mirror (L55).
 - Committed `vendor/` tree or org mirror
 - SLSA generator L3 containerized builder — see [slsa-l3-plan.md](./slsa-l3-plan.md)
 
-Soft goal: **L54 stays 2** with agent-readable network-block + vendoring path;
-soft CI: `netblock-soft.yml` + `hermetic-soft.yml` (`continue-on-error`).
+Soft goal: **L54 score 3** — required `netblock` job in `ci.yml` + `ci-success`; soft mirrors
+remain advisory (`netblock-soft.yml`, `hermetic-soft.yml`).
 
-**Status:** soft plan (Phase 0) · **FR:** FR-003 traceability · **Last sync:** 2026-07-17
+**Status:** hard CI gate live · **FR:** FR-003 traceability · **Last sync:** 2026-07-19
