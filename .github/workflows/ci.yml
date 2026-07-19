@@ -153,9 +153,9 @@ jobs:
         run: |
           set -euo pipefail
           cargo mutants --timeout 60 --jobs 2 \
-            --file 'crates/sharecli-thermal-tui/src/lib.rs' \
+            -p sharecli-thermal-tui \
             --json-outfile mutants-hard.json \
-            -- --locked -p sharecli-thermal-tui
+            -- --locked
       - name: Upload mutants JSON
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
