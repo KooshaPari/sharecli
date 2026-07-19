@@ -3,12 +3,12 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c00-l1-util-facade",
+  "commit": "pending-c11-packaging-lift",
   "date": "2026-07-18",
-  "overall_pct": 82,
+  "overall_pct": 83,
   "grade": "B",
   "weighted_overall_pct": 83,
-  "wave_note": "C00 L1 2→3 util facade Phase 1 (23/30 77%→24/30 80% B); root pub-mod allowlist + sharecli::util. Tier-1 weighted ~83%. Prior: C08 L74 bench-gate tighten; C09 L81.4. Strongest: C03 92% A, C10 89% B, C02 87% B. Lowest cluster C11 78%.",
+  "wave_note": "C11 78%→84% B: L108 unsigned .deb CI, L116 deploy matrix proven, L120 README badges, L121 uninstall subcommand, L110 Win tray mutex/manifest. Unweighted ~83% B.",
   "clusters": {
     "C00": { "pct": 80, "grade": "B", "score": "24/30" },
     "C01": { "pct": 80, "grade": "B", "score": "24/30" },
@@ -21,7 +21,7 @@
     "C08": { "pct": 80, "grade": "B", "score": "24/30" },
     "C09": { "pct": 80, "grade": "B", "score": "36/45" },
     "C10": { "pct": 89, "grade": "B", "score": "32/36" },
-    "C11": { "pct": 78, "grade": "B", "score": "35/45" }
+    "C11": { "pct": 84, "grade": "B", "score": "38/45" }
   },
   "governance": {
     "wbs": "docs/ops/governance/WBS-PHASED.md",

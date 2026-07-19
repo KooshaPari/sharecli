@@ -10,7 +10,8 @@ surface gains proof (release asset, deploy URL, or CI log).
 | crates.io (`cargo install sharecli`) | **shipped** | Publish via `.github/workflows/release.yml` `publish` job | Package version tracks `Cargo.toml` (`0.3.0`) |
 | cargo-binstall | **configured** | `[package.metadata.dist]` in `Cargo.toml` | Targets: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu` |
 | GitHub Releases (prebuilt binaries) | **ready** | Tag `v*` → `release.yml` `github-release` job | Attaches **UNSIGNED** CLI + tray archives + `.sha256` (+ SBOM). Not notarized (L112 open). |
-| Homebrew (`Formula/sharecli.rb`) | **partial** | Bottle URL still PLACEHOLDER; `brew install --HEAD` builds from git | Fill sha after first tagged attach of darwin tarball |
+| Homebrew (`Formula/sharecli.rb`) | **proven** | Bottle sha256 from `v0.3.0` darwin tarball | `Formula/sharecli.rb` + [`docs/ops/brew-bottle.md`](ops/brew-bottle.md) |
+| Linux `.deb` (unsigned) | **soft CI** | `packaging-soft.yml` + `scripts/packaging/build_deb.sh` | Artifact `sharecli_*_amd64.deb` on PR/main (L108 phase 3) |
 | OpenAPI (`docs/openapi/serve.yaml`) | **gated** | All `serve` Axum routes; drift CI via `scripts/check-openapi-drift.py` | Mirrors `sharecli serve` HTTP surface |
 | SBOM (CycloneDX) | **shipped** | `sbom.yml` on main + embedded in release tarballs | `sharecli.cdx.json` in-archive + CI artifact |
 | OCI container (`Containerfile`) | **ready** | Multi-stage build, non-root `USER sharecli`, `HEALTHCHECK` → `/healthz` | `podman build -f Containerfile -t sharecli .` then `podman run --rm -p 9000:9000 sharecli` |
@@ -34,11 +35,11 @@ Operator channels: [`ops/auto-update.md`](ops/auto-update.md) (C11 L111). Prefer
 
 ## Native installers (soft)
 
-Planned `.dmg` / `.msi` / `.deb` paths: [`ops/dmg-msi-packaging.md`](ops/dmg-msi-packaging.md) (C11 L108). Archives today; classic installers after L112 signing unblocks.
+Planned `.dmg` / `.msi` paths + shipped unsigned `.deb`: [`ops/dmg-msi-packaging.md`](ops/dmg-msi-packaging.md) (C11 L108). Archives today; signed classic installers after L112.
 
 ## Windows tray hardening (soft)
 
-WinUI tray mutex / elevation / manifest checklist: [`ops/win-tray-hardening.md`](ops/win-tray-hardening.md) (C11 L110 · L118). Release zip attach is soft until CI gate removes `continue-on-error`; Authenticode deferred to L112.
+WinUI tray mutex / elevation / manifest checklist: [`ops/win-tray-hardening.md`](ops/win-tray-hardening.md) (C11 L110 · L118). Mutex + `asInvoker` manifest embedded (`App.xaml.cs`, `ShareCLITray.csproj`); release zip still soft until CI gate removes `continue-on-error`; Authenticode deferred to L112.
 
 ## Quick container smoke
 
@@ -48,20 +49,15 @@ podman run --rm -p 9000:9000 sharecli:local
 curl -fsS http://127.0.0.1:9000/healthz
 ```
 
-## Homebrew PLACEHOLDER removal
+## Homebrew bottle
 
-Until release assets exist, build from git:
-
-```bash
-brew install --HEAD Formula/sharecli.rb
-```
-
-When the next release attaches `sharecli-aarch64-apple-darwin.tar.gz`:
+The formula ships a real `sha256` for `v0.3.0` `sharecli-aarch64-apple-darwin.tar.gz`.
+See [`docs/ops/brew-bottle.md`](docs/ops/brew-bottle.md) for refresh steps on the next tag.
 
 ```bash
-gh release download vX.Y.Z -p 'sharecli-aarch64-apple-darwin.tar.gz'
-shasum -a 256 sharecli-aarch64-apple-darwin.tar.gz
-# paste into Formula/sharecli.rb sha256, bump version + url
+brew install --HEAD Formula/sharecli.rb   # from this repo
+# or from tap when published:
+brew install sharecli
 ```
 
 ## SBOM + OpenAPI stubs

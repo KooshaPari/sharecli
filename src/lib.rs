@@ -25,6 +25,7 @@ pub mod metrics;
 pub mod monitoring;
 pub mod notifier;
 pub mod otel;
+pub mod paths;
 pub mod pprof_http;
 pub mod proc_table;
 pub mod runtime;

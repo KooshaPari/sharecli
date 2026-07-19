@@ -29,6 +29,7 @@ const ROOT_PUB_MOD_ALLOWLIST: &[&str] = &[
     "monitoring",
     "notifier",
     "otel",
+    "paths",
     "pprof_http",
     "proc_table",
     "runtime",

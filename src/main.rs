@@ -25,6 +25,7 @@ mod md_table;
 mod monitoring;
 mod notifier;
 mod otel;
+mod paths;
 mod pprof_http;
 mod proc_compose;
 mod radix_trie;
@@ -289,6 +290,17 @@ enum Commands {
 
     /// Print version + Backbone-2 ASCII splash
     Version,
+
+    /// Print uninstall guidance and optionally purge local config/state
+    Uninstall {
+        /// Delete config/state directories (requires explicit consent)
+        #[arg(long)]
+        purge_data: bool,
+
+        /// List paths that would be removed without deleting
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -471,6 +483,7 @@ async fn main() -> Result<()> {
         Commands::Util { cmd } => cmd.run()?,
         Commands::List { json } => cli_list(*json)?,
         Commands::Version => cli_version()?,
+        Commands::Uninstall { purge_data, dry_run } => commands::uninstall::run(*purge_data, *dry_run)?,
     }
 
     Ok(())
