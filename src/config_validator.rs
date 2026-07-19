@@ -71,7 +71,7 @@ pub fn report_and_exit(errors: &[ValidationError]) -> ! {
     for err in errors {
         eprintln!("  {err}");
     }
-    std::process::exit(1);
+    std::process::exit(i32::from(crate::error::EXIT_CONFIG));
 }
 
 // ---------------------------------------------------------------------------

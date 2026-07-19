@@ -4337,6 +4337,7 @@ dependencies = [
  "substrate",
  "sysinfo",
  "tempfile",
+ "thiserror 2.0.18",
  "tikv-jemallocator",
  "tokio",
  "tokio-tungstenite 0.30.0",
