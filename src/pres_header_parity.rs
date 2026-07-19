@@ -115,7 +115,7 @@ pub fn build_v3_default_fixture() -> Vec<u8> {
 pub fn assert_round_trip(input: &[u8]) {
     assert_eq!(input.len(), 512, "header must be 512 bytes, got {}", input.len());
     let parsed =
-        crate::pres_header_parse::parse(input).expect("header must round-trip through parser");
+        crate::util::pres_header_parse::parse(input).expect("header must round-trip through parser");
     assert_eq!(parsed.header_size, 512, "header_size must be 512");
     assert_eq!(
         parsed.magic,
@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn build_v3_default_fixture_passes_parse() {
         let buf = build_v3_default_fixture();
-        let parsed = crate::pres_header_parse::parse(&buf).expect("must parse");
+        let parsed = crate::util::pres_header_parse::parse(&buf).expect("must parse");
         assert_eq!(parsed.version, 3);
         assert_eq!(parsed.total_slots, 9);
         assert!(!parsed.is_encrypted);
@@ -256,7 +256,7 @@ mod tests {
         let v3e = build_and_verify_v3_encrypted();
         assert!(overlay_encrypted(&v3e));
         let v4 = build_and_verify_v4();
-        let parsed = crate::pres_header_parse::parse(&v4).expect("v4 must parse");
+        let parsed = crate::util::pres_header_parse::parse(&v4).expect("v4 must parse");
         assert_eq!(parsed.version, 4);
         assert_eq!(parsed.total_slots, 12);
     }

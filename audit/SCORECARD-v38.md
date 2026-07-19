@@ -14,7 +14,7 @@
 
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
-| C00 | Architecture + Module | L0–L9 | 23/30 | 77% | B | lib.rs sprawl; tight perf budgets; loom hard coverage |
+| C00 | Architecture + Module | L0–L9 | 24/30 | 80% | B | crate-split Phases 2–4; tight perf budgets; loom hard coverage |
 | C01 | CI, DX, Observability | L10–L19 | 24/30 | 80% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 26/30 | 87% | B | residual OAuth/SAML; spawn audit SIEM export |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 82% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (77+80+87+92+80+80+83+80+80+76+89+78)/12 with C06 **83%** + C07 **80%** = 982/12 = **81.8% ≈ 82%**.)
+(Unweighted mean of cluster pcts: (80+80+87+92+80+80+83+80+80+80+89+78)/12 with C06 **83%** + C07 **80%** + C09 **80%** = 989/12 = **82.4% ≈ 82%**.)
 
-**Tier-1 double-weight (C00–C03):** (77+80+87+92)×2 + (80+80+83+80+80+76+89+78) = 672 + 646 = 1318 / 16 = **82.4% ≈ 82%** (B). C06 L56 (T-660) + C07 L65 (T-640) lifts both land in the non-tier-1 bucket.
+**Tier-1 double-weight (C00–C03):** (80+80+87+92)×2 + (80+80+83+80+80+80+89+78) = 678 + 650 = 1328 / 16 = **83.0% ≈ 83%** (B). C00 L1 util facade (Phase 1) lands in the tier-1 bucket.
 
 ## Headline Findings
 
@@ -456,3 +456,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Wired through `criterion-baseline.json`, `bench.yml` `bench-gate`, `check-bench-baseline.py` / seeder defaults, `docs/eval/{TRENDS,REPRO}.md`, GAP-QA L74 Closed.
 - **L74 score unchanged (already 3)** — not a 2→3 lift; C08 stays **24/30 (80% B)**; `audit_scorecard.json` overall **82% B** unchanged.
 - Residual: 5–10% tighten after real `ubuntu-24.04` nightly rows replace seed CSV.
+
+### 2026-07-18 (C00 L1 util facade Phase 1 — FR-003)
+- **C00 23/30 (77% B) → 24/30 (80% B):** L1 2→3 — Tier C under `src/util/mod.rs` (`#[path]`); root `pub mod` allowlist only Tier A/B + `util`.
+- Evidence: `tests/c00_lib_sprawl_facade.rs`, `docs/ops/lib-sprawl-plan.md` Phase 1 DONE; fuzz `toml_lite` → `sharecli::util::toml_lite`.
+- Top-3 C00 gaps: crate-split Phases 2–4; tight perf budgets; loom hard coverage.
+- Tier-1 weighted **~83% B**; unweighted overall **~82% B**.

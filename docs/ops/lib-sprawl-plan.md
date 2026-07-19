@@ -81,7 +81,7 @@ path.
 | Phase | Scope | Breaking? | Gate |
 |-------|-------|-----------|------|
 | **0 — Plan** | This doc + scorecard/worklog | No | FR-003 evidence |
-| **1 — Facade** | Group Tier C under `pub mod util { pub use … }` in `lib.rs`; keep file paths | No | `cargo test` + `sharecli util --help` |
+| **1 — Facade** | Group Tier C under `pub mod util` (`src/util/mod.rs` + `#[path]`); keep file paths | Soft (library paths → `sharecli::util::*`) | `tests/c00_lib_sprawl_facade.rs` + `cargo test` |
 | **2 — Extract parity** | New `crates/sharecli-parity`; move Tier C files; root re-exports | No (re-export shim) | Workspace `members` + util CLI green |
 | **3 — Extract serve** | `crates/sharecli-serve`; move Tier B + `commands/serve.rs` helpers | No | OpenAPI drift + serve integration tests |
 | **4 — Extract runtime** | `crates/sharecli-runtime`; slim root `lib.rs` to ~10 re-exports | No | FR-001..005 acceptance |
@@ -118,14 +118,15 @@ After Phase 2, switch imports to `sharecli_parity::*`.
 4. **Bench / perf** — parity crate must not pull serve deps; see
    [`perf-budgets.md`](perf-budgets.md) for hot-path bench ownership (C00 L6).
 
-## Score impact (soft)
+## Score impact
 
-| Pillar | Today | After plan (docs) | After Phase 4 (code) |
-|--------|-------|-------------------|----------------------|
+| Pillar | Pre-Phase 1 | After Phase 1 (facade) | After Phase 4 (crates) |
+|--------|-------------|------------------------|------------------------|
 | L0 Architecture | 2 | 2 | 3 (formal crate graph) |
-| L1 Module boundaries | 2 | 2 | 3 (sprawl extracted) |
+| L1 Module boundaries | 2 | **3** (root allowlist + `util`) | 3 (parity crate extracted) |
 
-Cluster C00 stays **70% C** until Phase 2+ lands; this doc closes the L0/L1
-**planning** gap on the scorecard Top-3 list (`lib.rs sprawl`).
+Phase 1 landed **2026-07-18**: `src/lib.rs` root is Tier A/B + `pub mod util` only;
+Tier C lives in `src/util/mod.rs` with `#[path = "../…"]`. Evidence:
+`tests/c00_lib_sprawl_facade.rs` (FR-003). Cluster C00 **23/30 (77% B) → 24/30 (80% B)**.
 
-**Status:** soft plan (Phase 0) · **FR:** FR-003 traceability · **Last sync:** 2026-07-17
+**Status:** Phase 1 DONE · Phases 2–5 soft · **FR:** FR-003 · **Last sync:** 2026-07-18
