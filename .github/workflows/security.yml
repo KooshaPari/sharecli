@@ -32,7 +32,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: --verbose --redact
+          args: --verbose --redact --config gitleaks.toml
+
+  trufflehog:
+    name: TruffleHog Scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@9b6b5326bfe25dbd856eccc8a8275eb5dea7bd52
+        with:
+          extra_args: --only-verified
 
   # SAST Scanning
   sast:

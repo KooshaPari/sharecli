@@ -1,14 +1,16 @@
-# Gitleaks secret scanning (soft)
+# Secret scanning (gitleaks + trufflehog)
 
-Audit-v38 **C01 L18** (secret management) and **L19** cross-cut (supply-chain hygiene — no secrets in lockfiles, fixtures, or release artefacts).
+Audit-v38 **C04 L31** (secrets in repo), **C01 L18** (secret management), and **L19** cross-cut (supply-chain hygiene — no secrets in lockfiles, fixtures, or release artefacts).
 
 ## Current stance
 
 | Control | Status |
 |---------|--------|
 | `gitleaks.toml` at repo root | Configured (allowlists + custom rules) |
-| CI gate via `security.yml` | Enabled on push/PR to `main`, daily cron, `workflow_dispatch` |
-| Optional local pre-commit hook | Documented below; not required for CI green |
+| `.trufflehog.yml` at repo root | Configured (build/lockfile exclusions) |
+| CI gate via `security.yml` | **gitleaks** + **trufflehog** on push/PR, daily cron, `workflow_dispatch` |
+| Pre-commit hooks (`.pre-commit-config.yaml`) | **gitleaks** on commit; **trufflehog** on pre-push (`--only-verified`) |
+| Local parity | `just secret-scan` → `scripts/ci/secret_scan.sh` |
 | Secret rotation runbook | Checklist below; runtime store still env-only |
 
 See also: [`secrets.md`](secrets.md) (L18 env discipline), [`crypto-keys.md`](crypto-keys.md) (serve token policy).
@@ -69,39 +71,55 @@ Workflow: [`.github/workflows/security.yml`](../../.github/workflows/security.ym
 | `schedule` | Daily `0 2 * * *` UTC |
 | `workflow_dispatch` | Manual re-scan |
 
-**Job `secrets` (Secret Detection)**
+**Job `secrets` (Secret Detection — gitleaks)**
 
 1. `actions/checkout` with `fetch-depth: 0` (full history — catches secrets in older commits on PRs).
-2. `gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7` with `args: --verbose --redact`.
+2. `gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7` with `args: --verbose --redact --config gitleaks.toml`.
 3. `GITHUB_TOKEN` supplied for PR annotation (read-only `contents` / `actions` permissions).
 
-The same workflow also runs SAST (clippy security lints, `cargo audit`), dependency audit, and optional Trivy container scan — gitleaks is the **secret** lane only.
+**Job `trufflehog` (TruffleHog Scan)**
 
-## Optional pre-commit hook
+1. `actions/checkout` with `fetch-depth: 0`.
+2. `trufflesecurity/trufflehog@9b6b5326bfe25dbd856eccc8a8275eb5dea7bd52` with `extra_args: --only-verified`.
+3. Respects `.trufflehog.yml` path exclusions (lockfiles, `target/`, golden PNGs).
 
-CI is the enforcement gate. A local hook catches accidents before push.
+The same workflow also runs SAST (clippy security lints, `cargo audit`), dependency audit, and optional Trivy container scan — gitleaks + trufflehog are the **secret** lanes.
+
+## Pre-commit hooks
+
+Committed [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) wires:
+
+| Hook | Stage | Command |
+|------|-------|---------|
+| gitleaks | pre-commit | `gitleaks detect … --config gitleaks.toml` |
+| trufflehog | pre-push | `trufflehog filesystem . --fail --only-verified` |
 
 **Prerequisites:** [pre-commit](https://pre-commit.com/) installed (`pip install pre-commit` or your OS package manager).
 
-Add to a **local** `.pre-commit-config.yaml` fragment (or merge into your developer overlay):
-
-```yaml
-repos:
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
-    hooks:
-      - id: gitleaks
-        args: [--verbose, --redact, --config, gitleaks.toml]
-```
-
-Enable:
-
 ```bash
 pre-commit install
-pre-commit run gitleaks --all-files   # one-shot sanity check
+pre-commit install --hook-type pre-push
+pre-commit run gitleaks --all-files
 ```
 
-The committed `.pre-commit-config.yaml` may point at shared infra templates; treat gitleaks as **opt-in** until a federated hook lands repo-wide.
+CI remains the enforcement gate; hooks catch accidents before push.
+
+## Local verify (dual scanner)
+
+```bash
+just secret-scan
+# or:
+bash scripts/ci/secret_scan.sh
+```
+
+Single-scanner:
+
+```bash
+gitleaks detect --source . --verbose --redact --config gitleaks.toml
+trufflehog filesystem . --fail --only-verified
+```
+
+Match CI flags: gitleaks `--verbose --redact --config gitleaks.toml`; trufflehog `--only-verified`.
 
 ## Secret rotation checklist
 
@@ -112,25 +130,25 @@ Use when a real secret may have touched git, CI logs, or a shared host.
 | 1. **Contain** | Revoke the exposed credential at the provider (GitHub, OpenAI, AWS, Slack, etc.). |
 | 2. **Rotate** | Issue a new secret; update CI/org secrets and runtime env (`SHARECLI_SERVE_TOKEN`, API keys). |
 | 3. **Redeploy** | Restart `sharecli serve` (or dependent services) so the new env value is live. |
-| 4. **Scan** | Run `gitleaks detect --source . --verbose` locally; re-run **Security Scan** workflow on `main`. |
+| 4. **Scan** | Run `just secret-scan` locally; re-run **Security Scan** workflow on `main`. |
 | 5. **History** | If the secret was **committed**, use `git filter-repo` or BFG per org policy; force-push only with maintainer approval. |
 | 6. **Disclose** | File an internal incident note; open a GHSA/private advisory if the secret grants org-wide access. |
 | 7. **Prevent** | Add allowlist entry only for intentional fixtures; never allowlist production-shaped literals. |
 
 **SLO (soft):** human/API keys ≤ 90 days; serve tokens on compromise or quarterly for shared hosts.
 
-## Audit evidence (C01)
+## Audit evidence (C04 / C01)
 
-| Line | Evidence in this repo | Score (soft) |
-|------|------------------------|--------------|
-| **L18** Secret management | `gitleaks.toml`, `security.yml`, `.env.example`, this runbook, [`secrets.md`](secrets.md) | **2** — scanning + docs; OS keyring deferred |
-| **L19** Supply-chain security | `Cargo.lock` + `--locked` CI, `deny.toml`, CycloneDX SBOM (`sbom.yml` / release); gitleaks prevents secret leakage into artefacts | **3** — unchanged; gitleaks polish is L18 documentation |
+| Line | Evidence in this repo | Score |
+|------|------------------------|-------|
+| **L31** Secrets in repo | `gitleaks.toml`, `security.yml` (gitleaks + trufflehog), `.pre-commit-config.yaml`, `.trufflehog.yml`, `scripts/ci/secret_scan.sh`, this runbook | **3** — dual scanner CI + pre-commit + PR bot |
+| **L18** Secret management | `gitleaks.toml`, `security.yml`, `.env.example`, [`secrets.md`](secrets.md) | **2** — scanning + docs; OS keyring deferred |
+| **L19** Supply-chain security | `Cargo.lock` + `--locked` CI, `deny.toml`, CycloneDX SBOM (`sbom.yml` / release); secret scanners prevent leakage into artefacts | **3** — unchanged |
 
 **Soft follow-up**
 
 | Item | Status |
 |------|--------|
-| Gitleaks runbook + rotation checklist | Done (this file) |
-| Federated pre-commit gitleaks in-repo | Deferred |
-| Second scanner (e.g. trufflehog) | Deferred |
+| Gitleaks + trufflehog runbook + rotation checklist | Done (this file) |
+| Federated pre-commit in-repo | Done (`.pre-commit-config.yaml`) |
 | Runtime OS keyring for serve token | Deferred |

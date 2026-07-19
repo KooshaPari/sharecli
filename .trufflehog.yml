@@ -1,0 +1,16 @@
+# TruffleHog filesystem/git scan exclusions (C04 L31).
+# Verified detectors only in CI/pre-commit; lockfiles and build artefacts excluded.
+exclude:
+  paths:
+    - ".git/**"
+    - "target/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "**/*.lock"
+    - "**/*.sum"
+    - ".github/workflows/**"
+    - "tests/golden/**"
+    - "tests/visual/**"
+include:
+  files:
+    - "**/*"
