@@ -54,15 +54,15 @@
 | C02 | L21 | Federated IdP (beyond Bearer) | High | W5.1 | Status: Closed | `src/serve_auth.rs` + `docs/ops/AUTH.md` + `tests/fr012_serve_jwt_auth.rs` | maintainer |
 | C02 | L23 | Audit retention + rotation | Med | W5.2 | Status: Closed | `src/audit_log.rs` + `docs/ops/AUTH.md` | maintainer |
 | C02 | L27 | AuthN/HTTP burn alerts | Med | W5.2 | Status: Closed | `docs/ops/alertmanager/sharecli.yml` + `src/http_red.rs` | maintainer |
-| C08 | L76 | Harbor Phase 3 soak evidence plan | Med | W12.5 · T-440 · #326 | Status: Closed | `docs/ops/harbor-phase3-soak.md` · ADR 0005 | agent-c08 |
-| C08 | L76 | Harbor Phase 3 soak execution scaffold | Med | W13.3 · T-520 · #333 | Status: Closed | `scripts/eval/harbor_soak.sh` · `harbor-soak-exec-soft.yml` · `audit/.lane-c08/harbor-phase3-soak-log.md` | agent-c08 |
-| C08 | L76 | Seven-day Harbor soak log completion | Med | W14.2 · T-650 | Status: IN_PROGRESS | `audit/.lane-c08/harbor-phase3-soak-log.md` local L1 2026-07-19; **0/7 main · 7 remaining** | agent-c08 |
+| C08 | L76 | Harbor Phase 3 soak evidence plan | Med | W12.5 · T-440 · #326 | Status: EXTRACTED / N/A (sharecli) | Destination: `phenotype-tooling/crates/benchora/harbor-soft` · `portage-temp` · ADR 0005 | agent-c08 |
+| C08 | L76 | Harbor Phase 3 soak execution scaffold | Med | W13.3 · T-520 · #333 | Status: EXTRACTED / N/A (sharecli) | Destination: benchora `harbor-soft` · `KooshaPari/portage-temp` | agent-c08 |
+| C08 | L76 | Seven-day Harbor soak log completion | Med | W14.2 · T-650 | Status: EXTRACTED / N/A (sharecli) | Tracked in benchora/`portage-temp` — not sharecli `main` | agent-c08 |
 | C08 | L74 | Tighter bench thresholds | Low | Wave2 · FR-003 | Status: Closed | `docs/eval/TRENDS.md` (0.50→0.25; max CSV p-t-p 3.20%); `criterion-baseline.json`; `bench.yml` | agent-c08 |
 | C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |
 | C06 | L56 | Container cosign publish | Low | W6.3 · T-660 | Status: Closed | `container-cosign.yml` · `container-cosign-hard.sh` · `container-cosign-verify.sh` · `docs/slsa.md` | agent-c06 |
 | C06 | L53–L54 | SLSA L3 / hermetic builds | Med | W11.4 | Status: Closed | `docs/ops/slsa-l3-plan.md` · `netblock-soft.yml` · `hermetic-soft.yml` | agent-c06 |
-| C08 | L71 | Harbor eval stub | Med | W11.4 · #321 | Status: Closed | `harbor-eval-stub-soft.yml` · `scripts/eval/harbor_stub.sh` | agent-c08 |
+| C08 | L71 | Harbor eval stub | Med | W11.4 · #321 | Status: EXTRACTED / N/A (sharecli) | Destination: benchora `harbor-soft` · ADR 0002/0005 | agent-c08 |
 | C09 | L81.11 | Playwright baseline policy | Low | W11.3 | Status: Closed | `docs/a11y/playwright-viewports.md` | agent-c09 |
 | C09 | L81.11 | Committed PNG baselines + soft diff | Med | W13.2 · T-510 · #335 | Status: Closed | `tests/visual/dashboard/*.png` · `visual-soft.yml` · `docs/visual/golden-visual-tests.md` | agent-c09 |
 | C10 | L107 | Deterministic dashboard PNG hard gate | Med | FR-003 · W14.1 · T-600 | Status: Closed | `visual-soft.yml` · `scripts/a11y/playwright_viewports.mjs` · `tests/visual/dashboard/*.png` | agent-c10 |

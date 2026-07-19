@@ -3,7 +3,7 @@
 <p align="center">
   <a href="assets/icons/sharecli-512x512.png"><img src="assets/icons/sharecli-512x512.png" alt="sharecli" width="160" height="160"></a>
 </p>
-<p align="center"><em>Shared CLI process manager for multi-project agent orchestration — declarative, hot-reload, observable.</em></p>
+<p align="center"><em>OS-adjacent agent runtime — detect, watch, coalesce, mesh.</em></p>
 <p align="center">
   <a href="https://github.com/KooshaPari/sharecli/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KooshaPari/sharecli/ci.yml?branch=main&label=CI" alt="CI"></a>
   <a href="https://crates.io/crates/sharecli"><img src="https://img.shields.io/crates/v/sharecli.svg" alt="crates.io"></a>
@@ -13,13 +13,32 @@
 
 ---
 
-A process supervisor CLI for managing long-running services with declarative
-configuration, hot-reload, and rich observability.
+`sharecli` is an **OS/kernel-adjacent agent runtime** for hosts running many
+coding agents at once. It does **not** wrap vendor agent binaries (for example
+Claude Code). It discovers agents by scanning processes and matching known
+patterns, watches CPU / memory / network / FDs and syscall-relevant IO, and
+under contention **speculatively coalesces** redundant concurrent work across
+agents (read coalesce, lock-wait cache, thermal gate). An **agent mesh**
+coordinates that shared substrate.
 
-`sharecli` watches a single TOML config, supervises the processes declared in
-it, exposes a small HTTP API for health and metrics, and ships with first-class
-desktop and webhook notifications, shell completions, `proc-compose`
-integration, Prometheus metrics, and an executable plugin registry.
+Core crates:
+
+| Crate | Role |
+| ----- | ---- |
+| `sharecli-core` | Hypervisor loop, thermal gate, coalesce orchestration |
+| `sharecli-fuse` | FUSE IO intercept for shared cwd / build-cache reads |
+| `sharecli-ipc` | CoalesceCache and IPC debounce/queue |
+| `sharecli-fleet` | Fleet registry + thermal governor |
+
+Harbor / agent-eval soft harness lives **outside** this repo: suite-facing
+stubs in [`phenotype-tooling/crates/benchora`](https://github.com/KooshaPari/phenotype-tooling)
+(`harbor-soft/`); Harbor fork/env in
+[`portage-temp`](https://github.com/KooshaPari/portage-temp) (standing home
+while `portage` awaits GH restore). See [ADR 0002](docs/adr/0002-eval-surface-out-of-scope.md).
+
+The CLI also ships a declarative supervisor surface (TOML config, hot-reload,
+HTTP health/metrics, tray/dashboard, plugins) for process lifecycle on top of
+that hypervisor stack.
 
 ## Installation
 
@@ -129,6 +148,9 @@ rm -rf ~/.config/sharecli
 
 ## Features
 
+- **Agent detect / watch / coalesce** — proc-pattern discovery (no vendor-bin
+  wrap), resource watch, thermal gate, CoalesceCache + optional FUSE IO share
+  (`sharecli-core` / `fuse` / `ipc` / `fleet`).
 - **Config hot-reload** — uses `notify` to watch the config file and apply
   changes to the running supervisor in place (no restart required).
 - **Health-check scheduler** — runs periodic HTTP/TCP/exec probes against

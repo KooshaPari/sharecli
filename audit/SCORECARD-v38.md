@@ -22,7 +22,7 @@
 | C05 | Observability (deep) | L41–L50 | 26/30 | 87% | B | live PD roster; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 26/30 | 87% | B | SLSA L3; build provenance L3; vendor/mirror |
 | C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
-| C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
+| C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 N/A here (ADR 0002); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
 | C10 | Visual Identity | L96–L107 | 34/36 | 94% | A | L99 skeletons; dashboard hex drift; error illustration tier-1 |
 | C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
@@ -41,6 +41,7 @@
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb` — unweighted **90% A**.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112), SLSA L3 network-block (C06), ruleset “Require signed commits” (C04 L34).
+- **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
