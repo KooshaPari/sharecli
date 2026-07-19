@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# C06 L56 / T-660 — hard GHCR container cosign publish path.
+# Keyless sign + SLSA-ish attest + verify via GitHub OIDC (no Apple / extra secrets).
+#
+# Env:
+#   IMAGE_TAG          Local build tag (default: sharecli:ci)
+#   GHCR_IMAGE         Full GHCR ref (default: ghcr.io/<owner>/<repo>/sharecli:<tag>)
+#   GHCR_TAG           Tag suffix when GHCR_IMAGE unset (default: ci | git tag | sha)
+#   SKIP_GHCR_PUSH     If true, build + write digest/predicate only (permission blocker mode)
+#   GITHUB_TOKEN       Required for docker login when pushing
+set -euo pipefail
+
+IMAGE_TAG="${IMAGE_TAG:-sharecli:ci}"
+IDENTITY_REGEXP="${COSIGN_IDENTITY_REGEXP:-https://github.com/KooshaPari/sharecli/.*}"
+OIDC_ISSUER="${COSIGN_OIDC_ISSUER:-https://token.actions.githubusercontent.com}"
+PREDICATE_FILE="${PREDICATE_FILE:-sharecli-ci-slsa-predicate.json}"
+DIGEST_FILE="${DIGEST_FILE:-sharecli-ci-image-digest.txt}"
+SKIP_GHCR_PUSH="${SKIP_GHCR_PUSH:-false}"
+
+emit_output() {
+  local key="$1"
+  local value="$2"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    {
+      echo "${key}<<EOF"
+      echo "${value}"
+      echo "EOF"
+    } >>"${GITHUB_OUTPUT}"
+  fi
+}
+
+if [[ ! -f Containerfile ]]; then
+  echo "::error::Containerfile missing — hard container cosign gate requires it"
+  exit 1
+fi
+
+command -v cosign >/dev/null 2>&1 || {
+  echo "::error::cosign not installed"
+  exit 1
+}
+command -v docker >/dev/null 2>&1 || {
+  echo "::error::docker CLI required for hard container cosign"
+  exit 1
+}
+docker info >/dev/null 2>&1 || {
+  echo "::error::docker daemon required for hard container cosign"
+  exit 1
+}
+
+cosign version
+
+# Resolve GHCR image ref
+if [[ -z "${GHCR_IMAGE:-}" ]]; then
+  if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
+    echo "::error::GITHUB_REPOSITORY unset and GHCR_IMAGE not provided"
+    exit 1
+  fi
+  repo_lc="$(printf '%s' "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+  if [[ -n "${GHCR_TAG:-}" ]]; then
+    tag="${GHCR_TAG}"
+  elif [[ "${GITHUB_REF_TYPE:-}" == "tag" && -n "${GITHUB_REF_NAME:-}" ]]; then
+    tag="${GITHUB_REF_NAME}"
+  elif [[ -n "${GITHUB_SHA:-}" ]]; then
+    tag="sha-${GITHUB_SHA:0:12}"
+  else
+    tag="ci"
+  fi
+  GHCR_IMAGE="ghcr.io/${repo_lc}/sharecli:${tag}"
+fi
+
+REPO_NAME="${GHCR_IMAGE%%:*}"
+
+echo "Building ${IMAGE_TAG} from Containerfile"
+docker build -f Containerfile -t "${IMAGE_TAG}" .
+docker tag "${IMAGE_TAG}" "${GHCR_IMAGE}"
+
+IMAGE_ID="$(docker inspect --format='{{.Id}}' "${IMAGE_TAG}")"
+printf '%s\n' "${IMAGE_ID}" >sharecli-ci-image-id.txt
+echo "Local image ID: ${IMAGE_ID}"
+echo "Target GHCR ref: ${GHCR_IMAGE}"
+
+# Minimal SLSA provenance predicate for cosign attest --type slsaprovenance
+builder_id="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-local}/actions/runs/${GITHUB_RUN_ID:-0}"
+source_uri="git+${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-KooshaPari/sharecli}"
+cat >"${PREDICATE_FILE}" <<EOF
+{
+  "buildType": "https://github.com/KooshaPari/sharecli/.github/workflows/container-cosign.yml@v1",
+  "builder": { "id": "${builder_id}" },
+  "invocation": {
+    "configSource": {
+      "uri": "${source_uri}",
+      "digest": { "sha1": "${GITHUB_SHA:-unknown}" },
+      "entryPoint": ".github/workflows/container-cosign.yml"
+    }
+  },
+  "metadata": {
+    "buildInvocationId": "${GITHUB_RUN_ID:-local}",
+    "completeness": {
+      "parameters": true,
+      "environment": false,
+      "materials": false
+    },
+    "reproducible": false
+  }
+}
+EOF
+echo "Wrote predicate ${PREDICATE_FILE}"
+
+emit_output "subject-name" "${REPO_NAME}"
+emit_output "image-ref" "${GHCR_IMAGE}"
+
+if [[ "${SKIP_GHCR_PUSH}" == "true" ]]; then
+  echo "::warning::SKIP_GHCR_PUSH=true — hard wiring dry-run (no registry push/sign)"
+  echo "Would push/sign/attest/verify: ${GHCR_IMAGE}"
+  printf 'skipped-push\n' >"${DIGEST_FILE}"
+  emit_output "skipped" "true"
+  emit_output "subject-digest" ""
+  exit 0
+fi
+
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+  echo "::error::GITHUB_TOKEN required to login/push GHCR (packages:write + id-token:write)"
+  echo "::error::If org registry permissions block GITHUB_TOKEN, re-run with SKIP_GHCR_PUSH=true"
+  exit 1
+fi
+
+echo "Logging into ghcr.io as ${GITHUB_ACTOR:-github-actions}"
+echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR:-github-actions}" --password-stdin
+
+echo "Pushing ${GHCR_IMAGE}"
+docker push "${GHCR_IMAGE}"
+
+# Prefer digest-based signing (immutable)
+DIGEST_REF="$(docker inspect --format='{{index .RepoDigests 0}}' "${GHCR_IMAGE}" 2>/dev/null || true)"
+DIGEST_SHA=""
+if [[ -n "${DIGEST_REF}" && "${DIGEST_REF}" == *"@"* ]]; then
+  DIGEST_SHA="${DIGEST_REF#*@}"
+else
+  if docker buildx imagetools inspect "${GHCR_IMAGE}" --format '{{.Manifest.Digest}}' >/tmp/ghcr-digest.txt 2>/dev/null; then
+    DIGEST_SHA="$(tr -d '[:space:]"' </tmp/ghcr-digest.txt)"
+    DIGEST_REF="${REPO_NAME}@${DIGEST_SHA}"
+  else
+    DIGEST_REF="${GHCR_IMAGE}"
+    DIGEST_SHA=""
+  fi
+fi
+printf '%s\n' "${DIGEST_REF}" >"${DIGEST_FILE}"
+echo "Signing subject: ${DIGEST_REF}"
+emit_output "subject-digest" "${DIGEST_SHA}"
+emit_output "skipped" "false"
+
+echo "Keyless cosign sign"
+cosign sign --yes "${DIGEST_REF}"
+
+echo "Keyless cosign attest (slsaprovenance)"
+cosign attest --yes --type slsaprovenance --predicate "${PREDICATE_FILE}" "${DIGEST_REF}"
+
+echo "Verify signature"
+cosign verify "${DIGEST_REF}" \
+  --certificate-identity-regexp "${IDENTITY_REGEXP}" \
+  --certificate-oidc-issuer "${OIDC_ISSUER}"
+
+echo "Verify attestation"
+cosign verify-attestation --type slsaprovenance "${DIGEST_REF}" \
+  --certificate-identity-regexp "${IDENTITY_REGEXP}" \
+  --certificate-oidc-issuer "${OIDC_ISSUER}" >/tmp/cosign-attestation-verify.json
+
+echo "Hard container cosign publish green: ${DIGEST_REF}"
+echo "Consumer verify:"
+echo "  bash scripts/container-cosign-verify.sh ${DIGEST_REF}"

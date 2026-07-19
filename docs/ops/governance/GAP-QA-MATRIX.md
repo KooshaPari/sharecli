@@ -57,7 +57,7 @@
 | C08 | L74 | Tighter bench thresholds | Low | Wave2 | Status: READY | `docs/eval/TRENDS.md` | agent-c08 |
 | C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |
-| C06 | L56 | Container cosign publish | Low | W6.3 | Status: Gap | `docs/slsa.md` cosign roadmap | agent-c06 |
+| C06 | L56 | Container cosign publish | Low | W6.3 · T-660 | Status: Closed | `container-cosign.yml` · `container-cosign-hard.sh` · `container-cosign-verify.sh` · `docs/slsa.md` | agent-c06 |
 | C06 | L53–L54 | SLSA L3 / hermetic builds | Med | W11.4 | Status: Closed | `docs/ops/slsa-l3-plan.md` · `netblock-soft.yml` · `hermetic-soft.yml` | agent-c06 |
 | C08 | L71 | Harbor eval stub | Med | W11.4 · #321 | Status: Closed | `harbor-eval-stub-soft.yml` · `scripts/eval/harbor_stub.sh` | agent-c08 |
 | C09 | L81.11 | Playwright baseline policy | Low | W11.3 | Status: Closed | `docs/a11y/playwright-viewports.md` | agent-c09 |

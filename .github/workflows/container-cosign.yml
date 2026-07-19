@@ -1,0 +1,76 @@
+name: Container cosign (hard)
+
+# C06 L56 / T-660 — GHCR publish + keyless cosign sign + attest + verify.
+# Soft→hard promotion: uses GitHub OIDC (id-token) + packages:write only — no Apple.
+# Soft sign-blob path remains in container-cosign-soft.yml for main without registry.
+
+on:
+  release:
+    types: [published]
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "GHCR image tag (default: sha-<short> or release tag)"
+        required: false
+        default: ""
+      skip_push:
+        description: "Dry-run hard wiring only (no GHCR push) — registry permission blocker"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+  attestations: write
+
+concurrency:
+  group: container-cosign-hard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  container-cosign-hard:
+    name: GHCR publish + cosign sign/attest/verify
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@d0e95c1e597a85f6211ad6ce8f3dd2d5ed8ecf0e # v3.7.1
+
+      - name: Hard container cosign publish
+        id: publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_TAG: ${{ inputs.tag }}
+          SKIP_GHCR_PUSH: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_push && 'true' || 'false' }}
+        run: bash scripts/container-cosign-hard.sh
+
+      - name: Attest OCI digest (GitHub Artifact Attestations)
+        if: steps.publish.outputs.skipped != 'true' && steps.publish.outputs.subject-digest != ''
+        continue-on-error: true
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-name: ${{ steps.publish.outputs.subject-name }}
+          subject-digest: ${{ steps.publish.outputs.subject-digest }}
+          push-to-registry: true
+
+      - name: Deploy-side verify script
+        if: steps.publish.outputs.skipped != 'true'
+        run: bash scripts/container-cosign-verify.sh
+
+      - name: Upload cosign hard evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sharecli-container-cosign-hard
+          path: |
+            sharecli-ci-image-id.txt
+            sharecli-ci-image-digest.txt
+            sharecli-ci-slsa-predicate.json
+          if-no-files-found: ignore
+          retention-days: 90

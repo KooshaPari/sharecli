@@ -80,7 +80,7 @@ Pred: W3.3←W3.2←W3.1; W3.4←W3.3; W3.6←W3.4.
 |-----|------|-------|--------|
 | W6.1 | Repro-check script + CI (L52) | FR-002 · `scripts/repro-check.sh` · `repro-check.yml` | Status: DONE |
 | W6.2 | Deny sources tighten + audit.toml sync (L55) | `deny.toml` · `audit.toml` | Status: DONE |
-| W6.3 | Container cosign roadmap (L56) | `docs/slsa.md` | Status: DONE |
+| W6.3 | Container cosign hard publish (L56 / T-660) | `container-cosign.yml` · `docs/slsa.md` | Status: DONE |
 | W6.4 | C06 re-score | `audit/.lane-c06/C06.md` | Status: DONE |
 
 ### Wave7 — Accessibility / UX (C09)

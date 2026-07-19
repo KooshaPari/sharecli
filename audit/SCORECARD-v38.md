@@ -20,7 +20,7 @@
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 24/30 | 80% | B | require signed commits ruleset; org 2FA enforce; OSV hard-fail |
 | C05 | Observability (deep) | L41–L50 | 24/30 | 80% | B | live PD; chaos hard gate; tray dashboard HTTP trace |
-| C06 | Supply Chain | L51–L60 | 24/30 | 80% | B | SLSA L3; network-blocked hermetic; GHCR publish default |
+| C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 23/30 | 77% | B | mutants hard gate; thermal-tui proptest; freebsd/wasm |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; bench-gate hard; agent-eval Phase 4 |
 | C09 | Accessibility + UX | L81–L95 | 34/45 | 76% | B | visual hard diff; manual SR pass; axe hard required |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 82% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (77+80+87+92+80+80+80+80+80+76+89+78)/12 = 974/12 = **81.2% ≈ 81%**.)
+(Unweighted mean of cluster pcts: (77+80+87+92+80+80+83+80+80+76+89+78)/12 = 977/12 = **81.4% ≈ 81%**.)
 
-**Tier-1 double-weight (C00–C03):** (77+80+87+92)×2 + (80+80+80+80+80+76+89+78) = 672 + 643 = 1315 / 16 = **82.2% ≈ 82%** (B).
+**Tier-1 double-weight (C00–C03):** (77+80+87+92)×2 + (80+83+80+80+80+76+89+78) = 672 + 646 = 1318 / 16 = **82.4% ≈ 82%** (B).
 
 ## Headline Findings
 
@@ -424,6 +424,13 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - `visual-soft.yml` is now blocking (no `continue-on-error`) and compares deterministic `ubuntu-24.04` captures against committed PNG baselines.
 - Capture inputs are fixed (locked Playwright/diff dependencies, locale/timezone/color/motion/device scale, empty-pool WebSocket fixture, font readiness); failed captures are retained for diagnosis.
 - **C10 remains 32/36 (89% B), L107 remains 3:** this closes the hard-gate remediation without overstating the already-max rubric line. Overall rollups are unchanged.
+
+### 2026-07-18 (T-660 C06 container cosign hard — L56 evidence)
+- Soft→hard: `.github/workflows/container-cosign.yml` + `scripts/container-cosign-hard.sh` (GHCR push, keyless `cosign sign` + `attest`, in-job verify) + `scripts/container-cosign-verify.sh` (deploy-side).
+- Soft `container-cosign-soft.yml` retained for main sign-blob without registry.
+- Docs: `docs/slsa.md` L56, `docs/ops/ghcr-publish.md`; GAP L56 Closed; lane C06 L56 2→3.
+- **C06 24/30 (80% B) → 25/30 (83% B).** Registry ACL may still block first `GITHUB_TOKEN` push — `skip_push` dry-run documented.
+- Overall unweighted **~81%**; weighted **~82% B**.
 
 ### 2026-07-18 (scorecard reconcile v3 — Wave12 merges #326–#330)
 - **C00 21/30 (70% C) → 22/30 (73% C):** L3 2→3 (`ErrorEnvelope` typed serve contract + golden 401; #330).

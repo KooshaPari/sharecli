@@ -173,6 +173,17 @@ hermetic:
     @cargo build --locked --offline -p sharecli
     @echo ">> hermetic soft gate green"
 
+# C06 L56 — hard cosign dry-run (no GHCR push). Full publish: container-cosign.yml
+[group: 'gate']
+container-cosign-hard:
+    @echo ">> container cosign hard dry-run (SKIP_GHCR_PUSH)"
+    @SKIP_GHCR_PUSH=true GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-KooshaPari/sharecli}" bash scripts/container-cosign-hard.sh
+
+# Deploy-side verify; pass image ref as first arg, e.g. just container-cosign-verify ghcr.io/...@sha256:...
+[group: 'gate']
+container-cosign-verify image="":
+    @bash scripts/container-cosign-verify.sh {{image}}
+
 [group: 'gate']
 gate-release: lint-pedantic test audit deny fmt-check build-release
     @echo ">> release gate green"

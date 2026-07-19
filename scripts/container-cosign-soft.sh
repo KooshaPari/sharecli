@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# C06 L56 — soft container cosign gate (no GHCR secrets required).
+# C06 L56 — soft container cosign gate (no GHCR required).
 # Builds sharecli:ci when docker is available; keyless sign-blob on main only.
+# Hard GHCR path: scripts/container-cosign-hard.sh + .github/workflows/container-cosign.yml
 set -euo pipefail
 
 IMAGE_TAG="${IMAGE_TAG:-sharecli:ci}"

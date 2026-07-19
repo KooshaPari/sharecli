@@ -13,7 +13,7 @@ Related: [hermetic-builds.md](./hermetic-builds.md) (L54 soft offline gate) ·
 | L53 Build provenance | 2 | `release-attestation.yml` + `docs/slsa.md` (SLSA Build L2) |
 | L54 Hermetic builds | 2 | `hermetic-soft.yml` + `just hermetic` + [hermetic-builds.md](./hermetic-builds.md) |
 | L55 Dependency confusion | 3 | `deny.toml` `unknown-registry=deny` + `deny.yml` |
-| L56 Container provenance | 2 | `container-cosign-soft.yml` + `docs/slsa.md` L56 section |
+| L56 Container provenance | 3 | `container-cosign.yml` hard GHCR sign+attest+verify (T-660); soft sign-blob retained |
 
 L55/L56 are **prerequisites** for trustworthy L3 provenance: dependency sources are
 scoped to crates.io (L55), and container digests can be signed before GHCR publish
@@ -54,16 +54,16 @@ for this lane until org signs off on flake budget and vendor policy.
 - [ ] Non-forgeable provenance (sigstore re-sign, not OIDC-only)
 - [ ] Transparency log publication (Rekor or GitHub attestations v2)
 - [ ] Hermetic inputs: lockfile + vendored deps + `SOURCE_DATE_EPOCH` (L52)
-- [ ] Cross-link L56 cosign verify on release container (when GHCR default)
+- [x] Cross-link L56 cosign verify on release container (`container-cosign-verify.sh` + `docs/slsa.md`)
 
 ## L55 / L56 coupling
 
 - **L55** — `deny.toml` source policy must stay `unknown-registry=deny` before any
   private mirror is added for vendor/airgap; new registries require deny allow-list +
   ADR.
-- **L56** — container image provenance from `cosign sign-blob` (soft) graduates to
-  `cosign sign` + SLSA predicate on GHCR push; deploy verify steps documented in
-  `docs/slsa.md` and [ghcr-publish.md](./ghcr-publish.md).
+- **L56** — hard path: `cosign sign` + `cosign attest` on GHCR push
+  (`container-cosign.yml`); soft `sign-blob` retained; deploy verify in
+  `scripts/container-cosign-verify.sh`, `docs/slsa.md`, [ghcr-publish.md](./ghcr-publish.md).
 
 ## Commands (local dry-run)
 
