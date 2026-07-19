@@ -169,17 +169,30 @@ pub extern "C" fn sharecli_request(request_json: *const c_char) -> *mut c_char {
 #[no_mangle]
 pub extern "C" fn sharecli_serve_get(url: *const c_char) -> *mut c_char {
     if url.is_null() {
+        eprintln!("sharecli_serve_get: null url pointer");
         return std::ptr::null_mut();
     }
     let url_str = unsafe {
         match CStr::from_ptr(url).to_str() {
             Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
+            Err(err) => {
+                eprintln!("sharecli_serve_get: url is not valid UTF-8 ({err})");
+                return std::ptr::null_mut();
+            }
         }
     };
     match sharecli::tray_http::get(url_str) {
-        Ok(body) => CString::new(body).map(|c| c.into_raw()).unwrap_or(std::ptr::null_mut()),
-        Err(_) => std::ptr::null_mut(),
+        Ok(body) => match CString::new(body) {
+            Ok(c) => c.into_raw(),
+            Err(err) => {
+                eprintln!("sharecli_serve_get: response contains interior NUL ({err})");
+                std::ptr::null_mut()
+            }
+        },
+        Err(err) => {
+            eprintln!("sharecli_serve_get: {err:#}");
+            std::ptr::null_mut()
+        }
     }
 }
 

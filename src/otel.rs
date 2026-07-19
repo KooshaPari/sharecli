@@ -80,7 +80,9 @@ fn traceparent_value_from_env() -> Option<String> {
     for key in ["traceparent", "TRACEPARENT"] {
         if let Some(v) = env_var_exact(key) {
             let s = v.to_string_lossy();
-            if !s.is_empty() {
+            // Validate each candidate before selecting so a malformed lowercase
+            // value cannot shadow a valid TRACEPARENT (or vice versa).
+            if !s.is_empty() && is_w3c_traceparent(&s) {
                 return Some(s.into_owned());
             }
         }
@@ -128,12 +130,10 @@ fn is_w3c_traceparent(value: &str) -> bool {
 /// W3C `traceparent` header value for outbound HTTP (tray dashboard fetches).
 ///
 /// Reads a valid operator `traceparent` / `TRACEPARENT` env, then the active
-/// OTel context. Invalid values are dropped rather than copied into an HTTP
-/// header or HTML attribute.
+/// OTel context. Invalid values are skipped per-candidate rather than copied
+/// into an HTTP header or HTML attribute.
 pub fn traceparent_http_value() -> Option<String> {
-    traceparent_value_from_env()
-        .filter(|value| is_w3c_traceparent(value))
-        .or_else(traceparent_value_from_otel_context)
+    traceparent_value_from_env().or_else(traceparent_value_from_otel_context)
 }
 
 /// Soft multi-hop (C05 L44): `TRACEPARENT` for CLI supervised spawns.
@@ -178,12 +178,15 @@ pub fn shutdown() {
     }
 }
 
+/// Shared mutex for unit tests that mutate `traceparent` / `TRACEPARENT`.
+/// Crate-wide so `tray_http` tests cannot race `otel` env mutations.
+#[doc(hidden)]
+#[allow(dead_code)] // used from `#[cfg(test)]` modules in otel/tray_http
+pub static TEST_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn otel_disabled_without_endpoint_env() {
@@ -201,7 +204,7 @@ mod tests {
 
     #[test]
     fn apply_traceparent_spawn_env_sets_child_env() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let key = "traceparent";
         let prev = std::env::var(key).ok();
         let prev_upper = std::env::var("TRACEPARENT").ok();
@@ -243,7 +246,7 @@ mod tests {
 
     #[test]
     fn traceparent_http_value_maps_lowercase_env() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let key = "traceparent";
         let prev = std::env::var(key).ok();
         let prev_upper = std::env::var("TRACEPARENT").ok();
@@ -269,7 +272,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn traceparent_http_value_prefers_lowercase_over_uppercase_env() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let lower = "traceparent";
         let upper = "TRACEPARENT";
         let prev_lower = std::env::var(lower).ok();
@@ -293,10 +296,39 @@ mod tests {
         );
     }
 
+    // Distinct `traceparent` vs `TRACEPARENT` slots exist only on case-sensitive
+    // platforms. Windows collapses them into one env entry.
+    #[cfg(unix)]
+    #[test]
+    fn traceparent_http_value_skips_invalid_lowercase_for_valid_uppercase() {
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
+        let lower = "traceparent";
+        let upper = "TRACEPARENT";
+        let prev_lower = std::env::var(lower).ok();
+        let prev_upper = std::env::var(upper).ok();
+        std::env::set_var(lower, "not-a-trace\r\nx-injected: true");
+        std::env::set_var(upper, "00-cccccccccccccccccccccccccccccccc-dddddddddddddddd-01");
+        let out = traceparent_http_value();
+        if let Some(prev) = prev_lower {
+            std::env::set_var(lower, prev);
+        } else {
+            std::env::remove_var(lower);
+        }
+        if let Some(prev) = prev_upper {
+            std::env::set_var(upper, prev);
+        } else {
+            std::env::remove_var(upper);
+        }
+        assert_eq!(
+            out,
+            Some("00-cccccccccccccccccccccccccccccccc-dddddddddddddddd-01".to_string())
+        );
+    }
+
     #[cfg(windows)]
     #[test]
     fn traceparent_http_value_reads_case_insensitive_env_slot() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let prev = std::env::var("TRACEPARENT").ok();
         std::env::remove_var("TRACEPARENT");
         std::env::set_var("traceparent", "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01");
@@ -314,7 +346,7 @@ mod tests {
 
     #[test]
     fn traceparent_http_value_rejects_invalid_env_header() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let key = "traceparent";
         let prev = std::env::var(key).ok();
         let prev_upper = std::env::var("TRACEPARENT").ok();
@@ -336,7 +368,7 @@ mod tests {
 
     #[test]
     fn traceparent_spawn_env_maps_lowercase_env() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let key = "traceparent";
         let prev = std::env::var(key).ok();
         let prev_upper = std::env::var("TRACEPARENT").ok();

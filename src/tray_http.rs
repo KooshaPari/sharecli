@@ -5,23 +5,32 @@
 #![allow(dead_code)] // The binary copy only serves HTML; FFI consumes `get` from the library.
 
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 
 use crate::otel::traceparent_http_value;
 
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const IO_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// GET `url` over HTTP/1.1 with operator/OTel `traceparent` when configured.
 pub fn get(url: &str) -> Result<String> {
     let (host, port, path) = parse_http_url(url)?;
-    let mut stream = TcpStream::connect((host.as_str(), port))
+    let addr = (host.as_str(), port)
+        .to_socket_addrs()
+        .with_context(|| format!("resolve {host}:{port}"))?
+        .next()
+        .with_context(|| format!("no address for {host}:{port}"))?;
+    let mut stream = TcpStream::connect_timeout(&addr, CONNECT_TIMEOUT)
         .with_context(|| format!("connect to {host}:{port}"))?;
-    let timeout = Some(Duration::from_secs(5));
-    stream.set_read_timeout(timeout).context("set HTTP read timeout")?;
-    stream.set_write_timeout(timeout).context("set HTTP write timeout")?;
-    let mut req =
-        format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\nAccept: */*\r\n");
+    stream.set_read_timeout(Some(IO_TIMEOUT)).context("set HTTP read timeout")?;
+    stream.set_write_timeout(Some(IO_TIMEOUT)).context("set HTTP write timeout")?;
+    let host_header = http_host_header(&host, port);
+    let mut req = format!(
+        "GET {path} HTTP/1.1\r\nHost: {host_header}\r\nConnection: close\r\nAccept: */*\r\n"
+    );
     if let Some(tp) = traceparent_http_value() {
         req.push_str(&format!("traceparent: {tp}\r\n"));
     }
@@ -30,6 +39,14 @@ pub fn get(url: &str) -> Result<String> {
     let mut buf = Vec::new();
     stream.read_to_end(&mut buf).context("read HTTP response")?;
     extract_http_body(&buf)
+}
+
+fn http_host_header(host: &str, port: u16) -> String {
+    if port == 80 {
+        host.to_string()
+    } else {
+        format!("{host}:{port}")
+    }
 }
 
 fn parse_http_url(url: &str) -> Result<(String, u16, String)> {
@@ -66,18 +83,16 @@ pub fn inject_dashboard_traceparent(html: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::otel::TEST_ENV_LOCK;
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
     use std::sync::mpsc;
-    use std::sync::Mutex;
     use std::thread;
     use std::time::Duration;
 
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
     #[test]
     fn inject_dashboard_traceparent_adds_data_attribute() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let key = "traceparent";
         let prev = std::env::var(key).ok();
         let prev_upper = std::env::var("TRACEPARENT").ok();
@@ -100,8 +115,8 @@ mod tests {
     }
 
     #[test]
-    fn get_sends_traceparent_header() {
-        let _guard = ENV_LOCK.lock().unwrap();
+    fn get_sends_traceparent_header_and_host_with_port() {
+        let _guard = TEST_ENV_LOCK.lock().unwrap();
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
         let addr = listener.local_addr().unwrap();
         let (tx, rx) = mpsc::channel();
@@ -148,8 +163,18 @@ mod tests {
         handle.join().expect("server thread");
         assert_eq!(body, "ok");
         assert!(request.starts_with("GET /healthz HTTP/1.1"));
+        assert!(
+            headers.contains(&format!("Host: 127.0.0.1:{}\r\n", addr.port())),
+            "Host header must include non-default port; got:\n{headers}"
+        );
         assert!(headers
             .contains("traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"));
+    }
+
+    #[test]
+    fn http_host_header_omits_default_port() {
+        assert_eq!(http_host_header("127.0.0.1", 80), "127.0.0.1");
+        assert_eq!(http_host_header("127.0.0.1", 49152), "127.0.0.1:49152");
     }
 
     #[test]
