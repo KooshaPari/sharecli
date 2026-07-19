@@ -71,6 +71,7 @@
 | C00 | L8 | jemalloc serve + dhat soft heap sample | Med | W14 · FR-003 | Status: Closed | `src/alloc.rs` · `docs/ops/memory.md` · `dhat-soft.yml` · `tests/c00_l8_allocator.rs` | agent-c00 |
 | C00 | L7 | Loom hard gate (pool_index) | Med | W14 · T-670 · FR-003 | Status: Closed | `crates/sharecli-sync` · `ci.yml` `loom` | agent-c00 |
 | C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 · #329 | Status: Closed | `docs/ops/config-proptest.md` · `config_validator.rs` | agent-c07 |
+| C07 | L66 | Proptest boundary + registry + replay | Med | W14 · T-650 · FR-003 | Status: Closed | `proptest-regressions/` · `tests/c07_l66_proptest_expand.rs` | agent-c07 |
 | C07 | L65 | cargo-mutants hard gate | Med | W14 · T-640 · FR-003 | Status: Closed | `mutants.yml` · `ci.yml` mutants+ci-success · `docs/ops/mutants-hard-gate.md` | agent-c07 |
 
 ## C09 accessibility (Wave6)

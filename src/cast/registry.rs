@@ -132,6 +132,8 @@ fn validate_name(name: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+    use tempfile::TempDir;
 
     #[test]
     fn validate_name_accepts_typical() {
@@ -166,5 +168,52 @@ mod tests {
         let s = toml::to_string(&map).expect("serialise");
         let back: PaneMap = toml::from_str(&s).expect("parse");
         assert_eq!(back.entries.get("a").map(String::as_str), Some("mbp:local:0:2"));
+    }
+
+    // --- proptest (C07 L66 / T-650) ---
+    proptest::proptest! {
+        #![proptest_config(crate::proptest_util::config())]
+
+        #[test]
+        fn prop_valid_pane_name_accepted(name in prop_valid_pane_name()) {
+            prop_assert!(validate_name(&name).is_ok(), "name {:?} should be valid", name);
+        }
+
+        #[test]
+        fn prop_pane_map_toml_roundtrip(
+            entries in prop::collection::btree_map(prop_valid_pane_name(), prop_address_string(), 0..8),
+        ) {
+            let map = PaneMap { entries };
+            let serialized = toml::to_string(&map).expect("serialize");
+            let back: PaneMap = toml::from_str(&serialized).expect("deserialize");
+            prop_assert_eq!(back.entries, map.entries);
+        }
+
+        #[test]
+        fn prop_register_list_roundtrip(
+            name in prop_valid_pane_name(),
+            addr in prop_address_string(),
+        ) {
+            let tmp = TempDir::new().expect("tempdir");
+            let reg = PaneRegistry::new_in(tmp.path()).expect("registry");
+            let parsed = PaneAddress::parse(&addr).expect("address");
+            reg.register(&name, &parsed).expect("register");
+            let listed = reg.list().expect("list");
+            prop_assert_eq!(listed.len(), 1);
+            prop_assert_eq!(&listed[0].0, &name);
+            prop_assert_eq!(&listed[0].1, &parsed);
+        }
+    }
+
+    fn prop_valid_pane_name() -> impl Strategy<Value = String> {
+        prop::collection::vec(
+            prop::sample::select(vec!['a', 'b', 'c', 'Z', '0', '-', '_', '.']),
+            1..24usize,
+        )
+        .prop_map(|chars| chars.into_iter().collect())
+    }
+
+    fn prop_address_string() -> impl Strategy<Value = String> {
+        (0u32..16, 0u32..16).prop_map(|(w, p)| format!("mbp:local:{w}:{p}"))
     }
 }

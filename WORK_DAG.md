@@ -87,6 +87,7 @@ flowchart TD
 | T-620 | Coverage evidence pin + llvm-cov snapshot artifact | DONE (2026-07-18) |
 | T-640 | cargo-mutants soft→hard gate (C07 L65) | DONE (2026-07-18) |
 | T-645 | Sync audit_scorecard.json to live SCORECARD | DONE (2026-07-19) |
+| T-650 | C07 L66 proptest boundary + registry + replay | DONE (2026-07-19) |
 
 ## Wave13 backlog (DONE)
 

@@ -30,6 +30,8 @@ mod paths;
 mod pprof_http;
 mod proc_compose;
 mod progress;
+#[cfg(test)]
+mod proptest_util;
 mod radix_trie;
 mod rate_limiter;
 mod runtime;
@@ -496,7 +498,9 @@ async fn main() -> Result<()> {
         Commands::Util { cmd } => cmd.run()?,
         Commands::List { json } => cli_list(*json)?,
         Commands::Version => cli_version()?,
-        Commands::Uninstall { purge_data, dry_run } => commands::uninstall::run(*purge_data, *dry_run)?,
+        Commands::Uninstall { purge_data, dry_run } => {
+            commands::uninstall::run(*purge_data, *dry_run)?
+        }
     }
 
     Ok(())

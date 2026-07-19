@@ -197,3 +197,6 @@ pub use util::catalan_number;
 pub use util::sqrt_integer;
 pub use util::topological_sort;
 pub use util::vector_3d;
+
+#[cfg(test)]
+pub mod proptest_util;
