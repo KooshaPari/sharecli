@@ -11,6 +11,7 @@ use anyhow::Result;
 pub use serve::run as serve_run;
 
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
+use crate::progress::StepProgress;
 use crate::runtime::{
     ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
@@ -175,10 +176,16 @@ pub async fn stop(
         return Ok(());
     }
 
-    for proc in processes {
+    let progress = StepProgress::new("Stopping processes", processes.len());
+    let line_mode = progress.uses_line_output();
+    for proc in &processes {
         pool.kill(proc.pid).await?;
-        println!("Stopped {} ({})", proc.pid, proc.name);
+        progress.inc(Some(&format!("{} ({})", proc.pid, proc.name)));
+        if line_mode {
+            println!("Stopped {} ({})", proc.pid, proc.name);
+        }
     }
+    progress.finish("Processes stopped");
 
     Ok(())
 }
@@ -437,11 +444,16 @@ async fn project_group_stop(name: &str, force: bool, yes: bool) -> Result<()> {
     }
     let mut stopped = 0usize;
     let mut failures: Vec<String> = Vec::new();
+    let progress = StepProgress::new(&format!("Stopping project '{name}'"), total);
+    let line_mode = progress.uses_line_output();
 
     for proc in &processes {
         match pool.kill(proc.pid).await {
             Ok(()) => {
-                println!("Stopped {} ({})", proc.pid, proc.name);
+                progress.inc(Some(&format!("{} ({})", proc.pid, proc.name)));
+                if line_mode {
+                    println!("Stopped {} ({})", proc.pid, proc.name);
+                }
                 stopped += 1;
             }
             Err(e) => {
@@ -449,8 +461,10 @@ async fn project_group_stop(name: &str, force: bool, yes: bool) -> Result<()> {
             }
         }
     }
-
-    println!("\nAffected: {}/{} processes stopped.", stopped, total);
+    progress.finish(&format!("Affected: {stopped}/{total} processes stopped"));
+    if line_mode {
+        println!("\nAffected: {}/{} processes stopped.", stopped, total);
+    }
     if !failures.is_empty() {
         println!("Failures:");
         for f in &failures {
