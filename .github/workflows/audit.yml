@@ -31,7 +31,7 @@ jobs:
     name: cargo audit (RustSec)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo
@@ -46,7 +46,7 @@ jobs:
         run: cargo audit --json > audit.json
       - name: Upload SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@4dd16135b69a43b6c8efb853346f8437d92d3c93 # v3.27.0
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v3.27.0
         with:
           sarif_file: audit.json
         continue-on-error: true
