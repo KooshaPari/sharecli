@@ -17,7 +17,7 @@ Hard-gate promotion (phase 4 live):
 
 | Metric | Hard (enforced) |
 |--------|-----------------|
-| Scope | `examine_globs` / `--file` thermal-tui lib |
+| Scope | `examine_globs` / `-p` thermal-tui lib |
 | Outcome | **zero surviving mutants** in examine set + **required** / aggregated check |
 | Timeout | 60s per mutant |
 | Fail mode | step fails → job fails → `ci-success` fails |
