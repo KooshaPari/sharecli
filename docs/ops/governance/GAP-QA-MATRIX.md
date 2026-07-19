@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-18 (Wave13 #332–#335; C00/C05/C08/C10 lifts; overall ~82% B weighted)
+**Last sync:** 2026-07-19 (audit_scorecard.json → 81% B unweighted / 82% weighted; W14.2 Harbor soak 0/7)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -53,6 +53,7 @@
 | C02 | L27 | AuthN/HTTP burn alerts | Med | W5.2 | Status: Closed | `docs/ops/alertmanager/sharecli.yml` + `src/http_red.rs` | maintainer |
 | C08 | L76 | Harbor Phase 3 soak evidence plan | Med | W12.5 · T-440 · #326 | Status: Closed | `docs/ops/harbor-phase3-soak.md` · ADR 0005 | agent-c08 |
 | C08 | L76 | Harbor Phase 3 soak execution scaffold | Med | W13.3 · T-520 · #333 | Status: Closed | `scripts/eval/harbor_soak.sh` · `harbor-soak-exec-soft.yml` · `audit/.lane-c08/harbor-phase3-soak-log.md` | agent-c08 |
+| C08 | L76 | Seven-day Harbor soak log completion | Med | W14.2 · T-650 | Status: IN_PROGRESS | `audit/.lane-c08/harbor-phase3-soak-log.md` local L1 2026-07-19; **0/7 main · 7 remaining** | agent-c08 |
 | C08 | L74 | Tighter bench thresholds | Low | Wave2 | Status: READY | `docs/eval/TRENDS.md` | agent-c08 |
 | C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |

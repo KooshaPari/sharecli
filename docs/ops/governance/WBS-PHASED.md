@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-18 (Wave13 merges #332–#335; overall ~82% B weighted)
+**Last sync:** 2026-07-19 (audit_scorecard.json synced to SCORECARD ~81%/82% B; W14.2 local soft soak 0/7)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -158,7 +158,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
 | W14.1 | Deterministic dashboard visual hard gate | FR-003 · C10 L107 · T-600 | Status: DONE |
-| W14.2 | Seven-day Harbor soak log completion | C08 L76 | Status: READY |
+| W14.2 | Seven-day Harbor soak log completion | C08 L76 · T-650 · local soft L1 2026-07-19 · **0/7 main · 7 remaining** | Status: IN_PROGRESS |
 | W14.3 | Codesign / notarize | C11 L112 | Status: BLOCKED |
 
 ### Wave14 — Evidence hardening (IN_PROGRESS)
