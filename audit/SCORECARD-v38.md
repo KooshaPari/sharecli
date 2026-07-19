@@ -14,7 +14,7 @@
 
 | Cluster | Category | Pillars | Score (sum/max) | Pct | Grade | Top-3 gaps |
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
-| C00 | Architecture + Module | L0–L9 | 24/30 | 80% | B | crate-split Phases 2–4; tight perf budgets; loom hard coverage |
+| C00 | Architecture + Module | L0–L9 | 25/30 | 83% | B | crate-split Phases 2–4; tight perf budgets; loom hard coverage |
 | C01 | CI, DX, Observability | L10–L19 | 25/30 | 83% | B | fluent catalogs deferred; gitleaks polish; advisory hard-fail |
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 33/36 | 92% | A | optional polish; brew still Blocked |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 85% · **Overall grade:** B
 
-(Unweighted mean of cluster pcts: (80+83+90+92+83+83+83+80+80+80+89+84)/12 with C01 **83%** = 1007/12 = **83.9% ≈ 84%**.)
+(Unweighted mean of cluster pcts: (83+83+90+92+83+83+83+80+80+80+80+89+84)/12 = 1010/12 = **84.2% ≈ 84%**.)
 
-**Tier-1 double-weight (C00–C03):** (80+83+90+92)×2 + (83+83+83+80+80+80+80+89+84) = 690 + 662 = 1352 / 16 = **84.5% ≈ 85%** (B).
+**Tier-1 double-weight (C00–C03):** (83+83+90+92)×2 + (83+83+83+80+80+80+80+89+84) = 696 + 662 = 1358 / 16 = **84.9% ≈ 85%** (B).
 
 ## Headline Findings
 
@@ -480,3 +480,8 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C01 24/30 (80% B) → 25/30 (83% B):** L11 2→3 — broad-workspace **83.48%** lines pinned at `d3cb7c4`; `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json`; `tests/c01_coverage_pin_gate.rs` (FR-003 · T-625); golden `cli_help.txt` sync for `uninstall` subcommand.
 - Codecov supplementary policy documented in `TEST_COVERAGE_MATRIX.md` (70% project / 80% patch vs 85% unit hard gate).
 - Overall unweighted **~84% B** (1004/12); tier-1 weighted **~84% B** (1346/16).
+
+### 2026-07-19 (C00 L8 jemalloc + dhat soft — FR-003)
+- **C00 24/30 (80% B) → 25/30 (83% B):** L8 2→3 — `src/alloc.rs` (`jemalloc` + `dhat-heap` features); Containerfile `--features jemalloc`; `dhat-soft.yml` + `scripts/ops/dhat_soft.sh`; `tests/c00_l8_allocator.rs`; `docs/ops/memory.md` + `alloc-profiling.md`.
+- Top-3 C00 gaps: crate-split Phases 2–4; tight perf budgets; loom hard coverage.
+- Overall unweighted **~84% B** (1010/12); tier-1 weighted **~85% B** (1358/16).

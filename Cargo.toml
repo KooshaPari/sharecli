@@ -73,14 +73,26 @@ tracing-opentelemetry = "0.33"
 jsonwebtoken = { version = "9", features = ["use_pem"] }
 
 [features]
+default = []
 desktop-notifications = ["notify-rust"]
 notifications-http = ["reqwest"]
+# C00 L8 — optional jemalloc for long-running `serve` (Unix non-MSVC). See docs/ops/memory.md.
+jemalloc = ["dep:tikv-jemallocator"]
+# C00 L8 — dev heap profiling; mutually exclusive with `jemalloc` in practice.
+dhat-heap = ["dep:dhat"]
 
 # Continuous CPU profiling (audit-v38 L45). Unix-only; Windows builds omit it.
 # Protobuf profile output (not flamegraph/inferno) to avoid vulnerable quick-xml.
 [target.'cfg(unix)'.dependencies]
 pprof = { version = "0.15", features = ["protobuf", "prost-codec"] }
 prost = "0.12"
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = { version = "0.7", optional = true }
+
+[dependencies.dhat]
+version = "0.3"
+optional = true
 
 [dev-dependencies]
 tempfile = "3"

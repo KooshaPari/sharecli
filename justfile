@@ -346,5 +346,13 @@ packaging-deb:
 [group: 'ops']
 rss-soft:
     @echo ">> soft idle RSS sample (docs/ops/memory.md)"
-    @cargo build --locked --release -p sharecli
+    @cargo build --locked --release -p sharecli --features jemalloc
     @bash scripts/ops/rss_soft.sh
+
+dhat-soft:
+    @echo ">> soft dhat heap sample (docs/ops/alloc-profiling.md)"
+    @bash scripts/ops/dhat_soft.sh
+
+serve-jemalloc:
+    @echo ">> build serve binary with jemalloc (C00 L8)"
+    @cargo build --locked --release -p sharecli --features jemalloc

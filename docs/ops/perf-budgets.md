@@ -108,5 +108,5 @@ blockers. Allocator follow-ups: [`alloc-profiling.md`](alloc-profiling.md).
 | Tight 5–10% bench threshold | L6 / L74 | Planned — needs real nightly ubuntu rows |
 
 **Soft goal:** L6 stays **2** until profiler artifacts + 5–10% threshold land;
-L8 stays **2** until jemalloc/dhat optional paths wire. C08 L74 is already **3**
+L8 is **3** with feature-gated jemalloc + soft dhat CI. C08 L74 is already **3**
 (25% gate + trends); cluster C00 unchanged at 70% C pending hard tight gates.

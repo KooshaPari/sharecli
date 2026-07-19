@@ -1,4 +1,5 @@
 //! sharecli - Shared CLI process manager
+mod alloc;
 mod plugins;
 
 use anyhow::Result;
@@ -368,6 +369,9 @@ fn is_no_color() -> bool {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    #[cfg(feature = "dhat-heap")]
+    let _dhat_profiler = dhat::Profiler::new_heap();
+
     let cli = Cli::parse();
     let tokens = theme::Tokens::from_name(&cli.theme).ok_or_else(|| {
         anyhow::anyhow!(
@@ -417,6 +421,7 @@ async fn main() -> Result<()> {
                 registry.init();
             }
         }
+        tracing::debug!(allocator = alloc::active_allocator_label(), "global_allocator");
     } else {
         crate::otel::ensure_trace_context_propagator();
     }
