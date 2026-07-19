@@ -38,6 +38,7 @@ use crate::notifier::Notifier;
 use crate::runtime::ProcessPool;
 use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
+use crate::serve_rate_limit::{is_probe_path, ServeRateLimit, ServeRateLimitState};
 
 // ---------------------------------------------------------------------------
 // Pressure parsing (pure; tested without I/O)
@@ -83,6 +84,8 @@ struct AppState {
     health_store: HealthCheckStore,
     /// In-process HTTP RED metrics (Rate / Errors / Duration).
     http_red: Arc<HttpRedMetrics>,
+    /// Optional sliding-window HTTP rate limiter (`None` = disabled).
+    rate_limit: Arc<ServeRateLimitState>,
 }
 
 // ---------------------------------------------------------------------------
@@ -185,12 +188,22 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
     }
     audit_log::emit("serve_start", json!({ "url": url, "bind": bind }));
 
+    let rate_limit = ServeRateLimit::from_env_or_config(&initial_config.serve);
+    if let Some(ref lim) = rate_limit {
+        info!(
+            max = lim.max_per_window(),
+            window_secs = lim.window().as_secs(),
+            "sharecli serve: HTTP rate limit enabled (probes /healthz /readyz exempt)"
+        );
+    }
+
     let state = AppState {
         thermal_tx: Arc::new(thermal_tx),
         shutdown_tx: Arc::new(shutdown_tx),
         config: config_arc,
         health_store,
         http_red: Arc::new(HttpRedMetrics::default()),
+        rate_limit: Arc::new(std::sync::Mutex::new(rate_limit)),
     };
 
     // Spawn background thermal poller (uses parse_pressure_level as the canonical parser).
@@ -208,6 +221,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
         .route("/debug/pprof/profile", get(crate::pprof_http::profile_handler))
         .route("/ws", get(ws_handler))
         .layer(middleware::from_fn_with_state(state.clone(), http_observability_middleware))
+        .layer(middleware::from_fn_with_state(state.clone(), serve_rate_limit_middleware))
         .layer(middleware::from_fn_with_state(auth, serve_auth::require_bearer))
         .with_state(state);
 
@@ -301,10 +315,6 @@ async fn thermal_poll_task(
     }
 }
 
-// ---------------------------------------------------------------------------
-// HTTP handlers
-// ---------------------------------------------------------------------------
-
 /// Observability middleware: W3C `traceparent` extract/inject + HTTP RED metrics.
 async fn http_observability_middleware(
     State(state): State<AppState>,
@@ -334,6 +344,43 @@ async fn http_observability_middleware(
         response.headers_mut().insert(HeaderName::from_static("traceparent"), val);
     }
     response
+}
+
+/// Sliding-window HTTP rate limit (C02 L25). Probes `/healthz` and `/readyz` stay unlimited.
+async fn serve_rate_limit_middleware(
+    State(state): State<AppState>,
+    req: Request<Body>,
+    next: Next,
+) -> Response {
+    let path = req.uri().path();
+    if is_probe_path(path) {
+        return next.run(req).await;
+    }
+
+    let denied = {
+        let mut guard = state.rate_limit.lock().expect("rate limit mutex");
+        match guard.as_mut() {
+            Some(lim) => !lim.try_acquire(),
+            None => false,
+        }
+    };
+
+    if denied {
+        let retry_after = {
+            let guard = state.rate_limit.lock().expect("rate limit mutex");
+            guard.as_ref().map(|l| l.retry_after_secs()).unwrap_or(1)
+        };
+        let mut response = ErrorEnvelope::rate_limited("HTTP rate limit exceeded; retry later")
+            .into_response(StatusCode::TOO_MANY_REQUESTS);
+        if let Ok(val) = HeaderValue::from_str(&retry_after.to_string()) {
+            response
+                .headers_mut()
+                .insert(HeaderName::from_static("retry-after"), val);
+        }
+        return response;
+    }
+
+    next.run(req).await
 }
 
 /// Best-effort W3C traceparent when the client did not send one.

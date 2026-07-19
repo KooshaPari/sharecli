@@ -453,7 +453,12 @@ mod tests {
             std::env::set_var("SHARECLI_SERVE_TOKEN", "from-env");
         }
         let cfg =
-            ServeConfig { bearer_token: Some("from-config".into()), auth_mode: None, jwt: None };
+            ServeConfig {
+                bearer_token: Some("from-config".into()),
+                auth_mode: None,
+                jwt: None,
+                ..ServeConfig::default()
+            };
         let auth = ServeAuth::from_env_or_config(&cfg).unwrap();
         assert!(auth.check_bearer(Some("Bearer from-env")));
         unsafe {

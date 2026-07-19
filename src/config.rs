@@ -95,6 +95,12 @@ pub struct ServeConfig {
     pub auth_mode: Option<String>,
     /// Federated JWT (OAuth2 resource-server) settings for `auth_mode = "jwt"`.
     pub jwt: Option<ServeJwtConfig>,
+    /// Max HTTP requests per sliding window (0 or unset = disabled). Env
+    /// `SHARECLI_SERVE_RATE_LIMIT_MAX` overrides.
+    pub rate_limit_max: Option<usize>,
+    /// Sliding window length in seconds (default 60). Env
+    /// `SHARECLI_SERVE_RATE_LIMIT_WINDOW_SECS` overrides.
+    pub rate_limit_window_secs: Option<u64>,
 }
 
 /// JWT resource-server config for `sharecli serve` (FR-012 / W5.1).
