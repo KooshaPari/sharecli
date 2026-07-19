@@ -19,7 +19,7 @@
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 26/30 | 87% | B | require signed commits ruleset; org 2FA enforce; artifact cosign releases |
-| C05 | Observability (deep) | L41–L50 | 25/30 | 83% | B | live PD; tray dashboard HTTP trace; branch protection |
+| C05 | Observability (deep) | L41–L50 | 26/30 | 87% | B | live PD roster; tray dashboard HTTP trace; branch protection |
 | C06 | Supply Chain | L51–L60 | 25/30 | 83% | B | SLSA L3; network-blocked hermetic; L56 hard cosign landed |
 | C07 | DX, QEng, Portability | L61–L70 | 25/30 | 83% | B | freebsd/wasm; examine_re widen; e2e/chaos tier |
 | C08 | Eval Coverage | L71–L80 | 24/30 | 80% | B | seven-day soak completion; 5–10% bench tighten; agent-eval Phase 4 |
@@ -31,7 +31,7 @@
 
 **Weighted overall score:** 90% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+87+83+83+83+80+93+92+84)/12 = 1065/12 = **88.75% ≈ 89%**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+87+87+83+83+80+93+92+84)/12 = 1069/12 = **89.1% ≈ 89%**.)
 
 **Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+83+83+83+80+91+89+84) = 760 + 680 = 1440 / 16 = **90.0%** (A).
 
@@ -550,6 +550,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C10 32/36 (89% B) → 33/36 (92% A):** L100 2→3 — dashboard `empty-state` panel (`first-run` vs `cleared`); `print_ps_empty_hint` for idle/filtered `ps`; `docs/visual/empty-states.md`; `tests/c10_l100_empty_states.rs`; visual fixture sends empty pool snapshot.
 - Top-3 C10 gaps: L99 skeletons; L101 error views; dashboard hex drift.
 - Overall unweighted **~89% B** (1065/12); tier-1 weighted **90% A** (1445/16).
+
+### 2026-07-19 (C05 L46 MWMB burn-rate + error budget policy — FR-003)
+- **C05 25/30 (83% B) → 26/30 (87% B):** L46 2→3 — `docs/ops/error-budget-policy.md`; MWMB fast/slow pairs in `alertmanager/sharecli.yml`; `tests/c05_l46_error_budget_mwmb.rs`; `just slo-alerts-validate`.
+- Top-3 C05 gaps: live PD roster; tray dashboard HTTP trace; branch protection chaos check.
+- Overall unweighted **~89% B** (1069/12); tier-1 weighted **90% A** (1449/16).
 
 ### 2026-07-19 (C09 L81.13 FAQ + man page — T-653 / FR-004)
 - **C09 41/45 (91% A) → 42/45 (93% A):** L81.13 2→3 — `docs/faq.md` top-5 FAQ; `clap_mangen` `sharecli man` + `share/man/man1/sharecli.1`; `just man`; `tests/c09_l81_13_faq_man.rs`.

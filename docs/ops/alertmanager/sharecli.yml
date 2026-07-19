@@ -3,11 +3,14 @@
 # Load with Prometheus rule_files / Grafana Alloy / kube-prometheus.
 # Route via Alertmanager (see docs/ops/alerting.md). Severity labels:
 #   critical → page on-call, warning → Slack/ticket, info → dashboard only.
+#
+# MWMB (multi-window multi-burn-rate) pairs: see docs/ops/error-budget-policy.md
 
 groups:
   - name: sharecli-serve-slo
     interval: 30s
     rules:
+      # --- SLO-1 liveness (fast burn → page) ---
       - alert: SharecliHealthzDown
         expr: up{job="sharecli-serve"} == 0
         for: 2m
@@ -15,10 +18,43 @@ groups:
           severity: critical
           service: sharecli
           slo: SLO-1
+          burn_window: fast
         annotations:
           summary: "sharecli serve scrape target down"
-          description: "Prometheus cannot scrape sharecli serve for >2m (SLO-1 liveness)."
+          description: "Prometheus cannot scrape sharecli serve for >2m (SLO-1 liveness fast burn)."
           runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#shareclihealthzdown"
+
+      - alert: SharecliSlo1AvailabilityBurnSlow
+        expr: avg_over_time(up{job="sharecli-serve"}[6h]) < 0.995
+        for: 5m
+        labels:
+          severity: warning
+          service: sharecli
+          slo: SLO-1
+          burn_window: slow
+        annotations:
+          summary: "sharecli SLO-1 availability below 99.5% over 6h"
+          description: "6h rolling availability burn (MWMB slow window). See error-budget-policy.md."
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#shareclislo1availabilityburnslow"
+
+      # --- SLO-3 / HTTP RED error budget (MWMB pair) ---
+      - alert: SharecliHttpErrorBudgetBurnFast
+        expr: |
+          (
+            sum(rate(sharecli_http_errors_total[5m]))
+            /
+            clamp_min(sum(rate(sharecli_http_requests_total[5m])), 1e-9)
+          ) > 0.72
+        for: 2m
+        labels:
+          severity: critical
+          service: sharecli
+          slo: SLO-3
+          burn_window: fast
+        annotations:
+          summary: "sharecli HTTP 5xx fast burn >72% (14.4× SLO-3 budget)"
+          description: "MWMB fast window — page immediately. Check /metrics/prometheus and audit log."
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#shareclihttperrorbudgetburnfast"
 
       - alert: SharecliHttpErrorBudgetBurn
         expr: |
@@ -32,9 +68,10 @@ groups:
           severity: warning
           service: sharecli
           slo: SLO-3
+          burn_window: slow
         annotations:
           summary: "sharecli HTTP 5xx error rate >5% (5m)"
-          description: "RED error burn elevated for 10m. Check /metrics/prometheus and recent audit log."
+          description: "RED error slow burn elevated for 10m. Check /metrics/prometheus and recent audit log."
           runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#shareclihttperrorbudgetburn"
 
       - alert: SharecliHttpLatencyP99High
@@ -61,12 +98,32 @@ groups:
           severity: info
           service: sharecli
           slo: SLO-2
+          burn_window: slow
         annotations:
           summary: "sharecli readiness flipped unavailable often"
           description: |
             Optional counter; if absent, use process restart metrics / notifier webhook
             storm detection instead (SLO-2 ≤2 unplanned restarts / day).
           runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#slo-2"
+
+      # --- SLO-4 AuthN burn (MWMB pair) ---
+      - alert: SharecliAuthFailBurnFast
+        expr: |
+          (
+            sum(rate(sharecli_http_unauthorized_total[5m]))
+            /
+            clamp_min(sum(rate(sharecli_http_requests_total[5m])), 1e-9)
+          ) > 0.50
+        for: 2m
+        labels:
+          severity: critical
+          service: sharecli
+          slo: SLO-4
+          burn_window: fast
+        annotations:
+          summary: "sharecli AuthN fast burn >50% (401 rate)"
+          description: "MWMB fast window — sustained 401 storm. Check JWT/bearer config and audit.jsonl."
+          runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#sharecliauthfailburnfast"
 
       - alert: SharecliAuthFailBurn
         expr: |
@@ -80,7 +137,8 @@ groups:
           severity: warning
           service: sharecli
           slo: SLO-4
+          burn_window: slow
         annotations:
           summary: "sharecli AuthN failure rate >10% (5m)"
-          description: "Sustained 401 burn. Check JWT/bearer config and audit.jsonl auth_fail events."
+          description: "Sustained 401 slow burn. Check JWT/bearer config and audit.jsonl auth_fail events."
           runbook_url: "https://github.com/KooshaPari/sharecli/blob/main/docs/ops/alerting.md#sharecliauthfailburn"

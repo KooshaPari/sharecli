@@ -351,6 +351,12 @@ chaos-hard:
     @cargo build --locked --release -p sharecli
     @SHARECLI_LOAD_URL=http://127.0.0.1:9000/healthz SHARECLI_SERVE_BIND=127.0.0.1:9000 SHARECLI_SERVE_BIN=./target/release/sharecli bash scripts/load/chaos_restart.sh
 
+# C05 L46 — validate MWMB burn-rate alert pairs + error-budget policy refs
+[group: 'gate']
+slo-alerts-validate:
+    @echo ">> C05 L46 MWMB alert + error-budget policy gate"
+    @cargo test --locked --test c05_l46_error_budget_mwmb -- --nocapture
+
 [group: 'parity']
 packaging-deb:
     @echo ">> build unsigned .deb (C11 L108 phase 3)"
