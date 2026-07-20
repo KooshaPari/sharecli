@@ -105,6 +105,7 @@
 | AC-006.15   | `tests/fr006_proc_watch.rs`; `src/commands/proc.rs` | `sharecli proc --watch` live refresh |
 | AC-006.16   | `tests/fr006_proc_tree_cli.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`build_agent_forests`); `src/commands/proc.rs` | `sharecli proc --tree` parent-child forests |
 | AC-006.17   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/resource_watch.rs` (`parse_rss_bytes`) | `sharecli proc --family` / `--min-rss` filters |
+| AC-006.18   | `tests/fr006_proc_ndjson.rs`; `tests/fr006_proc_watch.rs`; `src/commands/proc.rs` | `sharecli proc --watch --json` NDJSON stream |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch

@@ -229,8 +229,13 @@ replacing vendor agent executables as the primary detection path.
   host agent inventory rows and `--tree` root forests (RSS suffix `K`/`M`/`G` or
   plain bytes; invalid sizes fail loudly). Gate snapshot remains host-wide;
   filtered `--json` payloads list only matching agents/roots.
+- **AC-006.18:** `sharecli proc --watch --json` streams NDJSON to stdout (one
+  compact JSON object per refresh with a `ts` unix timestamp plus the usual
+  inventory or tree fields). Watch footer and exit messages go to stderr; stdout
+  MUST stay pipe-clean (no ANSI clear, no pretty-print). One-shot `--json`
+  without `--watch` remains pretty-printed multi-line JSON without `ts`.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`
 
 ---
 

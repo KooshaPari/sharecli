@@ -73,11 +73,11 @@ fn fr006_proc_watch_json_emits_valid_payload() {
     let _ = child.wait();
 
     assert!(stdout.contains("\"agents\""), "watch --json MUST emit agents array; got: {stdout}");
-    assert!(stdout.contains("[watch]"), "watch --json MUST still print footer; got: {stdout}");
-    // First JSON object in output must parse.
-    let json_start = stdout.find('{').expect("JSON payload");
-    let json_end =
-        stdout[json_start..].find("\n[watch]").map(|i| json_start + i).unwrap_or(stdout.len());
-    let _: serde_json::Value =
-        serde_json::from_str(stdout[json_start..json_end].trim()).expect("valid proc JSON");
+    assert!(
+        !stdout.contains("[watch]"),
+        "watch --json NDJSON MUST keep footer off stdout; got: {stdout}"
+    );
+    let line = stdout.lines().next().expect("NDJSON line");
+    let v: serde_json::Value = serde_json::from_str(line).expect("valid proc NDJSON");
+    assert!(v.get("ts").is_some(), "NDJSON line MUST include ts");
 }
