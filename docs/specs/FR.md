@@ -363,6 +363,11 @@ until create / mkdir / rename-into invalidates the entry.
   coalesce [`CommandKey`](crates/sharecli-ipc/src/lib.rs) (`hv-{first 16 hex}`) via
   [`sharecli_fuse::mount_with_session`](crates/sharecli-fuse/src/lib.rs); writes through
   the intercept layer MUST stamp that session id (parity with AC-009.6).
+- **AC-009.13:** [`SpawnOutcome::fuse_session_id`](crates/sharecli-core/src/lib.rs) MUST be
+  `Some(session)` when a cache-miss spawn had an active FUSE intercept mount
+  ([`SpawnOutcome::fuse_intercept_active`](crates/sharecli-core/src/lib.rs)); MUST be `None`
+  for coalesce cache hits, nocache queue routing, or cache misses where FUSE did not mount.
+  The session string MUST match [`fuse_session_id_for_command_key`] for the coalesce key.
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
 

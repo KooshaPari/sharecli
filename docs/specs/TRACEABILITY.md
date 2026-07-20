@@ -141,6 +141,7 @@
 | AC-009.10 | `tests/fr009_fuse_intercept.rs` (`fr009_global_write_serialize_meters`); `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-fuse/src/write_serialize_meters.rs` | FUSE write-serialize / CoW in status + thermal TUI |
 | AC-009.11 | `tests/fr009_fuse_cli.rs`; `src/commands/fuse.rs` | `sharecli fuse provenance` reads backing write xattrs |
 | AC-009.12 | `tests/fr009_fuse_hypervisor_session.rs`; `sharecli-core` `fuse_session_id_for_command_key`; `sharecli-fuse` `mount_with_session` | Hypervisor FUSE session from coalesce CommandKey |
+| AC-009.13 | `tests/fr009_fuse_hypervisor_session.rs` (`fr009_hypervisor_spawn_outcome_fuse_session_id`); `sharecli-core` `SpawnOutcome::fuse_session_id` | SpawnOutcome exposes FUSE session when intercept active |
 
 ### FR-010 — Mesh
 
@@ -174,6 +175,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-009 SpawnOutcome FUSE session:** cache-miss outcomes expose
+  `fuse_session_id` when intercept mount is active (AC-009.13).
 - **2026-07-20 — FR-009 Hypervisor FUSE session:** cache-miss mounts pass
   coalesce-derived session id to `mount_with_session` (AC-009.12).
 - **2026-07-20 — FR-009 fuse provenance CLI:** `sharecli fuse provenance`
