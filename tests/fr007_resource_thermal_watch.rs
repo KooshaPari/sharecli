@@ -6,10 +6,13 @@
 //! AC-007.3 ProcessStats idle heuristic (CPU/MEM-relevant signal)
 //! AC-007.4 FD watch via sample_self_fds / ResourceWatchSample
 //! AC-007.5 host net RX/TX watch via sample_host_net
+//! AC-007.6 Hypervisor::run attaches live resource watch to SpawnOutcome
 
 use sharecli::monitoring::{ProcessStats, ResourceWatchSample, sample_host_net, sample_self_fds};
-use sharecli_core::{FakeThermalGate, ThermalDecision, ThermalGate};
+use sharecli_core::{FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision, ThermalGate};
 use sharecli_fleet::{ThermalGovernor, ThermalLevel};
+use std::sync::Arc;
+use tempfile::TempDir;
 
 /// FR-007 / AC-007.1 — mock thermal levels are visible via poll.
 #[test]
@@ -75,4 +78,41 @@ fn fr007_net_watch_samples_host_counters() {
     // Live host counters; values vary by machine but MUST be sampled (not left at defaults
     // when with_resource_watch succeeds).
     let _ = (stats.net_rx_bytes, stats.net_tx_bytes);
+}
+
+/// FR-007 / AC-007.6 — Hypervisor run path carries live FD/net watch on SpawnOutcome.
+#[tokio::test]
+async fn fr007_hypervisor_run_carries_resource_watch() {
+    let dir = TempDir::new().expect("tempdir");
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
+
+    #[cfg(unix)]
+    let argv = vec!["echo".to_string(), "fr007-hypervisor-watch".to_string()];
+    #[cfg(windows)]
+    let argv = vec![
+        "cmd".to_string(),
+        "/C".to_string(),
+        "echo".to_string(),
+        "fr007-hypervisor-watch".to_string(),
+    ];
+
+    let outcome = hv
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+        })
+        .await
+        .expect("Hypervisor run MUST sample resource watch");
+
+    assert!(
+        outcome.resource_watch.fd_count >= 3,
+        "Hypervisor MUST attach live FD watch (got {})",
+        outcome.resource_watch.fd_count
+    );
+    let _ = (
+        outcome.resource_watch.net_rx_bytes,
+        outcome.resource_watch.net_tx_bytes,
+    );
 }

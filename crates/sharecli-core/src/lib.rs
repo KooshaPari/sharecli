@@ -13,6 +13,8 @@
 //!                ├─ ThermalGate::poll() ─► Green/Yellow → proceed
 //!                │                         Red → sleep-retry (loud) or Err
 //!                │
+//!                ├─ ResourceWatchSample::capture() ─► FD/net watch on every run
+//!                │
 //!                ├─ nocache_args match? ─► SlotQueue::with_slot → spawn (no cache)
 //!                │
 //!                ├─ compute command_key (sharecli-ipc)
@@ -74,6 +76,7 @@ pub use proc_scan::{
     is_under_agent, scan_agents, scan_host_agents, walk_agent_ancestors, DetectedAgent,
     FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
 };
+pub use sharecli_fleet::{sample_host_net, sample_self_fds, ResourceWatchSample};
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
@@ -383,6 +386,15 @@ pub struct SpawnOutcome {
     /// `true` when the result was served from the coalesce cache without
     /// actually spawning a new process.
     pub from_cache: bool,
+    /// Live FD/net watch sample captured at [`Hypervisor::run`] entry (FR-007).
+    pub resource_watch: ResourceWatchSample,
+}
+
+impl SpawnOutcome {
+    fn with_resource_watch(mut self, watch: ResourceWatchSample) -> Self {
+        self.resource_watch = watch;
+        self
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -391,7 +403,13 @@ pub struct SpawnOutcome {
 
 impl From<CachedResult> for SpawnOutcome {
     fn from(c: CachedResult) -> Self {
-        Self { exit_code: c.exit_code, stdout: c.stdout, stderr: c.stderr, from_cache: true }
+        Self {
+            exit_code: c.exit_code,
+            stdout: c.stdout,
+            stderr: c.stderr,
+            from_cache: true,
+            resource_watch: ResourceWatchSample::default(),
+        }
     }
 }
 
@@ -534,6 +552,15 @@ impl Hypervisor {
         // ── Thermal gate ─────────────────────────────────────────────────────
         self.thermal_gate_check().await?;
 
+        // ── Resource watch (FR-007 live hypervisor path) ───────────────────────
+        let watch = ResourceWatchSample::capture()?;
+        debug!(
+            fd_count = watch.fd_count,
+            net_rx_bytes = watch.net_rx_bytes,
+            net_tx_bytes = watch.net_tx_bytes,
+            "hypervisor::run — resource watch sample"
+        );
+
         // ── nocache_args → queue (never coalesce) ────────────────────────────
         // Feb harness: if argv contains a mutating flag, fall back to queue.
         if has_nocache_arg(&req.argv, &self.nocache_args) {
@@ -554,7 +581,9 @@ impl Hypervisor {
                 stdout: outcome.stdout,
                 stderr: outcome.stderr,
                 from_cache: false,
-            });
+                resource_watch: ResourceWatchSample::default(),
+            }
+            .with_resource_watch(watch));
         }
 
         // ── Cache lookup ─────────────────────────────────────────────────────
@@ -572,7 +601,9 @@ impl Hypervisor {
                 stdout: cached.stdout,
                 stderr: cached.stderr,
                 from_cache: true,
-            });
+                resource_watch: ResourceWatchSample::default(),
+            }
+            .with_resource_watch(watch));
         }
 
         // ── FUSE intercept (cache-miss only) ─────────────────────────────────
@@ -621,7 +652,9 @@ impl Hypervisor {
             stdout: cached.stdout,
             stderr: cached.stderr,
             from_cache: false,
-        })
+            resource_watch: ResourceWatchSample::default(),
+        }
+        .with_resource_watch(watch))
     }
 
     /// Poll the thermal gate with a visible sleep-retry loop on RED.
@@ -688,7 +721,13 @@ fn spawn_process_sync(req: &SpawnRequest) -> Result<SpawnOutcome> {
         .with_context(|| format!("failed to spawn {:?}", req.argv))?;
 
     let exit_code = output.status.code().unwrap_or(-1);
-    Ok(SpawnOutcome { exit_code, stdout: output.stdout, stderr: output.stderr, from_cache: false })
+    Ok(SpawnOutcome {
+        exit_code,
+        stdout: output.stdout,
+        stderr: output.stderr,
+        from_cache: false,
+        resource_watch: ResourceWatchSample::default(),
+    })
 }
 
 // ---------------------------------------------------------------------------
