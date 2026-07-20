@@ -13,7 +13,10 @@ use tracing::warn;
 
 use crate::config;
 
-pub use sharecli_fleet::{sample_host_net, sample_self_fds, ResourceWatchSample};
+pub use sharecli_fleet::{
+    sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
+    ResourceWatchSample,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthStatus {
@@ -63,9 +66,12 @@ pub struct ProcessStats {
     pub cpu_percent: f32,
     pub start_time: u64,
     pub uptime_seconds: u64,
+    /// Live FD/net watch fields from a live OS sample.
     pub fd_count: u64,
     pub net_rx_bytes: u64,
     pub net_tx_bytes: u64,
+    pub mem_rss_bytes: u64,
+    pub load_1m: f64,
 }
 
 impl ProcessStats {
@@ -88,15 +94,19 @@ impl ProcessStats {
             fd_count: 0,
             net_rx_bytes: 0,
             net_tx_bytes: 0,
+            mem_rss_bytes: 0,
+            load_1m: 0.0,
         }
     }
 
-    /// Populate FD/net watch fields from a live OS sample.
+    /// Populate resource watch fields from a live OS sample.
     pub fn with_resource_watch(mut self) -> Result<Self> {
         let sample = ResourceWatchSample::capture()?;
         self.fd_count = sample.fd_count;
         self.net_rx_bytes = sample.net_rx_bytes;
         self.net_tx_bytes = sample.net_tx_bytes;
+        self.mem_rss_bytes = sample.mem_rss_bytes;
+        self.load_1m = sample.load_1m;
         Ok(self)
     }
 
@@ -201,6 +211,8 @@ mod tests {
                 fd_count: 0,
                 net_rx_bytes: 0,
                 net_tx_bytes: 0,
+                mem_rss_bytes: 0,
+                load_1m: 0.0,
             },
             ProcessStats {
                 pid: 101,
@@ -212,6 +224,8 @@ mod tests {
                 fd_count: 0,
                 net_rx_bytes: 0,
                 net_tx_bytes: 0,
+                mem_rss_bytes: 0,
+                load_1m: 0.0,
             },
             ProcessStats {
                 pid: 102,
@@ -223,6 +237,8 @@ mod tests {
                 fd_count: 0,
                 net_rx_bytes: 0,
                 net_tx_bytes: 0,
+                mem_rss_bytes: 0,
+                load_1m: 0.0,
             },
         ];
 

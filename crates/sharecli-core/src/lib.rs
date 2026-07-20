@@ -76,7 +76,10 @@ pub use proc_scan::{
     is_under_agent, scan_agents, scan_host_agents, walk_agent_ancestors, DetectedAgent,
     FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
 };
-pub use sharecli_fleet::{sample_host_net, sample_self_fds, ResourceWatchSample};
+pub use sharecli_fleet::{
+    sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
+    ResourceWatchSample,
+};
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
@@ -558,6 +561,8 @@ impl Hypervisor {
             fd_count = watch.fd_count,
             net_rx_bytes = watch.net_rx_bytes,
             net_tx_bytes = watch.net_tx_bytes,
+            mem_rss_bytes = watch.mem_rss_bytes,
+            load_1m = watch.load_1m,
             "hypervisor::run — resource watch sample"
         );
 

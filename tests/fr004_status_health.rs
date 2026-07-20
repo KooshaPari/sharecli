@@ -138,6 +138,8 @@ fn fr004_process_stats_idle_threshold() {
         fd_count: 0,
         net_rx_bytes: 0,
         net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(idle.is_idle(threshold), "uptime>threshold and cpu<1.0 MUST be idle");
 
@@ -151,6 +153,8 @@ fn fr004_process_stats_idle_threshold() {
         fd_count: 0,
         net_rx_bytes: 0,
         net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(!busy_cpu.is_idle(threshold), "cpu_percent >= 1.0 MUST NOT be idle");
 
@@ -164,6 +168,8 @@ fn fr004_process_stats_idle_threshold() {
         fd_count: 0,
         net_rx_bytes: 0,
         net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(!too_young.is_idle(threshold), "uptime_seconds <= threshold MUST NOT be idle");
 
@@ -177,6 +183,8 @@ fn fr004_process_stats_idle_threshold() {
         fd_count: 0,
         net_rx_bytes: 0,
         net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(boundary_ok.is_idle(threshold));
 }
