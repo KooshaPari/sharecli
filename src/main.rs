@@ -51,7 +51,8 @@ mod xxhash3;
 mod xxtea;
 
 use commands::{
-    cast as cast_cmd, check_limits, config as config_cmd, health, mesh as mesh_cmd, pool_status,
+    cast as cast_cmd, check_limits, config as config_cmd, fuse as fuse_cmd, health, mesh as mesh_cmd,
+    pool_status,
     project as project_cmd, ps, run_pool, serve_run, set_limits, start, status, stop,
 };
 use progress::StepProgress;
@@ -277,6 +278,11 @@ enum Commands {
         #[command(subcommand)]
         cmd: MeshCmd,
     },
+    /// FUSE IO intercept operator surface (provenance inspect)
+    Fuse {
+        #[command(subcommand)]
+        cmd: FuseCmd,
+    },
     /// Cross-machine text injection into registered terminal panes
     Cast {
         #[command(subcommand)]
@@ -342,6 +348,18 @@ enum FleetCmd {
         /// Fleet coordinator address (e.g. nats://localhost:4222)
         #[arg(short, long, default_value = "nats://localhost:4222")]
         coordinator: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum FuseCmd {
+    /// Read write-provenance xattrs (`user.sharecli.session`, `user.sharecli.written_at`)
+    Provenance {
+        /// Backing file path (need not be under a live FUSE mount)
+        path: std::path::PathBuf,
+        /// Emit JSON instead of text (`null` when attrs absent)
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -541,6 +559,9 @@ async fn run() -> Result<()> {
             MeshCmd::Status { queue, json } => mesh_cmd::status(queue, *json)?,
             MeshCmd::Reclaim { queue, owner } => mesh_cmd::reclaim(queue, owner)?,
         },
+        Commands::Fuse { cmd } => match cmd {
+            FuseCmd::Provenance { path, json } => fuse_cmd::provenance(path, *json)?,
+        },
         Commands::Cast { cmd } => match cmd {
             CastCmd::Register { name, address } => cast_cmd::register(name, address)?,
             CastCmd::Unregister { name } => cast_cmd::unregister(name)?,
@@ -612,6 +633,13 @@ fn cli_list(as_json: bool) -> Result<()> {
         ("reclaim", "Return in-flight tasks for an owner (`mesh reclaim --queue <path> --owner <id>`)"),
     ];
 
+    let fuse_modules: &[(&str, &str)] = &[
+        (
+            "provenance",
+            "Read FUSE write xattrs on a backing file (`fuse provenance <path>`)",
+        ),
+    ];
+
     let util_modules: &[(&str, &str)] = &[
         ("base85", "Base85 encode / decode"),
         ("csv", "Build a CSV row from --row entries"),
@@ -631,6 +659,7 @@ fn cli_list(as_json: bool) -> Result<()> {
         let payload = serde_json::json!({
             "cast": cast_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
             "mesh": mesh_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
+            "fuse": fuse_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
             "util": util_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
         });
         println!("{}", serde_json::to_string_pretty(&payload)?);
@@ -646,6 +675,11 @@ fn cli_list(as_json: bool) -> Result<()> {
     println!();
     println!("mesh <subcommand>  -- Maildir task queue ({} subcommands)", mesh_modules.len());
     for (n, d) in mesh_modules {
+        println!("  - {:<11} {}", n, d);
+    }
+    println!();
+    println!("fuse <subcommand>  -- FUSE IO intercept ({} subcommands)", fuse_modules.len());
+    for (n, d) in fuse_modules {
         println!("  - {:<11} {}", n, d);
     }
     println!();
