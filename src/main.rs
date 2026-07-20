@@ -51,7 +51,7 @@ mod xxhash3;
 mod xxtea;
 
 use commands::{
-    cast as cast_cmd, check_limits, config as config_cmd, health, pool_status,
+    cast as cast_cmd, check_limits, config as config_cmd, health, mesh as mesh_cmd, pool_status,
     project as project_cmd, ps, run_pool, serve_run, set_limits, start, status, stop,
 };
 use progress::StepProgress;
@@ -272,6 +272,11 @@ enum Commands {
         #[command(subcommand)]
         cmd: FleetCmd,
     },
+    /// Maildir mesh task-queue operator surface (status / reclaim)
+    Mesh {
+        #[command(subcommand)]
+        cmd: MeshCmd,
+    },
     /// Cross-machine text injection into registered terminal panes
     Cast {
         #[command(subcommand)]
@@ -337,6 +342,28 @@ enum FleetCmd {
         /// Fleet coordinator address (e.g. nats://localhost:4222)
         #[arg(short, long, default_value = "nats://localhost:4222")]
         coordinator: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum MeshCmd {
+    /// Show Maildir queue depth (ready / in_flight / pending)
+    Status {
+        /// Path to Maildir queue root (`tmp/` `new/` `cur/`)
+        #[arg(long, short = 'Q')]
+        queue: std::path::PathBuf,
+        /// Emit JSON [`sharecli_mesh::MaildirStatus`] instead of text
+        #[arg(long)]
+        json: bool,
+    },
+    /// Return in-flight (`cur/`) tasks for an owner back to `new/`
+    Reclaim {
+        /// Path to Maildir queue root
+        #[arg(long, short = 'Q')]
+        queue: std::path::PathBuf,
+        /// Owner string stamped at claim time
+        #[arg(long)]
+        owner: String,
     },
 }
 
@@ -510,6 +537,10 @@ async fn run() -> Result<()> {
                 fleet_register(name.as_deref(), coordinator).await?
             }
         },
+        Commands::Mesh { cmd } => match cmd {
+            MeshCmd::Status { queue, json } => mesh_cmd::status(queue, *json)?,
+            MeshCmd::Reclaim { queue, owner } => mesh_cmd::reclaim(queue, owner)?,
+        },
         Commands::Cast { cmd } => match cmd {
             CastCmd::Register { name, address } => cast_cmd::register(name, address)?,
             CastCmd::Unregister { name } => cast_cmd::unregister(name)?,
@@ -576,6 +607,11 @@ fn cli_list(as_json: bool) -> Result<()> {
         ("where", "Show the on-disk path of the pane-map file"),
     ];
 
+    let mesh_modules: &[(&str, &str)] = &[
+        ("status", "Show Maildir queue depth (`mesh status --queue <path>`)"),
+        ("reclaim", "Return in-flight tasks for an owner (`mesh reclaim --queue <path> --owner <id>`)"),
+    ];
+
     let util_modules: &[(&str, &str)] = &[
         ("base85", "Base85 encode / decode"),
         ("csv", "Build a CSV row from --row entries"),
@@ -594,6 +630,7 @@ fn cli_list(as_json: bool) -> Result<()> {
     if as_json {
         let payload = serde_json::json!({
             "cast": cast_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
+            "mesh": mesh_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
             "util": util_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
         });
         println!("{}", serde_json::to_string_pretty(&payload)?);
@@ -604,6 +641,11 @@ fn cli_list(as_json: bool) -> Result<()> {
     println!();
     println!("cast <subcommand>  -- pane casting ({} subcommands)", cast_modules.len());
     for (n, d) in cast_modules {
+        println!("  - {:<11} {}", n, d);
+    }
+    println!();
+    println!("mesh <subcommand>  -- Maildir task queue ({} subcommands)", mesh_modules.len());
+    for (n, d) in mesh_modules {
         println!("  - {:<11} {}", n, d);
     }
     println!();

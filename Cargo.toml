@@ -51,6 +51,8 @@ spawn-core-sys = { path = "crates/spawn-core-sys" }
 # Fleet: device registry + thermal governor
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 sharecli-sync = { path = "crates/sharecli-sync" }
+# Mesh: Maildir task queue + SmartMerger / WorktreePool (FR-010 CLI)
+sharecli-mesh = { path = "crates/sharecli-mesh" }
 
 # Thermal TUI
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
@@ -108,7 +110,7 @@ sharecli-fleet = { path = "crates/sharecli-fleet" }
 sharecli-core = { path = "crates/sharecli-core" }
 sharecli-ipc = { path = "crates/sharecli-ipc" }
 sharecli-fuse = { path = "crates/sharecli-fuse" }
-sharecli-mesh = { path = "crates/sharecli-mesh" }
+# sharecli-mesh is a normal dependency (mesh CLI); re-export not needed in dev-deps
 ratatui = "0.30"
 proptest = "1.6"
 

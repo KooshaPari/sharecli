@@ -17,6 +17,7 @@
 //!
 //! Public API: [`MaildirQueue::enqueue`], [`MaildirQueue::claim`],
 //! [`MaildirQueue::ack`], [`MaildirQueue::nack`], [`MaildirQueue::list_pending`],
+//! [`MaildirQueue::status`], [`MaildirQueue::reclaim_owner`],
 //! [`SmartMerger`], [`WorktreePool`].
 
 mod smart_merge;
@@ -24,5 +25,5 @@ mod task_queue;
 mod worktree_pool;
 
 pub use smart_merge::{MergeResult, SmartMerger};
-pub use task_queue::{MaildirQueue, TaskEnvelope};
+pub use task_queue::{MaildirQueue, MaildirStatus, TaskEnvelope};
 pub use worktree_pool::{WorktreeLease, WorktreePool, WorktreePoolError};

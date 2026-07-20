@@ -31,7 +31,7 @@
 | FR-007  | Resource & Syscall-Relevant Watch    | `sharecli-core`, `sharecli-fleet`, `src/monitoring.rs`                                       | `tests/fr007_resource_thermal_watch.rs`                                                           | ACCEPTED |
 | FR-008  | Speculative Coalesce / Debounce / Queue | `sharecli-ipc` (cache+queue+nocache), `sharecli-core` Hypervisor                          | `tests/fr008_coalesce_mesh.rs`                                                                    | ACCEPTED |
 | FR-009  | FUSE IO Intercept                    | `crates/sharecli-fuse`                                                                       | `tests/fr009_fuse_intercept.rs`                                                                   | ACCEPTED |
-| FR-010  | Agent Mesh / Shared Substrate        | `sharecli-fleet` registry, `crates/sharecli-mesh` MaildirQueue / SmartMerger / WorktreePool   | `tests/fr010_mesh_substrate.rs`                                                                   | ACCEPTED |
+| FR-010  | Agent Mesh / Shared Substrate        | `sharecli-fleet` registry, `crates/sharecli-mesh` MaildirQueue / SmartMerger / WorktreePool, `sharecli mesh` CLI | `tests/fr010_mesh_substrate.rs` · `tests/fr010_mesh_cli.rs` | ACCEPTED |
 | FR-011  | Thermal Contention Gate              | `sharecli-fleet` thermal, `sharecli-core` FakeThermalGate                                    | `tests/fr011_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`                                     | ACCEPTED |
 | FR-012  | Serve HTTP Federated AuthN           | `src/serve_auth.rs`, `src/config.rs` (`ServeJwtConfig`), `src/commands/serve.rs`            | `tests/fr012_serve_jwt_auth.rs`                                                                   | ACCEPTED |
 
@@ -111,7 +111,7 @@
 | AC-008.1..4 | `tests/fr008_coalesce_mesh.rs` | command_key / with_lock / thermal / cache hit |
 | AC-008.5 | `tests/fr008_coalesce_mesh.rs` (`fr008_ttl_stale_entry_is_miss`); `sharecli-ipc` `ttl_lookup_miss_and_evict_on_store` | TTL miss + eviction |
 | AC-008.6 | `tests/fr008_coalesce_mesh.rs` (`fr008_debounce_waits_and_shares`); `sharecli-ipc` `debounce_shares_recent_store` | debounce share window |
-| queue / nocache | — | still TBD |
+| AC-008.7..9 | `tests/fr008_coalesce_mesh.rs` (`fr008_nocache_*`, `fr008_slot_queue_*`, `fr008_hypervisor_nocache_*`) | nocache bypass + SlotQueue + Hypervisor queue route |
 
 ### FR-009 — FUSE
 
@@ -131,6 +131,8 @@
 | AC-010.4..6 | `tests/fr010_mesh_substrate.rs` | MaildirQueue lifecycle |
 | AC-010.7 | `tests/fr010_mesh_substrate.rs`; `smart_merge` unit tests | git merge-file fallback |
 | AC-010.8 | `tests/fr010_mesh_substrate.rs`; `worktree_pool` unit tests | allocate/release + NotGitRepo |
+| AC-010.9 | `tests/fr010_mesh_substrate.rs`; `tests/fr010_mesh_cli.rs` | status counts + `mesh status` CLI |
+| AC-010.10 | `tests/fr010_mesh_substrate.rs`; `tests/fr010_mesh_cli.rs` | reclaim_owner + `mesh reclaim` CLI |
 
 ### FR-011 — Thermal Gate
 
@@ -148,6 +150,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-010 mesh CLI:** `MaildirQueue::status` + `reclaim_owner`
+  operator surface; `sharecli mesh status|reclaim` (AC-010.9..10);
+  TRACEABILITY AC-008.7..9 marked covered (was stale TBD).
 - **2026-07-20 — FR-009 write provenance:** `user.sharecli.session` /
   `user.sharecli.written_at` stamped on `write_rel` / `commit_rel` (AC-009.6).
 - **2026-07-19 — FR-009/010 A+ closeout:** CoW `stage_bytes`/`commit_pending`/

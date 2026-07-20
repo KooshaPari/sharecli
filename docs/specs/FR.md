@@ -301,13 +301,17 @@ for participating hosts (registry subject namespace + device records), a
 Maildir-style filesystem task queue (`enqueue` / `claim` / `ack`) as the
 execution-substrate port of `thegent.mesh.task_queue`, plus Jun mesh ports
 for smart three-way merge (`SmartMerger`) and git worktree pooling
-(`WorktreePool`).
+(`WorktreePool`). Operators MUST be able to inspect queue depth
+([`MaildirQueue::status`] / `sharecli mesh status`) and reclaim stranded
+in-flight work for a given owner ([`MaildirQueue::reclaim_owner`] /
+`sharecli mesh reclaim`).
 
 **Source:**
 
 - `crates/sharecli-fleet/src/registry.rs` — `FleetRegistry`, `DeviceRecord`
-- `crates/sharecli-mesh` — `MaildirQueue::{enqueue,claim,ack,nack}`
+- `crates/sharecli-mesh` — `MaildirQueue::{enqueue,claim,ack,nack,status,reclaim_owner}`
 - `crates/sharecli-mesh` — `SmartMerger`, `WorktreePool`
+- `src/commands/mesh.rs` — `sharecli mesh status|reclaim`
 
 **Acceptance Criteria:**
 
@@ -326,8 +330,16 @@ for smart three-way merge (`SmartMerger`) and git worktree pooling
 - **AC-010.8:** `WorktreePool::allocate` / `release` create and remove git
   worktrees under a pool root; opening a non-git repo fails with
   `NotGitRepo` (loud, no directory-slot silent fallback).
+- **AC-010.9:** `MaildirQueue::status` reports `ready` (`new/`), `in_flight`
+  (`cur/`), and `pending` (= sum); `sharecli mesh status --queue` / `--json`
+  exposes the same counts.
+- **AC-010.10:** `MaildirQueue::reclaim_owner` moves matching `cur/` tasks
+  back to `new/` (count returned); non-matching owners reclaim 0;
+  `sharecli mesh reclaim --queue --owner` performs the same; empty owner
+  fails loudly.
 
-**Test refs:** `tests/fr010_mesh_substrate.rs`; `sharecli-mesh` unit tests.
+**Test refs:** `tests/fr010_mesh_substrate.rs`; `tests/fr010_mesh_cli.rs`;
+`sharecli-mesh` unit tests.
 
 ---
 

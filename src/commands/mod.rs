@@ -1,6 +1,7 @@
 //! CLI commands for sharecli
 
 pub mod cast;
+pub mod mesh;
 pub mod report;
 pub mod serve;
 pub mod uninstall;

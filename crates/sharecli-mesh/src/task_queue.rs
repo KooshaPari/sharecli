@@ -14,6 +14,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
+/// Operator-facing Maildir depth snapshot (`sharecli mesh status`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MaildirStatus {
+    /// Queue root path.
+    pub path: PathBuf,
+    /// Tasks waiting in `new/` (ready to claim).
+    pub ready: usize,
+    /// Tasks claimed in `cur/` (in-flight).
+    pub in_flight: usize,
+    /// `ready + in_flight` (same as [`MaildirQueue::list_pending`] length).
+    pub pending: usize,
+}
+
 /// Task envelope stored as JSON under `tmp/` / `new/` / `cur/`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TaskEnvelope {
@@ -192,6 +205,18 @@ impl MaildirQueue {
         Ok(reclaimed)
     }
 
+    /// Snapshot queue depth for operator status (`new/` ready, `cur/` in-flight).
+    pub fn status(&self) -> Result<MaildirStatus> {
+        let ready = self.list_envelopes(&self.new)?;
+        let in_flight = self.list_envelopes(&self.cur)?;
+        Ok(MaildirStatus {
+            path: self.path.clone(),
+            ready: ready.len(),
+            in_flight: in_flight.len(),
+            pending: ready.len() + in_flight.len(),
+        })
+    }
+
     fn list_envelopes(&self, directory: &Path) -> Result<Vec<TaskEnvelope>> {
         let mut results = Vec::new();
         let entries = match fs::read_dir(directory) {
@@ -262,5 +287,34 @@ mod tests {
         q.nack(&id).unwrap();
         assert!(dir.path().join("new").join(&id).exists());
         assert!(!dir.path().join("cur").join(&id).exists());
+    }
+
+    #[test]
+    fn status_counts_ready_and_in_flight() {
+        let dir = TempDir::new().unwrap();
+        let q = MaildirQueue::open(dir.path()).unwrap();
+        q.enqueue(json!(1), 1).unwrap();
+        q.enqueue(json!(2), 2).unwrap();
+        q.claim(Some("w1")).unwrap().unwrap();
+        let st = q.status().unwrap();
+        assert_eq!(st.ready, 1);
+        assert_eq!(st.in_flight, 1);
+        assert_eq!(st.pending, 2);
+        assert_eq!(st.path, dir.path());
+    }
+
+    #[test]
+    fn reclaim_owner_returns_cur_to_new() {
+        let dir = TempDir::new().unwrap();
+        let q = MaildirQueue::open(dir.path()).unwrap();
+        let id = q.enqueue(json!({"op": "x"}), 1).unwrap();
+        q.claim(Some("agent-dead")).unwrap().unwrap();
+        assert_eq!(q.reclaim_owner("other").unwrap(), 0);
+        assert_eq!(q.reclaim_owner("agent-dead").unwrap(), 1);
+        assert!(dir.path().join("new").join(&id).exists());
+        assert!(!dir.path().join("cur").join(&id).exists());
+        let st = q.status().unwrap();
+        assert_eq!(st.ready, 1);
+        assert_eq!(st.in_flight, 0);
     }
 }
