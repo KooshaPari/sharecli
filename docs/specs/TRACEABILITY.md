@@ -142,6 +142,7 @@
 | AC-009.11 | `tests/fr009_fuse_cli.rs`; `src/commands/fuse.rs` | `sharecli fuse provenance` reads backing write xattrs |
 | AC-009.12 | `tests/fr009_fuse_hypervisor_session.rs`; `sharecli-core` `fuse_session_id_for_command_key`; `sharecli-fuse` `mount_with_session` | Hypervisor FUSE session from coalesce CommandKey |
 | AC-009.13 | `tests/fr009_fuse_hypervisor_session.rs` (`fr009_hypervisor_spawn_outcome_fuse_session_id`); `sharecli-core` `SpawnOutcome::fuse_session_id` | SpawnOutcome exposes FUSE session when intercept active |
+| AC-009.14 | `tests/fr009_fuse_hypervisor_session.rs` (`fr009_remap_mount_to_backing_subtree`, `fr009_hypervisor_spawn_outcome_fuse_path_remap`); `sharecli-fuse` `path_remap.rs`; `sharecli-core` `SpawnOutcome::remap_fuse_path`, `FuseGuard` teardown | FUSE mount/backing remap + spawn/teardown lifecycle |
 
 ### FR-010 — Mesh
 
@@ -175,6 +176,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-009 FUSE path remap + lifecycle:** SpawnOutcome exposes
+  `fuse_backing` / `fuse_mountpoint`; `remap_mount_to_backing` + guard teardown
+  on drop (AC-009.14).
 - **2026-07-20 — FR-009 SpawnOutcome FUSE session:** cache-miss outcomes expose
   `fuse_session_id` when intercept mount is active (AC-009.13).
 - **2026-07-20 — FR-009 Hypervisor FUSE session:** cache-miss mounts pass

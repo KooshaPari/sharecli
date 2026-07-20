@@ -477,6 +477,13 @@ pub struct SpawnOutcome {
     /// `None` for cache hits, nocache queue routing, or cache-miss spawns where FUSE
     /// mount did not become ready.
     pub fuse_session_id: Option<String>,
+    /// Original backing cwd before FUSE intercept remap (AC-009.14).
+    ///
+    /// `Some` only when [`fuse_intercept_active`] is true; pairs with
+    /// [`fuse_mountpoint`](Self::fuse_mountpoint) for [`remap_fuse_path`](Self::remap_fuse_path).
+    pub fuse_backing: Option<PathBuf>,
+    /// Ephemeral FUSE mountpoint used as the child cwd (AC-009.14).
+    pub fuse_mountpoint: Option<PathBuf>,
 }
 
 impl SpawnOutcome {
@@ -499,6 +506,17 @@ impl SpawnOutcome {
     pub fn fuse_intercept_active(&self) -> bool {
         self.fuse_session_id.is_some()
     }
+
+    /// Remap an absolute or mount-relative path to its backing equivalent (AC-009.14).
+    ///
+    /// Returns `None` when FUSE intercept was inactive or `path` lies outside the
+    /// mount subtree.
+    pub fn remap_fuse_path(&self, path: &Path) -> Option<PathBuf> {
+        match (&self.fuse_mountpoint, &self.fuse_backing) {
+            (Some(mp), Some(bk)) => sharecli_fuse::remap_mount_to_backing(mp, bk, path),
+            _ => None,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -515,6 +533,8 @@ impl From<CachedResult> for SpawnOutcome {
             resource_watch: ResourceWatchSample::default(),
             detected_agent: None,
             fuse_session_id: None,
+            fuse_backing: None,
+            fuse_mountpoint: None,
         }
     }
 }
@@ -707,6 +727,8 @@ impl Hypervisor {
                 resource_watch: ResourceWatchSample::default(),
                 detected_agent: None,
                 fuse_session_id: None,
+                fuse_backing: None,
+                fuse_mountpoint: None,
             }
             .with_resource_watch(watch)
             .with_detected_agent(detected_agent.clone()));
@@ -731,6 +753,8 @@ impl Hypervisor {
                 resource_watch: ResourceWatchSample::default(),
                 detected_agent: None,
                 fuse_session_id: None,
+                fuse_backing: None,
+                fuse_mountpoint: None,
             }
             .with_resource_watch(watch)
             .with_detected_agent(detected_agent.clone()));
@@ -745,6 +769,8 @@ impl Hypervisor {
         let fuse_guard = FuseGuard::try_mount(&req.cwd, &fuse_session);
         let fuse_session_id =
             fuse_guard.mountpoint().map(|_| fuse_session.clone());
+        let fuse_backing = fuse_guard.mountpoint().map(|_| req.cwd.clone());
+        let fuse_mountpoint = fuse_guard.mountpoint().map(|p| p.to_path_buf());
 
         // Build an effective SpawnRequest whose cwd points at the FUSE
         // mountpoint (or the original cwd when FUSE is inactive).
@@ -776,6 +802,8 @@ impl Hypervisor {
             resource_watch: ResourceWatchSample::default(),
             detected_agent: None,
             fuse_session_id,
+            fuse_backing,
+            fuse_mountpoint,
         }
         .with_resource_watch(watch)
         .with_detected_agent(detected_agent))
@@ -872,6 +900,8 @@ fn spawn_process_sync(req: &SpawnRequest) -> Result<SpawnOutcome> {
         resource_watch: ResourceWatchSample::default(),
         detected_agent: None,
         fuse_session_id: None,
+        fuse_backing: None,
+        fuse_mountpoint: None,
     })
 }
 
@@ -1122,6 +1152,37 @@ mod tests {
             None => {
                 // FUSE not available — best-effort, still valid.
             }
+        }
+    }
+
+    /// FR-009 / AC-009.14 — FuseGuard stays mounted until drop (spawn/teardown lifecycle).
+    #[test]
+    fn fuse_guard_teardown_after_drop() {
+        let dir = TempDir::new().expect("tempdir");
+        let mountpoint = {
+            let guard = FuseGuard::try_mount(dir.path(), "hv-teardown-session");
+            guard.mountpoint().map(|p| p.to_path_buf())
+        };
+        if let Some(mp) = mountpoint {
+            assert_ne!(mp, dir.path());
+            // Guard drop runs force-unmount; mount tempdir may remain but must not
+            // still expose the readiness marker tree as a live FUSE mount.
+            let still_mounted = std::fs::read_dir(&mp)
+                .ok()
+                .is_some_and(|mut rd| {
+                    rd.any(|e| {
+                        e.ok()
+                            .is_some_and(|ent| {
+                                ent.file_name()
+                                    .to_string_lossy()
+                                    .starts_with(FUSE_READY_MARKER)
+                            })
+                    })
+                });
+            assert!(
+                !still_mounted,
+                "FUSE intercept MUST tear down on guard drop (AC-009.14)"
+            );
         }
     }
 
