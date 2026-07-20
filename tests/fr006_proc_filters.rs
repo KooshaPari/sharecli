@@ -3,6 +3,7 @@
 //!
 //! AC-006.17 `--family` and `--min-rss` narrow proc inventory and tree forests
 //! AC-006.27 `--max-rss` upper-bound RSS filter (complements `--min-rss`)
+//! AC-006.28 `--min-fd` / `--max-fd` FD band filters (symmetric to RSS bounds)
 
 use std::process::Command;
 
@@ -29,6 +30,8 @@ fn fr006_proc_help_documents_filters() {
     assert!(s.contains("--family"), "proc --help MUST document --family; got: {s}");
     assert!(s.contains("--min-rss"), "proc --help MUST document --min-rss; got: {s}");
     assert!(s.contains("--max-rss"), "proc --help MUST document --max-rss; got: {s}");
+    assert!(s.contains("--min-fd"), "proc --help MUST document --min-fd; got: {s}");
+    assert!(s.contains("--max-fd"), "proc --help MUST document --max-fd; got: {s}");
 }
 
 /// FR-006 / AC-006.17 — family filter keeps matching agents only.
@@ -37,7 +40,14 @@ fn fr006_proc_family_filter() {
     let rows = vec![watch_row("claude", 10, 100), watch_row("codex", 11, 200)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter { family: Some("claude".into()), min_rss_bytes: None, max_rss_bytes: None, ppid: None },
+        &ProcFilter {
+            family: Some("claude".into()),
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+            ppid: None,
+        },
         &empty_ppid_map(),
     );
     assert_eq!(filtered.len(), 1);
@@ -51,7 +61,14 @@ fn fr006_proc_min_rss_filter() {
         vec![watch_row("claude", 10, 50 * 1_048_576), watch_row("codex", 11, 200 * 1_048_576)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter { family: None, min_rss_bytes: Some(100 * 1_048_576), max_rss_bytes: None, ppid: None },
+        &ProcFilter {
+            family: None,
+            min_rss_bytes: Some(100 * 1_048_576),
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+            ppid: None,
+        },
         &empty_ppid_map(),
     );
     assert_eq!(filtered.len(), 1);
@@ -70,7 +87,15 @@ fn fr006_proc_tree_family_filter() {
     assert_eq!(forests.len(), 2);
     let filtered = filter_agent_forests(
         &forests,
-        &ProcFilter { family: Some("codex".into()), min_rss_bytes: None, max_rss_bytes: None, ppid: None },
+        &ProcFilter {
+            family: Some("codex".into()),
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+            ppid: None,
+        },
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );
     assert_eq!(filtered.len(), 1);
@@ -103,6 +128,8 @@ fn fr006_proc_max_rss_filter() {
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: Some(100 * 1_048_576),
+            min_fd_count: None,
+            max_fd_count: None,
             ppid: None,
         },
         &empty_ppid_map(),
@@ -125,6 +152,8 @@ fn fr006_proc_rss_band_filter() {
             family: None,
             min_rss_bytes: Some(100 * 1_048_576),
             max_rss_bytes: Some(200 * 1_048_576),
+            min_fd_count: None,
+            max_fd_count: None,
             ppid: None,
         },
         &empty_ppid_map(),
@@ -151,12 +180,183 @@ fn fr006_proc_tree_max_rss_filter() {
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: Some(100 * 1_048_576),
+            min_fd_count: None,
+            max_fd_count: None,
             ppid: None,
         },
         &rss_by_pid,
+        &std::collections::HashMap::new(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].pid, 50);
+}
+
+/// FR-006 / AC-006.28 — min-fd filter drops agents below threshold.
+#[test]
+fn fr006_proc_min_fd_filter() {
+    let rows = vec![
+        watch_row_fd("claude", 10, 100, 5),
+        watch_row_fd("codex", 11, 100, 50),
+    ];
+    let filtered = filter_watched_agents(
+        &rows,
+        &ProcFilter {
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: Some(20),
+            max_fd_count: None,
+            ppid: None,
+        },
+        &empty_ppid_map(),
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].agent.pid, 11);
+}
+
+/// FR-006 / AC-006.28 — max-fd filter drops agents above threshold.
+#[test]
+fn fr006_proc_max_fd_filter() {
+    let rows = vec![
+        watch_row_fd("claude", 10, 100, 5),
+        watch_row_fd("codex", 11, 100, 50),
+    ];
+    let filtered = filter_watched_agents(
+        &rows,
+        &ProcFilter {
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: Some(20),
+            ppid: None,
+        },
+        &empty_ppid_map(),
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].agent.pid, 10);
+}
+
+/// FR-006 / AC-006.28 — min-fd and max-fd compose as an FD band.
+#[test]
+fn fr006_proc_fd_band_filter() {
+    let rows = vec![
+        watch_row_fd("claude", 10, 100, 5),
+        watch_row_fd("codex", 11, 100, 25),
+        watch_row_fd("amp", 12, 100, 50),
+    ];
+    let filtered = filter_watched_agents(
+        &rows,
+        &ProcFilter {
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: Some(20),
+            max_fd_count: Some(40),
+            ppid: None,
+        },
+        &empty_ppid_map(),
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].agent.pid, 11);
+}
+
+/// FR-006 / AC-006.28 — missing fd_count treated as 0 for min-fd.
+#[test]
+fn fr006_proc_min_fd_treats_missing_as_zero() {
+    let rows = vec![watch_row("claude", 10, 100), watch_row_fd("codex", 11, 100, 10)];
+    let filtered = filter_watched_agents(
+        &rows,
+        &ProcFilter {
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: Some(1),
+            max_fd_count: None,
+            ppid: None,
+        },
+        &empty_ppid_map(),
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].agent.pid, 11);
+}
+
+/// FR-006 / AC-006.28 — tree forests honor max-fd on roots.
+#[test]
+fn fr006_proc_tree_max_fd_filter() {
+    let src = FakeProcSource::new(vec![
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
+        ProcSnapshot { pid: 50, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()] },
+        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()] },
+    ]);
+    let forests = sharecli_fleet::build_agent_forests(&src);
+    let mut fd_by_pid = std::collections::HashMap::new();
+    fd_by_pid.insert(50, 5);
+    fd_by_pid.insert(60, 50);
+    let filtered = filter_agent_forests(
+        &forests,
+        &ProcFilter {
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: Some(20),
+            ppid: None,
+        },
+        &std::collections::HashMap::new(),
+        &fd_by_pid,
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].pid, 50);
+}
+
+/// FR-006 / AC-006.28 — invalid min-fd exits non-zero.
+#[test]
+fn fr006_proc_invalid_min_fd_rejected() {
+    let out = bin()
+        .args(["proc", "--min-fd", "not-a-number"])
+        .output()
+        .expect("spawn sharecli proc --min-fd");
+    assert!(!out.status.success(), "invalid --min-fd MUST fail");
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("min-fd") || err.contains("FD"),
+        "error MUST mention min-fd; got: {err}"
+    );
+}
+
+/// FR-006 / AC-006.28 — invalid max-fd exits non-zero.
+#[test]
+fn fr006_proc_invalid_max_fd_rejected() {
+    let out = bin()
+        .args(["proc", "--max-fd", "not-a-number"])
+        .output()
+        .expect("spawn sharecli proc --max-fd");
+    assert!(!out.status.success(), "invalid --max-fd MUST fail");
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("max-fd") || err.contains("FD"),
+        "error MUST mention max-fd; got: {err}"
+    );
+}
+
+/// FR-006 / AC-006.28 — min-fd greater than max-fd fails loudly.
+#[test]
+fn fr006_proc_min_fd_exceeds_max_fd_rejected() {
+    let out = bin()
+        .args(["proc", "--min-fd", "200", "--max-fd", "100"])
+        .output()
+        .expect("spawn sharecli proc min-fd>max-fd");
+    assert!(!out.status.success(), "min-fd > max-fd MUST fail");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout)
+    );
+    assert!(
+        combined.contains("min-fd") && combined.contains("max-fd"),
+        "error MUST mention both FD bounds; got: {combined}"
+    );
 }
 
 /// FR-006 / AC-006.27 — invalid max-rss exits non-zero.
@@ -194,8 +394,12 @@ fn fr006_proc_min_rss_exceeds_max_rss_rejected() {
 }
 
 fn watch_row(family: &'static str, pid: u32, rss: u64) -> DetectedAgentWatch {
+    watch_row_fd(family, pid, rss, None)
+}
+
+fn watch_row_fd(family: &'static str, pid: u32, rss: u64, fd: impl Into<Option<u64>>) -> DetectedAgentWatch {
     DetectedAgentWatch {
         agent: DetectedAgent { pid, family, comm: family.into() },
-        resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: None },
+        resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: fd.into() },
     }
 }

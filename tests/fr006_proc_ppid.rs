@@ -53,7 +53,14 @@ fn fr006_proc_ppid_filter_keeps_matching_parent() {
     ];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter { ppid: Some(1), family: None, min_rss_bytes: None, max_rss_bytes: None },
+        &ProcFilter {
+            ppid: Some(1),
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+        },
         &ppid_map,
     );
     assert_eq!(filtered.len(), 2);
@@ -79,6 +86,8 @@ fn fr006_proc_ppid_composes_with_family() {
             family: Some("claude".into()),
             min_rss_bytes: None,
             max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
         },
         &ppid_map,
     );
@@ -98,13 +107,29 @@ fn fr006_proc_tree_ppid_filter() {
     assert_eq!(forests.len(), 2);
     let filtered = filter_agent_forests(
         &forests,
-        &ProcFilter { ppid: Some(1), family: None, min_rss_bytes: None, max_rss_bytes: None },
+        &ProcFilter {
+            ppid: Some(1),
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+        },
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );
     assert_eq!(filtered.len(), 2);
     let filtered_launchd = filter_agent_forests(
         &forests,
-        &ProcFilter { ppid: Some(999), family: None, min_rss_bytes: None, max_rss_bytes: None },
+        &ProcFilter {
+            ppid: Some(999),
+            family: None,
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+        },
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );
     assert!(filtered_launchd.is_empty());
