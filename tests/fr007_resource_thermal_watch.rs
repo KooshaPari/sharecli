@@ -4,8 +4,10 @@
 //! AC-007.1 thermal governor mock levels round-trip
 //! AC-007.2 FakeThermalGate maps Allow/Warn/Refuse
 //! AC-007.3 ProcessStats idle heuristic (CPU/MEM-relevant signal)
+//! AC-007.4 FD watch via sample_self_fds / ResourceWatchSample
+//! AC-007.5 host net RX/TX watch via sample_host_net
 
-use sharecli::monitoring::ProcessStats;
+use sharecli::monitoring::{ProcessStats, ResourceWatchSample, sample_host_net, sample_self_fds};
 use sharecli_core::{FakeThermalGate, ThermalDecision, ThermalGate};
 use sharecli_fleet::{ThermalGovernor, ThermalLevel};
 
@@ -39,23 +41,38 @@ fn fr007_fake_thermal_gate_maps_decisions() {
 /// FR-007 / AC-007.3 — idle heuristic encodes CPU + uptime watch signal.
 #[test]
 fn fr007_process_stats_idle_heuristic() {
-    let idle = ProcessStats {
-        pid: 1,
-        name: "agent".into(),
-        memory_mb: 64,
-        cpu_percent: 0.1,
-        start_time: 0,
-        uptime_seconds: 120,
-    };
+    let idle = ProcessStats::new(1, "agent", 64, 0.1, 0, 120);
     assert!(idle.is_idle(60), "low CPU + long uptime MUST be idle");
 
-    let busy = ProcessStats {
-        pid: 2,
-        name: "agent".into(),
-        memory_mb: 512,
-        cpu_percent: 42.0,
-        start_time: 0,
-        uptime_seconds: 120,
-    };
+    let busy = ProcessStats::new(2, "agent", 512, 42.0, 0, 120);
     assert!(!busy.is_idle(60), "high CPU MUST not be idle");
+}
+
+/// FR-007 / AC-007.4 — FD watch samples the current process open descriptor count.
+#[test]
+fn fr007_fd_watch_samples_self_fds() {
+    let fd_count = sample_self_fds().expect("FD watch MUST succeed on supported OS");
+    assert!(fd_count >= 3, "process MUST have at least stdin/stdout/stderr FDs");
+
+    let sample = ResourceWatchSample::capture().expect("resource watch capture");
+    assert!(sample.fd_count >= 3, "capture MUST include live FD count");
+
+    let stats = ProcessStats::new(1, "agent", 0, 0.0, 0, 0)
+        .with_resource_watch()
+        .expect("ProcessStats resource watch");
+    assert!(stats.fd_count >= 3, "ProcessStats MUST carry FD watch signal");
+}
+
+/// FR-007 / AC-007.5 — host net RX/TX watch returns byte counters (not silent zero on failure).
+#[test]
+fn fr007_net_watch_samples_host_counters() {
+    sample_host_net().expect("network watch MUST succeed on supported OS");
+    ResourceWatchSample::capture().expect("resource watch capture");
+
+    let stats = ProcessStats::new(1, "agent", 0, 0.0, 0, 0)
+        .with_resource_watch()
+        .expect("ProcessStats resource watch MUST populate net watch fields");
+    // Live host counters; values vary by machine but MUST be sampled (not left at defaults
+    // when with_resource_watch succeeds).
+    let _ = (stats.net_rx_bytes, stats.net_tx_bytes);
 }

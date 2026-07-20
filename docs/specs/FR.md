@@ -213,6 +213,12 @@ coalesce. Thermal watch signals MAY surface via FR-011.
 - **AC-007.1:** Mock thermal levels are visible via poll (watch signal).
 - **AC-007.2:** Fake thermal gate decisions are stable for a level.
 - **AC-007.3:** Idle heuristic encodes CPU + uptime watch signal.
+- **AC-007.4:** FD watch samples the current process open descriptor count
+  (`sample_self_fds` / `ResourceWatchSample::capture`); MUST fail loudly on
+  unsupported OS rather than returning silent zero.
+- **AC-007.5:** Host net RX/TX watch returns byte counters via
+  `sample_host_net` / `ResourceWatchSample::capture`; MUST fail loudly on
+  unsupported OS rather than returning silent zero.
 
 **Test refs:** `tests/fr007_resource_thermal_watch.rs`
 
