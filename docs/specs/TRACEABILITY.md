@@ -106,7 +106,11 @@
 | AC-007.4    | `tests/fr007_resource_thermal_watch.rs` (`fr007_fd_watch_samples_self_fds`) | FD watch |
 | AC-007.5    | `tests/fr007_resource_thermal_watch.rs` (`fr007_net_watch_samples_host_counters`) | net RX/TX watch |
 | AC-007.6    | `tests/fr007_resource_thermal_watch.rs` (`fr007_hypervisor_run_carries_resource_watch`); `crates/sharecli-fleet/src/resource_watch.rs` | Hypervisor live watch path |
+| AC-007.7    | `tests/fr007_resource_thermal_watch.rs` (`fr007_rss_watch_samples_self_rss`) | RSS watch |
+| AC-007.8    | `tests/fr007_resource_thermal_watch.rs` (`fr007_load_watch_samples_host_load_1m`) | load average watch |
+| AC-007.9    | `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs` (`fr007_thermal_tui_fuse_coalesce_lines`); `crates/sharecli-fuse/src/read_cache.rs` | FUSE read-coalesce in status + thermal TUI |
 | AC-007.10   | `tests/fr007_resource_thermal_watch.rs` (`fr007_format_status_section`); `tests/fr004_status_health.rs` (`fr004_status_prints_harness_table`); `src/commands/mod.rs` (`status`) | Host resource watch in status |
+| AC-007.11   | `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-thermal-tui` | Host watch + FUSE meters in thermal TUI |
 
 ### FR-008 — Coalesce
 
@@ -157,6 +161,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 thermal TUI dashboard slice:** `sharecli thermal`
+  polls ResourceWatchSample + FUSE read-coalesce meters each redraw
+  (AC-007.9 TUI + AC-007.11); formalized AC-007.7..9 in FR.md.
 - **2026-07-20 — FR-008 Hypervisor nocache e2e:** AC-008.10 side-effect
   re-exec + concurrent SlotQueue serialize + coalesce isolation
   (`tests/e2e_hypervisor_nocache.rs`).
