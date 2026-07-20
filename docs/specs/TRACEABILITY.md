@@ -97,6 +97,8 @@
 |-----------|------------------------------------|------------------------------------------|
 | AC-006.1..3 | `tests/fr006_agent_detection.rs` | (see file)                               |
 | AC-006.4..6 | `tests/fr006_proc_tree.rs`       | (see file)                               |
+| AC-006.7..8 | `tests/fr006_ps_agent_column.rs` | ps AGENT column + `--all` inventory      |
+| AC-006.9    | `tests/fr006_thermal_tui_agents.rs`; `crates/sharecli-thermal-tui` | thermal TUI agent panel |
 
 ### FR-007 — Resource Watch
 
@@ -162,6 +164,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-006 thermal TUI agent panel:** `scan_host_agents` inventory
+  in `sharecli thermal` DetectedAgent panel (AC-006.9); complements ps AGENT
+  column from #416.
 - **2026-07-20 — FR-009 negative dentry operator meters:** `global_neg_dentry_meters`
   + status/thermal TUI panels (AC-009.9); mirrors read-coalesce surfacing from #414.
 - **2026-07-20 — FR-007 thermal TUI dashboard slice:** `sharecli thermal`

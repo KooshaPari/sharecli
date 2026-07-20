@@ -21,6 +21,7 @@ use ratatui::{
     widgets::{Block, Borders, Gauge, Paragraph},
     Frame,
 };
+use sharecli_fleet::proc_scan::{scan_host_agents, DetectedAgent};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::ResourceWatchSample;
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, NegDentryMeters, ReadCacheMeters};
@@ -181,6 +182,54 @@ pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'
     ]
 }
 
+/// Max agent rows rendered in the full-layout DetectedAgent panel.
+pub const MAX_AGENT_LINES: usize = 4;
+
+/// Lines for the host agent inventory panel (FR-006 / AC-006.9 TUI slice).
+pub fn agent_lines(agents: &[DetectedAgent], compact: bool) -> Vec<Line<'static>> {
+    if agents.is_empty() {
+        let msg = if compact {
+            " none"
+        } else {
+            "  No agent processes detected"
+        };
+        return vec![Line::from(Span::styled(
+            msg,
+            Style::default().fg(Color::DarkGray),
+        ))];
+    }
+
+    if compact {
+        let summary: String = agents
+            .iter()
+            .take(2)
+            .map(|a| format!("{}:{}", a.family, a.pid))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let extra = if agents.len() > 2 {
+            format!(" +{}", agents.len() - 2)
+        } else {
+            String::new()
+        };
+        return vec![Line::from(format!(" {summary}{extra}"))];
+    }
+
+    let mut lines = vec![Line::from(format!("  Agents: {}", agents.len()))];
+    for agent in agents.iter().take(MAX_AGENT_LINES) {
+        lines.push(Line::from(format!(
+            "    PID {}  {}  ({})",
+            agent.pid, agent.family, agent.comm
+        )));
+    }
+    if agents.len() > MAX_AGENT_LINES {
+        lines.push(Line::from(format!(
+            "    … +{} more",
+            agents.len() - MAX_AGENT_LINES
+        )));
+    }
+    lines
+}
+
 /// Short pressure blurb for compact terminals; full sentence otherwise.
 pub fn thermal_blurb(level: ThermalLevel, compact: bool) -> &'static str {
     if compact {
@@ -226,6 +275,8 @@ pub struct App {
     pub fuse_meters: ReadCacheMeters,
     /// Process-wide FUSE negative-dentry meters.
     pub neg_dentry_meters: NegDentryMeters,
+    /// Host agent inventory from [`scan_host_agents`] (FR-006 TUI slice).
+    pub detected_agents: Vec<DetectedAgent>,
 }
 
 impl App {
@@ -240,6 +291,7 @@ impl App {
             resource_watch: None,
             fuse_meters: ReadCacheMeters::default(),
             neg_dentry_meters: NegDentryMeters::default(),
+            detected_agents: Vec::new(),
         }
     }
 
@@ -256,6 +308,7 @@ impl App {
         self.resource_watch = ResourceWatchSample::capture().ok();
         self.fuse_meters = global_read_cache_meters();
         self.neg_dentry_meters = global_neg_dentry_meters();
+        self.detected_agents = scan_host_agents();
     }
 
     /// Test/golden helper — pin deterministic operator panel values.
@@ -268,6 +321,12 @@ impl App {
         self.resource_watch = watch;
         self.fuse_meters = fuse;
         self.neg_dentry_meters = neg;
+        self
+    }
+
+    /// Test helper — pin deterministic agent inventory for headless render tests.
+    pub fn with_detected_agents(mut self, agents: Vec<DetectedAgent>) -> Self {
+        self.detected_agents = agents;
         self
     }
 }
@@ -303,6 +362,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let compact = is_compact(area.width);
     let margin = if compact { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
+    let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 6 };
     let fuse_h = if compact { 5 } else { 8 };
 
@@ -314,6 +374,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             Constraint::Length(thermal_h), // thermal pressure block
             Constraint::Length(3),         // gate decision
             Constraint::Length(3),         // slot gauge
+            Constraint::Length(agents_h),  // host agent inventory
             Constraint::Length(watch_h),   // host resource watch
             Constraint::Length(fuse_h),    // FUSE read coalesce
             Constraint::Length(3),         // footer
@@ -324,9 +385,10 @@ pub fn render(frame: &mut Frame, app: &App) {
     render_thermal(frame, chunks[1], app, compact);
     render_decision(frame, chunks[2], app, compact);
     render_slots(frame, chunks[3], app, compact);
-    render_resource_watch(frame, chunks[4], app, compact);
-    render_fuse_coalesce(frame, chunks[5], app, compact);
-    render_footer(frame, chunks[6], app, compact);
+    render_agents(frame, chunks[4], app, compact);
+    render_resource_watch(frame, chunks[5], app, compact);
+    render_fuse_coalesce(frame, chunks[6], app, compact);
+    render_footer(frame, chunks[7], app, compact);
 }
 
 fn render_title(frame: &mut Frame, area: Rect, compact: bool) {
@@ -413,6 +475,13 @@ fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
         .ratio(ratio)
         .label(label);
     frame.render_widget(gauge, area);
+}
+
+fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Agents " } else { " Detected Agents " };
+    let lines = agent_lines(&app.detected_agents, compact);
+    let block = Block::default().borders(Borders::ALL).title(title);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
 fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
@@ -734,6 +803,48 @@ mod tests {
     }
 
     #[test]
+    fn test_agent_lines_empty_full() {
+        let lines = agent_lines(&[], false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("No agent processes detected"));
+    }
+
+    #[test]
+    fn test_agent_lines_lists_detected_agents() {
+        let agents = vec![
+            DetectedAgent {
+                pid: 100,
+                family: "claude",
+                comm: "claude".into(),
+            },
+            DetectedAgent {
+                pid: 200,
+                family: "cursor",
+                comm: "cursor-agent".into(),
+            },
+        ];
+        let lines = agent_lines(&agents, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Agents: 2"));
+        assert!(rendered.contains("PID 100") && rendered.contains("claude"));
+        assert!(rendered.contains("PID 200") && rendered.contains("cursor"));
+    }
+
+    #[test]
+    fn test_agent_lines_truncates_overflow() {
+        let agents: Vec<DetectedAgent> = (0..6)
+            .map(|i| DetectedAgent {
+                pid: 100 + i,
+                family: "claude",
+                comm: format!("claude-{i}"),
+            })
+            .collect();
+        let lines = agent_lines(&agents, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("+2 more"));
+    }
+
+    #[test]
     fn test_resource_watch_lines_full() {
         let sample = ResourceWatchSample {
             fd_count: 42,
@@ -770,7 +881,7 @@ mod tests {
     #[test]
     fn test_render_green_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 30);
+        let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).unwrap();
         let sample = ResourceWatchSample {
             fd_count: 12,
@@ -784,7 +895,12 @@ mod tests {
                 Some(sample),
                 ReadCacheMeters { hits: 2, misses: 1 },
                 NegDentryMeters { hits: 1, misses: 0 },
-            );
+            )
+            .with_detected_agents(vec![DetectedAgent {
+                pid: 4242,
+                family: "claude",
+                comm: "claude".into(),
+            }]);
         app.update(ThermalLevel::Green, 0);
         // Should not panic.
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -794,6 +910,8 @@ mod tests {
         assert!(rendered.contains("GREEN"), "expected GREEN in rendered output");
         assert!(rendered.contains("ADMIT"), "expected ADMIT in rendered output");
         assert!(rendered.contains("Host Resource Watch"), "expected watch panel");
+        assert!(rendered.contains("Detected Agents"), "expected agent panel");
+        assert!(rendered.contains("PID 4242"), "expected agent row");
         assert!(rendered.contains("FUSE IO Meters"), "expected fuse panel");
         assert!(rendered.contains("Open FDs:"), "expected FD watch line");
         assert!(rendered.contains("Cache hits:"), "expected fuse meters");
@@ -803,7 +921,7 @@ mod tests {
     #[test]
     fn test_render_red_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 30);
+        let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(4).with_operator_meters(
             Some(ResourceWatchSample {
@@ -827,7 +945,7 @@ mod tests {
     #[test]
     fn test_render_yellow_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 30);
+        let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(4).with_operator_meters(
             Some(ResourceWatchSample {

@@ -55,7 +55,7 @@ fn fr009_thermal_tui_neg_dentry_lines() {
 /// FR-007 / AC-007.9 + AC-007.10 + FR-009 AC-009.9 — headless thermal render includes panels.
 #[test]
 fn fr007_thermal_tui_render_includes_operator_panels() {
-    let backend = TestBackend::new(120, 30);
+    let backend = TestBackend::new(120, 40);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
         .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS);
