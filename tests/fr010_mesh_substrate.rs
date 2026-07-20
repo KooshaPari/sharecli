@@ -7,10 +7,15 @@
 //! AC-010.4 Maildir enqueue → claim → ack lifecycle
 //! AC-010.5 Maildir priority ordering (lower first)
 //! AC-010.6 Maildir nack returns task to new/
+//! AC-010.7 SmartMerger git merge-file fallback (clean + conflict)
+//! AC-010.8 WorktreePool allocate/release; non-git fails loudly
 
 use sharecli_fleet::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
-use sharecli_mesh::MaildirQueue;
+use sharecli_mesh::{MaildirQueue, SmartMerger, WorktreePool, WorktreePoolError};
 use serde_json::json;
+use std::fs;
+use std::path::Path;
+use std::process::Command;
 use tempfile::TempDir;
 
 /// FR-010 / AC-010.1 — disconnected registry uses default mesh prefix.
@@ -59,7 +64,6 @@ async fn fr010_device_record_and_register_requires_nats() {
     );
 }
 
-
 /// FR-010 / AC-010.4 — Maildir enqueue/claim/ack lifecycle (tmp→new→cur).
 #[test]
 fn fr010_maildir_enqueue_claim_ack() {
@@ -106,4 +110,106 @@ fn fr010_maildir_nack_requeues() {
         "AC-010.6: nack MUST restore to new/"
     );
     assert!(!dir.path().join("cur").join(&id).exists());
+}
+
+fn write(path: &Path, body: &str) {
+    fs::write(path, body).expect("write");
+}
+
+/// FR-010 / AC-010.7 — SmartMerger git merge-file fallback (clean merge).
+#[test]
+fn fr010_smart_merge_git_fallback_clean() {
+    let dir = TempDir::new().expect("tempdir");
+    let base = dir.path().join("base.txt");
+    let ours = dir.path().join("ours.txt");
+    let theirs = dir.path().join("theirs.txt");
+    let out = dir.path().join("out.txt");
+    // Keep a stable middle line so git merge-file treats edits as non-adjacent.
+    write(&base, "line1\nshared\nmiddle\nline3\n");
+    write(&ours, "line1\nours-edit\nmiddle\nline3\n");
+    write(&theirs, "line1\nshared\nmiddle\nline3-theirs\n");
+
+    let merger = SmartMerger::new().with_mergiraf_binary("/nonexistent/mergiraf");
+    let result = merger.merge(&base, &ours, &theirs, &out);
+    assert!(!result.used_mergiraf, "AC-010.7: must use git fallback");
+    assert!(
+        result.success,
+        "AC-010.7: non-overlapping edits MUST succeed: {}",
+        result.output
+    );
+    let text = fs::read_to_string(&out).expect("out");
+    assert!(text.contains("ours-edit"));
+    assert!(text.contains("line3-theirs"));
+}
+
+/// FR-010 / AC-010.7 — conflicting edits leave success=false.
+#[test]
+fn fr010_smart_merge_git_fallback_conflict() {
+    let dir = TempDir::new().expect("tempdir");
+    let base = dir.path().join("base.txt");
+    let ours = dir.path().join("ours.txt");
+    let theirs = dir.path().join("theirs.txt");
+    let out = dir.path().join("out.txt");
+    write(&base, "same\n");
+    write(&ours, "ours\n");
+    write(&theirs, "theirs\n");
+
+    let merger = SmartMerger::new().with_mergiraf_binary("/nonexistent/mergiraf");
+    let result = merger.merge(&base, &ours, &theirs, &out);
+    assert!(!result.used_mergiraf);
+    assert!(!result.success, "AC-010.7: conflicts MUST set success=false");
+    assert!(out.exists());
+}
+
+fn git_init_with_commit(dir: &Path) {
+    let run = |args: &[&str]| {
+        let st = Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .expect("git");
+        assert!(
+            st.status.success(),
+            "git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&st.stderr)
+        );
+    };
+    run(&["init"]);
+    run(&["config", "user.email", "fr010@test"]);
+    run(&["config", "user.name", "FR010"]);
+    write(&dir.join("README"), "seed\n");
+    run(&["add", "README"]);
+    run(&["commit", "-m", "seed"]);
+}
+
+/// FR-010 / AC-010.8 — WorktreePool allocate/release round-trip.
+#[test]
+fn fr010_worktree_pool_allocate_release() {
+    let repo = TempDir::new().expect("repo");
+    git_init_with_commit(repo.path());
+    let pool_dir = TempDir::new().expect("pool");
+    let pool = WorktreePool::open(repo.path(), pool_dir.path()).expect("open");
+    let lease = pool.allocate("slot-1").expect("allocate");
+    assert!(
+        lease.path.join("README").exists(),
+        "AC-010.8: allocated worktree MUST contain repo files"
+    );
+    pool.release("slot-1").expect("release");
+    assert!(
+        !lease.path.exists(),
+        "AC-010.8: release MUST remove worktree path"
+    );
+}
+
+/// FR-010 / AC-010.8 — non-git pool root fails loudly.
+#[test]
+fn fr010_worktree_pool_rejects_non_git() {
+    let dir = TempDir::new().expect("dir");
+    let pool_dir = TempDir::new().expect("pool");
+    let err = WorktreePool::open(dir.path(), pool_dir.path()).expect_err("must fail");
+    assert!(
+        matches!(err, WorktreePoolError::NotGitRepo(_)),
+        "AC-010.8: non-git MUST be NotGitRepo, got {err}"
+    );
 }

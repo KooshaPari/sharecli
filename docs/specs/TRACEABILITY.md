@@ -31,7 +31,7 @@
 | FR-007  | Resource & Syscall-Relevant Watch    | `sharecli-core`, `sharecli-fleet`, `src/monitoring.rs`                                       | `tests/fr007_resource_thermal_watch.rs`                                                           | ACCEPTED |
 | FR-008  | Speculative Coalesce / Debounce / Queue | `sharecli-ipc` (cache+queue+nocache), `sharecli-core` Hypervisor                          | `tests/fr008_coalesce_mesh.rs`                                                                    | ACCEPTED |
 | FR-009  | FUSE IO Intercept                    | `crates/sharecli-fuse`                                                                       | `tests/fr009_fuse_intercept.rs`                                                                   | ACCEPTED |
-| FR-010  | Agent Mesh / Shared Substrate        | `sharecli-fleet` registry, `crates/sharecli-mesh` MaildirQueue                               | `tests/fr010_mesh_substrate.rs`                                                                   | ACCEPTED |
+| FR-010  | Agent Mesh / Shared Substrate        | `sharecli-fleet` registry, `crates/sharecli-mesh` MaildirQueue / SmartMerger / WorktreePool   | `tests/fr010_mesh_substrate.rs`                                                                   | ACCEPTED |
 | FR-011  | Thermal Contention Gate              | `sharecli-fleet` thermal, `sharecli-core` FakeThermalGate                                    | `tests/fr011_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`                                     | ACCEPTED |
 | FR-012  | Serve HTTP Federated AuthN           | `src/serve_auth.rs`, `src/config.rs` (`ServeJwtConfig`), `src/commands/serve.rs`            | `tests/fr012_serve_jwt_auth.rs`                                                                   | ACCEPTED |
 
@@ -120,13 +120,16 @@
 | AC-009.1..2 | `tests/fr009_fuse_intercept.rs` | construct + mount API; no privileged mount |
 | AC-009.3 | `tests/fr009_fuse_intercept.rs`; `inode_map` unit tests | inode map / path resolution |
 | AC-009.4 | `tests/fr009_fuse_intercept.rs`; `read_cache` unit tests | read coalesce hit/miss meters |
-| AC-009.5 | `tests/fr009_fuse_intercept.rs`; `write_serialize` unit tests | path lock + CoW stubs; write no ENOSYS |
+| AC-009.5 | `tests/fr009_fuse_intercept.rs`; `write_serialize` unit tests | path lock + CoW stage/commit/discard |
 
 ### FR-010 — Mesh
 
 | AC        | Test file                        | Notes |
 |-----------|----------------------------------|-------|
 | AC-010.1..3 | `tests/fr010_mesh_substrate.rs` | registry primitives |
+| AC-010.4..6 | `tests/fr010_mesh_substrate.rs` | MaildirQueue lifecycle |
+| AC-010.7 | `tests/fr010_mesh_substrate.rs`; `smart_merge` unit tests | git merge-file fallback |
+| AC-010.8 | `tests/fr010_mesh_substrate.rs`; `worktree_pool` unit tests | allocate/release + NotGitRepo |
 
 ### FR-011 — Thermal Gate
 
@@ -144,9 +147,10 @@
 
 ## Change log
 
+- **2026-07-19 — FR-009/010 A+ closeout:** CoW `stage_bytes`/`commit_pending`/
+  `discard_pending` (AC-009.5); `SmartMerger` + `WorktreePool` (AC-010.7..8).
 - **2026-07-19 — FR-009 A+ recovery:** InterceptFs passthrough + inode map +
-  read coalesce meters + write-serialize scaffold (AC-009.3..5). CoW
-  commit/discard remain TODO stubs.
+  read coalesce meters + write-serialize scaffold (AC-009.3..5).
 - **2026-07-19 — thesis re-enum:** Published FR-006..FR-011 from origin export
   (paste + agent-mesh WBS + harness). Traceability matrix expanded to 12 FRs.
 - **2026-07-12 — T-220:** Landed `tests/fr004_status_health.rs` + `tests/fr004_pool_status.rs` (AC-004.1..004.5).

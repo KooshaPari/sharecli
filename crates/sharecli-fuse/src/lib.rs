@@ -74,11 +74,12 @@ mod platform {
     impl InterceptFs {
         /// Create a new [`InterceptFs`] rooted at `backing`.
         pub fn new(backing: &Path) -> Self {
+            let staging = backing.join(".sharecli-cow-staging");
             Self {
                 backing: backing.to_path_buf(),
                 inodes: Mutex::new(InodeMap::new()),
                 read_cache: Mutex::new(ReadContentCache::new()),
-                write_locks: WriteSerialize::new(),
+                write_locks: WriteSerialize::with_staging_root(staging),
             }
         }
 
@@ -102,6 +103,32 @@ mod platform {
                 .lock()
                 .expect("read cache lock")
                 .read_coalesced(&abs)
+        }
+
+        /// Stage CoW bytes for a relative path (no mount; FR-009 helpers).
+        pub fn stage_rel(
+            &self,
+            rel: &Path,
+            contents: &[u8],
+        ) -> Result<(), crate::WriteSerializeError> {
+            let abs = abs_under(&self.backing, rel);
+            self.write_locks.stage_bytes(&abs, contents)
+        }
+
+        /// Commit pending CoW staging for a relative path; invalidates read cache.
+        pub fn commit_rel(&self, rel: &Path) -> Result<(), crate::WriteSerializeError> {
+            let abs = abs_under(&self.backing, rel);
+            self.write_locks.commit_pending(&abs)?;
+            if let Ok(mut cache) = self.read_cache.lock() {
+                cache.invalidate(&abs);
+            }
+            Ok(())
+        }
+
+        /// Discard pending CoW staging for a relative path (backing unchanged).
+        pub fn discard_rel(&self, rel: &Path) -> Result<(), crate::WriteSerializeError> {
+            let abs = abs_under(&self.backing, rel);
+            self.write_locks.discard_pending(&abs)
         }
 
         /// Passthrough write at `offset` for relative `rel`, serialized per path.
@@ -454,7 +481,7 @@ mod platform {
     pub fn mount(mountpoint: &Path, backing: &Path) -> anyhow::Result<()> {
         let fs = InterceptFs::new(backing);
         let mut config = Config::default();
-        // RW mount — writes are passthrough + path-serialized (CoW commit still TODO).
+        // RW mount — writes are passthrough + path-serialized; CoW via WriteSerialize.
         config.mount_options = vec![
             MountOption::FSName("sharecli-fuse".to_string()),
             MountOption::AutoUnmount,

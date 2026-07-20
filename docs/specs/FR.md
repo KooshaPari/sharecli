@@ -256,8 +256,10 @@ extension point. Other platforms MUST return a clear unsupported error.
 Core VFS ops (lookup, getattr, open, read, write, readdir, mkdir, unlink,
 rmdir, rename) MUST forward to the backing filesystem via an inode map.
 In-process read content cache MUST key by path+mtime with hit/miss meters.
-Writes to the same path MUST serialize; CoW commit/discard stubs MUST fail
-loudly until implemented.
+Writes to the same path MUST serialize. Staging CoW (`stage_bytes` →
+`commit_pending` / `discard_pending`) MUST promote or drop staging copies
+without silent no-ops; commit/discard with no pending entry MUST return
+`NoPending`.
 
 **Source:**
 
@@ -277,8 +279,10 @@ loudly until implemented.
 - **AC-009.4:** In-process read coalesce cache records a miss then a hit for
   identical path+mtime; meters expose hits/misses (no privileged mount).
 - **AC-009.5:** Per-path write serialization is available; passthrough write
-  succeeds (no ENOSYS); CoW `commit_pending` / `discard_pending` stubs fail
-  loudly with explicit TODO errors.
+  succeeds (no ENOSYS); `stage_bytes` + `commit_pending` promotes staging to
+  backing; `stage_bytes` + `discard_pending` leaves backing unchanged;
+  commit/discard with no pending returns `NoPending`. InterceptFs exposes
+  `stage_rel` / `commit_rel` / `discard_rel` for FR tests without mount.
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `sharecli-fuse` unit tests.
 
@@ -287,14 +291,17 @@ loudly until implemented.
 ## FR-010 — Agent Mesh / Shared Substrate
 
 **Statement:** sharecli MUST expose mesh / substrate coordination primitives
-for participating hosts (registry subject namespace + device records) and a
+for participating hosts (registry subject namespace + device records), a
 Maildir-style filesystem task queue (`enqueue` / `claim` / `ack`) as the
-execution-substrate port of `thegent.mesh.task_queue`.
+execution-substrate port of `thegent.mesh.task_queue`, plus Jun mesh ports
+for smart three-way merge (`SmartMerger`) and git worktree pooling
+(`WorktreePool`).
 
 **Source:**
 
 - `crates/sharecli-fleet/src/registry.rs` — `FleetRegistry`, `DeviceRecord`
 - `crates/sharecli-mesh` — `MaildirQueue::{enqueue,claim,ack,nack}`
+- `crates/sharecli-mesh` — `SmartMerger`, `WorktreePool`
 
 **Acceptance Criteria:**
 
@@ -307,6 +314,12 @@ execution-substrate port of `thegent.mesh.task_queue`.
   `new/`→`cur/`; `ack` removes from `cur/`.
 - **AC-010.5:** Lower `priority` values are claimed before higher ones.
 - **AC-010.6:** `nack` returns a claimed task from `cur/` to `new/` for retry.
+- **AC-010.7:** `SmartMerger::merge` falls back to `git merge-file --diff3`
+  when mergiraf is unavailable; clean non-overlapping edits succeed;
+  conflicting edits set `success=false` and still write output.
+- **AC-010.8:** `WorktreePool::allocate` / `release` create and remove git
+  worktrees under a pool root; opening a non-git repo fails with
+  `NotGitRepo` (loud, no directory-slot silent fallback).
 
 **Test refs:** `tests/fr010_mesh_substrate.rs`; `sharecli-mesh` unit tests.
 
