@@ -2,7 +2,9 @@
 //!
 //! Used by [`sharecli_core::Hypervisor::run`] for live watch signals and
 //! re-exported from `sharecli::monitoring` for ProcessStats enrichment.
+//! Per-agent PID sampling supports thermal TUI and `ps --all` (FR-006 / FR-007).
 
+use crate::proc_scan::{DetectedAgent, scan_host_agents};
 use anyhow::{Context, Result};
 
 /// Point-in-time CPU/MEM/Net/FD resource watch sample (FR-007).
@@ -13,6 +15,66 @@ pub struct ResourceWatchSample {
     pub net_tx_bytes: u64,
     pub mem_rss_bytes: u64,
     pub load_1m: f64,
+}
+
+/// Per-process RSS / FD sample for a detected agent PID (FR-007 agent slice).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct AgentResourceSample {
+    pub mem_rss_bytes: u64,
+    /// Open FD count when the OS exposes it for the target PID (`/proc/{pid}/fd`).
+    pub fd_count: Option<u64>,
+}
+
+impl AgentResourceSample {
+    /// Sample RSS (and FD on Linux) for `pid`. Fails when the process is gone.
+    pub fn capture_for_pid(pid: u32) -> Result<Self> {
+        let mem_rss_bytes = sample_pid_rss_bytes(pid)?;
+        let fd_count = sample_pid_fds(pid).ok();
+        Ok(Self {
+            mem_rss_bytes,
+            fd_count,
+        })
+    }
+}
+
+/// Detected agent plus live per-PID resource watch (FR-006 × FR-007).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DetectedAgentWatch {
+    pub agent: DetectedAgent,
+    pub resource: AgentResourceSample,
+}
+
+/// Sample every detected agent that is still alive on the host.
+pub fn watch_detected_agents(agents: &[DetectedAgent]) -> Vec<DetectedAgentWatch> {
+    agents
+        .iter()
+        .filter_map(|agent| {
+            AgentResourceSample::capture_for_pid(agent.pid)
+                .ok()
+                .map(|resource| DetectedAgentWatch {
+                    agent: agent.clone(),
+                    resource,
+                })
+        })
+        .collect()
+}
+
+/// Scan host agents and attach per-PID resource samples.
+pub fn watch_host_agents() -> Vec<DetectedAgentWatch> {
+    watch_detected_agents(&scan_host_agents())
+}
+
+/// Human-readable RSS for operator panels (`1.2G`, `512M`, `48K`).
+pub fn format_rss_bytes(bytes: u64) -> String {
+    const GIB: u64 = 1_073_741_824;
+    const MIB: u64 = 1_048_576;
+    if bytes >= GIB {
+        format!("{:.1}G", bytes as f64 / GIB as f64)
+    } else if bytes >= MIB {
+        format!("{:.0}M", bytes as f64 / MIB as f64)
+    } else {
+        format!("{}K", bytes / 1024)
+    }
 }
 
 impl ResourceWatchSample {
@@ -59,6 +121,16 @@ pub fn sample_host_net() -> Result<(u64, u64)> {
 /// Resident set size (RSS) in bytes for the current process.
 pub fn sample_self_rss_bytes() -> Result<u64> {
     sample_self_rss_bytes_impl()
+}
+
+/// RSS in bytes for an arbitrary process PID.
+pub fn sample_pid_rss_bytes(pid: u32) -> Result<u64> {
+    sample_pid_rss_bytes_impl(pid)
+}
+
+/// Open FD count for an arbitrary process PID (Linux `/proc/{pid}/fd`).
+pub fn sample_pid_fds(pid: u32) -> Result<u64> {
+    sample_pid_fds_impl(pid)
 }
 
 /// Host 1-minute load average.
@@ -217,6 +289,54 @@ fn sample_host_load_1m_impl() -> Result<f64> {
     anyhow::bail!("sample_host_load_1m is unsupported on this OS")
 }
 
+#[cfg(target_os = "linux")]
+fn sample_pid_rss_bytes_impl(pid: u32) -> Result<u64> {
+    let status = std::fs::read_to_string(format!("/proc/{pid}/status"))
+        .with_context(|| format!("failed to read /proc/{pid}/status"))?;
+    for line in status.lines() {
+        let Some(rest) = line.strip_prefix("VmRSS:") else {
+            continue;
+        };
+        let kb: u64 = rest
+            .trim()
+            .trim_end_matches(" kB")
+            .parse()
+            .with_context(|| format!("invalid VmRSS for pid {pid}"))?;
+        return Ok(kb.saturating_mul(1024));
+    }
+    anyhow::bail!("VmRSS not found in /proc/{pid}/status")
+}
+
+#[cfg(target_os = "macos")]
+fn sample_pid_rss_bytes_impl(pid: u32) -> Result<u64> {
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+
+    let pid = Pid::from_u32(pid);
+    let mut sys = System::new();
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    let proc = sys
+        .process(pid)
+        .with_context(|| format!("process {pid} not found for RSS sample"))?;
+    Ok(proc.memory())
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn sample_pid_rss_bytes_impl(_pid: u32) -> Result<u64> {
+    anyhow::bail!("sample_pid_rss_bytes is unsupported on this OS")
+}
+
+#[cfg(target_os = "linux")]
+fn sample_pid_fds_impl(pid: u32) -> Result<u64> {
+    let entries = std::fs::read_dir(format!("/proc/{pid}/fd"))
+        .with_context(|| format!("failed to read /proc/{pid}/fd"))?;
+    Ok(entries.count() as u64)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn sample_pid_fds_impl(_pid: u32) -> Result<u64> {
+    anyhow::bail!("sample_pid_fds is unsupported on this OS")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,5 +383,24 @@ mod tests {
         assert!(section.contains("Load (1m):"));
         assert!(section.contains("Net RX:"));
         assert!(section.contains("Net TX:"));
+    }
+
+    #[test]
+    fn test_agent_resource_sample_self_pid() {
+        let pid = std::process::id();
+        let sample =
+            AgentResourceSample::capture_for_pid(pid).expect("self PID resource sample");
+        assert!(sample.mem_rss_bytes > 0, "live process MUST have non-zero RSS");
+        #[cfg(target_os = "linux")]
+        assert!(
+            sample.fd_count.unwrap_or(0) >= 3,
+            "live process MUST have stdio FDs on Linux"
+        );
+    }
+
+    #[test]
+    fn test_format_rss_bytes() {
+        assert_eq!(super::format_rss_bytes(1_073_741_824), "1.0G");
+        assert_eq!(super::format_rss_bytes(52_428_800), "50M");
     }
 }

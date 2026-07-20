@@ -27,7 +27,7 @@
 | FR-003  | Project Registry                     | `src/config.rs`, `src/commands/mod.rs`                                                       | `tests/fr003_project_registry.rs`, `tests/fr003_project_discover.rs`                              | ACCEPTED |
 | FR-004  | Process & Pool Health Status         | `src/runtime.rs`, `src/monitoring.rs`, `src/commands/mod.rs`                                 | `tests/fr004_status_health.rs`, `tests/fr004_pool_status.rs`                                      | ACCEPTED |
 | FR-005  | Per-Project Resource Limits          | `src/runtime.rs`, `src/commands/mod.rs`                                                      | `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs`                                  | ACCEPTED |
-| FR-006  | Agent Detection (proc scan)          | `crates/sharecli-core/src/detect.rs`, `proc_scan.rs`                                         | `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`                                      | ACCEPTED |
+| FR-006  | Agent Detection (proc scan)          | `crates/sharecli-fleet/src/proc_scan.rs`, `resource_watch.rs`                                | `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_agent_pid_watch.rs`   | ACCEPTED |
 | FR-007  | Resource & Syscall-Relevant Watch    | `sharecli-core`, `sharecli-fleet`, `src/monitoring.rs`                                       | `tests/fr007_resource_thermal_watch.rs`                                                           | ACCEPTED |
 | FR-008  | Speculative Coalesce / Debounce / Queue | `sharecli-ipc` (cache+queue+nocache), `sharecli-core` Hypervisor                          | `tests/fr008_coalesce_mesh.rs`                                                                    | ACCEPTED |
 | FR-009  | FUSE IO Intercept                    | `crates/sharecli-fuse`                                                                       | `tests/fr009_fuse_intercept.rs`                                                                   | ACCEPTED |
@@ -164,6 +164,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-006/007 per-agent PID watch:** `AgentResourceSample` +
+  `watch_host_agents` attach RSS/FD samples to proc-scan agents (AC-006.10);
+  thermal DetectedAgent panel + `ps --all` show per-agent RSS; `SpawnOutcome::agent_family`.
 - **2026-07-20 — FR-006 thermal TUI agent panel:** `scan_host_agents` inventory
   in `sharecli thermal` DetectedAgent panel (AC-006.9); complements ps AGENT
   column from #416.

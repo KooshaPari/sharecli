@@ -21,9 +21,11 @@ use ratatui::{
     widgets::{Block, Borders, Gauge, Paragraph},
     Frame,
 };
-use sharecli_fleet::proc_scan::{scan_host_agents, DetectedAgent};
+use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
-use sharecli_fleet::ResourceWatchSample;
+use sharecli_fleet::{
+    format_rss_bytes, watch_host_agents, DetectedAgentWatch, ResourceWatchSample,
+};
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, NegDentryMeters, ReadCacheMeters};
 
 // ---------------------------------------------------------------------------
@@ -219,7 +221,7 @@ pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'
 pub const MAX_AGENT_LINES: usize = 4;
 
 /// Lines for the host agent inventory panel (FR-006 / AC-006.9 TUI slice).
-pub fn agent_lines(agents: &[DetectedAgent], compact: bool) -> Vec<Line<'static>> {
+pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'static>> {
     if agents.is_empty() {
         let msg = if compact {
             " none"
@@ -236,7 +238,14 @@ pub fn agent_lines(agents: &[DetectedAgent], compact: bool) -> Vec<Line<'static>
         let summary: String = agents
             .iter()
             .take(2)
-            .map(|a| format!("{}:{}", a.family, a.pid))
+            .map(|row| {
+                format!(
+                    "{}:{}@{}",
+                    row.agent.family,
+                    row.agent.pid,
+                    format_rss_bytes(row.resource.mem_rss_bytes)
+                )
+            })
             .collect::<Vec<_>>()
             .join(" ");
         let extra = if agents.len() > 2 {
@@ -248,10 +257,19 @@ pub fn agent_lines(agents: &[DetectedAgent], compact: bool) -> Vec<Line<'static>
     }
 
     let mut lines = vec![Line::from(format!("  Agents: {}", agents.len()))];
-    for agent in agents.iter().take(MAX_AGENT_LINES) {
+    for row in agents.iter().take(MAX_AGENT_LINES) {
+        let fd = row
+            .resource
+            .fd_count
+            .map(|n| format!(" FD {n}"))
+            .unwrap_or_default();
         lines.push(Line::from(format!(
-            "    PID {}  {}  ({})",
-            agent.pid, agent.family, agent.comm
+            "    PID {}  {}  RSS {}{}  ({})",
+            row.agent.pid,
+            row.agent.family,
+            format_rss_bytes(row.resource.mem_rss_bytes),
+            fd,
+            row.agent.comm
         )));
     }
     if agents.len() > MAX_AGENT_LINES {
@@ -308,8 +326,8 @@ pub struct App {
     pub fuse_meters: ReadCacheMeters,
     /// Process-wide FUSE negative-dentry meters.
     pub neg_dentry_meters: NegDentryMeters,
-    /// Host agent inventory from [`scan_host_agents`] (FR-006 TUI slice).
-    pub detected_agents: Vec<DetectedAgent>,
+    /// Host agent inventory with per-PID resource watch (FR-006 × FR-007).
+    pub detected_agents: Vec<DetectedAgentWatch>,
 }
 
 impl App {
@@ -341,7 +359,7 @@ impl App {
         self.resource_watch = ResourceWatchSample::capture().ok();
         self.fuse_meters = global_read_cache_meters();
         self.neg_dentry_meters = global_neg_dentry_meters();
-        self.detected_agents = scan_host_agents();
+        self.detected_agents = watch_host_agents();
     }
 
     /// Test/golden helper — pin deterministic operator panel values.
@@ -358,7 +376,7 @@ impl App {
     }
 
     /// Test helper — pin deterministic agent inventory for headless render tests.
-    pub fn with_detected_agents(mut self, agents: Vec<DetectedAgent>) -> Self {
+    pub fn with_detected_agents(mut self, agents: Vec<DetectedAgentWatch>) -> Self {
         self.detected_agents = agents;
         self
     }
@@ -829,6 +847,29 @@ mod tests {
         assert_eq!(app.active_slots, 3);
     }
 
+    use super::*;
+    use sharecli_fleet::AgentResourceSample;
+
+    fn agent_watch(
+        pid: u32,
+        family: &'static str,
+        comm: &str,
+        rss: u64,
+        fds: Option<u64>,
+    ) -> DetectedAgentWatch {
+        DetectedAgentWatch {
+            agent: DetectedAgent {
+                pid,
+                family,
+                comm: comm.into(),
+            },
+            resource: AgentResourceSample {
+                mem_rss_bytes: rss,
+                fd_count: fds,
+            },
+        }
+    }
+
     #[test]
     fn test_agent_lines_empty_full() {
         let lines = agent_lines(&[], false);
@@ -839,32 +880,22 @@ mod tests {
     #[test]
     fn test_agent_lines_lists_detected_agents() {
         let agents = vec![
-            DetectedAgent {
-                pid: 100,
-                family: "claude",
-                comm: "claude".into(),
-            },
-            DetectedAgent {
-                pid: 200,
-                family: "cursor",
-                comm: "cursor-agent".into(),
-            },
+            agent_watch(100, "claude", "claude", 52_428_800, Some(42)),
+            agent_watch(200, "cursor", "cursor-agent", 104_857_600, None),
         ];
         let lines = agent_lines(&agents, false);
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
         assert!(rendered.contains("Agents: 2"));
         assert!(rendered.contains("PID 100") && rendered.contains("claude"));
+        assert!(rendered.contains("RSS 50M"));
+        assert!(rendered.contains("FD 42"));
         assert!(rendered.contains("PID 200") && rendered.contains("cursor"));
     }
 
     #[test]
     fn test_agent_lines_truncates_overflow() {
-        let agents: Vec<DetectedAgent> = (0..6)
-            .map(|i| DetectedAgent {
-                pid: 100 + i,
-                family: "claude",
-                comm: format!("claude-{i}"),
-            })
+        let agents: Vec<DetectedAgentWatch> = (0..6)
+            .map(|i| agent_watch(100 + i, "claude", &format!("claude-{i}"), 1_048_576, None))
             .collect();
         let lines = agent_lines(&agents, false);
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
@@ -935,11 +966,13 @@ mod tests {
                 ReadCacheMeters { hits: 2, misses: 1 },
                 NegDentryMeters { hits: 1, misses: 0 },
             )
-            .with_detected_agents(vec![DetectedAgent {
-                pid: 4242,
-                family: "claude",
-                comm: "claude".into(),
-            }]);
+            .with_detected_agents(vec![agent_watch(
+                4242,
+                "claude",
+                "claude",
+                4_096,
+                Some(12),
+            )]);
         app.update(ThermalLevel::Green, 0);
         // Should not panic.
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -951,6 +984,7 @@ mod tests {
         assert!(rendered.contains("Host Resource Watch"), "expected watch panel");
         assert!(rendered.contains("Detected Agents"), "expected agent panel");
         assert!(rendered.contains("PID 4242"), "expected agent row");
+        assert!(rendered.contains("RSS"), "expected per-agent RSS in agent panel");
         assert!(rendered.contains("FUSE IO Meters"), "expected fuse panel");
         assert!(rendered.contains("Open FDs:"), "expected FD watch line");
         assert!(rendered.contains("Cache hits:"), "expected fuse meters");

@@ -17,8 +17,8 @@ use crate::runtime::{
     ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
-use sharecli_fleet::{agent_label_for_pid, scan_agents, HostProcSource};
-use sharecli_fleet::ResourceWatchSample;
+use sharecli_fleet::{agent_label_for_pid, scan_agents, watch_detected_agents, HostProcSource};
+use sharecli_fleet::{format_rss_bytes, ResourceWatchSample};
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
 
 /// Shared runtime instance
@@ -90,10 +90,29 @@ fn print_host_agent_scan(source: &HostProcSource) {
         println!("No known agent processes detected on this host.");
         return;
     }
-    println!("{:<8} {:<16} {}", "PID", "FAMILY", "COMM");
-    println!("{}", "-".repeat(40));
-    for agent in &agents {
-        println!("{:<8} {:<16} {}", agent.pid, agent.family, agent.comm);
+    let watched = watch_detected_agents(&agents);
+    println!("{:<8} {:<16} {:<10} {:<8} {}", "PID", "FAMILY", "RSS", "FD", "COMM");
+    println!("{}", "-".repeat(56));
+    for row in &watched {
+        let fd = row
+            .resource
+            .fd_count
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| "-".into());
+        println!(
+            "{:<8} {:<16} {:<10} {:<8} {}",
+            row.agent.pid,
+            row.agent.family,
+            format_rss_bytes(row.resource.mem_rss_bytes),
+            fd,
+            row.agent.comm
+        );
+    }
+    if watched.len() < agents.len() {
+        println!(
+            "\n({} agent(s) omitted — process exited before resource sample)",
+            agents.len() - watched.len()
+        );
     }
     println!("\nTotal: {} agent process(es)", agents.len());
 }

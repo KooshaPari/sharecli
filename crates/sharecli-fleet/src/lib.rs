@@ -18,8 +18,9 @@ pub use proc_scan::{
 };
 pub use registry::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
 pub use resource_watch::{
-    sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
-    ResourceWatchSample,
+    format_rss_bytes, sample_host_load_1m, sample_host_net, sample_pid_fds, sample_pid_rss_bytes,
+    sample_self_fds, sample_self_rss_bytes, watch_detected_agents, watch_host_agents,
+    AgentResourceSample, DetectedAgentWatch, ResourceWatchSample,
 };
 pub use thermal::{ThermalGovernor, ThermalLevel};
 
