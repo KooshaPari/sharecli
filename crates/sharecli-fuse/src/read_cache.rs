@@ -16,6 +16,41 @@ pub struct ReadCacheMeters {
     pub misses: u64,
 }
 
+impl ReadCacheMeters {
+    /// Hit rate as an integer percentage in `[0, 100]` (0 when no events recorded).
+    pub fn hit_rate_pct(self) -> u64 {
+        let total = self.hits.saturating_add(self.misses);
+        if total == 0 {
+            0
+        } else {
+            self.hits.saturating_mul(100) / total
+        }
+    }
+
+    /// Operator-facing status block for `sharecli status` (FR-007 / AC-007.9).
+    pub fn format_status_section(self) -> String {
+        let mut out = String::from("\n=== FUSE Read Coalesce ===\n\n");
+        out.push_str(&format!(
+            "Cache hits:   {}\nCache misses: {}\nHit rate:     {}%\n",
+            self.hits,
+            self.misses,
+            self.hit_rate_pct()
+        ));
+        out
+    }
+}
+
+static GLOBAL_HITS: AtomicU64 = AtomicU64::new(0);
+static GLOBAL_MISSES: AtomicU64 = AtomicU64::new(0);
+
+/// Process-wide aggregate of read-coalesce hit/miss events across all FUSE intercepts.
+pub fn global_read_cache_meters() -> ReadCacheMeters {
+    ReadCacheMeters {
+        hits: GLOBAL_HITS.load(Ordering::Relaxed),
+        misses: GLOBAL_MISSES.load(Ordering::Relaxed),
+    }
+}
+
 #[derive(Debug, Clone)]
 struct CacheEntry {
     mtime: SystemTime,
@@ -52,6 +87,7 @@ impl ReadContentCache {
         match self.entries.get(path) {
             Some(entry) if entry.mtime == mtime => {
                 self.hits.fetch_add(1, Ordering::Relaxed);
+                GLOBAL_HITS.fetch_add(1, Ordering::Relaxed);
                 Some(entry.data.clone())
             }
             Some(_) => {
@@ -66,6 +102,7 @@ impl ReadContentCache {
     /// Store (or replace) content for `path` at `mtime` and count a miss.
     pub fn put_miss(&mut self, path: PathBuf, mtime: SystemTime, data: Vec<u8>) {
         self.misses.fetch_add(1, Ordering::Relaxed);
+        GLOBAL_MISSES.fetch_add(1, Ordering::Relaxed);
         self.entries.insert(path, CacheEntry { mtime, data });
     }
 
@@ -141,5 +178,36 @@ mod tests {
         let m = cache.meters();
         assert_eq!(m.misses, 2);
         assert_eq!(m.hits, 0);
+    }
+
+    /// FR-007 / AC-007.9 — global meters aggregate across cache instances.
+    #[test]
+    fn global_read_cache_meters_aggregate() {
+        let before = global_read_cache_meters();
+        let mut tmp = NamedTempFile::new().expect("tmp");
+        write!(tmp, "global-meter").expect("write");
+        tmp.flush().expect("flush");
+        let path = tmp.path().to_path_buf();
+
+        let mut cache = ReadContentCache::new();
+        let _ = cache.read_coalesced(&path).expect("miss");
+        let _ = cache.read_coalesced(&path).expect("hit");
+
+        let global = global_read_cache_meters();
+        assert_eq!(
+            global.hits.saturating_sub(before.hits),
+            1,
+            "global MUST count hit"
+        );
+        assert_eq!(
+            global.misses.saturating_sub(before.misses),
+            1,
+            "global MUST count miss"
+        );
+        let section = global.format_status_section();
+        assert!(
+            section.contains("=== FUSE Read Coalesce ===") && section.contains("Hit rate:"),
+            "status section MUST be operator-readable; got {section}"
+        );
     }
 }

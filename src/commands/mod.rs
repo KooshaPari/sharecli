@@ -17,6 +17,7 @@ use crate::runtime::{
     ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
+use sharecli_fuse::global_read_cache_meters;
 
 /// Shared runtime instance
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();
@@ -250,6 +251,9 @@ pub async fn status(verbose: bool) -> Result<()> {
     let (used, total) = pool.system_memory_usage().await;
     println!("\n=== System Memory ===\n");
     println!("Used: {} MB / {} MB ({}%)", used, total, (used * 100) / total);
+
+    let fuse_meters = global_read_cache_meters();
+    print!("{}", fuse_meters.format_status_section());
 
     if verbose {
         println!("\n=== Detailed Process List ===\n");

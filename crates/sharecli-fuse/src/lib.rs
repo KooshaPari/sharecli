@@ -46,7 +46,7 @@ pub use provenance::{
     annotate_write, annotate_write_at, default_session_id, read_provenance, WriteProvenance,
     ATTR_SESSION, ATTR_WRITTEN_AT,
 };
-pub use read_cache::{ReadCacheMeters, ReadContentCache};
+pub use read_cache::{global_read_cache_meters, ReadCacheMeters, ReadContentCache};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 
 use std::path::Path;
