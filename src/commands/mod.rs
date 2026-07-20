@@ -118,6 +118,9 @@ fn print_host_agent_scan(source: &HostProcSource) {
             agents.len() - watched.len()
         );
     }
+    if let Ok(thermal) = ThermalGovernor::new().poll() {
+        print!("{}", format_gate_status_section(thermal, agents.len()));
+    }
     println!("\nTotal: {} agent process(es)", agents.len());
 }
 
