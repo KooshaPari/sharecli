@@ -4,10 +4,12 @@
 //! primitives for sharecli's fleet runtime.
 
 pub mod registry;
+pub mod resource_watch;
 pub mod thermal;
 
 use async_nats::Client;
 pub use registry::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
+pub use resource_watch::{sample_host_net, sample_self_fds, ResourceWatchSample};
 pub use thermal::{ThermalGovernor, ThermalLevel};
 
 /// Default NATS coordinator URL used when none is specified.

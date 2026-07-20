@@ -219,6 +219,9 @@ coalesce. Thermal watch signals MAY surface via FR-011.
 - **AC-007.5:** Host net RX/TX watch returns byte counters via
   `sample_host_net` / `ResourceWatchSample::capture`; MUST fail loudly on
   unsupported OS rather than returning silent zero.
+- **AC-007.6:** [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) captures
+  a live [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs)
+  on every invocation and attaches it to [`SpawnOutcome::resource_watch`](crates/sharecli-core/src/lib.rs).
 
 **Test refs:** `tests/fr007_resource_thermal_watch.rs`
 
