@@ -275,6 +275,12 @@ replacing vendor agent executables as the primary detection path.
   separates forests, `depth` is 0 at each agent root; empty forests emit the
   header row only; `--tree --csv` MUST NOT combine with `--json`, `--watch`, or
   `--pid`.
+- **AC-006.27:** `sharecli proc --max-rss <size>` keeps flat inventory rows and
+  `--tree` root forests at or below the RSS bound (same `K`/`M`/`G`/bytes
+  parsing as `--min-rss`), composed with `--family`, `--min-rss`, `--ppid`,
+  `--sort`, `--limit`, `--json`, `--csv`, and `--tree --csv`; when both bounds
+  are set, `--min-rss` MUST NOT exceed `--max-rss` (fail loudly); invalid
+  sizes fail loudly.
 
 **Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`, `tests/fr006_proc_csv.rs`, `tests/fr006_proc_ppid.rs`, `tests/fr006_proc_tree_csv.rs`
 
