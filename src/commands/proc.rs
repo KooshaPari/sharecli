@@ -33,6 +33,95 @@ impl ProcFilter {
     }
 }
 
+/// Sort key for `sharecli proc` inventory rows (AC-006.19).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ProcSort {
+    /// Ascending PID (lowest first).
+    #[default]
+    Pid,
+    /// Descending resident memory (highest first); PID tie-break ascending.
+    Rss,
+    /// Descending open FD count (highest first; missing FD treated as 0); PID tie-break.
+    Fd,
+}
+
+impl ProcSort {
+    pub fn from_cli(raw: Option<&str>) -> Result<Option<Self>> {
+        match raw {
+            None => Ok(None),
+            Some(s) => Ok(Some(s.parse()?)),
+        }
+    }
+}
+
+impl std::str::FromStr for ProcSort {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s.to_ascii_lowercase().as_str() {
+            "pid" => Ok(Self::Pid),
+            "rss" => Ok(Self::Rss),
+            "fd" => Ok(Self::Fd),
+            other => bail!("unknown sort key '{other}'; expected 'rss', 'fd', or 'pid'"),
+        }
+    }
+}
+
+/// Order watched agent rows for text/JSON inventory (`--sort`, AC-006.19).
+pub fn sort_watched_agents(
+    watched: &[DetectedAgentWatch],
+    sort: ProcSort,
+) -> Vec<DetectedAgentWatch> {
+    let mut rows = watched.to_vec();
+    match sort {
+        ProcSort::Pid => rows.sort_by_key(|row| row.agent.pid),
+        ProcSort::Rss => {
+            rows.sort_by(|a, b| {
+                b.resource
+                    .mem_rss_bytes
+                    .cmp(&a.resource.mem_rss_bytes)
+                    .then_with(|| a.agent.pid.cmp(&b.agent.pid))
+            });
+        }
+        ProcSort::Fd => {
+            rows.sort_by(|a, b| {
+                let fd_a = a.resource.fd_count.unwrap_or(0);
+                let fd_b = b.resource.fd_count.unwrap_or(0);
+                fd_b.cmp(&fd_a).then_with(|| a.agent.pid.cmp(&b.agent.pid))
+            });
+        }
+    }
+    rows
+}
+
+/// Order tree root forests by live RSS/FD/PID samples (`--sort`, AC-006.19).
+pub fn sort_agent_forests(
+    forests: &[AgentTreeNode],
+    sort: ProcSort,
+    rss_by_pid: &HashMap<u32, u64>,
+    fd_by_pid: &HashMap<u32, u64>,
+) -> Vec<AgentTreeNode> {
+    let mut roots = forests.to_vec();
+    match sort {
+        ProcSort::Pid => roots.sort_by_key(|node| node.pid),
+        ProcSort::Rss => {
+            roots.sort_by(|a, b| {
+                let rss_a = rss_by_pid.get(&a.pid).copied().unwrap_or(0);
+                let rss_b = rss_by_pid.get(&b.pid).copied().unwrap_or(0);
+                rss_b.cmp(&rss_a).then_with(|| a.pid.cmp(&b.pid))
+            });
+        }
+        ProcSort::Fd => {
+            roots.sort_by(|a, b| {
+                let fd_a = fd_by_pid.get(&a.pid).copied().unwrap_or(0);
+                let fd_b = fd_by_pid.get(&b.pid).copied().unwrap_or(0);
+                fd_b.cmp(&fd_a).then_with(|| a.pid.cmp(&b.pid))
+            });
+        }
+    }
+    roots
+}
+
 /// Apply `--family` / `--min-rss` to watched agent rows.
 pub fn filter_watched_agents(
     watched: &[DetectedAgentWatch],
@@ -60,6 +149,35 @@ fn agent_row_matches_filter(row: &DetectedAgentWatch, filter: &ProcFilter) -> bo
 
 fn rss_map_from_watched(watched: &[DetectedAgentWatch]) -> HashMap<u32, u64> {
     watched.iter().map(|row| (row.agent.pid, row.resource.mem_rss_bytes)).collect()
+}
+
+fn fd_map_from_watched(watched: &[DetectedAgentWatch]) -> HashMap<u32, u64> {
+    watched
+        .iter()
+        .map(|row| (row.agent.pid, row.resource.fd_count.unwrap_or(0)))
+        .collect()
+}
+
+fn apply_sort_watched(
+    watched: Vec<DetectedAgentWatch>,
+    sort: Option<ProcSort>,
+) -> Vec<DetectedAgentWatch> {
+    match sort {
+        Some(key) => sort_watched_agents(&watched, key),
+        None => watched,
+    }
+}
+
+fn apply_sort_forests(
+    forests: Vec<AgentTreeNode>,
+    sort: Option<ProcSort>,
+    rss_by_pid: &HashMap<u32, u64>,
+    fd_by_pid: &HashMap<u32, u64>,
+) -> Vec<AgentTreeNode> {
+    match sort {
+        Some(key) => sort_agent_forests(&forests, key, rss_by_pid, fd_by_pid),
+        None => forests,
+    }
 }
 
 /// Apply filters to agent-rooted forests (family on root; min-rss via live samples).
@@ -263,15 +381,23 @@ pub fn render_agent_tree(forests: &[AgentTreeNode]) {
 }
 
 /// Render one host agent inventory snapshot (text or JSON).
-pub fn render_once(json: bool, tree: bool, filter: &ProcFilter, ndjson: bool) -> Result<()> {
+pub fn render_once(
+    json: bool,
+    tree: bool,
+    filter: &ProcFilter,
+    ndjson: bool,
+    sort: Option<ProcSort>,
+) -> Result<()> {
     let scanned_agents = scan_host_agents();
     let thermal = ThermalGovernor::new().poll()?;
     let gate = gate_status_snapshot(thermal, scanned_agents.len());
     let watched_all = watch_detected_agents(&scanned_agents);
     let rss_by_pid = rss_map_from_watched(&watched_all);
+    let fd_by_pid = fd_map_from_watched(&watched_all);
 
     if tree {
         let forests = filter_agent_forests(&build_host_agent_forests(), filter, &rss_by_pid);
+        let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
         let snap = AgentTreeSnapshot {
             forests: forests.iter().map(tree_node_to_json).collect(),
             roots: forests.len(),
@@ -290,7 +416,7 @@ pub fn render_once(json: bool, tree: bool, filter: &ProcFilter, ndjson: bool) ->
         return Ok(());
     }
 
-    let watched = filter_watched_agents(&watched_all, filter);
+    let watched = apply_sort_watched(filter_watched_agents(&watched_all, filter), sort);
     if json {
         let snap = AgentProcSnapshot {
             agents: watched.iter().map(agent_row_from_watch).collect(),
@@ -318,10 +444,12 @@ pub async fn run(
     watch: Option<u64>,
     family: Option<String>,
     min_rss: Option<String>,
+    sort: Option<String>,
 ) -> Result<()> {
     let filter = ProcFilter::from_cli(family, min_rss)?;
+    let sort_key = ProcSort::from_cli(sort.as_deref())?;
     match watch {
-        None => render_once(json, tree, &filter, false),
+        None => render_once(json, tree, &filter, false, sort_key),
         Some(interval_secs) => {
             if interval_secs == 0 {
                 bail!("--watch interval must be >= 1 second");
@@ -331,7 +459,7 @@ pub async fn run(
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_once(json, tree, &filter, ndjson)?;
+                render_once(json, tree, &filter, ndjson, sort_key)?;
                 let footer =
                     format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {
@@ -402,7 +530,7 @@ mod tests {
     fn zero_watch_interval_is_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, Some(0), None, None))
+            .block_on(super::run(false, false, Some(0), None, None, None))
             .expect_err("watch 0 MUST fail");
         assert!(
             err.to_string().contains(">= 1"),
