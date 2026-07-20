@@ -7,6 +7,7 @@
 //! AC-009.4 in-process read coalesce cache hit/miss meters
 //! AC-009.5 write-serialize per-path lock + CoW stage/commit/discard
 //! AC-009.6 write provenance xattrs on write_rel / commit_rel
+//! AC-009.7 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1)
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -185,4 +186,21 @@ fn fr009_write_provenance_xattrs() {
     let after_commit = read_provenance(&file).expect("read").expect("present");
     assert_eq!(after_commit.session_id, "sess-ac0096");
     assert_eq!(fs::read(&file).expect("body"), b"cowed");
+}
+
+/// FR-009 / AC-009.7 — live FUSE mount read/write (privileged; opt-in env).
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn fr009_privileged_mount_smoke() {
+    use sharecli_fuse::{fuse_mount_smoke_enabled, run_mount_smoke, ENV_FUSE_MOUNT_SMOKE};
+
+    if !fuse_mount_smoke_enabled() {
+        eprintln!(
+            "skip fr009_privileged_mount_smoke: set {ENV_FUSE_MOUNT_SMOKE}=1 with FUSE installed"
+        );
+        return;
+    }
+
+    let dir = TempDir::new().expect("tempdir");
+    run_mount_smoke(dir.path()).expect("privileged mount smoke read/write");
 }

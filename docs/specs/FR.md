@@ -270,6 +270,7 @@ provenance extended attributes (`user.sharecli.session`,
 - `crates/sharecli-fuse/src/read_cache.rs` — `ReadContentCache`
 - `crates/sharecli-fuse/src/write_serialize.rs` — `WriteSerialize`
 - `crates/sharecli-fuse/src/provenance.rs` — write provenance xattrs
+- `crates/sharecli-fuse/src/mount_smoke.rs` — opt-in privileged mount smoke
 
 **Acceptance Criteria:**
 
@@ -289,6 +290,9 @@ provenance extended attributes (`user.sharecli.session`,
 - **AC-009.6:** `write_rel` and `commit_rel` stamp `user.sharecli.session`
   and `user.sharecli.written_at` on the backing path; session id is readable
   via `read_provenance` / `InterceptFs::session_id` (no privileged mount).
+- **AC-009.7:** With `SHARECLI_FUSE_MOUNT_SMOKE=1`, `run_mount_smoke` performs
+  a read/write round-trip through a live FUSE mount over a temp backing tree;
+  default `cargo test` skips without failure when the env var is unset.
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `sharecli-fuse` unit tests.
 
