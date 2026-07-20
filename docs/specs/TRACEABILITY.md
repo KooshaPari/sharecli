@@ -103,6 +103,7 @@
 | AC-006.11..13 | `tests/fr006_proc_cli.rs`; `src/commands/proc.rs` | `sharecli proc` + JSON status/proc |
 | AC-006.14   | `tests/fr006_proc_fingerprints.rs`; `crates/sharecli-fleet/src/detect.rs` | cmdline fingerprints |
 | AC-006.15   | `tests/fr006_proc_watch.rs`; `src/commands/proc.rs` | `sharecli proc --watch` live refresh |
+| AC-006.16   | `tests/fr006_proc_tree_cli.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`build_agent_forests`); `src/commands/proc.rs` | `sharecli proc --tree` parent-child forests |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -206,6 +207,8 @@
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
+- **2026-07-20 — FR-006 proc tree mode:** `sharecli proc --tree` parent-child agent
+  forests via `build_agent_forests` (AC-006.16); `--tree --json` nested `forests` payload.
 - **2026-07-20 — FR-006 proc watch mode:** `sharecli proc --watch N` live refresh
   for host agent inventory (AC-006.15); text + `--json` parity with one-shot proc.
 - **2026-07-20 — FR-006 proc CLI + RSS gate:** `sharecli proc` / `--json`, status

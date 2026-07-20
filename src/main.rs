@@ -164,6 +164,10 @@ enum Commands {
         #[arg(long)]
         json: bool,
 
+        /// Show parent-child process forests rooted at detected agents
+        #[arg(long)]
+        tree: bool,
+
         /// Re-render every N seconds until Ctrl-C (live watch mode)
         #[arg(short, long)]
         watch: Option<u64>,
@@ -532,7 +536,7 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, watch } => commands::proc::run(*json, *watch).await?,
+        Commands::Proc { json, tree, watch } => commands::proc::run(*json, *tree, *watch).await?,
         Commands::Config { cmd } => config_cmd(cmd)?,
         Commands::Project { cmd } => project_cmd(cmd).await?,
         Commands::Optimize { apply } => optimize(*apply).await?,
