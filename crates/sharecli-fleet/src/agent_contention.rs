@@ -68,6 +68,42 @@ pub fn effective_gate_decision(thermal: ThermalLevel, agent_count: usize) -> &'s
     "ADMIT"
 }
 
+fn thermal_level_label(level: ThermalLevel) -> &'static str {
+    match level {
+        ThermalLevel::Green => "GREEN",
+        ThermalLevel::Yellow => "YELLOW",
+        ThermalLevel::Red => "RED",
+    }
+}
+
+fn contention_tier_label(tier: AgentContentionTier) -> &'static str {
+    match tier {
+        AgentContentionTier::Ok => "OK",
+        AgentContentionTier::Warn => "WARN",
+        AgentContentionTier::Refuse => "REFUSE",
+    }
+}
+
+/// Operator status section: thermal level, agent inventory, effective gate (FR-011).
+pub fn format_gate_status_section(thermal: ThermalLevel, agent_count: usize) -> String {
+    let thresholds = AgentContentionThresholds::default();
+    let tier = agent_contention_tier(agent_count, thresholds);
+    let decision = effective_gate_decision(thermal, agent_count);
+    format!(
+        "\n=== Thermal Gate (FR-011) ===\n\n\
+         Thermal level: {}\n\
+         Detected agents: {}\n\
+         Agent contention: {} (warn>={}, refuse>={})\n\
+         Gate decision: [{}]\n",
+        thermal_level_label(thermal),
+        agent_count,
+        contention_tier_label(tier),
+        thresholds.warn_at,
+        thresholds.refuse_at,
+        decision,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,5 +137,15 @@ mod tests {
             "ADMIT",
             "agent warn tier MUST still ADMIT (Warn proceeds in Hypervisor)"
         );
+    }
+
+    #[test]
+    fn format_gate_status_section_includes_decision() {
+        let section = format_gate_status_section(ThermalLevel::Green, 8);
+        assert!(section.contains("=== Thermal Gate (FR-011) ==="));
+        assert!(section.contains("Thermal level: GREEN"));
+        assert!(section.contains("Detected agents: 8"));
+        assert!(section.contains("Agent contention: REFUSE"));
+        assert!(section.contains("Gate decision: [DENY]"));
     }
 }
