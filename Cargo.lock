@@ -4379,7 +4379,6 @@ dependencies = [
  "sharecli-fleet",
  "sharecli-fuse",
  "sharecli-ipc",
- "sysinfo",
  "tempfile",
  "tokio",
  "tracing",
@@ -4405,6 +4404,7 @@ dependencies = [
  "libc",
  "serde",
  "serde_json",
+ "sysinfo",
  "tokio",
  "tracing",
 ]

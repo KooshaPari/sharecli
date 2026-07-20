@@ -48,7 +48,7 @@ sysinfo = "0.39"
 # Zig hot core: POSIX semaphore, posix_spawn, setpriority, waitpid
 spawn-core-sys = { path = "crates/spawn-core-sys" }
 
-# Fleet: device registry + thermal governor
+# Fleet: device registry + thermal governor + FR-006 proc_scan
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 # FUSE read-coalesce global meters surfaced in `status` (FR-007 / AC-007.9)
 sharecli-fuse = { path = "crates/sharecli-fuse" }

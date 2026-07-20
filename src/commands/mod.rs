@@ -17,6 +17,7 @@ use crate::runtime::{
     ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
+use sharecli_fleet::{agent_label_for_pid, scan_agents, HostProcSource};
 use sharecli_fleet::ResourceWatchSample;
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
 
@@ -47,30 +48,54 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
     } else {
         ProcessFilter::All
     };
-    let _ = all;
 
     let processes: Vec<ProcessInfo> = pool.find(filter).await;
+    let proc_source = HostProcSource;
 
-    println!("{:<8} {:<20} {:<12} {:<15} HARNESS", "PID", "NAME", "MEM(MB)", "PROJECT");
-    println!("{}", "-".repeat(70));
+    println!(
+        "{:<8} {:<20} {:<12} {:<15} {:<14} {}",
+        "PID", "NAME", "MEM(MB)", "PROJECT", "AGENT", "HARNESS"
+    );
+    println!("{}", "-".repeat(84));
 
     for proc in &processes {
         let project = proc.project.as_deref().unwrap_or("-");
         let harness = proc.harness.as_deref().unwrap_or("-");
+        let agent = agent_label_for_pid(&proc_source, proc.pid);
         println!(
-            "{:<8} {:<20} {:<12.1} {:<15} {}",
-            proc.pid, proc.name, proc.memory_mb as f64, project, harness
+            "{:<8} {:<20} {:<12.1} {:<15} {:<14} {}",
+            proc.pid, proc.name, proc.memory_mb as f64, project, agent, harness
         );
     }
 
     let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
     println!("\nTotal: {} processes, {} MB memory", processes.len(), total_mem);
 
+    if all {
+        print_host_agent_scan(&proc_source);
+    }
+
     if processes.is_empty() {
         print_ps_empty_hint(project, harness);
     }
 
     Ok(())
+}
+
+/// FR-006 host inventory printed by `sharecli ps --all`.
+fn print_host_agent_scan(source: &HostProcSource) {
+    let agents = scan_agents(source);
+    println!("\n=== Host agents (proc scan) ===\n");
+    if agents.is_empty() {
+        println!("No known agent processes detected on this host.");
+        return;
+    }
+    println!("{:<8} {:<16} {}", "PID", "FAMILY", "COMM");
+    println!("{}", "-".repeat(40));
+    for agent in &agents {
+        println!("{:<8} {:<16} {}", agent.pid, agent.family, agent.comm);
+    }
+    println!("\nTotal: {} agent process(es)", agents.len());
 }
 
 /// Actionable empty-pool copy for `ps` (C10 L100).
