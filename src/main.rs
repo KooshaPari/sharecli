@@ -164,6 +164,10 @@ enum Commands {
         #[arg(long)]
         json: bool,
 
+        /// Emit flat agent inventory as CSV (header + rows)
+        #[arg(long)]
+        csv: bool,
+
         /// Show parent-child process forests rooted at detected agents
         #[arg(long)]
         tree: bool,
@@ -558,9 +562,10 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, tree, watch, family, min_rss, sort, limit, pid } => {
+        Commands::Proc { json, csv, tree, watch, family, min_rss, sort, limit, pid } => {
             commands::proc::run(
                 *json,
+                *csv,
                 *tree,
                 *watch,
                 family.clone(),
