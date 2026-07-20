@@ -5,23 +5,29 @@
 
 use anyhow::{Context, Result};
 
-/// Point-in-time FD and host network byte counters for resource watch.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// Point-in-time CPU/MEM/Net/FD resource watch sample (FR-007).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ResourceWatchSample {
     pub fd_count: u64,
     pub net_rx_bytes: u64,
     pub net_tx_bytes: u64,
+    pub mem_rss_bytes: u64,
+    pub load_1m: f64,
 }
 
 impl ResourceWatchSample {
-    /// Capture FD and host network byte counters for the current process/host.
+    /// Capture FD, network, RSS, and host load for the current process/host.
     pub fn capture() -> Result<Self> {
         let fd_count = sample_self_fds()?;
         let (net_rx_bytes, net_tx_bytes) = sample_host_net()?;
+        let mem_rss_bytes = sample_self_rss_bytes()?;
+        let load_1m = sample_host_load_1m()?;
         Ok(Self {
             fd_count,
             net_rx_bytes,
             net_tx_bytes,
+            mem_rss_bytes,
+            load_1m,
         })
     }
 }
@@ -34,6 +40,16 @@ pub fn sample_self_fds() -> Result<u64> {
 /// Sum host-wide network RX/TX byte counters (non-loopback where applicable).
 pub fn sample_host_net() -> Result<(u64, u64)> {
     sample_host_net_impl()
+}
+
+/// Resident set size (RSS) in bytes for the current process.
+pub fn sample_self_rss_bytes() -> Result<u64> {
+    sample_self_rss_bytes_impl()
+}
+
+/// Host 1-minute load average.
+pub fn sample_host_load_1m() -> Result<f64> {
+    sample_host_load_1m_impl()
 }
 
 #[cfg(target_os = "linux")]
@@ -134,6 +150,59 @@ fn sample_host_net_impl() -> Result<(u64, u64)> {
     anyhow::bail!("sample_host_net is unsupported on this OS")
 }
 
+#[cfg(target_os = "linux")]
+fn sample_self_rss_bytes_impl() -> Result<u64> {
+    let status =
+        std::fs::read_to_string("/proc/self/status").context("failed to read /proc/self/status")?;
+    for line in status.lines() {
+        let Some(rest) = line.strip_prefix("VmRSS:") else {
+            continue;
+        };
+        let kb: u64 = rest
+            .trim()
+            .trim_end_matches(" kB")
+            .parse()
+            .context("invalid VmRSS in /proc/self/status")?;
+        return Ok(kb.saturating_mul(1024));
+    }
+    anyhow::bail!("VmRSS not found in /proc/self/status")
+}
+
+#[cfg(target_os = "macos")]
+fn sample_self_rss_bytes_impl() -> Result<u64> {
+    use libc::{getrusage, rusage, RUSAGE_SELF};
+
+    let mut usage: rusage = unsafe { std::mem::zeroed() };
+    let rc = unsafe { getrusage(RUSAGE_SELF, &mut usage) };
+    if rc != 0 {
+        anyhow::bail!("getrusage(RUSAGE_SELF) failed with status {rc}");
+    }
+    // macOS reports ru_maxrss in bytes.
+    Ok(usage.ru_maxrss as u64)
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn sample_self_rss_bytes_impl() -> Result<u64> {
+    anyhow::bail!("sample_self_rss_bytes is unsupported on this OS")
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn sample_host_load_1m_impl() -> Result<f64> {
+    use libc::{c_double, getloadavg};
+
+    let mut loads = [0.0f64 as c_double; 3];
+    let count = unsafe { getloadavg(loads.as_mut_ptr(), 3) };
+    if count < 1 {
+        anyhow::bail!("getloadavg returned no load samples");
+    }
+    Ok(loads[0])
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn sample_host_load_1m_impl() -> Result<f64> {
+    anyhow::bail!("sample_host_load_1m is unsupported on this OS")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,6 +211,20 @@ mod tests {
     fn resource_watch_sample_capture() {
         let sample = ResourceWatchSample::capture().expect("resource watch sample");
         assert!(sample.fd_count >= 3, "process MUST have stdin/stdout/stderr FDs");
+        assert!(sample.mem_rss_bytes > 0, "RSS MUST be non-zero for live process");
+        assert!(sample.load_1m >= 0.0, "load average MUST be sampled");
+    }
+
+    #[test]
+    fn test_sample_self_rss_bytes() {
+        let rss = super::sample_self_rss_bytes().expect("RSS sample");
+        assert!(rss > 0, "live process MUST have non-zero RSS");
+    }
+
+    #[test]
+    fn test_sample_host_load_1m() {
+        let load = super::sample_host_load_1m().expect("load sample");
+        assert!(load >= 0.0);
     }
 
     #[test]

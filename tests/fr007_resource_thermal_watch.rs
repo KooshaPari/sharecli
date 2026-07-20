@@ -7,8 +7,13 @@
 //! AC-007.4 FD watch via sample_self_fds / ResourceWatchSample
 //! AC-007.5 host net RX/TX watch via sample_host_net
 //! AC-007.6 Hypervisor::run attaches live resource watch to SpawnOutcome
+//! AC-007.7 RSS watch via sample_self_rss_bytes
+//! AC-007.8 host load watch via sample_host_load_1m
 
-use sharecli::monitoring::{ProcessStats, ResourceWatchSample, sample_host_net, sample_self_fds};
+use sharecli::monitoring::{
+    ProcessStats, ResourceWatchSample, sample_host_load_1m, sample_host_net, sample_self_fds,
+    sample_self_rss_bytes,
+};
 use sharecli_core::{FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision, ThermalGate};
 use sharecli_fleet::{ThermalGovernor, ThermalLevel};
 use std::sync::Arc;
@@ -80,6 +85,36 @@ fn fr007_net_watch_samples_host_counters() {
     let _ = (stats.net_rx_bytes, stats.net_tx_bytes);
 }
 
+/// FR-007 / AC-007.7 — RSS watch samples current process resident memory.
+#[test]
+fn fr007_rss_watch_samples_self_bytes() {
+    let rss = sample_self_rss_bytes().expect("RSS watch MUST succeed on supported OS");
+    assert!(rss > 0, "live process MUST have non-zero RSS");
+
+    let sample = ResourceWatchSample::capture().expect("resource watch capture");
+    assert!(sample.mem_rss_bytes > 0, "capture MUST include live RSS");
+
+    let stats = ProcessStats::new(1, "agent", 0, 0.0, 0, 0)
+        .with_resource_watch()
+        .expect("ProcessStats resource watch");
+    assert!(stats.mem_rss_bytes > 0, "ProcessStats MUST carry RSS watch signal");
+}
+
+/// FR-007 / AC-007.8 — host load average is sampled (not silent zero on failure).
+#[test]
+fn fr007_load_watch_samples_host_load_1m() {
+    let load = sample_host_load_1m().expect("load watch MUST succeed on supported OS");
+    assert!(load >= 0.0, "load average MUST be non-negative");
+
+    let sample = ResourceWatchSample::capture().expect("resource watch capture");
+    assert!(sample.load_1m >= 0.0, "capture MUST include live load average");
+
+    let stats = ProcessStats::new(1, "agent", 0, 0.0, 0, 0)
+        .with_resource_watch()
+        .expect("ProcessStats resource watch MUST populate load field");
+    assert!(stats.load_1m >= 0.0);
+}
+
 /// FR-007 / AC-007.6 — Hypervisor run path carries live FD/net watch on SpawnOutcome.
 #[tokio::test]
 async fn fr007_hypervisor_run_carries_resource_watch() {
@@ -110,6 +145,15 @@ async fn fr007_hypervisor_run_carries_resource_watch() {
         outcome.resource_watch.fd_count >= 3,
         "Hypervisor MUST attach live FD watch (got {})",
         outcome.resource_watch.fd_count
+    );
+    assert!(
+        outcome.resource_watch.mem_rss_bytes > 0,
+        "Hypervisor MUST attach live RSS watch (got {})",
+        outcome.resource_watch.mem_rss_bytes
+    );
+    assert!(
+        outcome.resource_watch.load_1m >= 0.0,
+        "Hypervisor MUST attach live load watch"
     );
     let _ = (
         outcome.resource_watch.net_rx_bytes,
