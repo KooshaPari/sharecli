@@ -106,6 +106,7 @@
 | AC-007.4    | `tests/fr007_resource_thermal_watch.rs` (`fr007_fd_watch_samples_self_fds`) | FD watch |
 | AC-007.5    | `tests/fr007_resource_thermal_watch.rs` (`fr007_net_watch_samples_host_counters`) | net RX/TX watch |
 | AC-007.6    | `tests/fr007_resource_thermal_watch.rs` (`fr007_hypervisor_run_carries_resource_watch`); `crates/sharecli-fleet/src/resource_watch.rs` | Hypervisor live watch path |
+| AC-007.10   | `tests/fr007_resource_thermal_watch.rs` (`fr007_format_status_section`); `tests/fr004_status_health.rs` (`fr004_status_prints_harness_table`); `src/commands/mod.rs` (`status`) | Host resource watch in status |
 
 ### FR-008 — Coalesce
 

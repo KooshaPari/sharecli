@@ -222,8 +222,14 @@ coalesce. Thermal watch signals MAY surface via FR-011.
 - **AC-007.6:** [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) captures
   a live [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs)
   on every invocation and attaches it to [`SpawnOutcome::resource_watch`](crates/sharecli-core/src/lib.rs).
+- **AC-007.10:** `sharecli status` captures a live
+  [`ResourceWatchSample::capture`](crates/sharecli-fleet/src/resource_watch.rs)
+  after the system-memory section and prints
+  [`format_status_section`](crates/sharecli-fleet/src/resource_watch.rs)
+  with open FD count, RSS bytes, 1-minute load average, and host net RX/TX
+  counters; MUST fail loudly via `?` when sampling is unsupported or errors.
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr004_status_health.rs`
 
 ---
 

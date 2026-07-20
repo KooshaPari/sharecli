@@ -9,6 +9,7 @@
 //! AC-007.6 Hypervisor::run attaches live resource watch to SpawnOutcome
 //! AC-007.7 RSS watch via sample_self_rss_bytes
 //! AC-007.8 host load watch via sample_host_load_1m
+//! AC-007.10 status surfaces live ResourceWatchSample via format_status_section
 
 use sharecli::monitoring::{
     ProcessStats, ResourceWatchSample, sample_host_load_1m, sample_host_net, sample_self_fds,
@@ -113,6 +114,22 @@ fn fr007_load_watch_samples_host_load_1m() {
         .with_resource_watch()
         .expect("ProcessStats resource watch MUST populate load field");
     assert!(stats.load_1m >= 0.0);
+}
+
+/// FR-007 / AC-007.10 — status block formats FD/RSS/load/net watch fields.
+#[test]
+fn fr007_format_status_section() {
+    let sample = ResourceWatchSample::capture().expect("resource watch capture");
+    let section = sample.format_status_section();
+
+    assert!(section.contains("=== Host Resource Watch ==="), "got: {section}");
+    assert!(section.contains("Open FDs:"), "got: {section}");
+    assert!(section.contains("RSS:"), "got: {section}");
+    assert!(section.contains("Load (1m):"), "got: {section}");
+    assert!(section.contains("Net RX:"), "got: {section}");
+    assert!(section.contains("Net TX:"), "got: {section}");
+    assert!(sample.fd_count >= 3, "live FD count MUST be present");
+    assert!(sample.mem_rss_bytes > 0, "live RSS MUST be present");
 }
 
 /// FR-007 / AC-007.6 — Hypervisor run path carries live FD/net watch on SpawnOutcome.
