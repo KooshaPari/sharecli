@@ -193,8 +193,14 @@ replacing vendor agent executables as the primary detection path.
 - **AC-006.4:** Process scan lists agent PIDs only.
 - **AC-006.5:** Child tool under an agent walks to the agent family.
 - **AC-006.6:** Human tool under a non-agent shell is not an agent path.
+- **AC-006.7:** `sharecli ps` table includes an `AGENT` column derived from
+  proc-scan ancestor walk.
+- **AC-006.8:** `sharecli ps --all` lists host-detected agent processes via
+  [`scan_host_agents`](crates/sharecli-fleet/src/proc_scan.rs).
+- **AC-006.9:** `sharecli thermal` polls [`scan_host_agents`](crates/sharecli-fleet/src/proc_scan.rs)
+  on each redraw and renders a DetectedAgent inventory panel.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`
 
 ---
 

@@ -17,7 +17,7 @@ use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
 use sharecli_thermal_tui::{render, App};
 
 const TUI_W: u16 = 80;
-const TUI_H: u16 = 30;
+const TUI_H: u16 = 40;
 
 const GOLDEN_WATCH: ResourceWatchSample = ResourceWatchSample {
     fd_count: 16,
@@ -138,6 +138,10 @@ fn golden_thermal_tui_levels() {
         assert!(
             actual.contains("Host Resource Watch") && actual.contains("FUSE IO Meters"),
             "{name} MUST include operator watch panels"
+        );
+        assert!(
+            actual.contains("Detected Agents"),
+            "{name} MUST include proc-scan agent panel"
         );
         assert!(actual.contains("Neg hits:"), "{name} MUST include neg dentry meters");
     }
