@@ -2,6 +2,12 @@
 
 Soft policy for audit-v38 **C04 L34**.
 
+**Operator Verified lift (GPG key mismatch → green badge):** see
+[`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md) — one-time import of
+GitHub key `60BC1DAF830B0BC4`, `git commit -S`, and post-Verified scorecard steps.
+Ruleset `main-signed-commits` (**19181236**) is already active; L34 stays **2** until
+a Verified commit lands on `main`.
+
 ## Current stance
 
 | Control | Status |
@@ -35,16 +41,22 @@ git commit -s -m "feat(scope): message"
 
 ## Maintainer quick path (GPG or SSH signing)
 
+Full diagnosis + pinentry notes:
+[`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md).
+
 ```bash
 # SSH signing (GitHub-recommended)
 git config --global gpg.format ssh
 git config --global user.signingkey ~/.ssh/id_ed25519.pub
 git config --global commit.gpgsign true
 # upload the same public key under GitHub → Settings → SSH and GPG keys → Signing keys
+# or: gh ssh-key add ~/.ssh/id_ed25519.pub --type signing
 
-# or classic GPG
-git config --global user.signingkey <KEYID>
+# or classic GPG (must match GitHub key_id 60BC1DAF830B0BC4 for kooshapari@gmail.com)
+git config --global user.email "kooshapari@gmail.com"
+git config --global user.signingkey 60BC1DAF830B0BC4
 git config --global commit.gpgsign true
+export GPG_TTY=$(tty)
 ```
 
 ## Branch protection / ruleset checklist
@@ -66,4 +78,4 @@ Both stay `continue-on-error` until verified-commit evidence is routine.
 ## Follow-up
 
 - Confirm Dependabot / Actions commits either sign or use Admin bypass intentionally.
-- Land one Verified commit on `main`, then lift L34 to 3.
+- Land one Verified commit on `main` per [`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md), then lift L34 to 3.
