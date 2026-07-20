@@ -51,6 +51,16 @@ impl NegDentryMeters {
 static GLOBAL_NEG_HITS: AtomicU64 = AtomicU64::new(0);
 static GLOBAL_NEG_MISSES: AtomicU64 = AtomicU64::new(0);
 
+/// Record a process-wide negative-dentry hit (InterceptFs boundary only).
+pub(crate) fn record_global_neg_hit() {
+    GLOBAL_NEG_HITS.fetch_add(1, Ordering::Relaxed);
+}
+
+/// Record a process-wide negative-dentry miss (InterceptFs boundary only).
+pub(crate) fn record_global_neg_miss() {
+    GLOBAL_NEG_MISSES.fetch_add(1, Ordering::Relaxed);
+}
+
 /// Process-wide aggregate of negative-dentry hit/miss events across all FUSE intercepts.
 pub fn global_neg_dentry_meters() -> NegDentryMeters {
     NegDentryMeters {
@@ -114,7 +124,6 @@ impl NegativeDentryCache {
         match self.entries.get(rel) {
             Some(entry) if entry.expires_at > now => {
                 self.hits.fetch_add(1, Ordering::Relaxed);
-                GLOBAL_NEG_HITS.fetch_add(1, Ordering::Relaxed);
                 true
             }
             Some(_) => {
@@ -128,7 +137,6 @@ impl NegativeDentryCache {
     /// Record that `rel` was confirmed missing (ENOENT) and count a miss.
     pub fn remember_miss(&mut self, rel: PathBuf) {
         self.misses.fetch_add(1, Ordering::Relaxed);
-        GLOBAL_NEG_MISSES.fetch_add(1, Ordering::Relaxed);
         self.entries.insert(
             rel,
             NegEntry {

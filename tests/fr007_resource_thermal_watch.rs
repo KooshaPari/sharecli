@@ -172,6 +172,11 @@ async fn fr007_hypervisor_run_carries_resource_watch() {
         outcome.resource_watch.load_1m >= 0.0,
         "Hypervisor MUST attach live load watch"
     );
+    assert!(
+        outcome.detected_agent.is_none(),
+        "test harness spawn MUST record Option<DetectedAgent>; got {:?}",
+        outcome.detected_agent
+    );
     let _ = (
         outcome.resource_watch.net_rx_bytes,
         outcome.resource_watch.net_tx_bytes,
