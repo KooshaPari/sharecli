@@ -108,7 +108,10 @@
 
 | AC        | Test file                        | Notes |
 |-----------|----------------------------------|-------|
-| AC-008.1..4 | `tests/fr008_coalesce_mesh.rs` | debounce/queue ACs TBD |
+| AC-008.1..4 | `tests/fr008_coalesce_mesh.rs` | command_key / with_lock / thermal / cache hit |
+| AC-008.5 | `tests/fr008_coalesce_mesh.rs` (`fr008_ttl_stale_entry_is_miss`); `sharecli-ipc` `ttl_lookup_miss_and_evict_on_store` | TTL miss + eviction |
+| AC-008.6 | `tests/fr008_coalesce_mesh.rs` (`fr008_debounce_waits_and_shares`); `sharecli-ipc` `debounce_shares_recent_store` | debounce share window |
+| queue / nocache | — | still TBD |
 
 ### FR-009 — FUSE
 

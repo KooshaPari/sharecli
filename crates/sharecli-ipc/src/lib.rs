@@ -12,11 +12,14 @@
 //! 2. **[`CoalesceCache`]** — atomic JSON store: `lookup` / `store` / `with_lock`.
 //! 3. **[`CachedResult`]** — the serialisable exit_code + stdout + stderr bundle.
 //!
-//! # TODO hooks
-//! - `// TODO(hypervisor): debounce-window` — attach a TTL / staleness check to
-//!   [`CoalesceCache::lookup`] so results older than N seconds are treated as a miss.
-//! - `// TODO(hypervisor): eviction` — periodic sweep of `root/<key>.json` files older
-//!   than the configured TTL inside [`CoalesceCache::store`].
+//! # TTL + debounce (origin harness coalesce)
+//!
+//! - **TTL** — `lookup` treats entries whose mtime age is ≥ configured TTL as a miss
+//!   (default [`CoalesceCache::DEFAULT_TTL`] = 300s). `store` sweeps stale `*.json`
+//!   entries under the cache root.
+//! - **Debounce** — on a miss, `with_lock` waits `debounce` then re-checks the cache so
+//!   a concurrent store completed in-window is shared instead of re-running (origin
+//!   harness `debounce_ms`; default off).
 
 pub mod handler;
 pub mod serve_lock;
@@ -25,6 +28,8 @@ pub mod ws_client;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::{Duration, SystemTime};
 
 use anyhow::{Context, Result};
 use fs2::FileExt;
@@ -107,15 +112,53 @@ pub struct CachedResult {
 /// same key: the first acquires the exclusive flock, runs the command, and writes the
 /// result; subsequent callers block until the lock is released, then hit the now-
 /// populated cache entry without re-executing.
+///
+/// Entries older than [`ttl`][CoalesceCache::ttl] are treated as misses. When
+/// [`debounce`][CoalesceCache::debounce] is non-zero, a miss path sleeps then
+/// re-checks so an in-window sibling store is shared (origin harness `debounce_ms`).
 pub struct CoalesceCache {
     root: PathBuf,
+    ttl: Duration,
+    debounce: Duration,
 }
 
 impl CoalesceCache {
-    /// Create a new cache rooted at `root`.  The directory is created on first use
-    /// if it does not already exist.
+    /// Default result lifetime (5 minutes) — longer than origin harness lint TTLs
+    /// so Hypervisor callers share across agent turns unless overridden.
+    pub const DEFAULT_TTL: Duration = Duration::from_secs(300);
+
+    /// Create a new cache rooted at `root` with [`DEFAULT_TTL`][Self::DEFAULT_TTL]
+    /// and debounce disabled. The directory is created on first use if needed.
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        Self::with_options(root, Self::DEFAULT_TTL, Duration::ZERO)
+    }
+
+    /// Create a cache with a custom TTL and debounce disabled.
+    pub fn with_ttl(root: impl Into<PathBuf>, ttl: Duration) -> Self {
+        Self::with_options(root, ttl, Duration::ZERO)
+    }
+
+    /// Create a cache with explicit TTL and debounce window.
+    ///
+    /// `ttl` — max age of a stored entry before `lookup` returns a miss.
+    /// `debounce` — on miss, wait this long then re-check before running the
+    /// miss path (origin harness `debounce_ms`; `Duration::ZERO` disables).
+    pub fn with_options(root: impl Into<PathBuf>, ttl: Duration, debounce: Duration) -> Self {
+        Self {
+            root: root.into(),
+            ttl,
+            debounce,
+        }
+    }
+
+    /// Configured TTL for cache entries.
+    pub fn ttl(&self) -> Duration {
+        self.ttl
+    }
+
+    /// Configured debounce window (zero = disabled).
+    pub fn debounce(&self) -> Duration {
+        self.debounce
     }
 
     fn entry_path(&self, key: &CommandKey) -> PathBuf {
@@ -131,15 +174,63 @@ impl CoalesceCache {
             .with_context(|| format!("create cache root {}", self.root.display()))
     }
 
+    /// Age of `path` from mtime, or `None` if the file is missing.
+    fn entry_age(&self, path: &Path) -> Result<Option<Duration>> {
+        match fs::metadata(path) {
+            Ok(meta) => {
+                let modified = meta
+                    .modified()
+                    .with_context(|| format!("mtime for {}", path.display()))?;
+                let age = SystemTime::now()
+                    .duration_since(modified)
+                    .unwrap_or(Duration::ZERO);
+                Ok(Some(age))
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e).with_context(|| format!("metadata for {}", path.display())),
+        }
+    }
+
+    fn is_fresh(&self, path: &Path) -> Result<bool> {
+        match self.entry_age(path)? {
+            Some(age) => Ok(age < self.ttl),
+            None => Ok(false),
+        }
+    }
+
+    /// Remove `*.json` entries under `root` whose mtime exceeds TTL.
+    fn evict_stale(&self) -> Result<()> {
+        let entries = match fs::read_dir(&self.root) {
+            Ok(rd) => rd,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(()),
+            Err(e) => {
+                return Err(e).with_context(|| format!("read cache root {}", self.root.display()))
+            }
+        };
+
+        for entry in entries {
+            let entry = entry.with_context(|| format!("read dir entry in {}", self.root.display()))?;
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            if !self.is_fresh(&path)? {
+                let _ = fs::remove_file(&path);
+            }
+        }
+        Ok(())
+    }
+
     /// Look up a cached result.
     ///
-    /// Returns `Ok(None)` when no entry exists yet.
-    ///
-    /// # TODO(hypervisor): debounce-window
-    /// Compare the entry's mtime against a configured TTL; return `Ok(None)` when
-    /// the entry is stale so the caller re-runs and re-stores a fresh result.
+    /// Returns `Ok(None)` when no entry exists, or when the entry's mtime age is
+    /// ≥ the configured TTL (stale → miss).
     pub fn lookup(&self, key: &CommandKey) -> Result<Option<CachedResult>> {
         let path = self.entry_path(key);
+        if !self.is_fresh(&path)? {
+            // Stale or missing — treat as miss (leave file for eviction sweep).
+            return Ok(None);
+        }
         match fs::read(&path) {
             Ok(bytes) => {
                 let result: CachedResult = serde_json::from_slice(&bytes)
@@ -154,11 +245,8 @@ impl CoalesceCache {
     /// Atomically write a [`CachedResult`] for `key`.
     ///
     /// Uses a write-to-temp-then-rename strategy so concurrent readers never
-    /// observe a partial / truncated JSON file.
-    ///
-    /// # TODO(hypervisor): eviction
-    /// After writing, schedule or inline a sweep of `root/` to remove entries
-    /// whose mtime exceeds the configured TTL.
+    /// observe a partial / truncated JSON file. After writing, sweeps stale
+    /// entries under `root/` whose mtime exceeds the configured TTL.
     pub fn store(&self, key: &CommandKey, result: &CachedResult) -> Result<()> {
         self.ensure_root()?;
 
@@ -168,11 +256,15 @@ impl CoalesceCache {
         // (same filesystem, no cross-device move).
         let mut tmp = tempfile::NamedTempFile::new_in(&self.root)
             .with_context(|| format!("create temp file in {}", self.root.display()))?;
-        tmp.write_all(&bytes).context("write cache bytes to temp file")?;
+        tmp.write_all(&bytes)
+            .context("write cache bytes to temp file")?;
         tmp.flush().context("flush temp file")?;
 
         let dest = self.entry_path(key);
-        tmp.persist(&dest).with_context(|| format!("persist cache entry to {}", dest.display()))?;
+        tmp.persist(&dest)
+            .with_context(|| format!("persist cache entry to {}", dest.display()))?;
+
+        self.evict_stale()?;
 
         Ok(())
     }
@@ -182,10 +274,12 @@ impl CoalesceCache {
     /// The Lock-Wait-Cache protocol:
     /// 1. Open (or create) `root/<key>.lock`.
     /// 2. Acquire an **exclusive** flock — blocks until any prior holder releases it.
-    /// 3. After acquiring the lock, **re-check** the cache: a sibling that held the
-    ///    lock may have already stored the result.
-    /// 4. If still a miss, call `f()` and store the result.
-    /// 5. Release the lock (file handle drop).
+    /// 3. After acquiring the lock, **re-check** the cache (TTL-aware): a sibling that
+    ///    held the lock may have already stored the result.
+    /// 4. On miss with debounce configured: sleep, then re-check so an in-window
+    ///    store from another process is shared instead of re-running.
+    /// 5. If still a miss, call `f()` and store the result.
+    /// 6. Release the lock (file handle drop).
     ///
     /// Returns the [`CachedResult`] whether it came from `f()` or the cache.
     pub fn with_lock<T>(&self, key: &CommandKey, f: impl FnOnce() -> Result<T>) -> Result<T>
@@ -208,10 +302,17 @@ impl CoalesceCache {
             .with_context(|| format!("acquire exclusive lock on {}", lock_path.display()))?;
 
         // Re-check: a sibling may have stored the result while we were waiting.
-        // TODO(hypervisor): debounce-window — also check TTL staleness here.
         if let Some(cached) = self.lookup(key)? {
-            // Lock releases on drop of `lock_file`.
             return Ok(T::from(cached));
+        }
+
+        // Debounce window (origin harness coalesce debounce_ms): wait, then share
+        // if another process stored a fresh result while we held the miss.
+        if !self.debounce.is_zero() {
+            thread::sleep(self.debounce);
+            if let Some(cached) = self.lookup(key)? {
+                return Ok(T::from(cached));
+            }
         }
 
         // We are first — run the command.
@@ -241,6 +342,8 @@ mod hex {
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+    use std::thread;
+    use std::time::Duration;
 
     use tempfile::TempDir;
 
@@ -284,9 +387,16 @@ mod tests {
         let key = command_key(&argv, Path::new("/workspace"), &[]);
 
         // Nothing stored yet.
-        assert!(cache.lookup(&key).unwrap().is_none(), "fresh cache should be empty");
+        assert!(
+            cache.lookup(&key).unwrap().is_none(),
+            "fresh cache should be empty"
+        );
 
-        let result = CachedResult { exit_code: 0, stdout: b"all good".to_vec(), stderr: vec![] };
+        let result = CachedResult {
+            exit_code: 0,
+            stdout: b"all good".to_vec(),
+            stderr: vec![],
+        };
 
         cache.store(&key, &result).expect("store");
 
@@ -313,7 +423,11 @@ mod tests {
         let r1: CachedResult = cache
             .with_lock(&key, || {
                 call_count += 1;
-                Ok(CachedResult { exit_code: 42, stdout: b"run1".to_vec(), stderr: vec![] })
+                Ok(CachedResult {
+                    exit_code: 42,
+                    stdout: b"run1".to_vec(),
+                    stderr: vec![],
+                })
             })
             .expect("first with_lock");
         assert_eq!(call_count, 1, "f() must run on first call");
@@ -323,11 +437,104 @@ mod tests {
         let r2: CachedResult = cache
             .with_lock(&key, || {
                 call_count += 1;
-                Ok(CachedResult { exit_code: 99, stdout: b"run2".to_vec(), stderr: vec![] })
+                Ok(CachedResult {
+                    exit_code: 99,
+                    stdout: b"run2".to_vec(),
+                    stderr: vec![],
+                })
             })
             .expect("second with_lock");
         assert_eq!(call_count, 1, "f() must NOT run when cache is populated");
         assert_eq!(r2.exit_code, 42, "second call must return the cached result");
         assert_eq!(r2.stdout, b"run1");
+    }
+
+    // -----------------------------------------------------------------------
+    // FR-008 / AC-008.5 — TTL stale miss + store eviction
+    // -----------------------------------------------------------------------
+    #[test]
+    fn ttl_lookup_miss_and_evict_on_store() {
+        let dir = TempDir::new().expect("tempdir");
+        let ttl = Duration::from_millis(60);
+        let cache = CoalesceCache::with_ttl(dir.path(), ttl);
+        assert_eq!(cache.ttl(), ttl);
+        assert_eq!(cache.debounce(), Duration::ZERO);
+
+        let stale_key = command_key(&["stale".into()], Path::new("/x"), &[]);
+        let fresh_key = command_key(&["fresh".into()], Path::new("/x"), &[]);
+
+        cache
+            .store(
+                &stale_key,
+                &CachedResult {
+                    exit_code: 0,
+                    stdout: b"old".to_vec(),
+                    stderr: vec![],
+                },
+            )
+            .expect("store stale candidate");
+
+        thread::sleep(ttl + Duration::from_millis(30));
+        assert!(cache.lookup(&stale_key).unwrap().is_none());
+
+        cache
+            .store(
+                &fresh_key,
+                &CachedResult {
+                    exit_code: 0,
+                    stdout: b"new".to_vec(),
+                    stderr: vec![],
+                },
+            )
+            .expect("store triggers eviction");
+
+        assert!(
+            !cache.entry_path(&stale_key).exists(),
+            "store MUST evict TTL-expired json entries"
+        );
+        assert!(cache.lookup(&fresh_key).unwrap().is_some());
+    }
+
+    // -----------------------------------------------------------------------
+    // FR-008 / AC-008.6 — debounce re-check shares in-window store
+    // -----------------------------------------------------------------------
+    #[test]
+    fn debounce_shares_recent_store() {
+        let dir = TempDir::new().expect("tempdir");
+        let debounce = Duration::from_millis(100);
+        let cache = CoalesceCache::with_options(dir.path(), Duration::from_secs(60), debounce);
+        let key = command_key(&["deb".into()], Path::new("/y"), &[]);
+
+        let root = dir.path().to_path_buf();
+        let key_bg = key.clone();
+        let producer = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(30));
+            let bg = CoalesceCache::with_options(&root, Duration::from_secs(60), Duration::ZERO);
+            bg.store(
+                &key_bg,
+                &CachedResult {
+                    exit_code: 0,
+                    stdout: b"from-bg".to_vec(),
+                    stderr: vec![],
+                },
+            )
+            .expect("bg store");
+        });
+
+        let mut ran = false;
+        let got: CachedResult = cache
+            .with_lock(&key, || {
+                ran = true;
+                Ok(CachedResult {
+                    exit_code: 7,
+                    stdout: b"miss".to_vec(),
+                    stderr: vec![],
+                })
+            })
+            .expect("with_lock");
+
+        producer.join().expect("join");
+        assert!(!ran, "debounce MUST share bg store without miss path");
+        assert_eq!(got.stdout, b"from-bg");
     }
 }

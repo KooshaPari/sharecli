@@ -221,13 +221,13 @@ coalesce. Thermal watch signals MAY surface via FR-011.
 ## FR-008 — Speculative Coalesce / Debounce / Queue
 
 **Statement:** Identical concurrent invocations MUST coalesce via
-Lock-Wait-Cache (`CoalesceCache`). Debounce / queue for mutating or
-`nocache` args are product MUST intent; dedicated ACs MAY land as those
-APIs harden.
+Lock-Wait-Cache (`CoalesceCache`) with configurable TTL (default 300s) and
+optional debounce window. Queue / mutating `nocache` strategies remain
+product MUST intent; dedicated ACs MAY land as those APIs harden.
 
 **Source:**
 
-- `crates/sharecli-ipc` — `command_key`, `CoalesceCache`
+- `crates/sharecli-ipc` — `command_key`, `CoalesceCache::{new,with_ttl,with_options}`
 - `crates/sharecli-core` — `Hypervisor::run`
 
 **Acceptance Criteria:**
@@ -236,8 +236,10 @@ APIs harden.
 - **AC-008.2:** `CoalesceCache::with_lock` runs the miss path once per key.
 - **AC-008.3:** Thermal `Refuse` fails loudly before speculative coalesce / spawn.
 - **AC-008.4:** Second identical `Allow` run is served from coalesce cache.
+- **AC-008.5:** Entries older than configured TTL are treated as miss; `store` evicts stale `*.json`.
+- **AC-008.6:** When debounce is set, a miss waits then shares an in-window sibling store instead of re-running.
 
-**Test refs:** `tests/fr008_coalesce_mesh.rs`
+**Test refs:** `tests/fr008_coalesce_mesh.rs`; `sharecli-ipc` unit tests for TTL/debounce.
 
 ---
 

@@ -169,14 +169,16 @@ work debounced or queued), **so that** agents do not thrash the same
 files / locks unnecessarily.
 
 **MUST:** Provide Lock-Wait-Cache coalesce (`CoalesceCache`) for identical
-concurrent invocations; debounce / queue paths for mutating or `nocache`
-args MUST exist as documented product intent (implementation may land
-incrementally behind the same FR).
+concurrent invocations with configurable TTL eviction and optional debounce
+window (origin harness `ttl` / `debounce_ms`). Queue paths for mutating or
+`nocache` args remain documented product intent (may land incrementally).
 
 **Acceptance:**
 
-- `tests/fr008_coalesce_mesh.rs` — AC-008.1..AC-008.4 (coalesce + gate wiring)
-- Debounce / queue: tracked in `sharecli-ipc` crate docs until dedicated ACs land
+- `tests/fr008_coalesce_mesh.rs` — AC-008.1..AC-008.6
+- AC-008.5: `lookup` / `with_lock` treat entries older than configured TTL as miss
+- AC-008.6: non-zero debounce waits then shares an in-window store instead of re-run
+- Queue / mutating `nocache` strategies: still tracked in crate docs until dedicated ACs land
 
 **Source:** `crates/sharecli-ipc`, `crates/sharecli-core` (`Hypervisor::run`)  
 **Detail:** PRD E3; origin harness coalesce / debounce / queue strategies.
