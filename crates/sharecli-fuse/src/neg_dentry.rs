@@ -158,6 +158,7 @@ mod tests {
 
     /// FR-009 / AC-009.7 — remember miss then hit within TTL.
     #[test]
+    #[serial_test::serial]
     fn neg_dentry_miss_then_hit() {
         let mut cache = NegativeDentryCache::with_ttl(Duration::from_secs(30));
         let rel = PathBuf::from("missing.txt");

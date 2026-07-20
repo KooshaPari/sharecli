@@ -182,6 +182,7 @@ mod tests {
 
     /// FR-007 / AC-007.9 — global meters aggregate across cache instances.
     #[test]
+    #[serial_test::serial]
     fn global_read_cache_meters_aggregate() {
         let before = global_read_cache_meters();
         let mut tmp = NamedTempFile::new().expect("tmp");
