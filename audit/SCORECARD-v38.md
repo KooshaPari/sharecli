@@ -40,7 +40,7 @@
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C01 **93% A**.
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb` — unweighted **90% A**.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** hard codesign/notarize secrets (C11 L112; zero repo secrets confirmed), SLSA L3 network-block (C06), Verified commit evidence for L34 lift (ruleset 19181236 already active).
+- **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06).
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
 - **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**; unweighted **90.4% A → 89.8% B**.
 - **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
@@ -51,6 +51,14 @@
 Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 30-pillar auto-scan for fleet ranking.
 
 ## Post-audit remediations
+
+### 2026-07-19/20 (docs — GPG Verified L34 guide + Feb recovery status)
+
+- Feb recovery [#397](https://github.com/KooshaPari/sharecli/pull/397) + CoW/`smart_merge`/worktree mesh [#400](https://github.com/KooshaPari/sharecli/pull/400) landed on `main` (product depth).
+- Added `docs/ops/gpg-verified-commits-l34.md` (operator import of GitHub key `60BC1DAF830B0BC4`, `git commit -S`, SSH alternative, agent policy). Cross-links: `signed-commits.md`, `feb-recovery.md`, `ruleset-checklist.md`, `CONTRIBUTING.md`.
+- **L34 stays 2** until a green **Verified** badge lands on `main` — do **not** bump to 3 yet (ruleset 19181236 already active).
+- **C11 L112** still blocked on codesign/notarize secrets.
+- Highest-leverage remaining: L34 Verified evidence; C11 codesign secrets.
 
 ### 2026-07-19 (C08 L76 Harbor N/A honest rescore)
 

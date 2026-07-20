@@ -188,9 +188,13 @@ Signed-off-by: Your Name <you@example.com>
 ```
 
 Use `git commit -s` (or configure a prepare-commit-msg hook). GPG/SSH commit
-signatures are encouraged for maintainers; branch-protection “required signed
-commits” remains a follow-up (needs org settings). Soft CI may warn when PR
-commits lack `Signed-off-by`.
+signatures are encouraged for maintainers. Branch ruleset `main-signed-commits`
+(id **19181236**) already requires signed commits on `main`. Soft CI may warn
+when PR commits lack `Signed-off-by` or are unverified.
+
+Maintainer Verified setup (GPG key `60BC1DAF830B0BC4` / SSH signing alternative):
+[`docs/ops/gpg-verified-commits-l34.md`](docs/ops/gpg-verified-commits-l34.md).
+Overview: [`docs/ops/signed-commits.md`](docs/ops/signed-commits.md).
 
 Examples:
 
