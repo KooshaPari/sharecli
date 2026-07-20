@@ -27,6 +27,7 @@
 
 mod inode_map;
 mod neg_dentry;
+mod path_remap;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod mount_smoke;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -36,6 +37,7 @@ mod write_serialize;
 mod write_serialize_meters;
 
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
+pub use path_remap::remap_mount_to_backing;
 pub use neg_dentry::{
     global_neg_dentry_meters, NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL,
 };

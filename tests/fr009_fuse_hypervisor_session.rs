@@ -3,13 +3,14 @@
 //!
 //! AC-009.12 Hypervisor cache-miss FUSE mounts derive session id from coalesce CommandKey
 //! AC-009.13 Hypervisor SpawnOutcome exposes fuse_session_id when intercept is active
+//! AC-009.14 SpawnOutcome exposes backing/mount remap pair; remap_mount_to_backing path translate
 
 use sharecli_core::{
     fuse_session_id_for_command_key, FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision,
 };
-use sharecli_fuse::{read_provenance, InterceptFs};
+use sharecli_fuse::{read_provenance, remap_mount_to_backing, InterceptFs};
 use sharecli_ipc::command_key;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
 
@@ -118,4 +119,70 @@ async fn fr009_hypervisor_spawn_outcome_fuse_session_id() {
     assert!(hit.from_cache);
     assert!(hit.fuse_session_id.is_none());
     assert!(!hit.fuse_intercept_active());
+}
+
+/// FR-009 / AC-009.14 — remap_mount_to_backing translates mount subtree to backing.
+#[test]
+fn fr009_remap_mount_to_backing_subtree() {
+    let mount = Path::new("/tmp/fuse-mp");
+    let backing = Path::new("/workspace/proj");
+    assert_eq!(
+        remap_mount_to_backing(mount, backing, Path::new("/tmp/fuse-mp/src/main.rs")),
+        Some(PathBuf::from("/workspace/proj/src/main.rs"))
+    );
+    assert_eq!(
+        remap_mount_to_backing(mount, backing, Path::new("src/main.rs")),
+        Some(PathBuf::from("/workspace/proj/src/main.rs"))
+    );
+    assert!(remap_mount_to_backing(mount, backing, Path::new("/tmp/mountextra/x")).is_none());
+}
+
+/// FR-009 / AC-009.14 — active intercept SpawnOutcome carries backing + mount remap pair.
+#[tokio::test]
+async fn fr009_hypervisor_spawn_outcome_fuse_path_remap() {
+    let dir = TempDir::new().expect("tempdir");
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
+
+    #[cfg(unix)]
+    let argv = vec!["echo".to_string(), "fr009-fuse-remap".to_string()];
+    #[cfg(windows)]
+    let argv = vec![
+        "cmd".to_string(),
+        "/C".to_string(),
+        "echo".to_string(),
+        "fr009-fuse-remap".to_string(),
+    ];
+
+    let outcome = hv
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+        })
+        .await
+        .expect("Hypervisor cache-miss run");
+
+    assert!(!outcome.from_cache);
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    if outcome.fuse_intercept_active() {
+        assert_eq!(outcome.fuse_backing.as_deref(), Some(dir.path()));
+        let mount = outcome
+            .fuse_mountpoint
+            .as_ref()
+            .expect("mountpoint when intercept active");
+        assert_ne!(mount, dir.path());
+        assert_eq!(
+            outcome.remap_fuse_path(mount),
+            Some(dir.path().to_path_buf())
+        );
+    } else {
+        assert!(outcome.fuse_backing.is_none());
+        assert!(outcome.fuse_mountpoint.is_none());
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        assert!(outcome.fuse_backing.is_none());
+        assert!(outcome.fuse_mountpoint.is_none());
+    }
 }

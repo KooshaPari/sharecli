@@ -368,6 +368,13 @@ until create / mkdir / rename-into invalidates the entry.
   ([`SpawnOutcome::fuse_intercept_active`](crates/sharecli-core/src/lib.rs)); MUST be `None`
   for coalesce cache hits, nocache queue routing, or cache misses where FUSE did not mount.
   The session string MUST match [`fuse_session_id_for_command_key`] for the coalesce key.
+- **AC-009.14:** When FUSE intercept is active, [`SpawnOutcome`](crates/sharecli-core/src/lib.rs)
+  MUST expose `fuse_backing` (original cwd) and `fuse_mountpoint` (ephemeral intercept mount);
+  [`SpawnOutcome::remap_fuse_path`](crates/sharecli-core/src/lib.rs) and
+  [`sharecli_fuse::remap_mount_to_backing`](crates/sharecli-fuse/src/path_remap.rs) MUST
+  translate paths under the mount to backing equivalents (prefix-safe, `None` outside subtree).
+  [`FuseGuard`](crates/sharecli-core/src/lib.rs) MUST remain mounted for the full coalesce
+  spawn window and force-unmount on drop after the child exits.
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
 
