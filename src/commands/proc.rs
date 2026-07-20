@@ -498,12 +498,14 @@ fn forest_root_matches_filter(
     true
 }
 
-/// One detected agent row for text/JSON surfaces (AC-006.11).
+/// One detected agent row for text/JSON surfaces (AC-006.11, AC-006.32).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentProcRow {
     pub pid: u32,
     pub family: String,
     pub comm: String,
+    /// Linux `/proc` state letter (R|S|D|Z|T|t|…); AC-006.32.
+    pub state: String,
     pub mem_rss_bytes: u64,
     pub mem_rss: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -588,8 +590,13 @@ impl AgentProcSnapshot {
         let watched = watch_detected_agents(&agents);
         let thermal = ThermalGovernor::new().poll()?;
         let gate = gate_status_snapshot(thermal, agents.len());
+        let agent_pids: Vec<u32> = agents.iter().map(|a| a.pid).collect();
+        let state_by_pid = build_agent_state_map(&HostProcSource, &agent_pids);
         Ok(Self {
-            agents: watched.iter().map(agent_row_from_watch).collect(),
+            agents: watched
+                .iter()
+                .map(|row| agent_row_from_watch(row, &state_by_pid))
+                .collect(),
             scanned: agents.len(),
             watched: watched.len(),
             gate,
@@ -597,11 +604,20 @@ impl AgentProcSnapshot {
     }
 }
 
-fn agent_row_from_watch(row: &DetectedAgentWatch) -> AgentProcRow {
+fn state_letter_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
+    state_by_pid.get(&pid).map(|ch| ch.to_string()).unwrap_or_default()
+}
+
+/// Build one JSON/CSV agent row including process state (AC-006.32).
+pub fn agent_row_from_watch(
+    row: &DetectedAgentWatch,
+    state_by_pid: &HashMap<u32, char>,
+) -> AgentProcRow {
     AgentProcRow {
         pid: row.agent.pid,
         family: row.agent.family.to_string(),
         comm: row.agent.comm.clone(),
+        state: state_letter_for_pid(state_by_pid, row.agent.pid),
         mem_rss_bytes: row.resource.mem_rss_bytes,
         mem_rss: format_rss_bytes(row.resource.mem_rss_bytes),
         fd_count: row.resource.fd_count,
@@ -703,38 +719,42 @@ fn append_tree_csv_row(
     node: &AgentTreeNode,
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
 ) {
     let rss = rss_by_pid.get(&node.pid).copied().unwrap_or(0);
     let fd = fd_by_pid.get(&node.pid).map(|n| n.to_string()).unwrap_or_default();
     let family = node.family.map(csv_escape_field).unwrap_or_default();
+    let state = state_letter_for_pid(state_by_pid, node.pid);
     out.push_str(&format!(
-        "{root_index},{depth},{pid},{ppid},{family},{comm},{rss},{mem_rss},{fd}\n",
+        "{root_index},{depth},{pid},{ppid},{family},{comm},{state},{rss},{mem_rss},{fd}\n",
         root_index = root_index,
         depth = depth,
         pid = node.pid,
         ppid = node.ppid,
         family = family,
         comm = csv_escape_field(&node.comm),
+        state = state,
         rss = rss,
         mem_rss = csv_escape_field(&format_rss_bytes(rss)),
         fd = fd,
     ));
     for child in &node.children {
-        append_tree_csv_row(out, root_index, depth + 1, child, rss_by_pid, fd_by_pid);
+        append_tree_csv_row(out, root_index, depth + 1, child, rss_by_pid, fd_by_pid, state_by_pid);
     }
 }
 
-/// Render agent process forests as CSV (AC-006.26).
+/// Render agent process forests as CSV (AC-006.26, AC-006.32).
 pub fn render_agent_tree_csv(
     forests: &[AgentTreeNode],
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> String {
-    const HEADER: &str = "root_index,depth,pid,ppid,family,comm,mem_rss_bytes,mem_rss,fd_count";
+    const HEADER: &str = "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count";
     let mut out = String::from(HEADER);
     out.push('\n');
     for (root_index, root) in forests.iter().enumerate() {
-        append_tree_csv_row(&mut out, root_index, 0, root, rss_by_pid, fd_by_pid);
+        append_tree_csv_row(&mut out, root_index, 0, root, rss_by_pid, fd_by_pid, state_by_pid);
     }
     if !out.ends_with('\n') {
         out.push('\n');
@@ -742,9 +762,12 @@ pub fn render_agent_tree_csv(
     out
 }
 
-/// Render flat agent inventory as CSV (AC-006.24).
-pub fn render_agent_inventory_csv(watched: &[DetectedAgentWatch]) -> String {
-    const HEADER: &str = "pid,family,comm,mem_rss_bytes,mem_rss,fd_count";
+/// Render flat agent inventory as CSV (AC-006.24, AC-006.32).
+pub fn render_agent_inventory_csv(
+    watched: &[DetectedAgentWatch],
+    state_by_pid: &HashMap<u32, char>,
+) -> String {
+    const HEADER: &str = "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count";
     let mut out = String::from(HEADER);
     for row in watched {
         let fd = row
@@ -752,12 +775,14 @@ pub fn render_agent_inventory_csv(watched: &[DetectedAgentWatch]) -> String {
             .fd_count
             .map(|n| n.to_string())
             .unwrap_or_default();
+        let state = state_letter_for_pid(state_by_pid, row.agent.pid);
         out.push('\n');
         out.push_str(&format!(
-            "{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{}",
             row.agent.pid,
             csv_escape_field(&row.agent.family),
             csv_escape_field(&row.agent.comm),
+            state,
             row.resource.mem_rss_bytes,
             csv_escape_field(&format_rss_bytes(row.resource.mem_rss_bytes)),
             fd,
@@ -881,7 +906,7 @@ pub fn render_once(
             return Ok(());
         }
         if csv {
-            print!("{}", render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid));
+            print!("{}", render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid, &state_by_pid));
             return Ok(());
         }
         render_agent_tree(&forests);
@@ -897,12 +922,15 @@ pub fn render_once(
         limit,
     );
     if csv {
-        print!("{}", render_agent_inventory_csv(&watched));
+        print!("{}", render_agent_inventory_csv(&watched, &state_by_pid));
         return Ok(());
     }
     if json {
         let snap = AgentProcSnapshot {
-            agents: watched.iter().map(agent_row_from_watch).collect(),
+            agents: watched
+                .iter()
+                .map(|row| agent_row_from_watch(row, &state_by_pid))
+                .collect(),
             scanned: scanned_agents.len(),
             watched: watched.len(),
             gate,
@@ -1015,15 +1043,19 @@ mod tests {
 
     #[test]
     fn agent_row_from_watch_formats_rss() {
-        let row = agent_row_from_watch(&DetectedAgentWatch {
-            agent: DetectedAgent { pid: 42, family: "claude", comm: "claude".into() },
-            resource: sharecli_fleet::AgentResourceSample {
-                mem_rss_bytes: 52_428_800,
-                fd_count: Some(10),
+        let row = agent_row_from_watch(
+            &DetectedAgentWatch {
+                agent: DetectedAgent { pid: 42, family: "claude", comm: "claude".into() },
+                resource: sharecli_fleet::AgentResourceSample {
+                    mem_rss_bytes: 52_428_800,
+                    fd_count: Some(10),
+                },
             },
-        });
+            &HashMap::from([(42, 'R')]),
+        );
         assert_eq!(row.mem_rss, "50M");
         assert_eq!(row.fd_count, Some(10));
+        assert_eq!(row.state, "R");
     }
 
     #[test]

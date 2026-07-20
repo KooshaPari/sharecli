@@ -3,6 +3,7 @@
 //!
 //! AC-006.24 `--csv` emits header + agent rows after filter/sort/limit
 
+use std::collections::HashMap;
 use std::process::Command;
 
 use sharecli::commands::proc::{render_agent_inventory_csv, ProcSort, sort_watched_agents};
@@ -32,16 +33,16 @@ fn fr006_proc_csv_help_documents_flag() {
 #[test]
 fn fr006_proc_csv_header_and_columns() {
     let rows = vec![watch(42, "claude", "claude", 4096, Some(7))];
-    let csv = render_agent_inventory_csv(&rows);
+    let csv = render_agent_inventory_csv(&rows, &HashMap::new());
     let lines: Vec<&str> = csv.trim_end().lines().collect();
     assert_eq!(lines.len(), 2, "MUST emit header + one data row; got: {csv}");
     assert_eq!(
         lines[0],
-        "pid,family,comm,mem_rss_bytes,mem_rss,fd_count",
+        "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "header MUST match schema; got: {}",
         lines[0]
     );
-    assert!(lines[1].starts_with("42,claude,claude,4096,"), "row MUST include pid/family/rss; got: {}", lines[1]);
+    assert!(lines[1].starts_with("42,claude,claude,,4096,"), "row MUST include pid/family/rss; got: {}", lines[1]);
     assert!(lines[1].ends_with(",7"), "fd_count MUST be present; got: {}", lines[1]);
 }
 
@@ -49,7 +50,7 @@ fn fr006_proc_csv_header_and_columns() {
 #[test]
 fn fr006_proc_csv_escapes_commas() {
     let rows = vec![watch(1, "codex", "node,main.js", 100, None)];
-    let csv = render_agent_inventory_csv(&rows);
+    let csv = render_agent_inventory_csv(&rows, &HashMap::new());
     assert!(
         csv.contains("\"node,main.js\""),
         "comm with comma MUST be quoted; got: {csv}"
@@ -61,10 +62,10 @@ fn fr006_proc_csv_escapes_commas() {
 /// FR-006 / AC-006.24 — empty inventory emits header only.
 #[test]
 fn fr006_proc_csv_empty_inventory_header_only() {
-    let csv = render_agent_inventory_csv(&[]);
+    let csv = render_agent_inventory_csv(&[], &HashMap::new());
     assert_eq!(
         csv.trim_end(),
-        "pid,family,comm,mem_rss_bytes,mem_rss,fd_count",
+        "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "empty inventory MUST still emit CSV header"
     );
 }
@@ -78,7 +79,7 @@ fn fr006_proc_csv_cli_exits_zero() {
     let first = s.lines().next().unwrap_or("");
     assert_eq!(
         first,
-        "pid,family,comm,mem_rss_bytes,mem_rss,fd_count",
+        "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "CLI MUST print CSV header; got: {s}"
     );
 }
@@ -120,7 +121,7 @@ fn fr006_proc_csv_respects_sort_order() {
         watch(30, "c", "c", 200, None),
     ];
     let sorted = sort_watched_agents(&rows, ProcSort::Rss);
-    let csv = render_agent_inventory_csv(&sorted);
+    let csv = render_agent_inventory_csv(&sorted, &HashMap::new());
     let pids: Vec<u32> = csv
         .lines()
         .skip(1)

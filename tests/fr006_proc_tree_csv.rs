@@ -3,6 +3,7 @@
 //!
 //! AC-006.26 `--tree --csv` emits nested forest rows with root_index and depth
 
+use std::collections::HashMap;
 use std::process::Command;
 
 use sharecli::commands::proc::render_agent_tree_csv;
@@ -34,17 +35,17 @@ fn fr006_proc_tree_csv_header_and_depth() {
     let forests = fixture_forests();
     let mut rss = std::collections::HashMap::new();
     rss.insert(50, 4096_u64);
-    let csv = render_agent_tree_csv(&forests, &rss, &std::collections::HashMap::new());
+    let csv = render_agent_tree_csv(&forests, &rss, &HashMap::new(), &HashMap::new());
     let lines: Vec<&str> = csv.trim_end().lines().collect();
     assert_eq!(
         lines[0],
-        "root_index,depth,pid,ppid,family,comm,mem_rss_bytes,mem_rss,fd_count",
+        "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "header MUST include root_index and depth; got: {}",
         lines[0]
     );
     assert_eq!(lines.len(), 3, "MUST emit root + one child row; got: {csv}");
-    assert!(lines[1].starts_with("0,0,50,1,cursor-agent,"), "root row: {}", lines[1]);
-    assert!(lines[2].starts_with("0,1,51,50,,"), "child row MUST be depth 1; got: {}", lines[2]);
+    assert!(lines[1].starts_with("0,0,50,1,cursor-agent,cursor-agent,,"), "root row: {}", lines[1]);
+    assert!(lines[2].starts_with("0,1,51,50,,node,,"), "child row MUST be depth 1; got: {}", lines[2]);
 }
 
 /// FR-006 / AC-006.26 — multiple forests increment root_index.
@@ -57,7 +58,7 @@ fn fr006_proc_tree_csv_multiple_roots() {
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     assert_eq!(forests.len(), 2);
-    let csv = render_agent_tree_csv(&forests, &std::collections::HashMap::new(), &std::collections::HashMap::new());
+    let csv = render_agent_tree_csv(&forests, &HashMap::new(), &HashMap::new(), &HashMap::new());
     let roots: Vec<&str> = csv
         .lines()
         .skip(1)
@@ -71,10 +72,10 @@ fn fr006_proc_tree_csv_multiple_roots() {
 /// FR-006 / AC-006.26 — empty forests emit header only.
 #[test]
 fn fr006_proc_tree_csv_empty_header_only() {
-    let csv = render_agent_tree_csv(&[], &std::collections::HashMap::new(), &std::collections::HashMap::new());
+    let csv = render_agent_tree_csv(&[], &HashMap::new(), &HashMap::new(), &HashMap::new());
     assert_eq!(
         csv.trim_end(),
-        "root_index,depth,pid,ppid,family,comm,mem_rss_bytes,mem_rss,fd_count",
+        "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "empty forests MUST still emit CSV header"
     );
 }
@@ -95,7 +96,7 @@ fn fr006_proc_tree_csv_cli_exits_zero() {
     let first = s.lines().next().unwrap_or("");
     assert_eq!(
         first,
-        "root_index,depth,pid,ppid,family,comm,mem_rss_bytes,mem_rss,fd_count",
+        "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "CLI MUST print forest CSV header; got: {s}"
     );
 }
