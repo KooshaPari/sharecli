@@ -20,10 +20,12 @@
 //! [`MaildirQueue::status`], [`MaildirQueue::reclaim_owner`],
 //! [`SmartMerger`], [`WorktreePool`].
 
+mod operator_status;
 mod smart_merge;
 mod task_queue;
 mod worktree_pool;
 
+pub use operator_status::{capture_maildir_status, resolve_mesh_queue_path, MESH_QUEUE_ENV};
 pub use smart_merge::{MergeResult, SmartMerger};
 pub use task_queue::{MaildirQueue, MaildirStatus, TaskEnvelope};
 pub use worktree_pool::{WorktreeLease, WorktreePool, WorktreePoolError};

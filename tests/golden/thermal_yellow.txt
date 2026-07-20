@@ -33,6 +33,9 @@
  │  Slot acquires: 2                                                          │ 
  │  Slot waits:    1                                                          │ 
  │  Slot timeouts: 0                                                          │ 
+ │  Mesh ready:     1                                                         │ 
+ │  Mesh in-flight: 0                                                         │ 
+ │  Mesh pending:   1                                                         │ 
  │  Cache hits:   3                                                           │ 
  │  Cache misses: 1                                                           │ 
  │  Hit rate:     75%                                                         │ 
@@ -46,7 +49,4 @@
  ┌────────────────────────────────────────────────────────────────────────────┐ 
  │ q quit   Ctrl-C quit    polls: 1  last: 0s ago  interval: 2s               │ 
  └────────────────────────────────────────────────────────────────────────────┘ 
-                                                                                
-                                                                                
-                                                                                
                                                                                 

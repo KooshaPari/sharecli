@@ -28,6 +28,7 @@ use sharecli_fleet::{
     watch_host_agents, CoalesceMeters, DetectedAgentWatch, ResourceWatchSample, SlotQueueMeters,
 };
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters, NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
+use sharecli_mesh::{capture_maildir_status, MaildirStatus};
 
 // ---------------------------------------------------------------------------
 // Pure transforms — unit-testable
@@ -236,6 +237,22 @@ pub fn hypervisor_slot_queue_lines(meters: SlotQueueMeters, compact: bool) -> Ve
     ]
 }
 
+/// Lines for the mesh Maildir queue depth panel (FR-010 / AC-010.11 TUI slice).
+pub fn mesh_maildir_lines(status: Option<MaildirStatus>, compact: bool) -> Vec<Line<'static>> {
+    match status {
+        Some(st) if compact => vec![Line::from(format!(
+            " mesh r:{} f:{} p:{}",
+            st.ready, st.in_flight, st.pending
+        ))],
+        Some(st) => vec![
+            Line::from(format!("  Mesh ready:     {}", st.ready)),
+            Line::from(format!("  Mesh in-flight: {}", st.in_flight)),
+            Line::from(format!("  Mesh pending:   {}", st.pending)),
+        ],
+        None => vec![Line::from("  Mesh queue:     unavailable")],
+    }
+}
+
 /// Lines for the FUSE write-serialize / CoW panel (FR-009 / AC-009.10 TUI slice).
 pub fn fuse_write_serialize_lines(meters: WriteSerializeMeters, compact: bool) -> Vec<Line<'static>> {
     if compact {
@@ -386,6 +403,8 @@ pub struct App {
     pub slot_queue_meters: SlotQueueMeters,
     /// Process-wide FUSE write-serialize / CoW meters.
     pub write_serialize_meters: WriteSerializeMeters,
+    /// Mesh Maildir queue depth snapshot (FR-010 / AC-010.11).
+    pub maildir_status: Option<MaildirStatus>,
     /// Host agent inventory with per-PID resource watch (FR-006 × FR-007).
     pub detected_agents: Vec<DetectedAgentWatch>,
 }
@@ -405,6 +424,7 @@ impl App {
             coalesce_meters: CoalesceMeters::default(),
             slot_queue_meters: SlotQueueMeters::default(),
             write_serialize_meters: WriteSerializeMeters::default(),
+            maildir_status: None,
             detected_agents: Vec::new(),
         }
     }
@@ -425,6 +445,7 @@ impl App {
         self.coalesce_meters = global_coalesce_meters();
         self.slot_queue_meters = global_slot_queue_meters();
         self.write_serialize_meters = global_write_serialize_meters();
+        self.maildir_status = capture_maildir_status().ok().flatten();
         self.detected_agents = watch_host_agents();
     }
 
@@ -444,6 +465,12 @@ impl App {
         self.coalesce_meters = coalesce;
         self.slot_queue_meters = slot_queue;
         self.write_serialize_meters = write_serialize;
+        self
+    }
+
+    /// Pin mesh Maildir depth for tests / goldens (FR-010 / AC-010.11).
+    pub fn with_maildir_status(mut self, status: Option<MaildirStatus>) -> Self {
+        self.maildir_status = status;
         self
     }
 
@@ -487,7 +514,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let thermal_h = if compact { 4 } else { 5 };
     let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 6 };
-    let fuse_h = if compact { 8 } else { 18 };
+    let fuse_h = if compact { 8 } else { 21 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -624,6 +651,7 @@ fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool)
     let title = if compact { " IO " } else { " Hypervisor IO Meters " };
     let mut lines = hypervisor_coalesce_lines(app.coalesce_meters, compact);
     lines.extend(hypervisor_slot_queue_lines(app.slot_queue_meters, compact));
+    lines.extend(mesh_maildir_lines(app.maildir_status.clone(), compact));
     lines.extend(fuse_coalesce_lines(app.fuse_meters, compact));
     lines.extend(fuse_neg_dentry_lines(app.neg_dentry_meters, compact));
     lines.extend(fuse_write_serialize_lines(app.write_serialize_meters, compact));
@@ -1035,7 +1063,7 @@ mod tests {
     #[test]
     fn test_render_green_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 40);
+        let backend = TestBackend::new(120, 52);
         let mut terminal = Terminal::new(backend).unwrap();
         let sample = ResourceWatchSample {
             fd_count: 12,
@@ -1093,7 +1121,7 @@ mod tests {
     #[test]
     fn test_render_red_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 40);
+        let backend = TestBackend::new(120, 52);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(4).with_operator_meters(
             Some(ResourceWatchSample {
@@ -1120,7 +1148,7 @@ mod tests {
     #[test]
     fn test_render_yellow_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 40);
+        let backend = TestBackend::new(120, 52);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(4).with_operator_meters(
             Some(ResourceWatchSample {

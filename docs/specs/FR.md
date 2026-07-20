@@ -401,8 +401,14 @@ in-flight work for a given owner ([`MaildirQueue::reclaim_owner`] /
   back to `new/` (count returned); non-matching owners reclaim 0;
   `sharecli mesh reclaim --queue --owner` performs the same; empty owner
   fails loudly.
+- **AC-010.11:** `sharecli status` and `sharecli thermal` surface Maildir
+  queue depth (`ready` / `in_flight` / `pending`) via
+  [`capture_maildir_status`](crates/sharecli-mesh/src/operator_status.rs)
+  / [`MaildirStatus::format_status_section`](crates/sharecli-mesh/src/operator_status.rs)
+  when `SHARECLI_MESH_QUEUE` or the default `{state_dir}/mesh/queue` exists.
 
 **Test refs:** `tests/fr010_mesh_substrate.rs`; `tests/fr010_mesh_cli.rs`;
+`tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`;
 `sharecli-mesh` unit tests.
 
 ---
