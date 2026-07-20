@@ -193,11 +193,16 @@ extend shared-read coalesce without wrapping vendor binaries.
 
 **MUST:** Provide `InterceptFs` / `mount` on Linux and macOS as the hypervisor
 IO intercept attach point; unsupported platforms MUST fail loudly (no silent
-fallback). Full coalesce / write-serialize hooks MAY land incrementally.
+fallback). Core VFS ops MUST passthrough to the backing path (inode map for
+non-root parents). In-process read content cache MUST coalesce redundant reads
+(keyed by path+mtime) with hit/miss meters. Concurrent writes to the same path
+MUST serialize via a per-path lock; full CoW commit/discard MAY remain stubbed
+but MUST fail loudly (no silent success).
 
 **Acceptance:**
 
-- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.2
+- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.5
+- `crates/sharecli-fuse` unit tests — inode map, read cache, write-serialize
 
 **Source:** `crates/sharecli-fuse`  
 **Detail:** PRD E3.3; origin Tier-3 FUSE.
