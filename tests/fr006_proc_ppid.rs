@@ -60,6 +60,7 @@ fn fr006_proc_ppid_filter_keeps_matching_parent() {
             max_rss_bytes: None,
             min_fd_count: None,
             max_fd_count: None,
+            comm: None,
         },
         &ppid_map,
     );
@@ -88,6 +89,7 @@ fn fr006_proc_ppid_composes_with_family() {
             max_rss_bytes: None,
             min_fd_count: None,
             max_fd_count: None,
+            comm: None,
         },
         &ppid_map,
     );
@@ -114,6 +116,7 @@ fn fr006_proc_tree_ppid_filter() {
             max_rss_bytes: None,
             min_fd_count: None,
             max_fd_count: None,
+            comm: None,
         },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
@@ -128,6 +131,7 @@ fn fr006_proc_tree_ppid_filter() {
             max_rss_bytes: None,
             min_fd_count: None,
             max_fd_count: None,
+            comm: None,
         },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),

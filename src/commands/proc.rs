@@ -14,15 +14,21 @@ use sharecli_fleet::{
 };
 use tokio::time::sleep;
 
-/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28).
+/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
     pub family: Option<String>,
+    pub comm: Option<String>,
     pub min_rss_bytes: Option<u64>,
     pub max_rss_bytes: Option<u64>,
     pub min_fd_count: Option<u64>,
     pub max_fd_count: Option<u64>,
     pub ppid: Option<u32>,
+}
+
+/// Case-insensitive substring match on process COMM (AC-006.29).
+pub fn comm_matches_pattern(comm: &str, pattern: &str) -> bool {
+    comm.to_ascii_lowercase().contains(&pattern.to_ascii_lowercase())
 }
 
 /// Parse `--min-fd` / `--max-fd` count (non-negative integer).
@@ -34,12 +40,18 @@ pub fn parse_fd_count(raw: &str, flag: &str) -> Result<u64> {
 impl ProcFilter {
     pub fn from_cli(
         family: Option<String>,
+        comm: Option<String>,
         min_rss: Option<String>,
         max_rss: Option<String>,
         min_fd: Option<String>,
         max_fd: Option<String>,
         ppid: Option<u32>,
     ) -> Result<Self> {
+        let comm = match comm {
+            None => None,
+            Some(raw) if raw.is_empty() => bail!("--comm pattern must not be empty"),
+            Some(raw) => Some(raw),
+        };
         let min_rss_bytes = match min_rss {
             None => None,
             Some(raw) => Some(parse_rss_bytes(&raw, "--min-rss")?),
@@ -68,6 +80,7 @@ impl ProcFilter {
         }
         Ok(Self {
             family,
+            comm,
             min_rss_bytes,
             max_rss_bytes,
             min_fd_count,
@@ -78,6 +91,7 @@ impl ProcFilter {
 
     fn active(&self) -> bool {
         self.family.is_some()
+            || self.comm.is_some()
             || self.min_rss_bytes.is_some()
             || self.max_rss_bytes.is_some()
             || self.min_fd_count.is_some()
@@ -240,6 +254,11 @@ fn agent_row_matches_filter(
             return false;
         }
     }
+    if let Some(ref pattern) = filter.comm {
+        if !comm_matches_pattern(&row.agent.comm, pattern) {
+            return false;
+        }
+    }
     if let Some(min) = filter.min_rss_bytes {
         if row.resource.mem_rss_bytes < min {
             return false;
@@ -327,6 +346,11 @@ fn forest_root_matches_filter(
             return false;
         };
         if !root_family.eq_ignore_ascii_case(family) {
+            return false;
+        }
+    }
+    if let Some(ref pattern) = filter.comm {
+        if !comm_matches_pattern(&root.comm, pattern) {
             return false;
         }
     }
@@ -778,6 +802,7 @@ pub async fn run(
     tree: bool,
     watch: Option<u64>,
     family: Option<String>,
+    comm: Option<String>,
     min_rss: Option<String>,
     max_rss: Option<String>,
     min_fd: Option<String>,
@@ -807,7 +832,7 @@ pub async fn run(
     if csv && watch.is_some() {
         bail!("--csv cannot be combined with --watch");
     }
-    let filter = ProcFilter::from_cli(family, min_rss, max_rss, min_fd, max_fd, ppid)?;
+    let filter = ProcFilter::from_cli(family, comm, min_rss, max_rss, min_fd, max_fd, ppid)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
@@ -894,6 +919,7 @@ mod tests {
         let err = rt
             .block_on(super::run(
                 false, false, false, Some(0), None, None, None, None, None, None, None, None, None,
+                None,
             ))
             .expect_err("watch 0 MUST fail");
         assert!(
@@ -961,7 +987,8 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, false, false, Some(1), None, None, None, None, None, None, None, Some(42), None,
+                false, false, false, Some(1), None, None, None, None, None, None, None, None,
+                Some(42), None,
             ))
             .expect_err("pid+watch MUST fail");
         assert!(
