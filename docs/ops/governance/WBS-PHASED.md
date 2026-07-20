@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-19 (audit_scorecard.json synced to SCORECARD ~81%/82% B; W14.2 local soft soak 0/7)
+**Last sync:** 2026-07-19 (Wave14 #337–#340 + cluster lifts through #391; overall ~91% A weighted / ~89.8% B unweighted)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -24,18 +24,18 @@
 
 | Cluster | Focus | Pct | Grade | Phase anchor | Status |
 |---------|-------|:---:|:-----:|--------------|--------|
-| C00 | Architecture + Module | 77% | B | Wave2 + W11–W13 | Status: IN_PROGRESS |
-| C01 | CI / DX / Obs | 80% | B | Wave1–2 + W10–W11 | Status: IN_PROGRESS |
-| C02 | Error / API / Governance | 87% | B | Wave2 + W5 + W11 | Status: IN_PROGRESS |
-| C03 | Agent Readiness | 92% | A | Wave1 + Wave3 + W11 | Status: DONE |
-| C04 | Security | 80% | B | Wave2 + W10–W11 | Status: IN_PROGRESS |
-| C05 | Observability (deep) | 80% | B | Wave2 + W11–W12 | Status: IN_PROGRESS |
-| C06 | Supply Chain | 80% | B | Wave2 + W6 + W11 | Status: IN_PROGRESS |
-| C07 | DX / QEng / Portability | 77% | B | Wave1–2 + W10–W11 | Status: IN_PROGRESS |
-| C08 | Eval Coverage | 73% | C | Wave1–2 + W11–W13; L76 N/A=1 (ADR 0002/0005) | Status: IN_PROGRESS |
-| C09 | Accessibility + UX | 76% | B | Wave7 + W9–W11 | Status: IN_PROGRESS |
-| C10 | Visual Identity | 89% | B | Wave1 + W11–W12 | Status: IN_PROGRESS |
-| C11 | Packaging + Distribution | 78% | B | Wave4 + W11 | Status: IN_PROGRESS |
+| C00 | Architecture + Module | 97% | A | Wave2 + W11–W14 | Status: DONE |
+| C01 | CI / DX / Obs | 93% | A | Wave1–2 + W10–W14 | Status: IN_PROGRESS |
+| C02 | Error / API / Governance | 90% | A | Wave2 + W5 + W11–W14 | Status: IN_PROGRESS |
+| C03 | Agent Readiness | 100% | A | Wave1 + Wave3 + W11–W14 | Status: DONE |
+| C04 | Security | 87% | B | Wave2 + W10–W14 | Status: IN_PROGRESS |
+| C05 | Observability (deep) | 87% | B | Wave2 + W11–W14 | Status: IN_PROGRESS |
+| C06 | Supply Chain | 87% | B | Wave2 + W6 + W11–W14 | Status: IN_PROGRESS |
+| C07 | DX / QEng / Portability | 90% | A | Wave1–2 + W10–W14 | Status: IN_PROGRESS |
+| C08 | Eval Coverage | 73% | C | Wave1–2 + W11–W14; L76 N/A=1 (ADR 0002/0005) | Status: IN_PROGRESS |
+| C09 | Accessibility + UX | 93% | A | Wave7 + W9–W14 | Status: IN_PROGRESS |
+| C10 | Visual Identity | 94% | A | Wave1 + W11–W14 | Status: IN_PROGRESS |
+| C11 | Packaging + Distribution | 87% | B | Wave4 + W11–W14 | Status: IN_PROGRESS |
 
 ## Phased WBS
 
@@ -154,27 +154,30 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W13.4 | Trace IPC + tray injectors | C05 L44 · `docs/ops/trace-multihop.md` · T-530 · #334 | Status: DONE |
 | W13.5 | Governance sync (WBS/GAP/DAG/RC) | T-550 · #336 | Status: DONE |
 
-### Wave14 — Remaining hard gates (IN_PROGRESS)
+### Wave14 — Remaining hard gates (DONE)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
-| W14.1 | Deterministic dashboard visual hard gate | FR-003 · C10 L107 · T-600 | Status: DONE |
-| W14.2 | Seven-day Harbor soak log completion | C08 L76 · T-650 · EXTRACTED → benchora `harbor-soft` / `portage-temp` | Status: EXTRACTED |
+| W14.1 | Deterministic dashboard visual hard gate | FR-003 · C10 L107 · T-600 · #339 | Status: DONE |
+| W14.2 | Seven-day Harbor soak log completion | C08 L76 · T-675 · EXTRACTED → benchora `harbor-soft` / `portage-temp` | Status: EXTRACTED |
 | W14.3 | Codesign / notarize | C11 L112 | Status: BLOCKED — zero repo secrets |
 
-### Wave14 — Evidence hardening (IN_PROGRESS)
+### Wave14 — Evidence hardening (DONE)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
-| W14.1 | Coverage percentage pin + llvm-cov snapshot artifact | C01 L11 · T-620 · `TEST_COVERAGE_MATRIX.md` · `coverage.yml` | Status: DONE |
+| W14.1 | Coverage percentage pin + llvm-cov snapshot artifact | C01 L11 · T-620/T-625 · #338 · `TEST_COVERAGE_MATRIX.md` · `coverage.yml` | Status: DONE |
 
-### Wave14 — Residual hardening (IN_PROGRESS)
+### Wave14 — Residual hardening (DONE)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
-| W14.1 | Tray dashboard HTTP traceparent inject | C05 L44 · T-610 · FR-003 · `tests/c05_trace_tray_http_inject.rs` | Status: DONE |
-
-T-610 adds evidence for the existing L44 score; it does not change the C05 or overall score.
+| W14.1 | Tray dashboard HTTP traceparent inject | C05 L44 · T-610 · FR-003 · #340 · `tests/c05_trace_tray_http_inject.rs` | Status: DONE |
+| W14.2 | Chaos restart ci-success hard gate | C05 L50 · T-630 · FR-003 · #337 | Status: DONE |
+| W14.3 | OSV/GHSA hard gate | C04 L38 · T-655 · FR-003 | Status: DONE |
+| W14.4 | Mutants + cosign hard gates | C07 L65 · C06 L56 · T-640 · T-660 | Status: DONE |
+| W14.5 | Cluster score lifts (#364–#391) | C00–C11 lane evidence | Status: DONE |
+| W14.6 | Governance sync (WBS/GAP/DAG/RC/SCORECARD) | T-680 | Status: DONE |
 
 ## Sync protocol
 
