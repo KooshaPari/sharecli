@@ -3,13 +3,16 @@
 //!
 //! AC-007.9 FUSE read-coalesce meters in `sharecli thermal` TUI
 //! AC-007.10 host resource watch in `sharecli thermal` TUI
+//! AC-006.9 host agent inventory in `sharecli thermal` TUI (FR-006 proc scan)
 
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
-use sharecli_fleet::ResourceWatchSample;
+use sharecli_fleet::{DetectedAgent, ResourceWatchSample};
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
-use sharecli_thermal_tui::{fuse_coalesce_lines, fuse_neg_dentry_lines, render, resource_watch_lines, App};
+use sharecli_thermal_tui::{
+    fuse_coalesce_lines, fuse_neg_dentry_lines, host_agent_lines, render, resource_watch_lines, App,
+};
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
     fd_count: 24,
@@ -52,13 +55,36 @@ fn fr009_thermal_tui_neg_dentry_lines() {
     assert!(text.contains("Hit rate:") && text.contains("75"));
 }
 
+/// FR-006 / AC-006.9 — thermal TUI renders host agent inventory lines.
+#[test]
+fn fr006_thermal_tui_host_agent_lines() {
+    let agents = vec![DetectedAgent {
+        pid: 4242,
+        family: "claude",
+        comm: "claude".into(),
+    }];
+    let lines = host_agent_lines(&agents, false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(text.contains("Host agents:") && text.contains("claude"));
+    assert!(text.contains("4242"));
+
+    let empty = host_agent_lines(&[], false);
+    let empty_text: String = empty.iter().map(|l| l.to_string()).collect();
+    assert!(empty_text.contains("none detected"));
+}
+
 /// FR-007 / AC-007.9 + AC-007.10 + FR-009 AC-009.9 — headless thermal render includes panels.
 #[test]
 fn fr007_thermal_tui_render_includes_operator_panels() {
     let backend = TestBackend::new(120, 40);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
-        .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS);
+        .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS)
+        .with_detected_agents(vec![DetectedAgent {
+            pid: 100,
+            family: "forge",
+            comm: "forge".into(),
+        }]);
     app.update(ThermalLevel::Green, 1);
 
     terminal.draw(|f| render(f, &app)).expect("draw");
@@ -73,6 +99,10 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
     assert!(
         rendered.contains("Host Resource Watch") && rendered.contains("Open FDs:"),
         "thermal TUI MUST surface host resource watch; got excerpt missing panels"
+    );
+    assert!(
+        rendered.contains("Detected Agents") && rendered.contains("forge"),
+        "thermal TUI MUST surface host agent inventory"
     );
     assert!(
         rendered.contains("FUSE IO Meters") && rendered.contains("Cache hits:"),

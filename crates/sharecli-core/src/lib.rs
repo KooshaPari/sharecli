@@ -73,8 +73,8 @@ pub mod detect;
 pub mod proc_scan;
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{
-    agent_label_for_pid, is_under_agent, scan_agents, scan_host_agents, walk_agent_ancestors,
-    DetectedAgent, FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
+    agent_label_for_pid, detect_caller_agent, is_under_agent, scan_agents, scan_host_agents,
+    walk_agent_ancestors, DetectedAgent, FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
 };
 pub use sharecli_fleet::{
     sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
@@ -391,11 +391,18 @@ pub struct SpawnOutcome {
     pub from_cache: bool,
     /// Live FD/net watch sample captured at [`Hypervisor::run`] entry (FR-007).
     pub resource_watch: ResourceWatchSample,
+    /// Nearest known-agent ancestor for the hypervisor process at spawn time (FR-006).
+    pub detected_agent: Option<DetectedAgent>,
 }
 
 impl SpawnOutcome {
     fn with_resource_watch(mut self, watch: ResourceWatchSample) -> Self {
         self.resource_watch = watch;
+        self
+    }
+
+    fn with_detected_agent(mut self, agent: Option<DetectedAgent>) -> Self {
+        self.detected_agent = agent;
         self
     }
 }
@@ -412,6 +419,7 @@ impl From<CachedResult> for SpawnOutcome {
             stderr: c.stderr,
             from_cache: true,
             resource_watch: ResourceWatchSample::default(),
+            detected_agent: None,
         }
     }
 }
@@ -557,6 +565,14 @@ impl Hypervisor {
 
         // ── Resource watch (FR-007 live hypervisor path) ───────────────────────
         let watch = ResourceWatchSample::capture()?;
+        let detected_agent = detect_caller_agent();
+        if let Some(ref agent) = detected_agent {
+            debug!(
+                pid = agent.pid,
+                family = agent.family,
+                "hypervisor::run — caller under known agent"
+            );
+        }
         debug!(
             fd_count = watch.fd_count,
             net_rx_bytes = watch.net_rx_bytes,
@@ -587,8 +603,10 @@ impl Hypervisor {
                 stderr: outcome.stderr,
                 from_cache: false,
                 resource_watch: ResourceWatchSample::default(),
+                detected_agent: None,
             }
-            .with_resource_watch(watch));
+            .with_resource_watch(watch)
+            .with_detected_agent(detected_agent.clone()));
         }
 
         // ── Cache lookup ─────────────────────────────────────────────────────
@@ -607,8 +625,10 @@ impl Hypervisor {
                 stderr: cached.stderr,
                 from_cache: true,
                 resource_watch: ResourceWatchSample::default(),
+                detected_agent: None,
             }
-            .with_resource_watch(watch));
+            .with_resource_watch(watch)
+            .with_detected_agent(detected_agent.clone()));
         }
 
         // ── FUSE intercept (cache-miss only) ─────────────────────────────────
@@ -658,8 +678,10 @@ impl Hypervisor {
             stderr: cached.stderr,
             from_cache: false,
             resource_watch: ResourceWatchSample::default(),
+            detected_agent: None,
         }
-        .with_resource_watch(watch))
+        .with_resource_watch(watch)
+        .with_detected_agent(detected_agent))
     }
 
     /// Poll the thermal gate with a visible sleep-retry loop on RED.
@@ -732,6 +754,7 @@ fn spawn_process_sync(req: &SpawnRequest) -> Result<SpawnOutcome> {
         stderr: output.stderr,
         from_cache: false,
         resource_watch: ResourceWatchSample::default(),
+        detected_agent: None,
     })
 }
 

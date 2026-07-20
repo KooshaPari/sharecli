@@ -125,6 +125,11 @@ pub fn scan_host_agents() -> Vec<DetectedAgent> {
     scan_agents(&HostProcSource)
 }
 
+/// Nearest known-agent ancestor for the current process (hypervisor spawn context).
+pub fn detect_caller_agent() -> Option<DetectedAgent> {
+    walk_agent_ancestors(&HostProcSource, std::process::id())
+}
+
 #[cfg(target_os = "linux")]
 fn list_linux_proc() -> Vec<ProcSnapshot> {
     let Ok(entries) = std::fs::read_dir("/proc") else {

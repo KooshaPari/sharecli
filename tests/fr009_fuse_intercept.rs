@@ -193,6 +193,7 @@ fn fr009_write_provenance_xattrs() {
 /// FR-009 / AC-009.7 — negative dentry: miss → hit; create invalidates.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
+#[serial_test::serial]
 fn fr009_negative_dentry_cache() {
     use std::fs;
     use std::io::Write;
@@ -238,6 +239,7 @@ fn fr009_negative_dentry_cache_direct() {
 /// FR-009 / AC-009.9 — process-wide neg dentry meters track InterceptFs probes.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
+#[serial_test::serial]
 fn fr009_global_neg_dentry_meters() {
     use sharecli_fuse::{global_neg_dentry_meters, InterceptFs};
 

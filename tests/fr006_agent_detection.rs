@@ -70,6 +70,11 @@ async fn fr006_hypervisor_runs_argv_as_is() {
 
     assert_eq!(outcome.exit_code, 0);
     assert!(!outcome.from_cache);
+    assert!(
+        outcome.detected_agent.is_none(),
+        "test harness is not under a known agent; got {:?}",
+        outcome.detected_agent
+    );
     let stdout = String::from_utf8_lossy(&outcome.stdout);
     assert!(
         stdout.contains("fr006-no-wrap"),

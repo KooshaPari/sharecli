@@ -12,7 +12,8 @@ pub mod thermal;
 use async_nats::Client;
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{
-    agent_label_for_pid, is_under_agent, scan_agents, scan_host_agents, walk_agent_ancestors,
+    agent_label_for_pid, detect_caller_agent, is_under_agent, scan_agents, scan_host_agents,
+    walk_agent_ancestors,
     DetectedAgent, FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
 };
 pub use registry::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};

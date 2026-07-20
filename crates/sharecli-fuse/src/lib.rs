@@ -150,6 +150,7 @@ mod platform {
             {
                 let mut neg = self.neg_dentry.lock().expect("neg dentry lock");
                 if neg.is_negative(rel) {
+                    crate::neg_dentry::record_global_neg_hit();
                     return Ok(false);
                 }
             }
@@ -164,6 +165,7 @@ mod platform {
                 Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                     if let Ok(mut neg) = self.neg_dentry.lock() {
                         neg.remember_miss(rel.to_path_buf());
+                        crate::neg_dentry::record_global_neg_miss();
                     }
                     Ok(false)
                 }
@@ -288,6 +290,7 @@ mod platform {
             {
                 let mut neg = self.neg_dentry.lock().expect("neg dentry lock");
                 if neg.is_negative(&rel) {
+                    crate::neg_dentry::record_global_neg_hit();
                     reply.error(Errno::ENOENT);
                     return;
                 }
@@ -309,6 +312,7 @@ mod platform {
                     if err.kind() == std::io::ErrorKind::NotFound {
                         if let Ok(mut neg) = self.neg_dentry.lock() {
                             neg.remember_miss(rel.clone());
+                            crate::neg_dentry::record_global_neg_miss();
                         }
                     }
                     map.remove_rel(&rel);
@@ -531,6 +535,7 @@ mod platform {
                     }
                     if let Ok(mut neg) = self.neg_dentry.lock() {
                         neg.remember_miss(rel.clone());
+                        crate::neg_dentry::record_global_neg_miss();
                     }
                     map.remove_rel(&rel);
                     reply.ok();
@@ -550,6 +555,7 @@ mod platform {
                 Ok(()) => {
                     if let Ok(mut neg) = self.neg_dentry.lock() {
                         neg.remember_miss(rel.clone());
+                        crate::neg_dentry::record_global_neg_miss();
                     }
                     map.remove_rel(&rel);
                     reply.ok();
@@ -587,6 +593,7 @@ mod platform {
                     }
                     if let Ok(mut neg) = self.neg_dentry.lock() {
                         neg.remember_miss(old_rel.clone());
+                        crate::neg_dentry::record_global_neg_miss();
                         neg.invalidate(&new_rel);
                     }
                     map.rename_rel(&old_rel, new_rel);

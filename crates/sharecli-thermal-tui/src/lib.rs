@@ -146,6 +146,39 @@ pub fn resource_watch_lines(sample: Option<ResourceWatchSample>, compact: bool) 
     ]
 }
 
+/// Lines for host agent inventory (FR-006 / thermal operator panel).
+pub fn host_agent_lines(agents: &[DetectedAgent], compact: bool) -> Vec<Line<'static>> {
+    if agents.is_empty() {
+        let msg = if compact {
+            " agents: none"
+        } else {
+            "  Host agents: none detected"
+        };
+        return vec![Line::from(Span::raw(msg))];
+    }
+
+    if compact {
+        let summary = agents
+            .iter()
+            .map(|a| format!("{}:{}", a.family, a.pid))
+            .collect::<Vec<_>>()
+            .join(" ");
+        return vec![Line::from(format!(" agents: {summary}"))];
+    }
+
+    let mut lines = vec![Line::from("  Host agents:")];
+    for agent in agents.iter().take(4) {
+        lines.push(Line::from(format!(
+            "    {} pid={} ({})",
+            agent.family, agent.pid, agent.comm
+        )));
+    }
+    if agents.len() > 4 {
+        lines.push(Line::from(format!("    … +{} more", agents.len() - 4)));
+    }
+    lines
+}
+
 /// Lines for the FUSE negative-dentry panel (FR-009 / AC-009.9 TUI slice).
 pub fn fuse_neg_dentry_lines(meters: NegDentryMeters, compact: bool) -> Vec<Line<'static>> {
     if compact {
@@ -360,7 +393,7 @@ pub fn count_cargo_builds() -> u32 {
 pub fn render(frame: &mut Frame, app: &App) {
     let area = frame.area();
     let compact = is_compact(area.width);
-    let margin = if compact { 0 } else { 1 };
+    let margin = if compact || area.height < 33 { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
     let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 6 };
@@ -417,9 +450,6 @@ fn render_thermal(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
         Span::raw(if compact { " P: " } else { "  Pressure level: " }),
         Span::styled(pressure, Style::default().fg(color).add_modifier(Modifier::BOLD)),
     ])];
-    if !compact {
-        lines.push(Line::from(""));
-    }
     lines.push(Line::from(vec![
         Span::raw("  "),
         Span::styled(thermal_blurb(level, compact), Style::default().fg(color)),
@@ -494,9 +524,6 @@ fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool
 fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " FUSE " } else { " FUSE IO Meters " };
     let mut lines = fuse_coalesce_lines(app.fuse_meters, compact);
-    if !compact {
-        lines.push(Line::from(""));
-    }
     lines.extend(fuse_neg_dentry_lines(app.neg_dentry_meters, compact));
     let block = Block::default().borders(Borders::ALL).title(title);
     frame.render_widget(Paragraph::new(lines).block(block), area);
@@ -878,6 +905,18 @@ mod tests {
     }
 
     // --- Headless render smoke test (FakeThermalGate via ThermalGovernor mock) ---
+    #[test]
+    fn test_host_agent_lines_full() {
+        let agents = vec![DetectedAgent {
+            pid: 42,
+            family: "claude",
+            comm: "claude".into(),
+        }];
+        let lines = host_agent_lines(&agents, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Host agents:") && rendered.contains("claude"));
+    }
+
     #[test]
     fn test_render_green_headless() {
         use ratatui::{backend::TestBackend, Terminal};
