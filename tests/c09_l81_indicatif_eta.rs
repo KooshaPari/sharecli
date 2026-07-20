@@ -6,7 +6,7 @@ use sharecli::progress::{progress_enabled, StepProgress, PROGRESS_MIN_ITEMS};
 /// Progress helpers are wired into the library surface (indicatif dep + module).
 #[test]
 fn fr004_progress_module_exports() {
-    assert!(PROGRESS_MIN_ITEMS >= 2);
+    const { assert!(PROGRESS_MIN_ITEMS >= 2) };
     // CI runs without stderr TTY — must not panic.
     let _ = progress_enabled();
     let bar = StepProgress::new("test batch", 5);

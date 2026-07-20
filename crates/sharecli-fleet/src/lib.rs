@@ -14,9 +14,11 @@ pub mod thermal;
 
 use async_nats::Client;
 pub use agent_contention::{
-    agent_contention_tier, count_host_agents, effective_gate_decision,
-    format_gate_status_section, gate_status_snapshot, AgentContentionThresholds,
-    AgentContentionTier, GateStatusSnapshot,
+    agent_contention_tier, agent_resource_contention_tier, combined_agent_contention_tier,
+    count_host_agents, effective_gate_decision, effective_gate_decision_for_tier,
+    format_gate_status_section, gate_status_snapshot, gate_status_snapshot_with_rss,
+    live_agent_contention_tier, total_watched_agent_rss_bytes, AgentContentionThresholds,
+    AgentContentionTier, AgentResourceThresholds, GateStatusSnapshot,
 };
 pub use coalesce_meters::{
     global_coalesce_meters, record_coalesce_hit_kind, record_coalesce_lookup_hit, record_nocache_run,

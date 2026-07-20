@@ -3,6 +3,7 @@
 pub mod cast;
 pub mod fuse;
 pub mod mesh;
+pub mod proc;
 pub mod report;
 pub mod serve;
 pub mod uninstall;
@@ -23,7 +24,7 @@ use sharecli_fleet::{
     agent_label_for_pid, count_host_agents, format_gate_status_section, scan_agents,
     watch_detected_agents, HostProcSource,
 };
-use sharecli_fleet::{format_rss_bytes, ResourceWatchSample};
+use sharecli_fleet::ResourceWatchSample;
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters};
 use sharecli_fleet::global_coalesce_meters;
 use sharecli_fleet::global_slot_queue_meters;
@@ -69,8 +70,8 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
     let proc_source = HostProcSource;
 
     println!(
-        "{:<8} {:<20} {:<12} {:<15} {:<14} {}",
-        "PID", "NAME", "MEM(MB)", "PROJECT", "AGENT", "HARNESS"
+        "{:<8} {:<20} {:<12} {:<15} {:<14} HARNESS",
+        "PID", "NAME", "MEM(MB)", "PROJECT", "AGENT"
     );
     println!("{}", "-".repeat(84));
 
@@ -101,39 +102,12 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
 /// FR-006 host inventory printed by `sharecli ps --all`.
 fn print_host_agent_scan(source: &HostProcSource) {
     let agents = scan_agents(source);
-    println!("\n=== Host agents (proc scan) ===\n");
-    if agents.is_empty() {
-        println!("No known agent processes detected on this host.");
-        return;
-    }
     let watched = watch_detected_agents(&agents);
-    println!("{:<8} {:<16} {:<10} {:<8} {}", "PID", "FAMILY", "RSS", "FD", "COMM");
-    println!("{}", "-".repeat(56));
-    for row in &watched {
-        let fd = row
-            .resource
-            .fd_count
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| "-".into());
-        println!(
-            "{:<8} {:<16} {:<10} {:<8} {}",
-            row.agent.pid,
-            row.agent.family,
-            format_rss_bytes(row.resource.mem_rss_bytes),
-            fd,
-            row.agent.comm
-        );
-    }
-    if watched.len() < agents.len() {
-        println!(
-            "\n({} agent(s) omitted — process exited before resource sample)",
-            agents.len() - watched.len()
-        );
-    }
+    println!();
+    proc::render_agent_inventory(&watched, agents.len());
     if let Ok(thermal) = ThermalGovernor::new().poll() {
         print!("{}", format_gate_status_section(thermal, agents.len()));
     }
-    println!("\nTotal: {} agent process(es)", agents.len());
 }
 
 /// Actionable empty-pool copy for `ps` (C10 L100).
@@ -277,7 +251,19 @@ pub async fn stop(
 }
 
 /// Check process status
-pub async fn status(verbose: bool) -> Result<()> {
+pub async fn status(verbose: bool, json: bool) -> Result<()> {
+    if json {
+        let pool = ProcessPool::new();
+        let processes: Vec<ProcessInfo> = pool.list().await;
+        let agents = proc::AgentProcSnapshot::capture()?;
+        let payload = serde_json::json!({
+            "total_processes": processes.len(),
+            "agents": agents,
+        });
+        println!("{}", serde_json::to_string_pretty(&payload)?);
+        return Ok(());
+    }
+
     let pool = ProcessPool::new();
     let processes: Vec<ProcessInfo> = pool.list().await;
 

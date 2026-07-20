@@ -2,7 +2,7 @@
 // These types are a stub reserved for future dashboard integration; none are
 // wired into the binary yet.  Suppress dead_code for the whole module rather
 // than scattering per-item allows across a placeholder.
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports)]
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
