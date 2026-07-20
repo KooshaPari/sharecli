@@ -110,6 +110,7 @@
 | AC-006.20   | `tests/fr006_proc_fingerprints_ext.rs`; `tests/fr006_agent_detection.rs`; `crates/sharecli-fleet/src/detect.rs` | amp + expanded cmdline fingerprints |
 | AC-006.21   | `tests/fr006_proc_limit.rs`; `src/commands/proc.rs` | `sharecli proc --limit N` caps inventory/tree roots |
 | AC-006.22   | `tests/fr006_thermal_tui_agent_tree.rs`; `crates/sharecli-thermal-tui/src/lib.rs` | thermal TUI agent forests via `build_host_agent_forests` |
+| AC-006.23   | `tests/fr006_proc_pid_detail.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`lookup_proc`) | `sharecli proc --pid N` detail view |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -215,6 +216,8 @@
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
 - **2026-07-20 — FR-006 thermal TUI agent tree:** full-layout Detected Agents panel
   renders `build_host_agent_forests` subtrees with live RSS (AC-006.22).
+- **2026-07-20 — FR-006 proc pid detail:** `sharecli proc --pid N` one-shot
+  RSS/FD/cmdline/parent detail view with `--json` (AC-006.23).
 - **2026-07-20 — FR-006 proc limit:** `sharecli proc --limit N` caps flat inventory
   rows and tree root forests after filters/sort (AC-006.21).
 - **2026-07-20 — FR-006 extended fingerprints:** `amp` family plus codex/aider/cursor-agent
