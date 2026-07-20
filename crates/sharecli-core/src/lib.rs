@@ -68,7 +68,7 @@ use sharecli_fleet::agent_contention::{
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{
     command_key, has_nocache_arg, record_coalesce_lookup_hit, record_nocache_run, CachedResult,
-    CoalesceCache, CoalesceHitKind, QueuePriority, SlotQueue, DEFAULT_NOCACHE_ARGS,
+    CoalesceCache, CoalesceHitKind, CommandKey, QueuePriority, SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
 use tracing::{debug, error, warn};
 
@@ -232,6 +232,16 @@ const FUSE_READY_POLL: Duration = Duration::from_millis(50);
 /// Marker filename written under `backing` and probed via the mountpoint.
 const FUSE_READY_MARKER: &str = ".sharecli-fuse-ready";
 
+/// Derive the FUSE write-provenance session id for a coalesce [`CommandKey`].
+///
+/// Hypervisor cache-miss FUSE mounts pass this to [`sharecli_fuse::mount_with_session`]
+/// so agent writes through the intercept layer correlate with the Lock-Wait-Cache key
+/// (AC-009.12).
+pub fn fuse_session_id_for_command_key(key: &CommandKey) -> String {
+    let prefix = key.0.get(..16).unwrap_or(key.0.as_str());
+    format!("hv-{prefix}")
+}
+
 /// Poll until `probe` is readable, `fail_rx` reports a mount error, or `timeout`.
 ///
 /// Returns `Ok(())` when the probe path becomes a readable file. Returns `Err`
@@ -297,11 +307,11 @@ impl FuseGuard {
     /// When FUSE is unavailable, the mount fails, or readiness never appears, a
     /// no-op guard is returned (the spawn proceeds without interception) after a
     /// loud failure report.
-    fn try_mount(backing: &Path) -> Self {
+    fn try_mount(backing: &Path, session_id: &str) -> Self {
         // Non-Linux/macOS: no-op guard — FUSE is not available.
         #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         {
-            let _ = backing;
+            let _ = (backing, session_id);
             return Self { mountpoint: None, _tmpdir: None, readiness_marker: None };
         }
 
@@ -341,11 +351,14 @@ impl FuseGuard {
 
             let mp = mountpoint.clone();
             let backing_for_mount = backing.clone();
+            let session = session_id.to_string();
             let (fail_tx, fail_rx) = mpsc::channel::<String>();
             // Spawn the FUSE event loop on a background thread — it blocks
             // until unmounted.
             thread::spawn(move || {
-                if let Err(err) = sharecli_fuse::mount(&mp, &backing_for_mount) {
+                if let Err(err) =
+                    sharecli_fuse::mount_with_session(&mp, &backing_for_mount, &session)
+                {
                     let _ = fail_tx.send(err.to_string());
                 }
             });
@@ -618,9 +631,10 @@ impl Hypervisor {
     ///
     /// # FUSE IO-intercept
     /// On a cache miss the hypervisor attempts to mount a sharecli-fuse intercept
-    /// layer over the child's `cwd`.  When the mount succeeds the child runs
-    /// against the FUSE mountpoint — all filesystem access goes through the
-    /// intercept layer for build-system cache sharing.  FUSE is **best-effort**:
+    /// layer over the child's `cwd`, using a write-provenance session id derived
+    /// from the coalesce [`CommandKey`] (AC-009.12).  When the mount succeeds the
+    /// child runs against the FUSE mountpoint — all filesystem access goes through
+    /// the intercept layer for build-system cache sharing.  FUSE is **best-effort**:
     /// if mounting fails the spawn proceeds without interception.
     ///
     /// # Coalescing behaviour
@@ -714,7 +728,8 @@ impl Hypervisor {
         // `FuseGuard::try_mount` never fails the spawn — if FUSE is unavailable
         // or readiness never appears, a loud error is reported and a no-op
         // guard is returned so the spawn proceeds without interception.
-        let fuse_guard = FuseGuard::try_mount(&req.cwd);
+        let fuse_session = fuse_session_id_for_command_key(&key);
+        let fuse_guard = FuseGuard::try_mount(&req.cwd, &fuse_session);
 
         // Build an effective SpawnRequest whose cwd points at the FUSE
         // mountpoint (or the original cwd when FUSE is inactive).
@@ -1056,7 +1071,7 @@ mod tests {
     #[test]
     fn fuse_guard_try_mount_never_panics() {
         let dir = TempDir::new().expect("tempdir");
-        let guard = FuseGuard::try_mount(dir.path());
+        let guard = FuseGuard::try_mount(dir.path(), "hv-test-session");
         // The guard object is valid regardless of whether FUSE is active.
         // Dropping it must not panic.
         drop(guard);
@@ -1068,7 +1083,7 @@ mod tests {
     #[test]
     fn fuse_guard_mountpoint_returns_path_or_none() {
         let dir = TempDir::new().expect("tempdir");
-        let guard = FuseGuard::try_mount(dir.path());
+        let guard = FuseGuard::try_mount(dir.path(), "hv-test-session");
         match guard.mountpoint() {
             Some(mp) => {
                 // FUSE is active — mountpoint must be different from backing.
@@ -1146,6 +1161,17 @@ mod tests {
         });
         wait_fuse_mount_ready(&probe, &rx, Duration::from_secs(2), Duration::from_millis(10))
             .expect("probe must become ready");
+    }
+
+    /// AC-009.12 — FUSE session id is deterministic and keyed from CommandKey prefix.
+    #[test]
+    fn fuse_session_id_for_command_key_is_deterministic() {
+        let key = command_key(&["cargo".into(), "build".into()], Path::new("/repo"), &[]);
+        let a = fuse_session_id_for_command_key(&key);
+        let b = fuse_session_id_for_command_key(&key);
+        assert_eq!(a, b);
+        assert!(a.starts_with("hv-"));
+        assert_eq!(a.len(), 19);
     }
 
     /// HypervisorConfig.coalesce_debounce is plumbed into CoalesceCache so every

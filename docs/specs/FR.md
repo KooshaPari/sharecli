@@ -358,8 +358,13 @@ until create / mkdir / rename-into invalidates the entry.
   [`read_provenance`](crates/sharecli-fuse/src/provenance.rs) on a backing file (no live
   mount required); `--json` emits `{path,session_id,written_at_unix}` or `null` when absent;
   missing paths and directories fail loudly.
+- **AC-009.12:** On Hypervisor cache-miss spawns, FUSE intercept mounts MUST use
+  [`fuse_session_id_for_command_key`](crates/sharecli-core/src/lib.rs) derived from the
+  coalesce [`CommandKey`](crates/sharecli-ipc/src/lib.rs) (`hv-{first 16 hex}`) via
+  [`sharecli_fuse::mount_with_session`](crates/sharecli-fuse/src/lib.rs); writes through
+  the intercept layer MUST stamp that session id (parity with AC-009.6).
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
 
 ---
 
