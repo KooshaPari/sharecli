@@ -27,17 +27,8 @@ let package = Package(
                 .copy("../../../../assets/icons/sharecli.iconset"),
                 .copy("../../../../assets/icons/sharecli-256x256.png"),
                 .copy("../../../../assets/icons/sharecli-512x512.png"),
-            ],
-            linkerSettings: [
-                // Link against the compiled Rust dylib.
-                // Build with: cargo build -p sharecli-ffi (or --release)
-                // Set SHARECLI_FFI_LIB_DIR to override the default search path.
-                .unsafeFlags([
-                    "-L", "../../../../target/debug",
-                    "-lsharecli_ffi",
-                    "-rpath", "@executable_path/../Frameworks",
-                ]),
             ]
+            // Link libsharecli_ffi via just build-tray-macos / desktop/build.sh -Xlinker flags.
         ),
 
         // Shared core (IPC client, data models)

@@ -95,9 +95,14 @@ build-tray-linux:
 build-tray-macos:
     @echo ">> macOS Swift tray + desktop (lane B+C / beta)"
     @cargo build -p sharecli-ffi --release --locked
+    @cargo build -p sharecli-ipc --release --locked
     @cd desktop/ShareCLITray && swift build -c release \
         -Xlinker -L -Xlinker ../../target/release \
-        -Xlinker -lsharecli_ffi
+        -Xlinker -lsharecli_ffi \
+        -Xlinker -rpath -Xlinker @executable_path/../Frameworks
+
+install-tray-macos: build-tray-macos
+    @./scripts/install-tray-macos.sh
 
 [group: 'parity']
 build-desktop-macos: build-tray-macos
