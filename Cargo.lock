@@ -4349,6 +4349,7 @@ dependencies = [
  "sha2 0.11.0",
  "sharecli-core",
  "sharecli-fleet",
+ "sharecli-fuse",
  "sharecli-ipc",
  "sharecli-sync",
  "sharecli-thermal-tui",
