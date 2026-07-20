@@ -301,8 +301,12 @@ replacing vendor agent executables as the primary detection path.
   sysinfo mapping), composed with `--comm`, `--cmdline`, `--family`, `--min-rss`,
   `--max-rss`, `--min-fd`, `--max-fd`, `--ppid`, `--sort`, `--limit`, `--json`,
   `--csv`, and `--tree --csv`; empty or invalid state MUST fail loudly.
+- **AC-006.32:** Flat `--json` agent rows and `--csv` columns (and `--tree --csv`
+  rows) include a `state` field/column with the process state letter so operators
+  see state without re-scanning; composes with `--state` filter and all other proc
+  export flags; missing state leaves an empty CSV field and empty JSON string.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`, `tests/fr006_proc_csv.rs`, `tests/fr006_proc_ppid.rs`, `tests/fr006_proc_tree_csv.rs`, `tests/fr006_proc_comm.rs`, `tests/fr006_proc_cmdline.rs`, `tests/fr006_proc_state.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`, `tests/fr006_proc_csv.rs`, `tests/fr006_proc_ppid.rs`, `tests/fr006_proc_tree_csv.rs`, `tests/fr006_proc_comm.rs`, `tests/fr006_proc_cmdline.rs`, `tests/fr006_proc_state.rs`, `tests/fr006_proc_state_export.rs`
 
 ---
 
