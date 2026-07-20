@@ -34,9 +34,10 @@ fn fr003_serve_rate_limit_blocks_after_max() {
 
 #[test]
 fn fr003_serve_middleware_wired_in_router() {
-    let serve_rs =
-        std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands/serve.rs"))
-            .expect("read serve.rs");
+    let serve_rs = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands/serve.rs"),
+    )
+    .expect("read serve.rs");
     assert!(
         serve_rs.contains("serve_rate_limit_middleware"),
         "serve.rs must define rate limit middleware"

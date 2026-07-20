@@ -28,16 +28,10 @@ fn fr006_proc_help_documents_filters() {
 /// FR-006 / AC-006.17 — family filter keeps matching agents only.
 #[test]
 fn fr006_proc_family_filter() {
-    let rows = vec![
-        watch_row("claude", 10, 100),
-        watch_row("codex", 11, 200),
-    ];
+    let rows = vec![watch_row("claude", 10, 100), watch_row("codex", 11, 200)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter {
-            family: Some("claude".into()),
-            min_rss_bytes: None,
-        },
+        &ProcFilter { family: Some("claude".into()), min_rss_bytes: None },
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.family, "claude");
@@ -46,16 +40,11 @@ fn fr006_proc_family_filter() {
 /// FR-006 / AC-006.17 — min-rss filter drops agents below threshold.
 #[test]
 fn fr006_proc_min_rss_filter() {
-    let rows = vec![
-        watch_row("claude", 10, 50 * 1_048_576),
-        watch_row("codex", 11, 200 * 1_048_576),
-    ];
+    let rows =
+        vec![watch_row("claude", 10, 50 * 1_048_576), watch_row("codex", 11, 200 * 1_048_576)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter {
-            family: None,
-            min_rss_bytes: Some(100 * 1_048_576),
-        },
+        &ProcFilter { family: None, min_rss_bytes: Some(100 * 1_048_576) },
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 11);
@@ -65,33 +54,15 @@ fn fr006_proc_min_rss_filter() {
 #[test]
 fn fr006_proc_tree_family_filter() {
     let src = FakeProcSource::new(vec![
-        ProcSnapshot {
-            pid: 1,
-            ppid: 0,
-            comm: "init".into(),
-            cmdline: vec![],
-        },
-        ProcSnapshot {
-            pid: 50,
-            ppid: 1,
-            comm: "claude".into(),
-            cmdline: vec!["claude".into()],
-        },
-        ProcSnapshot {
-            pid: 60,
-            ppid: 1,
-            comm: "codex".into(),
-            cmdline: vec!["codex".into()],
-        },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
+        ProcSnapshot { pid: 50, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()] },
+        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()] },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     assert_eq!(forests.len(), 2);
     let filtered = filter_agent_forests(
         &forests,
-        &ProcFilter {
-            family: Some("codex".into()),
-            min_rss_bytes: None,
-        },
+        &ProcFilter { family: Some("codex".into()), min_rss_bytes: None },
         &std::collections::HashMap::new(),
     );
     assert_eq!(filtered.len(), 1);
@@ -115,14 +86,7 @@ fn fr006_proc_invalid_min_rss_rejected() {
 
 fn watch_row(family: &'static str, pid: u32, rss: u64) -> DetectedAgentWatch {
     DetectedAgentWatch {
-        agent: DetectedAgent {
-            pid,
-            family,
-            comm: family.into(),
-        },
-        resource: AgentResourceSample {
-            mem_rss_bytes: rss,
-            fd_count: None,
-        },
+        agent: DetectedAgent { pid, family, comm: family.into() },
+        resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: None },
     }
 }

@@ -9,10 +9,7 @@ fn c00_l8_jemalloc_feature_declared() {
         manifest.contains("jemalloc = [\"dep:tikv-jemallocator\"]"),
         "jemalloc feature must wire tikv-jemallocator"
     );
-    assert!(
-        manifest.contains("tikv-jemallocator"),
-        "tikv-jemallocator optional dep must exist"
-    );
+    assert!(manifest.contains("tikv-jemallocator"), "tikv-jemallocator optional dep must exist");
 }
 
 #[test]
@@ -28,10 +25,7 @@ fn c00_l8_dhat_heap_feature_declared() {
 fn c00_l8_alloc_module_global_allocator_present() {
     let src = include_str!("../src/alloc.rs");
     assert!(src.contains("#[global_allocator]"), "alloc.rs must declare global_allocator");
-    assert!(
-        src.contains("active_allocator_label"),
-        "alloc.rs must expose allocator label helper"
-    );
+    assert!(src.contains("active_allocator_label"), "alloc.rs must expose allocator label helper");
 }
 
 #[test]
@@ -49,8 +43,5 @@ fn c00_l8_dhat_soft_avoids_clap_help_exit() {
         !script.contains("\"$BIN\" --help"),
         "dhat_soft must not invoke --help (skips Drop / no dhat-heap.json)"
     );
-    assert!(
-        script.contains("completions bash"),
-        "dhat_soft must use a normal-returning CLI path"
-    );
+    assert!(script.contains("completions bash"), "dhat_soft must use a normal-returning CLI path");
 }

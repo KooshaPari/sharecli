@@ -15,10 +15,7 @@ fn c11_l115_build_deb_installs_systemd_unit() {
     let script = fs::read_to_string(repo_root().join("scripts/packaging/build_deb.sh"))
         .expect("read build_deb.sh");
 
-    assert!(
-        script.contains("sharecli.service"),
-        "build_deb.sh must install sharecli.service unit"
-    );
+    assert!(script.contains("sharecli.service"), "build_deb.sh must install sharecli.service unit");
     assert!(
         script.contains("/lib/systemd/system"),
         "build_deb.sh must place unit under /lib/systemd/system"
@@ -40,17 +37,9 @@ fn c11_l115_packaging_soft_asserts_systemd_unit() {
 /// FR-003 / C11 L115 — deploy docs tie sample unit to packaged artifact path.
 #[test]
 fn c11_l115_systemd_doc_packaged_unit() {
-    let doc = fs::read_to_string(
-        repo_root().join("docs/deploy/systemd/sharecli.service.md"),
-    )
-    .expect("read sharecli.service.md");
+    let doc = fs::read_to_string(repo_root().join("docs/deploy/systemd/sharecli.service.md"))
+        .expect("read sharecli.service.md");
 
-    assert!(
-        doc.contains("sharecli_"),
-        "systemd doc must reference packaged .deb artifact"
-    );
-    assert!(
-        doc.contains("dpkg-deb"),
-        "systemd doc must document dpkg-deb inspection path"
-    );
+    assert!(doc.contains("sharecli_"), "systemd doc must reference packaged .deb artifact");
+    assert!(doc.contains("dpkg-deb"), "systemd doc must document dpkg-deb inspection path");
 }

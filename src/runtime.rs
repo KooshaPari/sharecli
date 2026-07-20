@@ -236,9 +236,7 @@ impl ProcessPool {
                 .build()
                 .map_err(|e| anyhow::anyhow!("spawn runtime: {e}"))?;
             rt.block_on(async {
-                port.spawn(&spec)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("spawn {}: {e}", spec.program))
+                port.spawn(&spec).await.map_err(|e| anyhow::anyhow!("spawn {}: {e}", spec.program))
             })
         })
         .await

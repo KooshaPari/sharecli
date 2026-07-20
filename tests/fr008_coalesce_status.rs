@@ -11,11 +11,7 @@ fn sharecli_bin() -> std::process::Command {
 #[test]
 fn fr008_status_includes_coalesce_section() {
     let out = sharecli_bin().arg("status").output().expect("status");
-    assert!(
-        out.status.success(),
-        "status failed: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.status.success(), "status failed: {}", String::from_utf8_lossy(&out.stderr));
     let text = String::from_utf8_lossy(&out.stdout);
     assert!(
         text.contains("=== Hypervisor Coalesce ==="),

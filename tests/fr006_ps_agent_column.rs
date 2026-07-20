@@ -4,9 +4,7 @@
 //! AC-006.7 ps table includes AGENT from proc_scan ancestor walk
 //! AC-006.8 ps --all lists host-detected agent processes
 
-use sharecli_core::{
-    agent_label_for_pid, scan_agents, FakeProcSource, ProcSnapshot,
-};
+use sharecli_core::{agent_label_for_pid, scan_agents, FakeProcSource, ProcSnapshot};
 use std::process::Command;
 
 fn bin() -> Command {
@@ -15,24 +13,14 @@ fn bin() -> Command {
 
 fn fixture() -> FakeProcSource {
     FakeProcSource::new(vec![
-        ProcSnapshot {
-            pid: 100,
-            ppid: 1,
-            comm: "forge".into(),
-            cmdline: vec!["forge".into()],
-        },
+        ProcSnapshot { pid: 100, ppid: 1, comm: "forge".into(), cmdline: vec!["forge".into()] },
         ProcSnapshot {
             pid: 200,
             ppid: 100,
             comm: "cargo".into(),
             cmdline: vec!["cargo".into(), "test".into()],
         },
-        ProcSnapshot {
-            pid: 300,
-            ppid: 1,
-            comm: "zsh".into(),
-            cmdline: vec!["-i".into()],
-        },
+        ProcSnapshot { pid: 300, ppid: 1, comm: "zsh".into(), cmdline: vec!["-i".into()] },
     ])
 }
 

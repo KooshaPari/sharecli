@@ -22,11 +22,8 @@ pub struct InodeMap {
 impl InodeMap {
     /// Create a map with only the root inode registered.
     pub fn new() -> Self {
-        let mut map = Self {
-            next_ino: ROOT_INO + 1,
-            ino_to_rel: HashMap::new(),
-            rel_to_ino: HashMap::new(),
-        };
+        let mut map =
+            Self { next_ino: ROOT_INO + 1, ino_to_rel: HashMap::new(), rel_to_ino: HashMap::new() };
         map.ino_to_rel.insert(ROOT_INO, PathBuf::new());
         map.rel_to_ino.insert(PathBuf::new(), ROOT_INO);
         map
@@ -117,18 +114,12 @@ mod tests {
     fn inode_map_root_and_nested_lookup() {
         let mut map = InodeMap::new();
         assert_eq!(map.resolve(ROOT_INO), Some(Path::new("")));
-        let (ino_a, rel_a) = map
-            .lookup_or_alloc(ROOT_INO, OsStr::new("dir"))
-            .expect("root child");
+        let (ino_a, rel_a) = map.lookup_or_alloc(ROOT_INO, OsStr::new("dir")).expect("root child");
         assert_eq!(rel_a, PathBuf::from("dir"));
         assert!(ino_a > ROOT_INO);
-        let (ino_b, rel_b) = map
-            .lookup_or_alloc(ino_a, OsStr::new("file.txt"))
-            .expect("nested");
+        let (ino_b, rel_b) = map.lookup_or_alloc(ino_a, OsStr::new("file.txt")).expect("nested");
         assert_eq!(rel_b, PathBuf::from("dir/file.txt"));
-        let (ino_b2, _) = map
-            .lookup_or_alloc(ino_a, OsStr::new("file.txt"))
-            .expect("stable");
+        let (ino_b2, _) = map.lookup_or_alloc(ino_a, OsStr::new("file.txt")).expect("stable");
         assert_eq!(ino_b, ino_b2);
     }
 
@@ -143,9 +134,7 @@ mod tests {
     #[test]
     fn inode_map_remove_and_rename() {
         let mut map = InodeMap::new();
-        let (ino, _) = map
-            .lookup_or_alloc(ROOT_INO, OsStr::new("a"))
-            .expect("alloc");
+        let (ino, _) = map.lookup_or_alloc(ROOT_INO, OsStr::new("a")).expect("alloc");
         map.rename_rel(Path::new("a"), PathBuf::from("b"));
         assert_eq!(map.resolve(ino), Some(Path::new("b")));
         map.remove_rel(Path::new("b"));

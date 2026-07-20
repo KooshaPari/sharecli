@@ -30,19 +30,11 @@ async fn fr011_agent_contention_refuses_hypervisor_spawn() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "agent-gated".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "agent-gated".to_string(),
-    ];
+    let argv =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "agent-gated".to_string()];
 
     let err = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
         .await
         .expect_err("Refuse MUST err after retries");
 
@@ -71,27 +63,21 @@ async fn fr011_agent_contention_warn_still_spawns() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "warn-ok".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "warn-ok".to_string(),
-    ];
+    let argv = vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "warn-ok".to_string()];
 
-    hv.run(SpawnRequest {
-        argv,
-        cwd: dir.path().to_path_buf(),
-        env: vec![],
-    })
-    .await
-    .expect("Warn tier MUST still allow spawn");
+    hv.run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
+        .await
+        .expect("Warn tier MUST still allow spawn");
 }
 
 /// FR-011 / AC-011.4 — thermal TUI effective gate denies on agent refuse + Green thermal.
 #[test]
 fn fr011_effective_gate_decision_agent_refuse() {
     assert_eq!(
-        effective_gate_decision(ThermalLevel::Green, AgentContentionThresholds::default().refuse_at),
+        effective_gate_decision(
+            ThermalLevel::Green,
+            AgentContentionThresholds::default().refuse_at
+        ),
         "DENY"
     );
 }

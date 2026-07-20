@@ -27,7 +27,10 @@ use sharecli_fleet::{
     effective_gate_decision, format_rss_bytes, global_coalesce_meters, global_slot_queue_meters,
     watch_host_agents, CoalesceMeters, DetectedAgentWatch, ResourceWatchSample, SlotQueueMeters,
 };
-use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters, NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
+use sharecli_fuse::{
+    global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
+    NegDentryMeters, ReadCacheMeters, WriteSerializeMeters,
+};
 use sharecli_mesh::{capture_maildir_status, MaildirStatus};
 
 // ---------------------------------------------------------------------------
@@ -123,17 +126,17 @@ pub fn is_compact(width: u16) -> bool {
 }
 
 /// Lines for the host resource watch panel (FR-007 / AC-007.10 TUI slice).
-pub fn resource_watch_lines(sample: Option<ResourceWatchSample>, compact: bool) -> Vec<Line<'static>> {
+pub fn resource_watch_lines(
+    sample: Option<ResourceWatchSample>,
+    compact: bool,
+) -> Vec<Line<'static>> {
     let Some(sample) = sample else {
         let msg = if compact {
             " watch unavailable"
         } else {
             "  Resource watch unavailable on this host"
         };
-        return vec![Line::from(Span::styled(
-            msg,
-            Style::default().fg(Color::Red),
-        ))];
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::Red)))];
     };
 
     if compact {
@@ -153,29 +156,19 @@ pub fn resource_watch_lines(sample: Option<ResourceWatchSample>, compact: bool) 
 /// Lines for host agent inventory (FR-006 / thermal operator panel).
 pub fn host_agent_lines(agents: &[DetectedAgent], compact: bool) -> Vec<Line<'static>> {
     if agents.is_empty() {
-        let msg = if compact {
-            " agents: none"
-        } else {
-            "  Host agents: none detected"
-        };
+        let msg = if compact { " agents: none" } else { "  Host agents: none detected" };
         return vec![Line::from(Span::raw(msg))];
     }
 
     if compact {
-        let summary = agents
-            .iter()
-            .map(|a| format!("{}:{}", a.family, a.pid))
-            .collect::<Vec<_>>()
-            .join(" ");
+        let summary =
+            agents.iter().map(|a| format!("{}:{}", a.family, a.pid)).collect::<Vec<_>>().join(" ");
         return vec![Line::from(format!(" agents: {summary}"))];
     }
 
     let mut lines = vec![Line::from("  Host agents:")];
     for agent in agents.iter().take(4) {
-        lines.push(Line::from(format!(
-            "    {} pid={} ({})",
-            agent.family, agent.pid, agent.comm
-        )));
+        lines.push(Line::from(format!("    {} pid={} ({})", agent.family, agent.pid, agent.comm)));
     }
     if agents.len() > 4 {
         lines.push(Line::from(format!("    … +{} more", agents.len() - 4)));
@@ -240,10 +233,9 @@ pub fn hypervisor_slot_queue_lines(meters: SlotQueueMeters, compact: bool) -> Ve
 /// Lines for the mesh Maildir queue depth panel (FR-010 / AC-010.11 TUI slice).
 pub fn mesh_maildir_lines(status: Option<MaildirStatus>, compact: bool) -> Vec<Line<'static>> {
     match status {
-        Some(st) if compact => vec![Line::from(format!(
-            " mesh r:{} f:{} p:{}",
-            st.ready, st.in_flight, st.pending
-        ))],
+        Some(st) if compact => {
+            vec![Line::from(format!(" mesh r:{} f:{} p:{}", st.ready, st.in_flight, st.pending))]
+        }
         Some(st) => vec![
             Line::from(format!("  Mesh ready:     {}", st.ready)),
             Line::from(format!("  Mesh in-flight: {}", st.in_flight)),
@@ -254,7 +246,10 @@ pub fn mesh_maildir_lines(status: Option<MaildirStatus>, compact: bool) -> Vec<L
 }
 
 /// Lines for the FUSE write-serialize / CoW panel (FR-009 / AC-009.10 TUI slice).
-pub fn fuse_write_serialize_lines(meters: WriteSerializeMeters, compact: bool) -> Vec<Line<'static>> {
+pub fn fuse_write_serialize_lines(
+    meters: WriteSerializeMeters,
+    compact: bool,
+) -> Vec<Line<'static>> {
     if compact {
         return vec![Line::from(format!(
             " wr:{} st:{} cm:{} ds:{}",
@@ -294,15 +289,8 @@ pub const MAX_AGENT_LINES: usize = 4;
 /// Lines for the host agent inventory panel (FR-006 / AC-006.9 TUI slice).
 pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'static>> {
     if agents.is_empty() {
-        let msg = if compact {
-            " none"
-        } else {
-            "  No agent processes detected"
-        };
-        return vec![Line::from(Span::styled(
-            msg,
-            Style::default().fg(Color::DarkGray),
-        ))];
+        let msg = if compact { " none" } else { "  No agent processes detected" };
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
     }
 
     if compact {
@@ -319,21 +307,14 @@ pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'st
             })
             .collect::<Vec<_>>()
             .join(" ");
-        let extra = if agents.len() > 2 {
-            format!(" +{}", agents.len() - 2)
-        } else {
-            String::new()
-        };
+        let extra =
+            if agents.len() > 2 { format!(" +{}", agents.len() - 2) } else { String::new() };
         return vec![Line::from(format!(" {summary}{extra}"))];
     }
 
     let mut lines = vec![Line::from(format!("  Agents: {}", agents.len()))];
     for row in agents.iter().take(MAX_AGENT_LINES) {
-        let fd = row
-            .resource
-            .fd_count
-            .map(|n| format!(" FD {n}"))
-            .unwrap_or_default();
+        let fd = row.resource.fd_count.map(|n| format!(" FD {n}")).unwrap_or_default();
         lines.push(Line::from(format!(
             "    PID {}  {}  RSS {}{}  ({})",
             row.agent.pid,
@@ -344,10 +325,7 @@ pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'st
         )));
     }
     if agents.len() > MAX_AGENT_LINES {
-        lines.push(Line::from(format!(
-            "    … +{} more",
-            agents.len() - MAX_AGENT_LINES
-        )));
+        lines.push(Line::from(format!("    … +{} more", agents.len() - MAX_AGENT_LINES)));
     }
     lines
 }
@@ -582,11 +560,7 @@ fn render_decision(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let level = app.thermal_level;
     let agent_count = app.detected_agents.len();
     let decision = effective_gate_decision(level, agent_count);
-    let color = if decision == "DENY" {
-        Color::Red
-    } else {
-        decision_color(level)
-    };
+    let color = if decision == "DENY" { Color::Red } else { decision_color(level) };
 
     let hint = if compact {
         ""
@@ -970,15 +944,8 @@ mod tests {
         fds: Option<u64>,
     ) -> DetectedAgentWatch {
         DetectedAgentWatch {
-            agent: DetectedAgent {
-                pid,
-                family,
-                comm: comm.into(),
-            },
-            resource: AgentResourceSample {
-                mem_rss_bytes: rss,
-                fd_count: fds,
-            },
+            agent: DetectedAgent { pid, family, comm: comm.into() },
+            resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: fds },
         }
     }
 
@@ -1050,11 +1017,7 @@ mod tests {
     // --- Headless render smoke test (FakeThermalGate via ThermalGovernor mock) ---
     #[test]
     fn test_host_agent_lines_full() {
-        let agents = vec![DetectedAgent {
-            pid: 42,
-            family: "claude",
-            comm: "claude".into(),
-        }];
+        let agents = vec![DetectedAgent { pid: 42, family: "claude", comm: "claude".into() }];
         let lines = host_agent_lines(&agents, false);
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
         assert!(rendered.contains("Host agents:") && rendered.contains("claude"));
@@ -1078,25 +1041,10 @@ mod tests {
                 ReadCacheMeters { hits: 2, misses: 1 },
                 NegDentryMeters { hits: 1, misses: 0 },
                 CoalesceMeters { hits: 4, misses: 1, nocache_runs: 2 },
-                SlotQueueMeters {
-                    acquires: 3,
-                    waits: 2,
-                    timeouts: 0,
-                },
-                WriteSerializeMeters {
-                    passthrough_writes: 2,
-                    stages: 1,
-                    commits: 1,
-                    discards: 0,
-                },
+                SlotQueueMeters { acquires: 3, waits: 2, timeouts: 0 },
+                WriteSerializeMeters { passthrough_writes: 2, stages: 1, commits: 1, discards: 0 },
             )
-            .with_detected_agents(vec![agent_watch(
-                4242,
-                "claude",
-                "claude",
-                4_096,
-                Some(12),
-            )]);
+            .with_detected_agents(vec![agent_watch(4242, "claude", "claude", 4_096, Some(12))]);
         app.update(ThermalLevel::Green, 0);
         // Should not panic.
         terminal.draw(|f| render(f, &app)).unwrap();

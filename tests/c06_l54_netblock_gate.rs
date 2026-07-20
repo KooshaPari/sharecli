@@ -12,8 +12,7 @@ fn repo_root() -> PathBuf {
 /// FR-003 / C06 L54 — `ci.yml` must aggregate netblock into `ci-success`.
 #[test]
 fn fr003_ci_yml_netblock_hard_gate_wired() {
-    let ci = fs::read_to_string(repo_root().join(".github/workflows/ci.yml"))
-        .expect("read ci.yml");
+    let ci = fs::read_to_string(repo_root().join(".github/workflows/ci.yml")).expect("read ci.yml");
 
     assert!(
         ci.contains("name: netblock hermetic (required)"),
@@ -28,9 +27,7 @@ fn fr003_ci_yml_netblock_hard_gate_wired() {
         .lines()
         .find(|l| l.contains("needs:") && l.contains("ci-success"))
         .or_else(|| {
-            ci.lines()
-                .skip_while(|l| !l.contains("ci-success:"))
-                .find(|l| l.contains("needs:"))
+            ci.lines().skip_while(|l| !l.contains("ci-success:")).find(|l| l.contains("needs:"))
         })
         .expect("ci-success needs block");
 
@@ -54,15 +51,9 @@ fn fr003_ci_yml_netblock_hard_gate_wired() {
 /// FR-003 / C06 L54 — hermetic contract documents hard CI enforcement.
 #[test]
 fn fr003_hermetic_builds_doc_hard_gate() {
-    let doc =
-        fs::read_to_string(repo_root().join("docs/ops/hermetic-builds.md")).expect("read hermetic-builds.md");
+    let doc = fs::read_to_string(repo_root().join("docs/ops/hermetic-builds.md"))
+        .expect("read hermetic-builds.md");
 
-    assert!(
-        doc.contains("ci-success"),
-        "hermetic-builds.md must document ci-success hard gate"
-    );
-    assert!(
-        doc.contains("netblock"),
-        "hermetic-builds.md must reference netblock enforcement"
-    );
+    assert!(doc.contains("ci-success"), "hermetic-builds.md must document ci-success hard gate");
+    assert!(doc.contains("netblock"), "hermetic-builds.md must reference netblock enforcement");
 }

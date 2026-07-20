@@ -31,7 +31,8 @@ const CMDLINE_FINGERPRINTS: &[(&str, &[&str])] = &[
 pub fn match_known_agent(comm: &str, cmdline: &[impl AsRef<str>]) -> Option<&'static str> {
     let comm_l = comm.to_ascii_lowercase();
     if let Some(family) = match_token(&comm_l) {
-        if family_allowed(family, cmdline) {
+        let exact_comm = is_exact_comm_basename(&comm_l, family);
+        if family_allowed(family, cmdline, exact_comm) {
             return Some(family);
         }
     }
@@ -40,12 +41,12 @@ pub fn match_known_agent(comm: &str, cmdline: &[impl AsRef<str>]) -> Option<&'st
         let base = t.rsplit('/').next().unwrap_or(&t);
         let base = base.rsplit('\\').next().unwrap_or(base);
         if let Some(family) = match_token(base) {
-            if family_allowed(family, cmdline) {
+            if family_allowed(family, cmdline, false) {
                 return Some(family);
             }
         }
         if let Some(family) = match_token(&t) {
-            if family_allowed(family, cmdline) {
+            if family_allowed(family, cmdline, false) {
                 return Some(family);
             }
         }
@@ -63,11 +64,23 @@ fn match_fingerprint_only(cmdline: &[impl AsRef<str>]) -> Option<&'static str> {
     None
 }
 
-fn family_allowed(family: &'static str, cmdline: &[impl AsRef<str>]) -> bool {
-    if AMBIGUOUS_FAMILIES.contains(&family) {
-        return cmdline_has_fingerprint(family, cmdline);
+fn family_allowed(
+    family: &'static str,
+    cmdline: &[impl AsRef<str>],
+    exact_comm_basename: bool,
+) -> bool {
+    if !AMBIGUOUS_FAMILIES.contains(&family) {
+        return true;
     }
-    true
+    // AC-006.1: exact comm basename with empty cmdline is a bare-name hit.
+    if exact_comm_basename && cmdline.is_empty() {
+        return true;
+    }
+    cmdline_has_fingerprint(family, cmdline)
+}
+
+fn is_exact_comm_basename(comm: &str, family: &str) -> bool {
+    comm == family
 }
 
 fn cmdline_has_fingerprint(family: &str, cmdline: &[impl AsRef<str>]) -> bool {
@@ -146,8 +159,8 @@ mod tests {
     }
 
     #[test]
-    fn ambiguous_gemini_requires_fingerprint() {
-        assert_eq!(match_known_agent("gemini", &[] as &[&str]), None);
+    fn ambiguous_gemini_bare_comm_matches() {
+        assert_eq!(match_known_agent("gemini", &[] as &[&str]), Some("gemini"));
         assert_eq!(match_known_agent("gemini", &["gemini-cli", "chat"]), Some("gemini"));
     }
 }

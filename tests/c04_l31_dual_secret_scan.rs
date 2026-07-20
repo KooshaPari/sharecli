@@ -35,18 +35,9 @@ fn fr003_pre_commit_secret_hooks_present() {
     let pre_commit =
         fs::read_to_string(repo_root().join(".pre-commit-config.yaml")).expect("pre-commit config");
 
-    assert!(
-        pre_commit.contains("gitleaks"),
-        "pre-commit must include gitleaks hook"
-    );
-    assert!(
-        pre_commit.contains("trufflehog"),
-        "pre-commit must include trufflehog hook"
-    );
-    assert!(
-        pre_commit.contains("gitleaks.toml"),
-        "gitleaks hook must reference gitleaks.toml"
-    );
+    assert!(pre_commit.contains("gitleaks"), "pre-commit must include gitleaks hook");
+    assert!(pre_commit.contains("trufflehog"), "pre-commit must include trufflehog hook");
+    assert!(pre_commit.contains("gitleaks.toml"), "gitleaks hook must reference gitleaks.toml");
 }
 
 /// FR-003 / C04 L31 — trufflehog exclusions + local scan script exist.
@@ -55,16 +46,10 @@ fn fr003_trufflehog_config_and_local_script() {
     let trufflehog =
         fs::read_to_string(repo_root().join(".trufflehog.yml")).expect(".trufflehog.yml");
 
-    assert!(
-        trufflehog.contains("target/**"),
-        ".trufflehog.yml must exclude target/"
-    );
+    assert!(trufflehog.contains("target/**"), ".trufflehog.yml must exclude target/");
 
-    let script = fs::read_to_string(repo_root().join("scripts/ci/secret_scan.sh"))
-        .expect("secret_scan.sh");
+    let script =
+        fs::read_to_string(repo_root().join("scripts/ci/secret_scan.sh")).expect("secret_scan.sh");
     assert!(script.contains("gitleaks"), "secret_scan.sh must run gitleaks");
-    assert!(
-        script.contains("trufflehog"),
-        "secret_scan.sh must run trufflehog"
-    );
+    assert!(script.contains("trufflehog"), "secret_scan.sh must run trufflehog");
 }

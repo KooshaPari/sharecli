@@ -12,10 +12,10 @@ use std::process::Command;
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
-use sharecli_fleet::ResourceWatchSample;
-use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
+use sharecli_fleet::ResourceWatchSample;
 use sharecli_fleet::SlotQueueMeters;
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_mesh::MaildirStatus;
 use sharecli_thermal_tui::{render, App};
 
@@ -32,22 +32,10 @@ const GOLDEN_WATCH: ResourceWatchSample = ResourceWatchSample {
 
 const GOLDEN_FUSE: ReadCacheMeters = ReadCacheMeters { hits: 3, misses: 1 };
 const GOLDEN_NEG: NegDentryMeters = NegDentryMeters { hits: 2, misses: 1 };
-const GOLDEN_COALESCE: CoalesceMeters = CoalesceMeters {
-    hits: 6,
-    misses: 2,
-    nocache_runs: 1,
-};
-const GOLDEN_WRITE_SERIALIZE: WriteSerializeMeters = WriteSerializeMeters {
-    passthrough_writes: 1,
-    stages: 2,
-    commits: 1,
-    discards: 1,
-};
-const GOLDEN_SLOT_QUEUE: SlotQueueMeters = SlotQueueMeters {
-    acquires: 2,
-    waits: 1,
-    timeouts: 0,
-};
+const GOLDEN_COALESCE: CoalesceMeters = CoalesceMeters { hits: 6, misses: 2, nocache_runs: 1 };
+const GOLDEN_WRITE_SERIALIZE: WriteSerializeMeters =
+    WriteSerializeMeters { passthrough_writes: 1, stages: 2, commits: 1, discards: 1 };
+const GOLDEN_SLOT_QUEUE: SlotQueueMeters = SlotQueueMeters { acquires: 2, waits: 1, timeouts: 0 };
 
 fn golden_mesh_maildir() -> MaildirStatus {
     MaildirStatus {
@@ -183,14 +171,8 @@ fn golden_thermal_tui_levels() {
             actual.contains("Slot acquires:"),
             "{name} MUST include Hypervisor SlotQueue meters"
         );
-        assert!(
-            actual.contains("Mesh ready:"),
-            "{name} MUST include mesh Maildir depth meters"
-        );
-        assert!(
-            actual.contains("Detected Agents"),
-            "{name} MUST include proc-scan agent panel"
-        );
+        assert!(actual.contains("Mesh ready:"), "{name} MUST include mesh Maildir depth meters");
+        assert!(actual.contains("Detected Agents"), "{name} MUST include proc-scan agent panel");
         assert!(actual.contains("Neg hits:"), "{name} MUST include neg dentry meters");
     }
 }

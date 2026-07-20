@@ -180,10 +180,7 @@ pub struct AgentAwareThermalGate {
 impl AgentAwareThermalGate {
     /// Gate with live proc scan + resource samples on every check.
     pub fn new(inner: Arc<dyn ThermalGate>, _thresholds: AgentContentionThresholds) -> Self {
-        Self {
-            inner,
-            agent_tier: Arc::new(live_agent_contention_tier),
-        }
+        Self { inner, agent_tier: Arc::new(live_agent_contention_tier) }
     }
 
     /// Test/injection hook — supply a deterministic agent-count-only tier fn.
@@ -349,10 +346,7 @@ impl FuseGuard {
             let backing = backing.to_path_buf();
 
             // Unique marker under backing; InterceptFs mirrors it through the mount.
-            let marker_name = format!(
-                "{FUSE_READY_MARKER}-{}",
-                std::process::id()
-            );
+            let marker_name = format!("{FUSE_READY_MARKER}-{}", std::process::id());
             let marker_rel = Path::new(&marker_name);
             let marker_backing = backing.join(marker_rel);
             if let Err(e) = std::fs::write(&marker_backing, b"ready") {
@@ -592,10 +586,8 @@ impl Hypervisor {
     /// Queue root defaults to `{cache_root}/queue` with `max_concurrent = 1`.
     pub fn new(cache_root: impl Into<PathBuf>) -> Self {
         let inner = Arc::new(SystemThermalGate::new());
-        let gate = Arc::new(AgentAwareThermalGate::new(
-            inner,
-            AgentContentionThresholds::default(),
-        ));
+        let gate =
+            Arc::new(AgentAwareThermalGate::new(inner, AgentContentionThresholds::default()));
         Self::with_thermal_gate(cache_root, gate)
     }
 
@@ -633,13 +625,7 @@ impl Hypervisor {
             config.coalesce_debounce,
         );
         let queue = SlotQueue::new(config.queue_root.clone(), config.queue_max_concurrent);
-        Self {
-            cache,
-            queue,
-            nocache_args,
-            config,
-            thermal_gate: gate,
-        }
+        Self { cache, queue, nocache_args, config, thermal_gate: gate }
     }
 
     /// Borrow the mutating-path [`SlotQueue`] (Hypervisor API for external callers).
@@ -732,9 +718,8 @@ impl Hypervisor {
                 .unwrap_or("unknown");
             debug!(lane, argv = ?req.argv, "hypervisor::run — nocache → queue");
             record_nocache_run();
-            let outcome = self.queue.with_slot(lane, QueuePriority::Normal, || {
-                spawn_process_sync(&req)
-            })?;
+            let outcome =
+                self.queue.with_slot(lane, QueuePriority::Normal, || spawn_process_sync(&req))?;
             return Ok(SpawnOutcome {
                 exit_code: outcome.exit_code,
                 stdout: outcome.stdout,
@@ -783,8 +768,7 @@ impl Hypervisor {
         // guard is returned so the spawn proceeds without interception.
         let fuse_session = fuse_session_id_for_command_key(&key);
         let fuse_guard = FuseGuard::try_mount(&req.cwd, &fuse_session);
-        let fuse_session_id =
-            fuse_guard.mountpoint().map(|_| fuse_session.clone());
+        let fuse_session_id = fuse_guard.mountpoint().map(|_| fuse_session.clone());
         let fuse_backing = fuse_guard.mountpoint().map(|_| req.cwd.clone());
         let fuse_mountpoint = fuse_guard.mountpoint().map(|p| p.to_path_buf());
 
@@ -969,10 +953,7 @@ mod tests {
 
     /// Hypervisor with Allow gate and no agent-contention wrapper (unit tests).
     fn allow_hypervisor(dir: &Path) -> Hypervisor {
-        Hypervisor::with_thermal_gate(
-            dir,
-            Arc::new(FakeThermalGate::new(ThermalDecision::Allow)),
-        )
+        Hypervisor::with_thermal_gate(dir, Arc::new(FakeThermalGate::new(ThermalDecision::Allow)))
     }
 
     // ── Existing cache-coalescing tests ──────────────────────────────────────
@@ -1155,11 +1136,7 @@ mod tests {
                 let probe_found = std::fs::read_dir(mp)
                     .expect("read mountpoint")
                     .filter_map(|e| e.ok())
-                    .any(|e| {
-                        e.file_name()
-                            .to_string_lossy()
-                            .starts_with(FUSE_READY_MARKER)
-                    });
+                    .any(|e| e.file_name().to_string_lossy().starts_with(FUSE_READY_MARKER));
                 assert!(
                     probe_found,
                     "readiness marker must be visible through mountpoint before Some is returned"
@@ -1183,22 +1160,14 @@ mod tests {
             assert_ne!(mp, dir.path());
             // Guard drop runs force-unmount; mount tempdir may remain but must not
             // still expose the readiness marker tree as a live FUSE mount.
-            let still_mounted = std::fs::read_dir(&mp)
-                .ok()
-                .is_some_and(|mut rd| {
-                    rd.any(|e| {
-                        e.ok()
-                            .is_some_and(|ent| {
-                                ent.file_name()
-                                    .to_string_lossy()
-                                    .starts_with(FUSE_READY_MARKER)
-                            })
+            let still_mounted = std::fs::read_dir(&mp).ok().is_some_and(|mut rd| {
+                rd.any(|e| {
+                    e.ok().is_some_and(|ent| {
+                        ent.file_name().to_string_lossy().starts_with(FUSE_READY_MARKER)
                     })
-                });
-            assert!(
-                !still_mounted,
-                "FUSE intercept MUST tear down on guard drop (AC-009.14)"
-            );
+                })
+            });
+            assert!(!still_mounted, "FUSE intercept MUST tear down on guard drop (AC-009.14)");
         }
     }
 
@@ -1208,12 +1177,10 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         tx.send("simulated mount boom".into()).expect("send");
         let probe = Path::new("/tmp/sharecli-fuse-ready-poll-never");
-        let err = wait_fuse_mount_ready(probe, &rx, Duration::from_secs(2), Duration::from_millis(10))
-            .expect_err("must fail when mount reports error");
-        assert!(
-            err.contains("mount failed"),
-            "loud error must mention mount failure: {err}"
-        );
+        let err =
+            wait_fuse_mount_ready(probe, &rx, Duration::from_secs(2), Duration::from_millis(10))
+                .expect_err("must fail when mount reports error");
+        assert!(err.contains("mount failed"), "loud error must mention mount failure: {err}");
         assert!(
             err.contains("simulated mount boom"),
             "loud error must include mount message: {err}"
@@ -1225,21 +1192,11 @@ mod tests {
     fn fuse_ready_poll_times_out_loudly_when_probe_missing() {
         let (_tx, rx) = mpsc::channel::<String>();
         let probe = Path::new("/tmp/sharecli-fuse-ready-poll-missing-xyz");
-        let err = wait_fuse_mount_ready(
-            probe,
-            &rx,
-            Duration::from_millis(80),
-            Duration::from_millis(20),
-        )
-        .expect_err("must time out when probe never appears");
-        assert!(
-            err.contains("timed out"),
-            "loud error must mention timeout: {err}"
-        );
-        assert!(
-            err.contains("sharecli-fuse"),
-            "loud error must identify sharecli-fuse: {err}"
-        );
+        let err =
+            wait_fuse_mount_ready(probe, &rx, Duration::from_millis(80), Duration::from_millis(20))
+                .expect_err("must time out when probe never appears");
+        assert!(err.contains("timed out"), "loud error must mention timeout: {err}");
+        assert!(err.contains("sharecli-fuse"), "loud error must identify sharecli-fuse: {err}");
     }
 
     /// Readiness poll succeeds when the probe file becomes readable.

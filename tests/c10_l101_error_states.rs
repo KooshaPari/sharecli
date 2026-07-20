@@ -11,7 +11,8 @@ fn repo_root() -> PathBuf {
 /// FR-003 / C10 L101 — dashboard ships disconnect error panel with recovery CTA.
 #[test]
 fn c10_l101_dashboard_disconnect_error_markup() {
-    let html = fs::read_to_string(repo_root().join("src/dashboard.html")).expect("read dashboard.html");
+    let html =
+        fs::read_to_string(repo_root().join("src/dashboard.html")).expect("read dashboard.html");
     for needle in [
         "error-state",
         "data-error-kind=\"disconnect\"",
@@ -34,10 +35,7 @@ fn c10_l101_error_states_doc_present() {
         doc.contains("data-error-kind=\"disconnect\""),
         "error-states.md must document disconnect kind"
     );
-    assert!(
-        doc.contains("Retry now"),
-        "error-states.md must document retry CTA"
-    );
+    assert!(doc.contains("Retry now"), "error-states.md must document retry CTA");
     assert!(
         doc.contains("sharecli serve --bind"),
         "error-states.md must document serve recovery command"

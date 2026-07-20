@@ -28,10 +28,7 @@ fn fr004_l81_10_help_golden_present() {
     let cli_help = repo_root().join("tests/golden/cli_help.txt");
     let help_body = fs::read_to_string(&help).expect("tests/golden/help.txt");
     let cli_body = fs::read_to_string(&cli_help).expect("tests/golden/cli_help.txt");
-    assert_eq!(
-        help_body, cli_body,
-        "help.txt must mirror cli_help.txt (canonical --help golden)"
-    );
+    assert_eq!(help_body, cli_body, "help.txt must mirror cli_help.txt (canonical --help golden)");
     assert!(help_body.contains("Usage: sharecli"));
 }
 
@@ -56,7 +53,8 @@ fn scan_tree_for_banned(dir: &Path, banned: &[&str]) {
             if name == "bip39_wordlist.rs" {
                 continue;
             }
-            let body = fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+            let body = fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
             for word in banned {
                 if body.to_ascii_lowercase().contains(word) {
                     panic!("banned term {word:?} in {}", path.display());
@@ -87,9 +85,5 @@ fn fr004_l81_10_vale_smoke_when_installed() {
         .arg(repo_root().join("scripts/lint/vale.sh"))
         .output()
         .expect("vale.sh");
-    assert!(
-        out.status.success(),
-        "vale: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.status.success(), "vale: {}", String::from_utf8_lossy(&out.stderr));
 }

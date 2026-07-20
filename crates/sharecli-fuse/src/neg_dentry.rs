@@ -97,12 +97,7 @@ impl NegativeDentryCache {
 
     /// Empty cache with an explicit TTL (tests / longer operator windows).
     pub fn with_ttl(ttl: Duration) -> Self {
-        Self {
-            entries: HashMap::new(),
-            ttl,
-            hits: AtomicU64::new(0),
-            misses: AtomicU64::new(0),
-        }
+        Self { entries: HashMap::new(), ttl, hits: AtomicU64::new(0), misses: AtomicU64::new(0) }
     }
 
     /// Configured TTL for newly remembered misses.
@@ -137,12 +132,7 @@ impl NegativeDentryCache {
     /// Record that `rel` was confirmed missing (ENOENT) and count a miss.
     pub fn remember_miss(&mut self, rel: PathBuf) {
         self.misses.fetch_add(1, Ordering::Relaxed);
-        self.entries.insert(
-            rel,
-            NegEntry {
-                expires_at: Instant::now() + self.ttl,
-            },
-        );
+        self.entries.insert(rel, NegEntry { expires_at: Instant::now() + self.ttl });
     }
 
     /// Drop a negative entry (e.g. after create / mkdir / rename-into).

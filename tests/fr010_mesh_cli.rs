@@ -35,11 +35,7 @@ fn fr010_cli_mesh_status_json() {
         .arg("--json")
         .output()
         .expect("spawn mesh status");
-    assert!(
-        out.status.success(),
-        "mesh status MUST exit 0; stderr={}",
-        stderr(&out)
-    );
+    assert!(out.status.success(), "mesh status MUST exit 0; stderr={}", stderr(&out));
     let body = stdout(&out);
     let v: serde_json::Value = serde_json::from_str(&body).expect("json status");
     assert_eq!(v["ready"], 0);
@@ -61,20 +57,10 @@ fn fr010_cli_mesh_reclaim() {
         .args(["--owner", "stranded"])
         .output()
         .expect("spawn mesh reclaim");
-    assert!(
-        out.status.success(),
-        "mesh reclaim MUST exit 0; stderr={}",
-        stderr(&out)
-    );
+    assert!(out.status.success(), "mesh reclaim MUST exit 0; stderr={}", stderr(&out));
     let body = stdout(&out);
-    assert!(
-        body.contains("reclaimed 1"),
-        "expected reclaim count in stdout, got {body}"
-    );
-    assert!(
-        dir.path().join("new").join(&id).exists(),
-        "AC-010.10 CLI: task MUST be back in new/"
-    );
+    assert!(body.contains("reclaimed 1"), "expected reclaim count in stdout, got {body}");
+    assert!(dir.path().join("new").join(&id).exists(), "AC-010.10 CLI: task MUST be back in new/");
 }
 
 /// FR-010 — empty --owner fails loudly (no silent reclaim of everything).
@@ -88,9 +74,5 @@ fn fr010_cli_mesh_reclaim_empty_owner_fails() {
         .args(["--owner", "   "])
         .output()
         .expect("spawn");
-    assert!(
-        !out.status.success(),
-        "empty owner MUST fail; stdout={}",
-        stdout(&out)
-    );
+    assert!(!out.status.success(), "empty owner MUST fail; stdout={}", stdout(&out));
 }

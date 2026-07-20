@@ -9,10 +9,10 @@
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
-use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch, ResourceWatchSample};
-use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
 use sharecli_fleet::SlotQueueMeters;
+use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch, ResourceWatchSample};
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_mesh::MaildirStatus;
 use sharecli_thermal_tui::{
     fuse_coalesce_lines, fuse_neg_dentry_lines, fuse_write_serialize_lines, host_agent_lines,
@@ -30,22 +30,10 @@ const SAMPLE: ResourceWatchSample = ResourceWatchSample {
 
 const FUSE_METERS: ReadCacheMeters = ReadCacheMeters { hits: 5, misses: 2 };
 const NEG_METERS: NegDentryMeters = NegDentryMeters { hits: 3, misses: 1 };
-const COALESCE_METERS: CoalesceMeters = CoalesceMeters {
-    hits: 9,
-    misses: 3,
-    nocache_runs: 2,
-};
-const WRITE_SERIALIZE_METERS: WriteSerializeMeters = WriteSerializeMeters {
-    passthrough_writes: 4,
-    stages: 2,
-    commits: 1,
-    discards: 1,
-};
-const SLOT_QUEUE_METERS: SlotQueueMeters = SlotQueueMeters {
-    acquires: 5,
-    waits: 3,
-    timeouts: 1,
-};
+const COALESCE_METERS: CoalesceMeters = CoalesceMeters { hits: 9, misses: 3, nocache_runs: 2 };
+const WRITE_SERIALIZE_METERS: WriteSerializeMeters =
+    WriteSerializeMeters { passthrough_writes: 4, stages: 2, commits: 1, discards: 1 };
+const SLOT_QUEUE_METERS: SlotQueueMeters = SlotQueueMeters { acquires: 5, waits: 3, timeouts: 1 };
 
 fn sample_mesh_maildir() -> MaildirStatus {
     MaildirStatus {
@@ -131,11 +119,7 @@ fn fr009_thermal_tui_write_serialize_lines() {
 /// FR-006 / AC-006.9 — thermal TUI renders host agent inventory lines.
 #[test]
 fn fr006_thermal_tui_host_agent_lines() {
-    let agents = vec![DetectedAgent {
-        pid: 4242,
-        family: "claude",
-        comm: "claude".into(),
-    }];
+    let agents = vec![DetectedAgent { pid: 4242, family: "claude", comm: "claude".into() }];
     let lines = host_agent_lines(&agents, false);
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(text.contains("Host agents:") && text.contains("claude"));
@@ -162,26 +146,14 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
         )
         .with_maildir_status(Some(sample_mesh_maildir()))
         .with_detected_agents(vec![DetectedAgentWatch {
-            agent: DetectedAgent {
-                pid: 100,
-                family: "forge",
-                comm: "forge".into(),
-            },
-            resource: AgentResourceSample {
-                mem_rss_bytes: 8_388_608,
-                fd_count: Some(16),
-            },
+            agent: DetectedAgent { pid: 100, family: "forge", comm: "forge".into() },
+            resource: AgentResourceSample { mem_rss_bytes: 8_388_608, fd_count: Some(16) },
         }]);
     app.update(ThermalLevel::Green, 1);
 
     terminal.draw(|f| render(f, &app)).expect("draw");
-    let rendered: String = terminal
-        .backend()
-        .buffer()
-        .content
-        .iter()
-        .map(|c| c.symbol().to_string())
-        .collect();
+    let rendered: String =
+        terminal.backend().buffer().content.iter().map(|c| c.symbol().to_string()).collect();
 
     assert!(
         rendered.contains("Host Resource Watch") && rendered.contains("Open FDs:"),
@@ -203,10 +175,7 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
         rendered.contains("Mesh ready:") && rendered.contains("Mesh pending:"),
         "thermal TUI MUST surface mesh Maildir depth (AC-010.11)"
     );
-    assert!(
-        rendered.contains("Cache hits:"),
-        "thermal TUI MUST surface FUSE read-coalesce meters"
-    );
+    assert!(rendered.contains("Cache hits:"), "thermal TUI MUST surface FUSE read-coalesce meters");
     assert!(
         rendered.contains("Neg hits:") && rendered.contains("Neg misses:"),
         "thermal TUI MUST surface FUSE negative-dentry meters"

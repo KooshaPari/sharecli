@@ -22,13 +22,7 @@ struct ServeChild {
 impl ServeChild {
     fn spawn(port: u16) -> Self {
         let child = bin()
-            .args([
-                "serve",
-                "--bind",
-                &format!("127.0.0.1:{port}"),
-                "--on-conflict",
-                "replace",
-            ])
+            .args(["serve", "--bind", &format!("127.0.0.1:{port}"), "--on-conflict", "replace"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -70,12 +64,7 @@ fn wait_healthz(url: &str, timeout: Duration) -> bool {
 /// FR-003 / C07 L64 — e2e tier: real serve process answers `/healthz`.
 #[test]
 fn serve_healthz_e2e_returns_200() {
-    if !Command::new("curl")
-        .arg("--version")
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
-    {
+    if !Command::new("curl").arg("--version").status().map(|s| s.success()).unwrap_or(false) {
         eprintln!("curl not available; skipping serve_healthz_e2e_returns_200");
         return;
     }

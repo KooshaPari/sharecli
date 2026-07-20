@@ -37,15 +37,9 @@ fn fr004_l81_13_committed_man_page_present() {
 
 #[test]
 fn fr004_l81_13_man_subcommand_matches_committed_page() {
-    let out = Command::new(env!("CARGO_BIN_EXE_sharecli"))
-        .arg("man")
-        .output()
-        .expect("sharecli man");
-    assert!(
-        out.status.success(),
-        "sharecli man: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    let out =
+        Command::new(env!("CARGO_BIN_EXE_sharecli")).arg("man").output().expect("sharecli man");
+    assert!(out.status.success(), "sharecli man: {}", String::from_utf8_lossy(&out.stderr));
     let stdout = String::from_utf8_lossy(&out.stdout);
     let committed =
         fs::read_to_string(repo_root().join("share/man/man1/sharecli.1")).expect("committed man");
@@ -64,10 +58,7 @@ fn fr004_l81_13_help_mentions_faq() {
         .expect("sharecli --help");
     assert!(out.status.success());
     let help = String::from_utf8_lossy(&out.stdout);
-    assert!(
-        help.contains("docs/faq.md"),
-        "--help after_long_help must link docs/faq.md"
-    );
+    assert!(help.contains("docs/faq.md"), "--help after_long_help must link docs/faq.md");
 }
 
 #[test]

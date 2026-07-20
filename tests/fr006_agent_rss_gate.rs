@@ -20,36 +20,22 @@ async fn fr006_agent_rss_refuses_hypervisor_spawn() {
     fn rss_refuse_tier() -> AgentContentionTier {
         agent_resource_contention_tier(
             3_000,
-            AgentResourceThresholds {
-                warn_total_rss_bytes: 1_000,
-                refuse_total_rss_bytes: 2_000,
-            },
+            AgentResourceThresholds { warn_total_rss_bytes: 1_000, refuse_total_rss_bytes: 2_000 },
         )
     }
     let dir = TempDir::new().expect("tempdir");
     let inner = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
-    let gate = Arc::new(AgentAwareThermalGate::with_agent_tier(
-        inner,
-        Arc::new(rss_refuse_tier),
-    ));
+    let gate = Arc::new(AgentAwareThermalGate::with_agent_tier(inner, Arc::new(rss_refuse_tier)));
     let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
 
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "rss-gated".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "rss-gated".to_string(),
-    ];
+    let argv =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "rss-gated".to_string()];
 
     let err = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
         .await
         .expect_err("RSS refuse MUST err after retries");
 

@@ -8,10 +8,10 @@ use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::ThermalLevel;
-use sharecli_fleet::{AgentResourceSample, DetectedAgentWatch, ResourceWatchSample};
-use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
 use sharecli_fleet::SlotQueueMeters;
+use sharecli_fleet::{AgentResourceSample, DetectedAgentWatch, ResourceWatchSample};
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_thermal_tui::{agent_lines, render, App};
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
@@ -25,26 +25,12 @@ const SAMPLE: ResourceWatchSample = ResourceWatchSample {
 fn fixture_agents() -> Vec<DetectedAgentWatch> {
     vec![
         DetectedAgentWatch {
-            agent: DetectedAgent {
-                pid: 100,
-                family: "claude",
-                comm: "claude".into(),
-            },
-            resource: AgentResourceSample {
-                mem_rss_bytes: 52_428_800,
-                fd_count: Some(24),
-            },
+            agent: DetectedAgent { pid: 100, family: "claude", comm: "claude".into() },
+            resource: AgentResourceSample { mem_rss_bytes: 52_428_800, fd_count: Some(24) },
         },
         DetectedAgentWatch {
-            agent: DetectedAgent {
-                pid: 250,
-                family: "cursor",
-                comm: "cursor-agent".into(),
-            },
-            resource: AgentResourceSample {
-                mem_rss_bytes: 104_857_600,
-                fd_count: None,
-            },
+            agent: DetectedAgent { pid: 250, family: "cursor", comm: "cursor-agent".into() },
+            resource: AgentResourceSample { mem_rss_bytes: 104_857_600, fd_count: None },
         },
     ]
 }
@@ -78,20 +64,12 @@ fn fr006_thermal_tui_render_includes_agent_panel() {
     app.update(ThermalLevel::Green, 0);
 
     terminal.draw(|f| render(f, &app)).expect("draw");
-    let rendered: String = terminal
-        .backend()
-        .buffer()
-        .content
-        .iter()
-        .map(|c| c.symbol().to_string())
-        .collect();
+    let rendered: String =
+        terminal.backend().buffer().content.iter().map(|c| c.symbol().to_string()).collect();
 
     assert!(
         rendered.contains("Detected Agents") && rendered.contains("PID 100"),
         "thermal TUI MUST surface proc-scan agent inventory"
     );
-    assert!(
-        rendered.contains("RSS"),
-        "thermal TUI MUST surface per-agent RSS watch"
-    );
+    assert!(rendered.contains("RSS"), "thermal TUI MUST surface per-agent RSS watch");
 }

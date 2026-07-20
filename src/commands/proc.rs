@@ -152,10 +152,7 @@ fn rss_map_from_watched(watched: &[DetectedAgentWatch]) -> HashMap<u32, u64> {
 }
 
 fn fd_map_from_watched(watched: &[DetectedAgentWatch]) -> HashMap<u32, u64> {
-    watched
-        .iter()
-        .map(|row| (row.agent.pid, row.resource.fd_count.unwrap_or(0)))
-        .collect()
+    watched.iter().map(|row| (row.agent.pid, row.resource.fd_count.unwrap_or(0))).collect()
 }
 
 fn apply_sort_watched(

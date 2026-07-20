@@ -65,8 +65,7 @@ impl MaildirQueue {
         let new = path.join("new");
         let cur = path.join("cur");
         for d in [&tmp, &new, &cur] {
-            fs::create_dir_all(d)
-                .with_context(|| format!("create maildir dir {}", d.display()))?;
+            fs::create_dir_all(d).with_context(|| format!("create maildir dir {}", d.display()))?;
         }
         Ok(Self { path, tmp, new, cur })
     }
@@ -80,10 +79,7 @@ impl MaildirQueue {
     /// Lifecycle: write `tmp/<id>` → rename → `new/<id>`.
     pub fn enqueue(&self, payload: Value, priority: u8) -> Result<String> {
         let task_id = Uuid::new_v4().to_string();
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs_f64();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs_f64();
         let envelope = TaskEnvelope {
             id: task_id.clone(),
             payload,
@@ -177,8 +173,8 @@ impl MaildirQueue {
     /// Reclaim in-flight tasks owned by `owner` back to `new/`.
     pub fn reclaim_owner(&self, owner: &str) -> Result<usize> {
         let mut reclaimed = 0usize;
-        for entry in fs::read_dir(&self.cur)
-            .with_context(|| format!("read cur {}", self.cur.display()))?
+        for entry in
+            fs::read_dir(&self.cur).with_context(|| format!("read cur {}", self.cur.display()))?
         {
             let entry = entry?;
             if !entry.file_type()?.is_file() {

@@ -28,8 +28,8 @@ fn fr004_l81_3_playwright_keyboard_script_present() {
 
 #[test]
 fn fr004_dashboard_main_is_skip_target() {
-    let html = fs::read_to_string(repo_root().join("src/dashboard.html"))
-        .expect("read dashboard.html");
+    let html =
+        fs::read_to_string(repo_root().join("src/dashboard.html")).expect("read dashboard.html");
     assert!(
         html.contains(r#"id="main-content" tabindex="-1""#),
         "main must be focusable skip-link target"
@@ -39,10 +39,7 @@ fn fr004_dashboard_main_is_skip_target() {
 #[test]
 fn fr004_a11y_keyboard_npm_script_registered() {
     let pkg = fs::read_to_string(repo_root().join("package.json")).expect("read package.json");
-    assert!(
-        pkg.contains(r#""a11y:keyboard"#),
-        "package.json must expose a11y:keyboard for CI"
-    );
+    assert!(pkg.contains(r#""a11y:keyboard"#), "package.json must expose a11y:keyboard for CI");
 }
 
 /// Smoke: axe dashboard still passes after keyboard/doc changes (no browser required).
@@ -53,9 +50,5 @@ fn fr004_axe_dashboard_still_passes() {
         .current_dir(repo_root())
         .output()
         .expect("npm run a11y:dashboard");
-    assert!(
-        out.status.success(),
-        "axe dashboard: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.status.success(), "axe dashboard: {}", String::from_utf8_lossy(&out.stderr));
 }

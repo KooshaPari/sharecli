@@ -4,7 +4,7 @@
 //! re-exported from `sharecli::monitoring` for ProcessStats enrichment.
 //! Per-agent PID sampling supports thermal TUI and `ps --all` (FR-006 / FR-007).
 
-use crate::proc_scan::{DetectedAgent, scan_host_agents};
+use crate::proc_scan::{scan_host_agents, DetectedAgent};
 use anyhow::{Context, Result};
 
 /// Point-in-time CPU/MEM/Net/FD resource watch sample (FR-007).
@@ -30,10 +30,7 @@ impl AgentResourceSample {
     pub fn capture_for_pid(pid: u32) -> Result<Self> {
         let mem_rss_bytes = sample_pid_rss_bytes(pid)?;
         let fd_count = sample_pid_fds(pid).ok();
-        Ok(Self {
-            mem_rss_bytes,
-            fd_count,
-        })
+        Ok(Self { mem_rss_bytes, fd_count })
     }
 }
 
@@ -51,10 +48,7 @@ pub fn watch_detected_agents(agents: &[DetectedAgent]) -> Vec<DetectedAgentWatch
         .filter_map(|agent| {
             AgentResourceSample::capture_for_pid(agent.pid)
                 .ok()
-                .map(|resource| DetectedAgentWatch {
-                    agent: agent.clone(),
-                    resource,
-                })
+                .map(|resource| DetectedAgentWatch { agent: agent.clone(), resource })
         })
         .collect()
 }
@@ -88,28 +82,21 @@ pub fn parse_rss_bytes(input: &str) -> Result<u64> {
     const MIB: u64 = 1_048_576;
     const GIB: u64 = 1_073_741_824;
     if let Some(num) = upper.strip_suffix('G') {
-        let value: f64 = num
-            .trim()
-            .parse()
-            .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
+        let value: f64 =
+            num.trim().parse().map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
         return Ok((value * GIB as f64) as u64);
     }
     if let Some(num) = upper.strip_suffix('M') {
-        let value: f64 = num
-            .trim()
-            .parse()
-            .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
+        let value: f64 =
+            num.trim().parse().map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
         return Ok((value * MIB as f64) as u64);
     }
     if let Some(num) = upper.strip_suffix('K') {
-        let value: f64 = num
-            .trim()
-            .parse()
-            .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
+        let value: f64 =
+            num.trim().parse().map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
         return Ok((value * KIB as f64) as u64);
     }
-    s.parse::<u64>()
-        .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))
+    s.parse::<u64>().map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))
 }
 
 impl ResourceWatchSample {
@@ -119,13 +106,7 @@ impl ResourceWatchSample {
         let (net_rx_bytes, net_tx_bytes) = sample_host_net()?;
         let mem_rss_bytes = sample_self_rss_bytes()?;
         let load_1m = sample_host_load_1m()?;
-        Ok(Self {
-            fd_count,
-            net_rx_bytes,
-            net_tx_bytes,
-            mem_rss_bytes,
-            load_1m,
-        })
+        Ok(Self { fd_count, net_rx_bytes, net_tx_bytes, mem_rss_bytes, load_1m })
     }
 
     /// Operator-facing status block for `sharecli status` (FR-007 / AC-007.10).
@@ -175,8 +156,8 @@ pub fn sample_host_load_1m() -> Result<f64> {
 
 #[cfg(target_os = "linux")]
 fn sample_self_fds_impl() -> Result<u64> {
-    let entries = std::fs::read_dir("/proc/self/fd")
-        .context("failed to read /proc/self/fd for FD watch")?;
+    let entries =
+        std::fs::read_dir("/proc/self/fd").context("failed to read /proc/self/fd for FD watch")?;
     Ok(entries.count() as u64)
 }
 
@@ -211,12 +192,10 @@ fn sample_host_net_impl() -> Result<(u64, u64)> {
         if fields.len() < 9 {
             continue;
         }
-        let rx: u64 = fields[0]
-            .parse()
-            .with_context(|| format!("invalid RX bytes for interface {iface}"))?;
-        let tx: u64 = fields[8]
-            .parse()
-            .with_context(|| format!("invalid TX bytes for interface {iface}"))?;
+        let rx: u64 =
+            fields[0].parse().with_context(|| format!("invalid RX bytes for interface {iface}"))?;
+        let tx: u64 =
+            fields[8].parse().with_context(|| format!("invalid TX bytes for interface {iface}"))?;
         rx_total = rx_total.saturating_add(rx);
         tx_total = tx_total.saturating_add(tx);
     }
@@ -233,14 +212,11 @@ fn sample_host_net_impl() -> Result<(u64, u64)> {
         .output()
         .context("failed to spawn netstat -ib for network watch")?;
     if !output.status.success() {
-        anyhow::bail!(
-            "netstat -ib exited with status {}",
-            output.status.code().unwrap_or(-1)
-        );
+        anyhow::bail!("netstat -ib exited with status {}", output.status.code().unwrap_or(-1));
     }
 
-    let stdout = String::from_utf8(output.stdout)
-        .context("netstat -ib output was not valid UTF-8")?;
+    let stdout =
+        String::from_utf8(output.stdout).context("netstat -ib output was not valid UTF-8")?;
     let mut rx_total = 0u64;
     let mut tx_total = 0u64;
 
@@ -253,12 +229,10 @@ fn sample_host_net_impl() -> Result<(u64, u64)> {
         if name == "Name" || name.starts_with("lo") {
             continue;
         }
-        let rx: u64 = cols[6]
-            .parse()
-            .with_context(|| format!("invalid Ibytes for interface {name}"))?;
-        let tx: u64 = cols[9]
-            .parse()
-            .with_context(|| format!("invalid Obytes for interface {name}"))?;
+        let rx: u64 =
+            cols[6].parse().with_context(|| format!("invalid Ibytes for interface {name}"))?;
+        let tx: u64 =
+            cols[9].parse().with_context(|| format!("invalid Obytes for interface {name}"))?;
         rx_total = rx_total.saturating_add(rx);
         tx_total = tx_total.saturating_add(tx);
     }
@@ -349,9 +323,8 @@ fn sample_pid_rss_bytes_impl(pid: u32) -> Result<u64> {
     let pid = Pid::from_u32(pid);
     let mut sys = System::new();
     sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
-    let proc = sys
-        .process(pid)
-        .with_context(|| format!("process {pid} not found for RSS sample"))?;
+    let proc =
+        sys.process(pid).with_context(|| format!("process {pid} not found for RSS sample"))?;
     Ok(proc.memory())
 }
 
@@ -423,14 +396,10 @@ mod tests {
     #[test]
     fn test_agent_resource_sample_self_pid() {
         let pid = std::process::id();
-        let sample =
-            AgentResourceSample::capture_for_pid(pid).expect("self PID resource sample");
+        let sample = AgentResourceSample::capture_for_pid(pid).expect("self PID resource sample");
         assert!(sample.mem_rss_bytes > 0, "live process MUST have non-zero RSS");
         #[cfg(target_os = "linux")]
-        assert!(
-            sample.fd_count.unwrap_or(0) >= 3,
-            "live process MUST have stdio FDs on Linux"
-        );
+        assert!(sample.fd_count.unwrap_or(0) >= 3, "live process MUST have stdio FDs on Linux");
     }
 
     #[test]

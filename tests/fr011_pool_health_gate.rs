@@ -26,11 +26,7 @@ fn assert_gate_section(text: &str, cmd: &str) {
 #[test]
 fn fr011_pool_includes_gate_section() {
     let out = sharecli_bin().arg("pool").output().expect("pool");
-    assert!(
-        out.status.success(),
-        "pool failed: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.status.success(), "pool failed: {}", String::from_utf8_lossy(&out.stderr));
     let text = String::from_utf8_lossy(&out.stdout);
     assert_gate_section(&text, "pool");
 }
@@ -39,11 +35,7 @@ fn fr011_pool_includes_gate_section() {
 #[test]
 fn fr011_health_includes_gate_section() {
     let out = sharecli_bin().arg("health").output().expect("health");
-    assert!(
-        out.status.success(),
-        "health failed: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.status.success(), "health failed: {}", String::from_utf8_lossy(&out.stderr));
     let text = String::from_utf8_lossy(&out.stdout);
     assert_gate_section(&text, "health");
 }

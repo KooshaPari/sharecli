@@ -195,16 +195,8 @@ mod tests {
         let _ = cache.read_coalesced(&path).expect("hit");
 
         let global = global_read_cache_meters();
-        assert_eq!(
-            global.hits.saturating_sub(before.hits),
-            1,
-            "global MUST count hit"
-        );
-        assert_eq!(
-            global.misses.saturating_sub(before.misses),
-            1,
-            "global MUST count miss"
-        );
+        assert_eq!(global.hits.saturating_sub(before.hits), 1, "global MUST count hit");
+        assert_eq!(global.misses.saturating_sub(before.misses), 1, "global MUST count miss");
         let section = global.format_status_section();
         assert!(
             section.contains("=== FUSE Read Coalesce ===") && section.contains("Hit rate:"),
