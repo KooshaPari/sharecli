@@ -430,8 +430,11 @@ speculative coalesce via Allow / Warn / Refuse semantics.
   same gate fields via [`gate_status_snapshot`](crates/sharecli-fleet/src/agent_contention.rs)
   / [`format_gate_status_section`](crates/sharecli-fleet/src/agent_contention.rs)
   (detected agent count, contention tier, ADMIT/DENY).
+- **AC-011.7:** `sharecli pool` and `sharecli health` print the same live
+  [`format_gate_status_section`](crates/sharecli-fleet/src/agent_contention.rs)
+  after pool/runtime health output (parity with `status` / AC-011.5).
 
-**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr011_agent_thermal_gate.rs`, `tests/fr004_status_health.rs`, `tests/fr011_report_gate.rs`, `tests/fr008_coalesce_mesh.rs`
+**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr011_agent_thermal_gate.rs`, `tests/fr004_status_health.rs`, `tests/fr011_report_gate.rs`, `tests/fr011_pool_health_gate.rs`, `tests/fr008_coalesce_mesh.rs`
 
 ---
 

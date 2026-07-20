@@ -156,6 +156,7 @@
 | AC-011.4 | `tests/fr011_agent_thermal_gate.rs`; `sharecli-core` / `sharecli-fleet` agent_contention unit tests | agent-count thermal escalation |
 | AC-011.5 | `tests/fr004_status_health.rs`; `sharecli-fleet` `format_gate_status_section` unit tests | status thermal+agent gate section |
 | AC-011.6 | `tests/fr011_report_gate.rs`; `src/commands/report.rs` unit tests; `src/commands/mod.rs` (`ps --all`) | report + ps --all gate parity |
+| AC-011.7 | `tests/fr011_pool_health_gate.rs`; `src/commands/mod.rs` (`pool`, `health`) | pool + health gate parity |
 
 ### FR-012 — Serve JWT AuthN
 
@@ -167,6 +168,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-011 pool/health gate parity:** `sharecli pool` and
+  `sharecli health` print `format_gate_status_section` after runtime health
+  (AC-011.7).
 - **2026-07-20 — FR-011 report/ps gate parity:** `sharecli report` JSON/text and
   `sharecli ps --all` surface gate fields via `gate_status_snapshot` (AC-011.6).
 - **2026-07-20 — FR-011 status gate section:** `sharecli status` prints

@@ -28,6 +28,14 @@ use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
 /// Shared runtime instance
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();
 
+/// Poll live thermal + proc-scan agent inventory and print the FR-011 gate section.
+fn print_live_gate_section() -> Result<()> {
+    let thermal = ThermalGovernor::new().poll()?;
+    let agent_count = count_host_agents();
+    print!("{}", format_gate_status_section(thermal, agent_count));
+    Ok(())
+}
+
 fn get_shared_runtime() -> &'static SharedRuntime {
     SHARED_RUNTIME.get_or_init(|| {
         let max = config::global().pool.max_per_type;
@@ -313,9 +321,7 @@ pub async fn status(verbose: bool) -> Result<()> {
     let neg_meters = global_neg_dentry_meters();
     print!("{}", neg_meters.format_status_section());
 
-    let thermal = ThermalGovernor::new().poll()?;
-    let agent_count = count_host_agents();
-    print!("{}", format_gate_status_section(thermal, agent_count));
+    print_live_gate_section()?;
 
     if verbose {
         println!("\n=== Detailed Process List ===\n");
@@ -645,6 +651,8 @@ pub async fn pool_status() -> Result<()> {
         }
     }
 
+    print_live_gate_section()?;
+
     Ok(())
 }
 
@@ -682,6 +690,8 @@ pub async fn health(harness: Option<&str>) -> Result<()> {
         pool_status.bun_total, pool_status.bun_idle, health.bun_in_use
     );
     println!("\nMax per harness type: {}", pool_status.max_per_type);
+
+    print_live_gate_section()?;
 
     Ok(())
 }
