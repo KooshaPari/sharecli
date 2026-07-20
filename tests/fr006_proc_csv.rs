@@ -99,19 +99,15 @@ fn fr006_proc_csv_rejects_json_combo() {
     );
 }
 
-/// FR-006 / AC-006.24 — --csv rejects --tree.
+/// FR-006 / AC-006.24 — --csv without --tree rejects bare --tree (use --tree --csv per AC-006.26).
 #[test]
-fn fr006_proc_csv_rejects_tree_combo() {
+fn fr006_proc_csv_flat_rejects_tree_without_csv_pairing() {
     let out = bin().args(["proc", "--csv", "--tree"]).output().expect("spawn proc --csv --tree");
-    assert!(!out.status.success());
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    assert!(out.status.success(), "proc --csv --tree MUST succeed (AC-006.26); stderr: {:?}", out.stderr);
+    let s = String::from_utf8_lossy(&out.stdout);
     assert!(
-        combined.to_ascii_lowercase().contains("tree") || combined.contains("--csv"),
-        "MUST reject --csv with --tree; got: {combined}"
+        s.lines().next().unwrap_or("").starts_with("root_index,"),
+        "combined --tree --csv MUST emit forest CSV; got: {s}"
     );
 }
 
