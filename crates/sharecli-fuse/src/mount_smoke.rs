@@ -7,7 +7,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crate::provenance::{default_session_id, read_provenance};
 
 /// Environment variable that opts into privileged mount smoke tests.
 pub const ENV_FUSE_MOUNT_SMOKE: &str = "SHARECLI_FUSE_MOUNT_SMOKE";
@@ -111,7 +113,44 @@ impl Drop for MountSession {
     }
 }
 
+/// After a live FUSE write, provenance xattrs MUST be present on the backing file.
+pub fn verify_mount_smoke_provenance(backing_file: &Path) -> anyhow::Result<()> {
+    let prov = read_provenance(backing_file)
+        .map_err(|e| anyhow::anyhow!("mount smoke provenance read failed: {e}"))?
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "mount smoke provenance: missing xattrs on {}",
+                backing_file.display()
+            )
+        })?;
+    let expected_session = default_session_id();
+    anyhow::ensure!(
+        prov.session_id == expected_session,
+        "mount smoke provenance: session_id {:?} != expected {:?}",
+        prov.session_id,
+        expected_session
+    );
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    anyhow::ensure!(
+        prov.written_at_unix <= now.saturating_add(5),
+        "mount smoke provenance: written_at {} is in the future (now {now})",
+        prov.written_at_unix
+    );
+    anyhow::ensure!(
+        now.saturating_sub(prov.written_at_unix) <= 60,
+        "mount smoke provenance: written_at {} is stale (now {now})",
+        prov.written_at_unix
+    );
+    Ok(())
+}
+
 /// Read/write round-trip through a live FUSE mount (privileged smoke).
+///
+/// After the write, asserts write provenance xattrs on the backing path
+/// (AC-009.6 × AC-009.8).
 pub fn run_mount_smoke(backing: &Path) -> anyhow::Result<()> {
     let seed_rel = Path::new("smoke-seed.txt");
     std::fs::write(backing.join(seed_rel), b"before-fuse")?;
@@ -126,17 +165,41 @@ pub fn run_mount_smoke(backing: &Path) -> anyhow::Result<()> {
     );
 
     std::fs::write(&mounted_seed, b"after-fuse")?;
-    let backing_body = std::fs::read(backing.join(seed_rel))?;
+    let backing_seed = backing.join(seed_rel);
+    let backing_body = std::fs::read(&backing_seed)?;
     anyhow::ensure!(
         backing_body == b"after-fuse",
         "mount smoke write: backing file not updated through FUSE"
     );
+    verify_mount_smoke_provenance(&backing_seed)?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provenance::annotate_write;
+
+    #[test]
+    fn verify_mount_smoke_provenance_accepts_annotated_backing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("tracked.txt");
+        std::fs::write(&path, b"payload").expect("write");
+        annotate_write(&path, &default_session_id()).expect("annotate");
+        verify_mount_smoke_provenance(&path).expect("provenance must validate");
+    }
+
+    #[test]
+    fn verify_mount_smoke_provenance_fails_loudly_when_missing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("plain.txt");
+        std::fs::write(&path, b"plain").expect("write");
+        let err = verify_mount_smoke_provenance(&path).expect_err("must fail without xattrs");
+        assert!(
+            err.to_string().contains("missing xattrs"),
+            "loud error must mention missing xattrs: {err}"
+        );
+    }
 
     #[test]
     fn smoke_env_disabled_by_default() {

@@ -8,7 +8,7 @@
 //! AC-009.5 write-serialize per-path lock + CoW stage/commit/discard
 //! AC-009.6 write provenance xattrs on write_rel / commit_rel
 //! AC-009.7 negative dentry cache TTL hit/miss + invalidate on create
-//! AC-009.8 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1)
+//! AC-009.8 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1) + provenance xattrs
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;

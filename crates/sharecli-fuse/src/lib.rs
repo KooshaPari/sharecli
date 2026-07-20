@@ -38,8 +38,8 @@ pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
 pub use neg_dentry::{NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use mount_smoke::{
-    force_unmount, fuse_mount_smoke_enabled, run_mount_smoke, MountSession,
-    ENV_FUSE_MOUNT_SMOKE,
+    force_unmount, fuse_mount_smoke_enabled, run_mount_smoke, verify_mount_smoke_provenance,
+    MountSession, ENV_FUSE_MOUNT_SMOKE,
 };
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use provenance::{
