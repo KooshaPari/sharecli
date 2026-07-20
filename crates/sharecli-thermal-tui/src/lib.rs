@@ -27,7 +27,7 @@ use sharecli_fleet::{
     effective_gate_decision, format_rss_bytes, global_coalesce_meters, watch_host_agents,
     CoalesceMeters, DetectedAgentWatch, ResourceWatchSample,
 };
-use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, NegDentryMeters, ReadCacheMeters};
+use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters, NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 
 // ---------------------------------------------------------------------------
 // Pure transforms — unit-testable
@@ -220,6 +220,23 @@ pub fn hypervisor_coalesce_lines(meters: CoalesceMeters, compact: bool) -> Vec<L
     ]
 }
 
+/// Lines for the FUSE write-serialize / CoW panel (FR-009 / AC-009.10 TUI slice).
+pub fn fuse_write_serialize_lines(meters: WriteSerializeMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " wr:{} st:{} cm:{} ds:{}",
+            meters.passthrough_writes, meters.stages, meters.commits, meters.discards
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Passthrough:  {}", meters.passthrough_writes)),
+        Line::from(format!("  Stages:       {}", meters.stages)),
+        Line::from(format!("  Commits:      {}", meters.commits)),
+        Line::from(format!("  Discards:     {}", meters.discards)),
+    ]
+}
+
 /// Lines for the FUSE read-coalesce panel (FR-007 / AC-007.9 TUI slice).
 pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'static>> {
     if compact {
@@ -349,6 +366,8 @@ pub struct App {
     pub neg_dentry_meters: NegDentryMeters,
     /// Process-wide Hypervisor coalesce cache meters.
     pub coalesce_meters: CoalesceMeters,
+    /// Process-wide FUSE write-serialize / CoW meters.
+    pub write_serialize_meters: WriteSerializeMeters,
     /// Host agent inventory with per-PID resource watch (FR-006 × FR-007).
     pub detected_agents: Vec<DetectedAgentWatch>,
 }
@@ -366,6 +385,7 @@ impl App {
             fuse_meters: ReadCacheMeters::default(),
             neg_dentry_meters: NegDentryMeters::default(),
             coalesce_meters: CoalesceMeters::default(),
+            write_serialize_meters: WriteSerializeMeters::default(),
             detected_agents: Vec::new(),
         }
     }
@@ -384,6 +404,7 @@ impl App {
         self.fuse_meters = global_read_cache_meters();
         self.neg_dentry_meters = global_neg_dentry_meters();
         self.coalesce_meters = global_coalesce_meters();
+        self.write_serialize_meters = global_write_serialize_meters();
         self.detected_agents = watch_host_agents();
     }
 
@@ -394,11 +415,13 @@ impl App {
         fuse: ReadCacheMeters,
         neg: NegDentryMeters,
         coalesce: CoalesceMeters,
+        write_serialize: WriteSerializeMeters,
     ) -> Self {
         self.resource_watch = watch;
         self.fuse_meters = fuse;
         self.neg_dentry_meters = neg;
         self.coalesce_meters = coalesce;
+        self.write_serialize_meters = write_serialize;
         self
     }
 
@@ -442,7 +465,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let thermal_h = if compact { 4 } else { 5 };
     let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 6 };
-    let fuse_h = if compact { 6 } else { 12 };
+    let fuse_h = if compact { 7 } else { 15 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -580,6 +603,7 @@ fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool)
     let mut lines = hypervisor_coalesce_lines(app.coalesce_meters, compact);
     lines.extend(fuse_coalesce_lines(app.fuse_meters, compact));
     lines.extend(fuse_neg_dentry_lines(app.neg_dentry_meters, compact));
+    lines.extend(fuse_write_serialize_lines(app.write_serialize_meters, compact));
     let block = Block::default().borders(Borders::ALL).title(title);
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
@@ -1003,6 +1027,12 @@ mod tests {
                 ReadCacheMeters { hits: 2, misses: 1 },
                 NegDentryMeters { hits: 1, misses: 0 },
                 CoalesceMeters { hits: 4, misses: 1, nocache_runs: 2 },
+                WriteSerializeMeters {
+                    passthrough_writes: 2,
+                    stages: 1,
+                    commits: 1,
+                    discards: 0,
+                },
             )
             .with_detected_agents(vec![agent_watch(
                 4242,
@@ -1028,6 +1058,7 @@ mod tests {
         assert!(rendered.contains("Coalesce hits:"), "expected coalesce meters");
         assert!(rendered.contains("Cache hits:"), "expected fuse meters");
         assert!(rendered.contains("Neg hits:"), "expected neg dentry meters");
+        assert!(rendered.contains("Passthrough:"), "expected write-serialize meters");
     }
 
     #[test]
@@ -1046,6 +1077,7 @@ mod tests {
             ReadCacheMeters { hits: 0, misses: 0 },
             NegDentryMeters { hits: 0, misses: 0 },
             CoalesceMeters::default(),
+            WriteSerializeMeters::default(),
         );
         app.update(ThermalLevel::Red, 4);
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -1071,6 +1103,7 @@ mod tests {
             ReadCacheMeters { hits: 1, misses: 1 },
             NegDentryMeters { hits: 0, misses: 1 },
             CoalesceMeters::default(),
+            WriteSerializeMeters::default(),
         );
         app.update(ThermalLevel::Yellow, 2);
         terminal.draw(|f| render(f, &app)).unwrap();

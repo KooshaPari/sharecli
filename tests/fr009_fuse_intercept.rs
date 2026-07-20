@@ -10,6 +10,7 @@
 //! AC-009.7 negative dentry cache TTL hit/miss + invalidate on create
 //! AC-009.8 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1) + provenance xattrs
 //! AC-009.9 global neg dentry meters aggregate for status/TUI
+//! AC-009.10 global write-serialize meters aggregate for status/TUI
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -270,6 +271,42 @@ fn fr009_global_neg_dentry_meters() {
     assert!(
         section.contains("=== FUSE Negative Dentry ===") && section.contains("Neg hits:"),
         "status section MUST format global neg meters"
+    );
+}
+
+/// FR-009 / AC-009.10 — process-wide write-serialize meters track CoW + passthrough.
+#[test]
+fn fr009_global_write_serialize_meters() {
+    use sharecli_fuse::{global_write_serialize_meters, InterceptFs};
+    use std::fs;
+
+    let before = global_write_serialize_meters();
+    let dir = TempDir::new().expect("tempdir");
+    let fs = InterceptFs::new(dir.path());
+
+    let rel = Path::new("cow.txt");
+    fs::write(dir.path().join("cow.txt"), b"seed").expect("seed");
+    fs.stage_rel(rel, b"staged").expect("stage");
+    fs.commit_rel(rel).expect("commit");
+    fs.stage_rel(rel, b"drop").expect("stage2");
+    fs.discard_rel(rel).expect("discard");
+
+    fs::write(dir.path().join("pw.txt"), b"x").expect("create pw");
+    fs.write_rel(Path::new("pw.txt"), 0, b"hello").expect("passthrough");
+
+    let after = global_write_serialize_meters();
+    assert!(after.stages >= before.stages + 2, "stage_rel MUST increment stages");
+    assert!(after.commits >= before.commits + 1, "commit_rel MUST increment commits");
+    assert!(after.discards >= before.discards + 1, "discard_rel MUST increment discards");
+    assert!(
+        after.passthrough_writes >= before.passthrough_writes + 1,
+        "write_rel MUST increment passthrough_writes"
+    );
+
+    let section = after.format_status_section();
+    assert!(
+        section.contains("=== FUSE Write Serialize ===") && section.contains("Passthrough:"),
+        "status section MUST format global write-serialize meters"
     );
 }
 

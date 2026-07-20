@@ -15,6 +15,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use crate::write_serialize_meters::{record_commit, record_discard, record_stage};
+
 /// Error from write-serialize / CoW commit-discard operations.
 #[derive(Debug, thiserror::Error)]
 pub enum WriteSerializeError {
@@ -122,6 +124,7 @@ impl WriteSerialize {
             .lock()
             .map_err(|_| WriteSerializeError::Poisoned)?;
         pending.insert(backing, staging);
+        record_stage();
         Ok(())
     }
 
@@ -172,6 +175,7 @@ impl WriteSerialize {
             .lock()
             .map_err(|_| WriteSerializeError::Poisoned)?;
         pending.remove(&backing_buf);
+        record_commit();
         Ok(())
     }
 
@@ -196,6 +200,7 @@ impl WriteSerialize {
         if staging.exists() {
             fs::remove_file(&staging)?;
         }
+        record_discard();
         Ok(())
     }
 

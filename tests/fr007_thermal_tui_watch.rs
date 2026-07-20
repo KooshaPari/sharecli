@@ -10,11 +10,11 @@ use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch, ResourceWatchSample};
-use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
 use sharecli_thermal_tui::{
-    fuse_coalesce_lines, fuse_neg_dentry_lines, host_agent_lines, hypervisor_coalesce_lines,
-    render, resource_watch_lines, App,
+    fuse_coalesce_lines, fuse_neg_dentry_lines, fuse_write_serialize_lines, host_agent_lines,
+    hypervisor_coalesce_lines, render, resource_watch_lines, App,
 };
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
@@ -31,6 +31,12 @@ const COALESCE_METERS: CoalesceMeters = CoalesceMeters {
     hits: 9,
     misses: 3,
     nocache_runs: 2,
+};
+const WRITE_SERIALIZE_METERS: WriteSerializeMeters = WriteSerializeMeters {
+    passthrough_writes: 4,
+    stages: 2,
+    commits: 1,
+    discards: 1,
 };
 
 /// FR-007 / AC-007.10 — thermal TUI renders host resource watch lines.
@@ -74,6 +80,17 @@ fn fr008_thermal_tui_hypervisor_coalesce_lines() {
     assert!(text.contains("Hit rate:") && text.contains("75"));
 }
 
+/// FR-009 / AC-009.10 — thermal TUI renders FUSE write-serialize meters.
+#[test]
+fn fr009_thermal_tui_write_serialize_lines() {
+    let lines = fuse_write_serialize_lines(WRITE_SERIALIZE_METERS, false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(text.contains("Passthrough:") && text.contains('4'));
+    assert!(text.contains("Stages:") && text.contains('2'));
+    assert!(text.contains("Commits:") && text.contains('1'));
+    assert!(text.contains("Discards:") && text.contains('1'));
+}
+
 /// FR-006 / AC-006.9 — thermal TUI renders host agent inventory lines.
 #[test]
 fn fr006_thermal_tui_host_agent_lines() {
@@ -95,10 +112,16 @@ fn fr006_thermal_tui_host_agent_lines() {
 /// FR-007 / AC-007.9 + AC-007.10 + FR-009 AC-009.9 — headless thermal render includes panels.
 #[test]
 fn fr007_thermal_tui_render_includes_operator_panels() {
-    let backend = TestBackend::new(120, 40);
+    let backend = TestBackend::new(120, 44);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
-        .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS, COALESCE_METERS)
+        .with_operator_meters(
+            Some(SAMPLE),
+            FUSE_METERS,
+            NEG_METERS,
+            COALESCE_METERS,
+            WRITE_SERIALIZE_METERS,
+        )
         .with_detected_agents(vec![DetectedAgentWatch {
             agent: DetectedAgent {
                 pid: 100,
@@ -140,5 +163,9 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
     assert!(
         rendered.contains("Neg hits:") && rendered.contains("Neg misses:"),
         "thermal TUI MUST surface FUSE negative-dentry meters"
+    );
+    assert!(
+        rendered.contains("Passthrough:"),
+        "thermal TUI MUST surface FUSE write-serialize meters (AC-009.10)"
     );
 }

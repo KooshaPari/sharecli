@@ -9,7 +9,7 @@ use ratatui::Terminal;
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::{AgentResourceSample, DetectedAgentWatch, ResourceWatchSample};
-use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
 use sharecli_thermal_tui::{agent_lines, render, App};
 
@@ -70,6 +70,7 @@ fn fr006_thermal_tui_render_includes_agent_panel() {
             ReadCacheMeters { hits: 1, misses: 0 },
             NegDentryMeters { hits: 0, misses: 0 },
             CoalesceMeters::default(),
+            WriteSerializeMeters::default(),
         )
         .with_detected_agents(fixture_agents());
     app.update(ThermalLevel::Green, 0);
