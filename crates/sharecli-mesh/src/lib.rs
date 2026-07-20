@@ -4,7 +4,8 @@
 //!
 //! Per `thegent` / sharecli boundary audit (2026-06-21), the Maildir task queue
 //! is sharecli-owned execution substrate. Control-plane orchestration stays in
-//! `thegent`; this crate ports `thegent.mesh.task_queue.MaildirQueue`.
+//! `thegent`; this crate ports `thegent.mesh.task_queue.MaildirQueue`,
+//! `smart_merge.SmartMerger` (git fallback), and a lightweight `WorktreePool`.
 //!
 //! # Maildir lifecycle
 //!
@@ -15,8 +16,13 @@
 //! ```
 //!
 //! Public API: [`MaildirQueue::enqueue`], [`MaildirQueue::claim`],
-//! [`MaildirQueue::ack`], [`MaildirQueue::nack`], [`MaildirQueue::list_pending`].
+//! [`MaildirQueue::ack`], [`MaildirQueue::nack`], [`MaildirQueue::list_pending`],
+//! [`SmartMerger`], [`WorktreePool`].
 
+mod smart_merge;
 mod task_queue;
+mod worktree_pool;
 
+pub use smart_merge::{MergeResult, SmartMerger};
 pub use task_queue::{MaildirQueue, TaskEnvelope};
+pub use worktree_pool::{WorktreeLease, WorktreePool, WorktreePoolError};

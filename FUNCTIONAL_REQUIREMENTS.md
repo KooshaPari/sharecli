@@ -196,8 +196,8 @@ IO intercept attach point; unsupported platforms MUST fail loudly (no silent
 fallback). Core VFS ops MUST passthrough to the backing path (inode map for
 non-root parents). In-process read content cache MUST coalesce redundant reads
 (keyed by path+mtime) with hit/miss meters. Concurrent writes to the same path
-MUST serialize via a per-path lock; full CoW commit/discard MAY remain stubbed
-but MUST fail loudly (no silent success).
+MUST serialize via a per-path lock; staging CoW commit/discard MUST promote or
+drop staging copies (`NoPending` when none — loud, no silent success).
 
 **Acceptance:**
 
@@ -216,14 +216,18 @@ coordination state (membership, registry subjects), **so that** agents share
 a coordination surface without a full Kanban / BFT stack in-product.
 
 **MUST:** Expose mesh membership or substrate coordination primitives
-(for example `FleetRegistry` subject namespace / device records); full mesh
-orchestration (tmux inject, consensus, blackboard) is out-of-band / deferred.
+(for example `FleetRegistry` subject namespace / device records), Maildir task
+queue, `SmartMerger` (mergiraf optional / git merge-file fallback), and
+`WorktreePool` (git worktree allocate/release; non-git fails loudly). Full
+mesh orchestration (tmux inject, consensus, blackboard) is out-of-band /
+deferred.
 
 **Acceptance:**
 
-- `tests/fr010_mesh_substrate.rs` — AC-010.1..AC-010.3
+- `tests/fr010_mesh_substrate.rs` — AC-010.1..AC-010.8
 
-**Source:** `crates/sharecli-fleet` (`FleetRegistry`, `DeviceRecord`)  
+**Source:** `crates/sharecli-fleet` (`FleetRegistry`, `DeviceRecord`);
+`crates/sharecli-mesh` (`MaildirQueue`, `SmartMerger`, `WorktreePool`)  
 **Detail:** PRD E1.2; agent-mesh WBS Phase 11–12.
 
 ---

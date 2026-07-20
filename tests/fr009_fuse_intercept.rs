@@ -5,7 +5,7 @@
 //! AC-009.2 mount API fails loudly on unsupported platforms
 //! AC-009.3 inode map / path resolution (pure)
 //! AC-009.4 in-process read coalesce cache hit/miss meters
-//! AC-009.5 write-serialize per-path lock + CoW stub API
+//! AC-009.5 write-serialize per-path lock + CoW stage/commit/discard
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -109,13 +109,13 @@ fn fr009_read_content_cache_direct() {
     assert_eq!((m.hits, m.misses), (1, 1));
 }
 
-/// FR-009 / AC-009.5 — write serialize stubs + passthrough write invalidates cache.
+/// FR-009 / AC-009.5 — passthrough write invalidates cache; CoW stage/commit/discard.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
-fn fr009_write_passthrough_invalidates_cache() {
+fn fr009_write_passthrough_and_cow_commit_discard() {
     use std::fs;
     use std::io::Write;
-    use sharecli_fuse::{WriteSerialize, WriteSerializeError};
+    use sharecli_fuse::WriteSerializeError;
 
     let dir = TempDir::new().expect("tempdir");
     let file = dir.path().join("rw.txt");
@@ -135,9 +135,21 @@ fn fr009_write_passthrough_invalidates_cache() {
     // Invalidate + reload => second miss.
     assert!(fs.cache_meters().misses >= 2);
 
-    let ws = WriteSerialize::new();
+    // CoW: stage → commit promotes staging to backing.
+    fs.stage_rel(Path::new("rw.txt"), b"cccc")
+        .expect("stage");
+    assert_eq!(fs::read(&file).expect("backing until commit"), b"bbbb");
+    fs.commit_rel(Path::new("rw.txt")).expect("commit");
+    assert_eq!(fs::read(&file).expect("promoted"), b"cccc");
+
+    // CoW: stage → discard leaves backing unchanged.
+    fs.stage_rel(Path::new("rw.txt"), b"dddd")
+        .expect("stage2");
+    fs.discard_rel(Path::new("rw.txt")).expect("discard");
+    assert_eq!(fs::read(&file).expect("unchanged"), b"cccc");
+
     assert!(matches!(
-        ws.commit_pending(Path::new("rw.txt")),
-        Err(WriteSerializeError::CommitTodo(_))
+        fs.discard_rel(Path::new("rw.txt")),
+        Err(WriteSerializeError::NoPending(_))
     ));
 }
