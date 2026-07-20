@@ -239,8 +239,13 @@ replacing vendor agent executables as the primary detection path.
   (missing FD counts as zero; PID ascending tie-break), `pid` ascending.
   `--json` / NDJSON `agents` arrays and text tables MUST reflect the chosen
   order; invalid sort keys fail loudly.
+- **AC-006.20:** [`match_known_agent`](crates/sharecli-fleet/src/detect.rs) adds
+  the `amp` family and expands cmdline fingerprints for `codex`, `aider`, and
+  `cursor-agent` (node/npx/python wrapper argv). Generic `codex-` path prefixes
+  without vendor markers MUST NOT match; bare `gemini` comm remains
+  fingerprint-gated per AC-006.14.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`
 
 ---
 

@@ -6,18 +6,19 @@
 
 /// Known agent family ids returned by [`match_known_agent`].
 pub const KNOWN_AGENT_FAMILIES: &[&str] =
-    &["claude", "codex", "gemini", "cursor-agent", "aider", "goose", "forge"];
+    &["claude", "codex", "gemini", "cursor-agent", "aider", "amp", "goose", "forge"];
 
 /// Families whose short `comm` names collide with non-agent tooling — require cmdline fingerprints.
 const AMBIGUOUS_FAMILIES: &[&str] = &["forge", "goose", "gemini"];
 
-/// Cmdline substrings that fingerprint each family (AC-006.11).
+/// Cmdline substrings that fingerprint each family (AC-006.11, AC-006.20).
 const CMDLINE_FINGERPRINTS: &[(&str, &[&str])] = &[
     ("claude", &["claude", "claude-code", ".claude"]),
-    ("codex", &["codex", "openai-codex"]),
+    ("codex", &["openai-codex", "@openai/codex", "codex-cli", "/bin/codex"]),
     ("gemini", &["gemini", "gemini-cli", "google-gemini"]),
-    ("cursor-agent", &["cursor-agent", ".cursor"]),
-    ("aider", &["aider"]),
+    ("cursor-agent", &["cursor-agent", ".cursor", "cursor agent", "@cursor/agent"]),
+    ("aider", &["aider", "aider-chat", ".aider"]),
+    ("amp", &["amp", "amp-code", "sourcegraph/amp", "@sourcegraph/amp", ".amp"]),
     ("goose", &["goose", "block-goose", "goose-agent"]),
     ("forge", &["forge", ".forge", "forge conversation"]),
 ];
@@ -49,6 +50,16 @@ pub fn match_known_agent(comm: &str, cmdline: &[impl AsRef<str>]) -> Option<&'st
             }
         }
     }
+    match_fingerprint_only(cmdline)
+}
+
+/// Match argv fingerprints when comm/token heuristics did not resolve (AC-006.20).
+fn match_fingerprint_only(cmdline: &[impl AsRef<str>]) -> Option<&'static str> {
+    for (family, _) in CMDLINE_FINGERPRINTS {
+        if cmdline_has_fingerprint(family, cmdline) {
+            return Some(family);
+        }
+    }
     None
 }
 
@@ -60,10 +71,7 @@ fn family_allowed(family: &'static str, cmdline: &[impl AsRef<str>]) -> bool {
 }
 
 fn cmdline_has_fingerprint(family: &str, cmdline: &[impl AsRef<str>]) -> bool {
-    let Some(markers) = CMDLINE_FINGERPRINTS
-        .iter()
-        .find(|(f, _)| *f == family)
-        .map(|(_, m)| *m)
+    let Some(markers) = CMDLINE_FINGERPRINTS.iter().find(|(f, _)| *f == family).map(|(_, m)| *m)
     else {
         return false;
     };
@@ -80,7 +88,7 @@ fn match_token(token: &str) -> Option<&'static str> {
     if token == "claude" || token.starts_with("claude-") || token.contains("claude-code") {
         return Some("claude");
     }
-    if token == "codex" || token.starts_with("codex-") {
+    if token == "codex" || token == "openai-codex" {
         return Some("codex");
     }
     if token == "gemini" || token.starts_with("gemini-") {
@@ -89,8 +97,11 @@ fn match_token(token: &str) -> Option<&'static str> {
     if token == "cursor-agent" || token == "cursor-agent.exe" {
         return Some("cursor-agent");
     }
-    if token == "aider" || token.starts_with("aider-") {
+    if token == "aider" {
         return Some("aider");
+    }
+    if token == "amp" || token == "amp-cli" {
+        return Some("amp");
     }
     if token == "goose" || token.starts_with("goose-") {
         return Some("goose");
@@ -112,10 +123,7 @@ mod tests {
 
     #[test]
     fn detects_path_cmdline() {
-        assert_eq!(
-            match_known_agent("node", &["/usr/local/bin/claude"]),
-            Some("claude")
-        );
+        assert_eq!(match_known_agent("node", &["/usr/local/bin/claude"]), Some("claude"));
     }
 
     #[test]
@@ -134,18 +142,12 @@ mod tests {
 
     #[test]
     fn ambiguous_forge_with_fingerprint_matches() {
-        assert_eq!(
-            match_known_agent("forge", &["forge", "conversation", "list"]),
-            Some("forge")
-        );
+        assert_eq!(match_known_agent("forge", &["forge", "conversation", "list"]), Some("forge"));
     }
 
     #[test]
     fn ambiguous_gemini_requires_fingerprint() {
         assert_eq!(match_known_agent("gemini", &[] as &[&str]), None);
-        assert_eq!(
-            match_known_agent("gemini", &["gemini-cli", "chat"]),
-            Some("gemini")
-        );
+        assert_eq!(match_known_agent("gemini", &["gemini-cli", "chat"]), Some("gemini"));
     }
 }
