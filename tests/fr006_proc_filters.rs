@@ -47,6 +47,7 @@ fn fr006_proc_family_filter() {
             min_fd_count: None,
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -68,6 +69,7 @@ fn fr006_proc_min_rss_filter() {
             min_fd_count: None,
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -94,6 +96,7 @@ fn fr006_proc_tree_family_filter() {
             min_fd_count: None,
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
@@ -131,6 +134,7 @@ fn fr006_proc_max_rss_filter() {
             min_fd_count: None,
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -155,6 +159,7 @@ fn fr006_proc_rss_band_filter() {
             min_fd_count: None,
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -183,6 +188,7 @@ fn fr006_proc_tree_max_rss_filter() {
             min_fd_count: None,
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &rss_by_pid,
         &std::collections::HashMap::new(),
@@ -207,6 +213,7 @@ fn fr006_proc_min_fd_filter() {
             min_fd_count: Some(20),
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -230,6 +237,7 @@ fn fr006_proc_max_fd_filter() {
             min_fd_count: None,
             max_fd_count: Some(20),
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -254,6 +262,7 @@ fn fr006_proc_fd_band_filter() {
             min_fd_count: Some(20),
             max_fd_count: Some(40),
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -274,6 +283,7 @@ fn fr006_proc_min_fd_treats_missing_as_zero() {
             min_fd_count: Some(1),
             max_fd_count: None,
             ppid: None,
+            comm: None,
         },
         &empty_ppid_map(),
     );
@@ -302,6 +312,7 @@ fn fr006_proc_tree_max_fd_filter() {
             min_fd_count: None,
             max_fd_count: Some(20),
             ppid: None,
+            comm: None,
         },
         &std::collections::HashMap::new(),
         &fd_by_pid,
