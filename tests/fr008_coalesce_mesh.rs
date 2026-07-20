@@ -1,10 +1,11 @@
-//! FR-008 — Speculative Coalesce & Agent Mesh
+//! FR-008 — Speculative Coalesce / Debounce / Queue
 //! FR: FR-008
 //!
 //! AC-008.1 command_key stability
 //! AC-008.2 CoalesceCache with_lock runs once
 //! AC-008.3 thermal Refuse gates before coalesce/spawn
 //! AC-008.4 second identical Hypervisor run hits cache
+//! (Mesh membership ACs live under FR-010.)
 
 use sharecli_core::{
     FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision, THERMAL_MAX_RETRIES,

@@ -107,6 +107,7 @@ sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 sharecli-core = { path = "crates/sharecli-core" }
 sharecli-ipc = { path = "crates/sharecli-ipc" }
+sharecli-fuse = { path = "crates/sharecli-fuse" }
 ratatui = "0.30"
 proptest = "1.6"
 

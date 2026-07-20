@@ -3,7 +3,7 @@
 <p align="center">
   <a href="assets/icons/sharecli-512x512.png"><img src="assets/icons/sharecli-512x512.png" alt="sharecli" width="160" height="160"></a>
 </p>
-<p align="center"><em>OS-adjacent agent runtime — detect, watch, coalesce, mesh.</em></p>
+<p align="center"><em>OS-adjacent agent runtime — detect, watch, coalesce/debounce/queue, FUSE, mesh, thermal.</em></p>
 <p align="center">
   <a href="https://github.com/KooshaPari/sharecli/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KooshaPari/sharecli/ci.yml?branch=main&label=CI" alt="CI"></a>
   <a href="https://crates.io/crates/sharecli"><img src="https://img.shields.io/crates/v/sharecli.svg" alt="crates.io"></a>
