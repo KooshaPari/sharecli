@@ -47,6 +47,7 @@ fn fr006_proc_pid_detail_self_json_shape() {
     assert!(v.get("cmdline").and_then(|c| c.as_array()).is_some());
     assert!(v.get("mem_rss_bytes").and_then(|r| r.as_u64()).is_some());
     assert!(v.get("mem_rss").and_then(|r| r.as_str()).is_some());
+    assert!(v.get("state").is_some(), "proc detail JSON MUST include state key; got: {v}");
 }
 
 /// FR-006 / AC-006.23 — text detail prints parent and cmdline sections.
@@ -63,6 +64,7 @@ fn fr006_proc_pid_detail_self_text_sections() {
     assert!(s.contains("Parent:"), "MUST print parent line; got: {s}");
     assert!(s.contains("CMDLINE:"), "MUST print cmdline line; got: {s}");
     assert!(s.contains("RSS:"), "MUST print RSS line; got: {s}");
+    assert!(s.contains("State:"), "MUST print State line; got: {s}");
 }
 
 /// FR-006 / AC-006.23 — --pid cannot combine with --watch.

@@ -105,8 +105,10 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
 fn print_host_agent_scan(source: &HostProcSource) {
     let agents = scan_agents(source);
     let watched = watch_detected_agents(&agents);
+    let agent_pids: Vec<u32> = agents.iter().map(|a| a.pid).collect();
+    let state_by_pid = proc::build_agent_state_map(source, &agent_pids);
     println!();
-    proc::render_agent_inventory(&watched, agents.len());
+    proc::render_agent_inventory(&watched, agents.len(), &state_by_pid);
     if let Ok(thermal) = ThermalGovernor::new().poll() {
         print!("{}", format_gate_status_section(thermal, agents.len()));
     }
