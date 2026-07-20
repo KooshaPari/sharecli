@@ -17,7 +17,11 @@ use crate::runtime::{
     ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
-use sharecli_fleet::{agent_label_for_pid, scan_agents, watch_detected_agents, HostProcSource};
+use sharecli_fleet::thermal::ThermalGovernor;
+use sharecli_fleet::{
+    agent_label_for_pid, count_host_agents, format_gate_status_section, scan_agents,
+    watch_detected_agents, HostProcSource,
+};
 use sharecli_fleet::{format_rss_bytes, ResourceWatchSample};
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
 
@@ -305,6 +309,10 @@ pub async fn status(verbose: bool) -> Result<()> {
 
     let neg_meters = global_neg_dentry_meters();
     print!("{}", neg_meters.format_status_section());
+
+    let thermal = ThermalGovernor::new().poll()?;
+    let agent_count = count_host_agents();
+    print!("{}", format_gate_status_section(thermal, agent_count));
 
     if verbose {
         println!("\n=== Detailed Process List ===\n");

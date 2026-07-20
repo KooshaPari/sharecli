@@ -422,8 +422,12 @@ speculative coalesce via Allow / Warn / Refuse semantics.
   `refuse_at` (default 8); `sharecli thermal` gate panel uses
   [`effective_gate_decision`](crates/sharecli-fleet/src/agent_contention.rs) so
   agent Refuse shows DENY even when thermal is Green.
+- **AC-011.5:** `sharecli status` polls live thermal level and proc-scan agent
+  inventory and prints [`format_gate_status_section`](crates/sharecli-fleet/src/agent_contention.rs)
+  with thermal level, detected agent count, contention tier, and ADMIT/DENY gate
+  decision (parity with thermal TUI gate panel).
 
-**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr011_agent_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`
+**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr011_agent_thermal_gate.rs`, `tests/fr004_status_health.rs`, `tests/fr008_coalesce_mesh.rs`
 
 ---
 

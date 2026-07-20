@@ -2,11 +2,14 @@
 //! FR: FR-004
 //!
 //! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status),
-//! AC-007.10 (host resource watch in status), AC-009.9 (FUSE neg dentry in status).
+//! AC-007.10 (host resource watch in status), AC-009.9 (FUSE neg dentry in status),
+//! AC-011.5 (thermal+agent gate in status).
 
 use std::collections::HashMap;
 
 use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
+use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli_fleet::format_gate_status_section;
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
@@ -53,6 +56,10 @@ fn format_status(
     out.push_str(&resource_watch.format_status_section());
     out.push_str(&global_read_cache_meters().format_status_section());
     out.push_str(&global_neg_dentry_meters().format_status_section());
+    let thermal = ThermalGovernor::with_mock(ThermalLevel::Green)
+        .poll()
+        .expect("mock thermal poll");
+    out.push_str(&format_gate_status_section(thermal, 0));
     out
 }
 
@@ -129,6 +136,12 @@ async fn fr004_status_prints_harness_table() {
             && out.contains("Neg hits:")
             && out.contains("Neg misses:"),
         "status MUST surface FUSE negative-dentry meters (AC-009.9); got: {out}"
+    );
+    assert!(
+        out.contains("=== Thermal Gate (FR-011) ===")
+            && out.contains("Thermal level: GREEN")
+            && out.contains("Gate decision: [ADMIT]"),
+        "status MUST surface thermal+agent gate section (AC-011.5); got: {out}"
     );
 }
 

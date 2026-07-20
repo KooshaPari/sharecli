@@ -154,6 +154,7 @@
 |-----------|-------------------------------|-------|
 | AC-011.1..3 | `tests/fr011_thermal_gate.rs` | also AC-008.3 |
 | AC-011.4 | `tests/fr011_agent_thermal_gate.rs`; `sharecli-core` / `sharecli-fleet` agent_contention unit tests | agent-count thermal escalation |
+| AC-011.5 | `tests/fr004_status_health.rs`; `sharecli-fleet` `format_gate_status_section` unit tests | status thermal+agent gate section |
 
 ### FR-012 — Serve JWT AuthN
 
@@ -165,6 +166,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-011 status gate section:** `sharecli status` prints
+  `format_gate_status_section` with live thermal + agent inventory (AC-011.5).
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
