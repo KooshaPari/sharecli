@@ -5,7 +5,7 @@
 //!
 //! Contract: `docs/ops/memory.md` · `docs/ops/alloc-profiling.md`
 
-#[cfg(all(feature = "jemalloc", not(target_env = "msvc")))]
+#[cfg(all(feature = "jemalloc", not(target_env = "msvc"), not(feature = "dhat-heap")))]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
@@ -17,7 +17,7 @@ static DHAT: dhat::Alloc = dhat::Alloc;
 pub fn active_allocator_label() -> &'static str {
     if cfg!(feature = "dhat-heap") {
         "dhat"
-    } else if cfg!(all(feature = "jemalloc", not(target_env = "msvc"))) {
+    } else if cfg!(all(feature = "jemalloc", not(target_env = "msvc"), not(feature = "dhat-heap"))) {
         "jemalloc"
     } else {
         "system"
