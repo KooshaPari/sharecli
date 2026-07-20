@@ -18,18 +18,15 @@ fn fr006_pattern_registry_matches_known_names() {
     let cases = [
         ("claude", &[] as &[&str], Some("claude")),
         ("codex", &[], Some("codex")),
-        ("gemini", &[], Some("gemini")),
+        ("gemini", &["gemini-cli", "chat"], Some("gemini")),
         ("cursor-agent", &[], Some("cursor-agent")),
         ("aider", &[], Some("aider")),
+        ("amp", &[], Some("amp")),
         ("node", &["/opt/homebrew/bin/claude"], Some("claude")),
         ("python3", &["-m", "aider"], Some("aider")),
     ];
     for (comm, cmdline, expect) in cases {
-        assert_eq!(
-            match_known_agent(comm, cmdline),
-            expect,
-            "comm={comm:?} cmdline={cmdline:?}"
-        );
+        assert_eq!(match_known_agent(comm, cmdline), expect, "comm={comm:?} cmdline={cmdline:?}");
     }
     assert!(KNOWN_AGENT_FAMILIES.contains(&"claude"));
 }
@@ -52,19 +49,11 @@ async fn fr006_hypervisor_runs_argv_as_is() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "fr006-no-wrap".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "fr006-no-wrap".to_string(),
-    ];
+    let argv =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "fr006-no-wrap".to_string()];
 
     let outcome = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
         .await
         .expect("spawn argv as-is");
 
@@ -77,8 +66,5 @@ async fn fr006_hypervisor_runs_argv_as_is() {
     );
     assert_eq!(outcome.agent_family(), None);
     let stdout = String::from_utf8_lossy(&outcome.stdout);
-    assert!(
-        stdout.contains("fr006-no-wrap"),
-        "stdout must reflect argv payload, got {stdout:?}"
-    );
+    assert!(stdout.contains("fr006-no-wrap"), "stdout must reflect argv payload, got {stdout:?}");
 }
