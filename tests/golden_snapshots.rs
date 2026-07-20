@@ -16,6 +16,7 @@ use sharecli_fleet::ResourceWatchSample;
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
 use sharecli_fleet::SlotQueueMeters;
+use sharecli_mesh::MaildirStatus;
 use sharecli_thermal_tui::{render, App};
 
 const TUI_W: u16 = 80;
@@ -47,6 +48,15 @@ const GOLDEN_SLOT_QUEUE: SlotQueueMeters = SlotQueueMeters {
     waits: 1,
     timeouts: 0,
 };
+
+fn golden_mesh_maildir() -> MaildirStatus {
+    MaildirStatus {
+        path: std::path::PathBuf::from("/var/sharecli/mesh/queue"),
+        ready: 1,
+        in_flight: 0,
+        pending: 1,
+    }
+}
 
 fn golden_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("golden")
@@ -101,7 +111,8 @@ fn render_thermal(level: ThermalLevel, slots: u32) -> String {
             GOLDEN_COALESCE,
             GOLDEN_SLOT_QUEUE,
             GOLDEN_WRITE_SERIALIZE,
-        );
+        )
+        .with_maildir_status(Some(golden_mesh_maildir()));
     app.update(level, slots);
     terminal.draw(|f| render(f, &app)).expect("draw");
     let buf = terminal.backend().buffer();
@@ -171,6 +182,10 @@ fn golden_thermal_tui_levels() {
         assert!(
             actual.contains("Slot acquires:"),
             "{name} MUST include Hypervisor SlotQueue meters"
+        );
+        assert!(
+            actual.contains("Mesh ready:"),
+            "{name} MUST include mesh Maildir depth meters"
         );
         assert!(
             actual.contains("Detected Agents"),

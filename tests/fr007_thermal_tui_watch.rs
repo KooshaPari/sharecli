@@ -13,9 +13,11 @@ use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch, Res
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
 use sharecli_fleet::SlotQueueMeters;
+use sharecli_mesh::MaildirStatus;
 use sharecli_thermal_tui::{
     fuse_coalesce_lines, fuse_neg_dentry_lines, fuse_write_serialize_lines, host_agent_lines,
-    hypervisor_coalesce_lines, hypervisor_slot_queue_lines, render, resource_watch_lines, App,
+    hypervisor_coalesce_lines, hypervisor_slot_queue_lines, mesh_maildir_lines, render,
+    resource_watch_lines, App,
 };
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
@@ -44,6 +46,15 @@ const SLOT_QUEUE_METERS: SlotQueueMeters = SlotQueueMeters {
     waits: 3,
     timeouts: 1,
 };
+
+fn sample_mesh_maildir() -> MaildirStatus {
+    MaildirStatus {
+        path: std::path::PathBuf::from("/tmp/sharecli-mesh-queue"),
+        ready: 2,
+        in_flight: 1,
+        pending: 3,
+    }
+}
 
 /// FR-007 / AC-007.10 — thermal TUI renders host resource watch lines.
 #[test]
@@ -96,6 +107,16 @@ fn fr008_thermal_tui_slot_queue_lines() {
     assert!(text.contains("Slot timeouts:") && text.contains('1'));
 }
 
+/// FR-010 / AC-010.11 — thermal TUI renders mesh Maildir queue depth.
+#[test]
+fn fr010_thermal_tui_mesh_maildir_lines() {
+    let lines = mesh_maildir_lines(Some(sample_mesh_maildir()), false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(text.contains("Mesh ready:") && text.contains('2'));
+    assert!(text.contains("Mesh in-flight:") && text.contains('1'));
+    assert!(text.contains("Mesh pending:") && text.contains('3'));
+}
+
 /// FR-009 / AC-009.10 — thermal TUI renders FUSE write-serialize meters.
 #[test]
 fn fr009_thermal_tui_write_serialize_lines() {
@@ -128,7 +149,7 @@ fn fr006_thermal_tui_host_agent_lines() {
 /// FR-007 / AC-007.9 + AC-007.10 + FR-009 AC-009.9 — headless thermal render includes panels.
 #[test]
 fn fr007_thermal_tui_render_includes_operator_panels() {
-    let backend = TestBackend::new(120, 48);
+    let backend = TestBackend::new(120, 52);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
         .with_operator_meters(
@@ -139,6 +160,7 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
             SLOT_QUEUE_METERS,
             WRITE_SERIALIZE_METERS,
         )
+        .with_maildir_status(Some(sample_mesh_maildir()))
         .with_detected_agents(vec![DetectedAgentWatch {
             agent: DetectedAgent {
                 pid: 100,
@@ -176,6 +198,10 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
     assert!(
         rendered.contains("Slot acquires:"),
         "thermal TUI MUST surface Hypervisor SlotQueue meters (AC-008.12)"
+    );
+    assert!(
+        rendered.contains("Mesh ready:") && rendered.contains("Mesh pending:"),
+        "thermal TUI MUST surface mesh Maildir depth (AC-010.11)"
     );
     assert!(
         rendered.contains("Cache hits:"),

@@ -150,6 +150,7 @@
 | AC-010.8 | `tests/fr010_mesh_substrate.rs`; `worktree_pool` unit tests | allocate/release + NotGitRepo |
 | AC-010.9 | `tests/fr010_mesh_substrate.rs`; `tests/fr010_mesh_cli.rs` | status counts + `mesh status` CLI |
 | AC-010.10 | `tests/fr010_mesh_substrate.rs`; `tests/fr010_mesh_cli.rs` | reclaim_owner + `mesh reclaim` CLI |
+| AC-010.11 | `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-mesh` operator_status tests | Maildir depth in status + thermal TUI |
 
 ### FR-011 — Thermal Gate
 

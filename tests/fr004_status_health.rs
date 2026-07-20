@@ -4,6 +4,7 @@
 //! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status),
 //! AC-007.10 (host resource watch in status), AC-009.9 (FUSE neg dentry in status),
 //! AC-008.11 (Hypervisor coalesce in status), AC-009.10 (FUSE write-serialize in status),
+//! AC-010.11 (mesh Maildir depth in status),
 //! AC-011.5 (thermal+agent gate in status).
 
 use std::collections::HashMap;
@@ -13,6 +14,7 @@ use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::format_gate_status_section;
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters};
 use sharecli_ipc::{global_coalesce_meters, global_slot_queue_meters};
+use sharecli_mesh::{capture_maildir_status, MESH_QUEUE_ENV};
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
 /// Mirror of the per-harness aggregation + status tables in `commands::status`.
@@ -60,6 +62,9 @@ fn format_status(
     out.push_str(&global_neg_dentry_meters().format_status_section());
     out.push_str(&global_coalesce_meters().format_status_section());
     out.push_str(&global_slot_queue_meters().format_status_section());
+    if let Ok(Some(st)) = capture_maildir_status() {
+        out.push_str(&st.format_status_section());
+    }
     out.push_str(&global_write_serialize_meters().format_status_section());
     let thermal = ThermalGovernor::with_mock(ThermalLevel::Green)
         .poll()
@@ -157,6 +162,30 @@ async fn fr004_status_prints_harness_table() {
             && out.contains("Timeouts:"),
         "status MUST surface Hypervisor SlotQueue meters (AC-008.12); got: {out}"
     );
+
+    // AC-010.11 — when mesh queue is configured, status surfaces Maildir depth.
+    let mesh_dir = tempfile::tempdir().expect("mesh tempdir");
+    {
+        use sharecli_mesh::MaildirQueue;
+        use serde_json::json;
+        let q = MaildirQueue::open(mesh_dir.path()).expect("open mesh queue");
+        q.enqueue(json!({"probe": true}), 0).expect("enqueue");
+    }
+    unsafe {
+        std::env::set_var(MESH_QUEUE_ENV, mesh_dir.path());
+    }
+    let mesh_out = format_status(&processes, &pool_status, used_mb, total_mb);
+    assert!(
+        mesh_out.contains("=== Mesh Maildir Queue ===")
+            && mesh_out.contains("Ready:")
+            && mesh_out.contains("In-flight:")
+            && mesh_out.contains("Pending:"),
+        "status MUST surface mesh Maildir depth when queue exists (AC-010.11); got: {mesh_out}"
+    );
+    unsafe {
+        std::env::remove_var(MESH_QUEUE_ENV);
+    }
+
     assert!(
         out.contains("=== FUSE Write Serialize ===")
             && out.contains("Passthrough:")

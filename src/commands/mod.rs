@@ -26,6 +26,7 @@ use sharecli_fleet::{format_rss_bytes, ResourceWatchSample};
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters};
 use sharecli_fleet::global_coalesce_meters;
 use sharecli_fleet::global_slot_queue_meters;
+use sharecli_mesh::capture_maildir_status;
 
 /// Shared runtime instance
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();
@@ -326,6 +327,10 @@ pub async fn status(verbose: bool) -> Result<()> {
     print!("{}", global_coalesce_meters().format_status_section());
 
     print!("{}", global_slot_queue_meters().format_status_section());
+
+    if let Some(st) = capture_maildir_status()? {
+        print!("{}", st.format_status_section());
+    }
 
     print!("{}", global_write_serialize_meters().format_status_section());
 
