@@ -26,13 +26,15 @@ Governed by [`docs/adr/0002-eval-surface-out-of-scope.md`](../adr/0002-eval-surf
 | Pillar | Surface | Status |
 |--------|---------|--------|
 | L75 | Cross-language (Py/Go/TS) eval parity | N/A |
-| L76 | Harbor / portage / Terminal-Bench | N/A |
+| L76 | Harbor / portage / Terminal-Bench | N/A — Phase 2–3 **EXTRACTED** ([ADR 0005](../adr/0005-agent-eval-supersede.md) §Phase 1 FR-003) |
 | L77 | Compression / spec-extraction benches | N/A |
 | L78 | LLM token-burn / cost tracking | N/A |
 | L71 (agent corpora) | SWE-bench / SWE-RL task sets | N/A |
 
-Auditors score L75–L78 as **deferred / N/A**, not missing product. C08 lifts
-come from supervisor benches + load + REPRO + CI gate + this doc.
+Auditors score L75–L78 as **deferred / N/A**, not missing product. Harbor Phase 2–3
+stub/soak evidence lives in **benchora `harbor-soft`** and **`KooshaPari/portage-temp`**
+only — see ADR 0005 Phase 1 (FR-003). C08 lifts come from supervisor benches + load +
+REPRO + CI gate + this doc.
 
 ## How to add a bench
 

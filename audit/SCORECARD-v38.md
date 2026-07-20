@@ -60,6 +60,12 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C11 L112** still blocked on codesign/notarize secrets.
 - Highest-leverage remaining: L34 Verified evidence; C11 codesign secrets.
 
+### 2026-07-19 (C08 Harbor EXTRACTED/N/A formalize — FR-003)
+
+- **Governance-only:** Formalize Harbor Phase 2–3 as **EXTRACTED / N/A (sharecli)** per ADR 0005; no in-repo Harbor workflows or score lift.
+- **L76 stays 1** (seeded N/A); **C08 stays 22/30 (73% C)**; unweighted **89.8% B**; tier-1 weighted **91.1% A**.
+- **Supersedes stale interim lifts:** reconcile v3/v4 entries that scored L76 1→2 (#326) or 2→3 (#333) — those artifacts moved to benchora `harbor-soft` / `portage-temp` before thesis restore (#385) and N/A rescore (#386).
+- **Sync:** `audit/.lane-c08/C08.md` L71/L76 EXTERNAL rows; `GAP-QA-MATRIX.md` Harbor rows; `WORK_DAG.md` T-650; `RC-audit-v38-80B.md` checklist; ADR 0005 Phase 1 (FR-003).
 ### 2026-07-19 (C08 L76 Harbor N/A honest rescore)
 
 - **C08 24/30 (80% B) → 22/30 (73% C):** L76 2/3 → **1** (seeded N/A per ADR 0002/0005; Harbor/agent-eval lives in benchora/`portage-temp` — not a sharecli product gap).
@@ -401,14 +407,14 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Top-3 gaps refreshed: removed completed soak script, live pool, and SR checklist doc items from C05/C08/C09 rows.
 - Overall unweighted **~79%** (949/12); weighted **~80% B** (1285/16).
 
-### 2026-07-18 (C08 Harbor Phase 3 soak execution scaffold — L76 evidence)
-- `scripts/eval/harbor_soak.sh` + `audit/.lane-c08/harbor-phase3-soak-log.md` + `harbor-soak-exec-soft.yml` + `just harbor-soak`; partial evidence documented; seven-day `main` window open post-merge; L76 stays 1; C08 cluster stays 22/30.
+### 2026-07-18 (C08 Harbor Phase 3 soak execution scaffold — L76 evidence) — _superseded: EXTRACTED/N/A (FR-003)_
+- Was: `scripts/eval/harbor_soak.sh` + `harbor-soak-exec-soft.yml` (#333). **Now:** benchora `harbor-soft` / `portage-temp`; sharecli L76 N/A=1; C08 22/30.
 
-### 2026-07-17 (C08 Harbor Phase 3 soak plan — L76 evidence)
-- `docs/ops/harbor-phase3-soak.md`; ADR 0005 Phase 3 checklist + portage/pheno-harness pin table; cross-ref `harbor-eval-stub.md`; L76 stays 1 until seven-day soak completes; C08 cluster stays 22/30.
+### 2026-07-17 (C08 Harbor Phase 3 soak plan — L76 evidence) — _superseded: EXTRACTED/N/A (FR-003)_
+- Was: `docs/ops/harbor-phase3-soak.md` (#326). **Now:** external benchora checklist; sharecli L76 N/A=1; C08 22/30.
 
-### 2026-07-17 (C08 Harbor eval stub soft — L71 evidence)
-- `docs/ops/harbor-eval-stub.md` + `scripts/eval/harbor_stub.sh` + `harbor-eval-stub-soft.yml`; corpus preflight + stub pass; cross-ref ADR 0005 Phase 2; L71 stays 3; L76 stays 1 until Phase 3 soak; C08 cluster stays 22/30.
+### 2026-07-17 (C08 Harbor eval stub soft — L71 evidence) — _superseded: EXTRACTED/N/A (FR-003)_
+- Was: `docs/ops/harbor-eval-stub.md` + `harbor-eval-stub-soft.yml` (#321). **Now:** benchora `harbor-soft`; L71 stays 3; L76 N/A=1.
 
 
 ### 2026-07-17 (C02 spawn audit JSONL soft — L28 evidence)
@@ -437,7 +443,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-18 (scorecard reconcile v4 — Wave13 merges #332–#335)
 - **C00 22/30 (73% C) → 23/30 (77% B):** L2 2→3 (OpenAPI `ErrorEnvelope` component + drift CI; #332).
 - **C05 24/30 (80% B):** L44 evidence complete (IPC + tray `traceparent` inject; #334); cluster pct unchanged.
-- **C08 23/30 (77% B) → 24/30 (80% B):** L76 2→3 (Harbor Phase 3 soak execution scaffold + log template; #333).
+- ~~**C08 23/30 (77% B) → 24/30 (80% B):** L76 2→3 (#333)~~ — **reverted by FR-003 formalize:** Harbor EXTRACTED/N/A; C08 **22/30 (73% C)**, L76 **1**.
 - **C10 32/36 (89% B):** L107 evidence complete (committed PNG bytes + `visual-soft.yml`; #335); cluster pct unchanged.
 - Top-3 gaps refreshed across C00/C05/C08/C10 rows; Wave14 targets visual hard diff, seven-day soak completion, codesign.
 - Overall unweighted **~81%** (974/12); weighted **~82% B** (1315/16).
@@ -461,7 +467,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 ### 2026-07-18 (scorecard reconcile v3 — Wave12 merges #326–#330)
 - **C00 21/30 (70% C) → 22/30 (73% C):** L3 2→3 (`ErrorEnvelope` typed serve contract + golden 401; #330).
 - **C05 23/30 (77% B) → 24/30 (80% B):** L44 2→3 (CLI `traceparent` inject on supervised spawn; #328).
-- **C08 22/30 (73% C) → 23/30 (77% B):** L76 1→2 (Harbor Phase 3 soak evidence plan + ADR 0005 checklist; #326).
+- ~~**C08 22/30 (73% C) → 23/30 (77% B):** L76 1→2 (#326)~~ — **reverted by FR-003 formalize:** Harbor EXTRACTED/N/A; C08 **22/30 (73% C)**, L76 **1**.
 - **C10 31/36 (86% B) → 32/36 (89% B):** L107 2→3 (dashboard PNG scaffold + manifest; #327).
 - Top-3 gaps refreshed across C00/C05/C08/C10 rows; Wave13 targets OpenAPI component, PNG bytes, Harbor soak execution.
 - Overall unweighted **~80%** (959/12); weighted **~81% B** (1301/16).

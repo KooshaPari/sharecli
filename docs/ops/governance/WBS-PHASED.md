@@ -141,7 +141,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W12.2 | C07 proptest config roundtrip | T-410 · `docs/ops/config-proptest.md` · #329 | Status: DONE |
 | W12.3 | C05 traceparent CLI inject | T-420 · `docs/ops/trace-multihop.md` · #328 | Status: DONE |
 | W12.4 | C10 PNG dashboard baseline | T-430 · `docs/visual/golden-visual-tests.md` · #327 | Status: DONE |
-| W12.5 | C08 Harbor Phase 3 soak | T-440 · ADR 0005 · #326 | Status: DONE |
+| W12.5 | C08 Harbor Phase 3 soak | T-440 · ADR 0005 · #326 | Status: EXTRACTED → benchora `harbor-soft` |
 | W12.4b | W4.3 codesign / notarize | C11 L112 | Status: BLOCKED — zero repo secrets |
 
 ### Wave13 — Hard gates toward 82% B (DONE)

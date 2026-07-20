@@ -40,9 +40,10 @@
 - [x] Error envelope unified on serve (T-400 · #330)
 - [x] OpenAPI `ErrorEnvelope` component (T-500 · #332)
 - [x] PNG bytes committed + soft diff gate (T-510 · #335)
-- [x] Harbor Phase 3 soak execution scaffold (T-520 · #333)
+- [x] Harbor Phase 3 soak execution scaffold (T-520 · #333) — **EXTRACTED** to benchora `harbor-soft` (FR-003)
 - [x] IPC/tray traceparent inject (T-530 · #334)
-- [ ] Seven-day Harbor soak log completion (Wave14)
+- [x] Harbor Phase 3 soak evidence plan (T-440 · #326) — **EXTRACTED** / N/A (sharecli; ADR 0005)
+- [ ] ~~Seven-day Harbor soak log completion (Wave14)~~ — **EXTRACTED / N/A (sharecli)**; tracked in benchora/`portage-temp` (T-650; FR-003)
 - [x] Visual-soft hard promote (Wave14 · T-600)
 
 ## Supersedes
