@@ -23,6 +23,14 @@
 
 #![warn(missing_docs)]
 
+mod inode_map;
+mod read_cache;
+mod write_serialize;
+
+pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
+pub use read_cache::{ReadCacheMeters, ReadContentCache};
+pub use write_serialize::{WriteSerialize, WriteSerializeError};
+
 use std::path::Path;
 
 // ---------------------------------------------------------------------------
@@ -33,84 +41,175 @@ use std::path::Path;
 mod platform {
     use std::{
         ffi::OsStr,
-        os::unix::fs::MetadataExt,
+        fs::{self, OpenOptions},
+        io::{Seek, SeekFrom, Write as IoWrite},
+        os::unix::fs::{MetadataExt, PermissionsExt},
         path::{Path, PathBuf},
+        sync::Mutex,
         time::{Duration, SystemTime},
     };
 
     use fuser::{
-        Config, Errno, FileAttr, FileHandle, FileType, Filesystem, Generation, INodeNo,
+        Config, Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation, INodeNo,
         MountOption, OpenFlags, RenameFlags, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty,
-        ReplyEntry, ReplyWrite, Request, WriteFlags,
+        ReplyEntry, ReplyOpen, ReplyWrite, Request, WriteFlags,
     };
     use tracing::{debug, trace};
 
-    const TTL: Duration = Duration::from_secs(1);
-    /// Inode number for the FUSE root (always 1 in libfuse convention).
-    const ROOT_INO: u64 = 1;
+    use crate::inode_map::{abs_under, InodeMap, ROOT_INO};
+    use crate::read_cache::{ReadCacheMeters, ReadContentCache};
+    use crate::write_serialize::WriteSerialize;
 
-    /// Passthrough FUSE filesystem that forwards VFS calls to a real backing path.
-    ///
-    /// This is the attach point for the sharecli hypervisor hooks.  Each method
-    /// carries a `// TODO(hypervisor):` marker indicating where caching,
-    /// coalescing, or metering logic will be inserted in follow-up work.
+    const TTL: Duration = Duration::from_secs(1);
+
+    /// Passthrough FUSE filesystem with read coalesce + write-serialize hooks.
     pub struct InterceptFs {
         /// Root of the real filesystem subtree being mirrored.
         backing: PathBuf,
+        inodes: Mutex<InodeMap>,
+        read_cache: Mutex<ReadContentCache>,
+        write_locks: WriteSerialize,
     }
 
     impl InterceptFs {
         /// Create a new [`InterceptFs`] rooted at `backing`.
         pub fn new(backing: &Path) -> Self {
-            Self { backing: backing.to_path_buf() }
+            Self {
+                backing: backing.to_path_buf(),
+                inodes: Mutex::new(InodeMap::new()),
+                read_cache: Mutex::new(ReadContentCache::new()),
+                write_locks: WriteSerialize::new(),
+            }
+        }
+
+        /// Backing root path.
+        pub fn backing(&self) -> &Path {
+            &self.backing
+        }
+
+        /// Read-coalesce meters (hits / misses) without mounting.
+        pub fn cache_meters(&self) -> ReadCacheMeters {
+            self.read_cache
+                .lock()
+                .expect("read cache lock")
+                .meters()
+        }
+
+        /// Read a relative path through the in-process coalesce cache (no mount).
+        pub fn read_coalesced_rel(&self, rel: &Path) -> std::io::Result<Vec<u8>> {
+            let abs = abs_under(&self.backing, rel);
+            self.read_cache
+                .lock()
+                .expect("read cache lock")
+                .read_coalesced(&abs)
+        }
+
+        /// Passthrough write at `offset` for relative `rel`, serialized per path.
+        pub fn write_rel(&self, rel: &Path, offset: u64, data: &[u8]) -> std::io::Result<u32> {
+            let abs = abs_under(&self.backing, rel);
+            let data = data.to_vec();
+            self.write_locks
+                .with_locked_path(&abs, || {
+                    let mut file = OpenOptions::new().write(true).open(&abs)?;
+                    file.seek(SeekFrom::Start(offset))?;
+                    file.write_all(&data)?;
+                    Ok::<u32, std::io::Error>(data.len() as u32)
+                })
+                .map_err(|e| std::io::Error::other(e.to_string()))?
+                .and_then(|n| {
+                    if let Ok(mut cache) = self.read_cache.lock() {
+                        cache.invalidate(&abs);
+                    }
+                    Ok(n)
+                })
+        }
+
+        fn io_errno(err: std::io::Error) -> Errno {
+            Errno::from(err)
+        }
+
+        fn meta_kind(meta: &fs::Metadata) -> FileType {
+            if meta.is_dir() {
+                FileType::Directory
+            } else if meta.is_symlink() {
+                FileType::Symlink
+            } else {
+                FileType::RegularFile
+            }
+        }
+
+        fn metadata_to_attr(ino: u64, meta: &fs::Metadata) -> FileAttr {
+            let kind = Self::meta_kind(meta);
+            let now = SystemTime::now();
+            FileAttr {
+                ino: INodeNo(ino),
+                size: meta.len(),
+                blocks: meta.blocks(),
+                atime: meta.accessed().unwrap_or(now),
+                mtime: meta.modified().unwrap_or(now),
+                ctime: now,
+                crtime: now,
+                kind,
+                perm: meta.mode() as u16,
+                nlink: meta.nlink() as u32,
+                uid: meta.uid(),
+                gid: meta.gid(),
+                rdev: meta.rdev() as u32,
+                blksize: 512,
+                flags: 0,
+            }
         }
     }
 
     impl Filesystem for InterceptFs {
-        /// Resolve `name` inside directory `parent`.
-        ///
-        /// TODO(hypervisor): insert read-through cache here — check the in-process
-        ///   dentry cache before hitting the backing FS.
         fn lookup(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
             trace!(?parent, ?name, "lookup");
-            if parent.0 != ROOT_INO {
-                // TODO(hypervisor): resolve non-root parents via inode map.
-                reply.error(Errno::ENOSYS);
+            let mut map = self.inodes.lock().expect("inode map");
+            let Some((ino, rel)) = map.lookup_or_alloc(parent.0, name) else {
+                reply.error(Errno::ENOENT);
                 return;
-            }
-            let path = self.backing.join(name);
-            match std::fs::metadata(&path) {
+            };
+            let path = abs_under(&self.backing, &rel);
+            match fs::metadata(&path) {
                 Ok(meta) => {
-                    let attr = metadata_to_attr(2, &meta);
+                    let attr = Self::metadata_to_attr(ino, &meta);
                     reply.entry(&TTL, &attr, Generation(0));
                 }
-                Err(_) => reply.error(Errno::ENOENT),
+                Err(err) => {
+                    map.remove_rel(&rel);
+                    reply.error(Self::io_errno(err));
+                }
             }
         }
 
-        /// Return attributes for an inode.
-        ///
-        /// TODO(hypervisor): hook per-inode metering counters here so the
-        ///   thermal governor can observe per-file-class read pressure.
         fn getattr(&self, _req: &Request, ino: INodeNo, _fh: Option<FileHandle>, reply: ReplyAttr) {
             trace!(?ino, "getattr");
-            if ino.0 == ROOT_INO {
-                match std::fs::metadata(&self.backing) {
-                    Ok(meta) => reply.attr(&TTL, &metadata_to_attr(ROOT_INO, &meta)),
-                    Err(_) => reply.error(Errno::ENOENT),
-                }
-            } else {
-                // TODO(hypervisor): resolve ino via inode map; return ENOENT for
-                //   unknown inodes until the full walk is wired.
-                reply.error(Errno::ENOSYS);
+            let map = self.inodes.lock().expect("inode map");
+            let Some(path) = map.abs_path(&self.backing, ino.0) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            match fs::metadata(&path) {
+                Ok(meta) => reply.attr(&TTL, &Self::metadata_to_attr(ino.0, &meta)),
+                Err(err) => reply.error(Self::io_errno(err)),
             }
         }
 
-        /// Read `size` bytes at `offset` from the file at `ino`.
-        ///
-        /// TODO(hypervisor): speculative read-ahead cache — on first miss populate
-        ///   a page-aligned buffer in the session cache; serve subsequent reads from
-        ///   RAM without touching the backing FS.
+        fn open(&self, _req: &Request, ino: INodeNo, _flags: OpenFlags, reply: ReplyOpen) {
+            let map = self.inodes.lock().expect("inode map");
+            let Some(path) = map.abs_path(&self.backing, ino.0) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            match fs::metadata(&path) {
+                Ok(meta) if meta.is_file() => {
+                    reply.opened(FileHandle(ino.0), FopenFlags::empty());
+                }
+                Ok(_) => reply.error(Errno::EISDIR),
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
+        }
+
         fn read(
             &self,
             _req: &Request,
@@ -123,15 +222,27 @@ mod platform {
             reply: ReplyData,
         ) {
             debug!(?ino, offset, size, "read");
-            // TODO(hypervisor): real passthrough — map ino→path, open backing
-            //   file, pread(fd, buf, size, offset).
-            reply.error(Errno::ENOSYS);
+            let path = {
+                let map = self.inodes.lock().expect("inode map");
+                match map.abs_path(&self.backing, ino.0) {
+                    Some(p) => p,
+                    None => {
+                        reply.error(Errno::ENOENT);
+                        return;
+                    }
+                }
+            };
+            match self
+                .read_cache
+                .lock()
+                .expect("read cache")
+                .read_slice(&path, offset, size)
+            {
+                Ok(buf) => reply.data(&buf),
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
         }
 
-        /// Write `data` at `offset` into the file at `ino`.
-        ///
-        /// TODO(hypervisor): write-coalescing — buffer writes per session-id,
-        ///   flush in background; attribute each write with (session-id, ts) xattr.
         fn write(
             &self,
             _req: &Request,
@@ -145,68 +256,196 @@ mod platform {
             reply: ReplyWrite,
         ) {
             debug!(?ino, offset, len = data.len(), "write");
-            // TODO(hypervisor): passthrough write + provenance xattr injection.
-            reply.error(Errno::ENOSYS);
+            let path = {
+                let map = self.inodes.lock().expect("inode map");
+                match map.abs_path(&self.backing, ino.0) {
+                    Some(p) => p,
+                    None => {
+                        reply.error(Errno::ENOENT);
+                        return;
+                    }
+                }
+            };
+            let payload = data.to_vec();
+            let result = self.write_locks.with_locked_path(&path, || {
+                let mut file = OpenOptions::new().write(true).open(&path)?;
+                file.seek(SeekFrom::Start(offset))?;
+                file.write_all(&payload)?;
+                Ok::<u32, std::io::Error>(payload.len() as u32)
+            });
+            match result {
+                Ok(Ok(n)) => {
+                    if let Ok(mut cache) = self.read_cache.lock() {
+                        cache.invalidate(&path);
+                    }
+                    reply.written(n);
+                }
+                Ok(Err(err)) => reply.error(Self::io_errno(err)),
+                Err(err) => reply.error(Errno::from(std::io::Error::other(err.to_string()))),
+            }
         }
 
-        /// Read directory entries.
-        ///
-        /// TODO(hypervisor): cache opendir results per session to avoid repeated
-        ///   getdents syscalls when multiple agents stat the same tree.
         fn readdir(
             &self,
             _req: &Request,
             ino: INodeNo,
             _fh: FileHandle,
-            _offset: u64,
-            reply: ReplyDirectory,
+            offset: u64,
+            mut reply: ReplyDirectory,
         ) {
-            debug!(?ino, "readdir");
-            // TODO(hypervisor): iterate backing dir, fill reply with real entries.
-            reply.error(Errno::ENOSYS);
+            debug!(?ino, offset, "readdir");
+            let entries = {
+                let mut map = self.inodes.lock().expect("inode map");
+                let Some(rel) = map.resolve(ino.0).map(Path::to_path_buf) else {
+                    reply.error(Errno::ENOENT);
+                    return;
+                };
+                let parent_ino = if ino.0 == ROOT_INO {
+                    ROOT_INO
+                } else if rel.components().count() <= 1 {
+                    map.alloc_or_get(PathBuf::new())
+                } else if let Some(parent_rel) = rel.parent() {
+                    map.alloc_or_get(parent_rel.to_path_buf())
+                } else {
+                    ROOT_INO
+                };
+                let dir_path = abs_under(&self.backing, &rel);
+                let read_dir = match fs::read_dir(&dir_path) {
+                    Ok(rd) => rd,
+                    Err(err) => {
+                        reply.error(Self::io_errno(err));
+                        return;
+                    }
+                };
+                let mut entries: Vec<(u64, FileType, std::ffi::OsString)> = Vec::new();
+                entries.push((ino.0, FileType::Directory, std::ffi::OsString::from(".")));
+                entries.push((
+                    parent_ino,
+                    FileType::Directory,
+                    std::ffi::OsString::from(".."),
+                ));
+                for ent in read_dir.flatten() {
+                    let name = ent.file_name();
+                    let child_rel = crate::inode_map::join_rel(&rel, &name);
+                    let child_ino = map.alloc_or_get(child_rel);
+                    let kind = ent
+                        .metadata()
+                        .map(|m| Self::meta_kind(&m))
+                        .unwrap_or(FileType::RegularFile);
+                    entries.push((child_ino, kind, name));
+                }
+                entries
+            };
+            for (i, (child_ino, kind, name)) in
+                entries.into_iter().enumerate().skip(offset as usize)
+            {
+                let next_offset = (i + 1) as u64;
+                if reply.add(INodeNo(child_ino), next_offset, kind, &name) {
+                    break;
+                }
+            }
+            reply.ok();
         }
 
         fn mkdir(
             &self,
             _req: &Request,
-            _parent: INodeNo,
-            _name: &OsStr,
-            _mode: u32,
+            parent: INodeNo,
+            name: &OsStr,
+            mode: u32,
             _umask: u32,
             reply: ReplyEntry,
         ) {
-            // TODO(hypervisor): passthrough mkdir.
-            reply.error(Errno::ENOSYS);
+            let mut map = self.inodes.lock().expect("inode map");
+            let Some(rel) = map.child_rel(parent.0, name) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            let path = abs_under(&self.backing, &rel);
+            match fs::create_dir(&path) {
+                Ok(()) => {
+                    let _ = fs::set_permissions(&path, fs::Permissions::from_mode(mode));
+                    let ino = map.alloc_or_get(rel);
+                    match fs::metadata(&path) {
+                        Ok(meta) => {
+                            reply.entry(&TTL, &Self::metadata_to_attr(ino, &meta), Generation(0))
+                        }
+                        Err(err) => reply.error(Self::io_errno(err)),
+                    }
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
         }
 
-        fn unlink(&self, _req: &Request, _parent: INodeNo, _name: &OsStr, reply: ReplyEmpty) {
-            // TODO(hypervisor): passthrough unlink + invalidate cache entry.
-            reply.error(Errno::ENOSYS);
+        fn unlink(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
+            let mut map = self.inodes.lock().expect("inode map");
+            let Some(rel) = map.child_rel(parent.0, name) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            let path = abs_under(&self.backing, &rel);
+            match fs::remove_file(&path) {
+                Ok(()) => {
+                    if let Ok(mut cache) = self.read_cache.lock() {
+                        cache.invalidate(&path);
+                    }
+                    map.remove_rel(&rel);
+                    reply.ok();
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
         }
 
-        fn rmdir(&self, _req: &Request, _parent: INodeNo, _name: &OsStr, reply: ReplyEmpty) {
-            // TODO(hypervisor): passthrough rmdir.
-            reply.error(Errno::ENOSYS);
+        fn rmdir(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
+            let mut map = self.inodes.lock().expect("inode map");
+            let Some(rel) = map.child_rel(parent.0, name) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            let path = abs_under(&self.backing, &rel);
+            match fs::remove_dir(&path) {
+                Ok(()) => {
+                    map.remove_rel(&rel);
+                    reply.ok();
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
         }
 
         fn rename(
             &self,
             _req: &Request,
-            _parent: INodeNo,
-            _name: &OsStr,
-            _newparent: INodeNo,
-            _newname: &OsStr,
+            parent: INodeNo,
+            name: &OsStr,
+            newparent: INodeNo,
+            newname: &OsStr,
             _flags: RenameFlags,
             reply: ReplyEmpty,
         ) {
-            // TODO(hypervisor): passthrough rename + update inode map.
-            reply.error(Errno::ENOSYS);
+            let mut map = self.inodes.lock().expect("inode map");
+            let Some(old_rel) = map.child_rel(parent.0, name) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            let Some(new_rel) = map.child_rel(newparent.0, newname) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            let old_path = abs_under(&self.backing, &old_rel);
+            let new_path = abs_under(&self.backing, &new_rel);
+            match fs::rename(&old_path, &new_path) {
+                Ok(()) => {
+                    if let Ok(mut cache) = self.read_cache.lock() {
+                        cache.invalidate(&old_path);
+                        cache.invalidate(&new_path);
+                    }
+                    map.rename_rel(&old_rel, new_rel);
+                    reply.ok();
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
         }
     }
-
-    // -----------------------------------------------------------------------
-    // Mount entry point
-    // -----------------------------------------------------------------------
 
     /// Mount the [`InterceptFs`] at `mountpoint`, mirroring `backing`.
     ///
@@ -215,51 +454,15 @@ mod platform {
     pub fn mount(mountpoint: &Path, backing: &Path) -> anyhow::Result<()> {
         let fs = InterceptFs::new(backing);
         let mut config = Config::default();
+        // RW mount — writes are passthrough + path-serialized (CoW commit still TODO).
         config.mount_options = vec![
-            MountOption::RO,
             MountOption::FSName("sharecli-fuse".to_string()),
             MountOption::AutoUnmount,
         ];
         fuser::mount2(fs, mountpoint, &config)?;
         Ok(())
     }
-
-    // -----------------------------------------------------------------------
-    // Helpers
-    // -----------------------------------------------------------------------
-
-    fn metadata_to_attr(ino: u64, meta: &std::fs::Metadata) -> FileAttr {
-        let kind = if meta.is_dir() {
-            FileType::Directory
-        } else if meta.is_symlink() {
-            FileType::Symlink
-        } else {
-            FileType::RegularFile
-        };
-        let now = SystemTime::now();
-        FileAttr {
-            ino: INodeNo(ino),
-            size: meta.len(),
-            blocks: meta.blocks(),
-            atime: meta.accessed().unwrap_or(now),
-            mtime: meta.modified().unwrap_or(now),
-            ctime: now,
-            crtime: now,
-            kind,
-            perm: meta.mode() as u16,
-            nlink: meta.nlink() as u32,
-            uid: meta.uid(),
-            gid: meta.gid(),
-            rdev: meta.rdev() as u32,
-            blksize: 512,
-            flags: 0,
-        }
-    }
 }
-
-// ---------------------------------------------------------------------------
-// Public surface — re-export or stub depending on platform
-// ---------------------------------------------------------------------------
 
 /// Passthrough FUSE filesystem; attach point for sharecli hypervisor hooks.
 ///
