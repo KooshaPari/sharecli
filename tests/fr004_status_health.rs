@@ -1,11 +1,12 @@
 //! FR-004 — Process & Pool Health Status (status / HealthStatus / ProcessStats)
 //! FR: FR-004
 //!
-//! Covers AC-004.1, AC-004.4, AC-004.5.
+//! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status).
 
 use std::collections::HashMap;
 
 use sharecli::monitoring::{HealthStatus, ProcessStats};
+use sharecli_fuse::global_read_cache_meters;
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
 /// Mirror of the per-harness aggregation + status tables in `commands::status`.
@@ -47,6 +48,7 @@ fn format_status(
     let pct = used_mb.saturating_mul(100).checked_div(total_mb).unwrap_or(0);
     out.push_str("\n=== System Memory ===\n\n");
     out.push_str(&format!("Used: {used_mb} MB / {total_mb} MB ({pct}%)\n"));
+    out.push_str(&global_read_cache_meters().format_status_section());
     out
 }
 
@@ -102,6 +104,13 @@ async fn fr004_status_prints_harness_table() {
         "status MUST include system-memory line; got: {out}"
     );
     assert!(total_mb > 0, "system_memory_usage MUST report a non-zero total");
+    assert!(
+        out.contains("=== FUSE Read Coalesce ===")
+            && out.contains("Cache hits:")
+            && out.contains("Cache misses:")
+            && out.contains("Hit rate:"),
+        "status MUST surface FUSE read-coalesce meters (AC-007.9); got: {out}"
+    );
 }
 
 /// FR-004 / AC-004.4 — `HealthStatus::mark_unhealthy` increments `checks_failed`.

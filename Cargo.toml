@@ -50,6 +50,8 @@ spawn-core-sys = { path = "crates/spawn-core-sys" }
 
 # Fleet: device registry + thermal governor
 sharecli-fleet = { path = "crates/sharecli-fleet" }
+# FUSE read-coalesce global meters surfaced in `status` (FR-007 / AC-007.9)
+sharecli-fuse = { path = "crates/sharecli-fuse" }
 sharecli-sync = { path = "crates/sharecli-sync" }
 # Mesh: Maildir task queue + SmartMerger / WorktreePool (FR-010 CLI)
 sharecli-mesh = { path = "crates/sharecli-mesh" }
