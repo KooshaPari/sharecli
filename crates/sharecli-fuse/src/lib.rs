@@ -25,11 +25,18 @@
 
 mod inode_map;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
+mod mount_smoke;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 mod provenance;
 mod read_cache;
 mod write_serialize;
 
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub use mount_smoke::{
+    force_unmount, fuse_mount_smoke_enabled, run_mount_smoke, MountSession,
+    ENV_FUSE_MOUNT_SMOKE,
+};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use provenance::{
     annotate_write, annotate_write_at, default_session_id, read_provenance, WriteProvenance,

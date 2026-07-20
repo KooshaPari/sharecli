@@ -201,8 +201,8 @@ drop staging copies (`NoPending` when none — loud, no silent success).
 
 **Acceptance:**
 
-- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.5
-- `crates/sharecli-fuse` unit tests — inode map, read cache, write-serialize
+- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.7
+- `crates/sharecli-fuse` unit tests — inode map, read cache, write-serialize, provenance, mount_smoke
 
 **Source:** `crates/sharecli-fuse`  
 **Detail:** PRD E3.3; origin Tier-3 FUSE.

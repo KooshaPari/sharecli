@@ -15,6 +15,7 @@ tracing = "0.1"
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
 fuser = "0.17"
 libc = "0.2"
+tempfile = "3"
 # wraps: xattr 1.x — portable setxattr/getxattr for write provenance
 xattr = "1.6"
 
