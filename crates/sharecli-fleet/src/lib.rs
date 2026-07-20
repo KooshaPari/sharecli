@@ -13,7 +13,8 @@ pub mod thermal;
 use async_nats::Client;
 pub use agent_contention::{
     agent_contention_tier, count_host_agents, effective_gate_decision,
-    format_gate_status_section, AgentContentionThresholds, AgentContentionTier,
+    format_gate_status_section, gate_status_snapshot, AgentContentionThresholds,
+    AgentContentionTier, GateStatusSnapshot,
 };
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{

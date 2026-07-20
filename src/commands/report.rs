@@ -10,6 +10,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use sharecli_fleet::GateStatusSnapshot;
 
 use crate::runtime::{ProcessInfo, ProcessPool};
 
@@ -92,6 +93,12 @@ pub struct FleetReport {
     pub top_consumers: Vec<TopConsumer>,
     /// Thermal pressure level string ("GREEN" / "YELLOW" / "RED" or "UNAVAILABLE").
     pub thermal_pressure: String,
+    /// Live proc-scan agent inventory (FR-011).
+    pub detected_agents: usize,
+    /// Agent contention tier (`OK` / `WARN` / `REFUSE`).
+    pub agent_contention: String,
+    /// Effective gate decision (`ADMIT` / `DENY`).
+    pub gate_decision: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -111,10 +118,9 @@ pub fn sort_consumers(consumers: &mut [TopConsumer], sort: &SortBy) {
 
 /// Build a [`FleetReport`] from a slice of process snapshots.
 ///
-/// `thermal` is the current thermal pressure string (caller supplies it so
-/// the function stays sync and testable without hitting sysfs).
+/// `gate` carries live thermal + agent inventory gate fields (FR-011).
 /// `sort` controls the order of `top_consumers`.
-pub fn build_report(processes: &[ProcessInfo], thermal: &str, sort: &SortBy) -> FleetReport {
+pub fn build_report(processes: &[ProcessInfo], gate: &GateStatusSnapshot, sort: &SortBy) -> FleetReport {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
     let total_memory_mb: u64 = processes.iter().map(|p| p.memory_mb).sum();
@@ -156,7 +162,10 @@ pub fn build_report(processes: &[ProcessInfo], thermal: &str, sort: &SortBy) -> 
         total_memory_mb,
         by_project,
         top_consumers,
-        thermal_pressure: thermal.to_string(),
+        thermal_pressure: gate.thermal_pressure.clone(),
+        detected_agents: gate.detected_agents,
+        agent_contention: gate.agent_contention.clone(),
+        gate_decision: gate.gate_decision.clone(),
     }
 }
 
@@ -169,6 +178,9 @@ fn render_text(report: &FleetReport) {
     println!("Timestamp:       {}", report.timestamp);
     println!("Uptime:          {} s", report.uptime_seconds);
     println!("Thermal:         {}", report.thermal_pressure);
+    println!("Detected agents: {}", report.detected_agents);
+    println!("Agent contention: {}", report.agent_contention);
+    println!("Gate decision:   {}", report.gate_decision);
     println!("Total processes: {}", report.total_processes);
     println!("Total memory:    {} MB", report.total_memory_mb);
 
@@ -212,17 +224,23 @@ async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
     let pool = ProcessPool::new();
     let processes = pool.list().await;
 
-    // Best-effort thermal level via sharecli-fleet
-    let thermal = {
+    // Live thermal + agent gate (FR-011)
+    let gate = {
         use sharecli_fleet::thermal::ThermalGovernor;
+        use sharecli_fleet::{count_host_agents, gate_status_snapshot};
         let gov = ThermalGovernor::new();
         match gov.poll() {
-            Ok(level) => format!("{level:?}"),
-            Err(_) => "UNAVAILABLE".to_string(),
+            Ok(level) => gate_status_snapshot(level, count_host_agents()),
+            Err(_) => GateStatusSnapshot {
+                thermal_pressure: "UNAVAILABLE".to_string(),
+                detected_agents: count_host_agents(),
+                agent_contention: "UNAVAILABLE".to_string(),
+                gate_decision: "UNAVAILABLE".to_string(),
+            },
         }
     };
 
-    let report = build_report(&processes, &thermal, sort);
+    let report = build_report(&processes, &gate, sort);
 
     match format {
         ReportFormat::Text => render_text(&report),
@@ -288,14 +306,25 @@ mod tests {
         }
     }
 
+    fn gate(thermal: &str, agents: usize, contention: &str, decision: &str) -> GateStatusSnapshot {
+        GateStatusSnapshot {
+            thermal_pressure: thermal.to_string(),
+            detected_agents: agents,
+            agent_contention: contention.to_string(),
+            gate_decision: decision.to_string(),
+        }
+    }
+
     #[test]
     fn test_build_report_empty() {
-        let report = build_report(&[], "GREEN", &SortBy::Memory);
+        let report = build_report(&[], &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Memory);
         assert_eq!(report.total_processes, 0);
         assert_eq!(report.total_memory_mb, 0);
         assert!(report.by_project.is_empty());
         assert!(report.top_consumers.is_empty());
         assert_eq!(report.thermal_pressure, "GREEN");
+        assert_eq!(report.detected_agents, 0);
+        assert_eq!(report.gate_decision, "ADMIT");
     }
 
     #[test]
@@ -306,7 +335,7 @@ mod tests {
             make_proc(3, "node", Some("beta"), 200, 1_000_200),
             make_proc(4, "forge", None, 50, 1_000_300),
         ];
-        let report = build_report(&procs, "YELLOW", &SortBy::Memory);
+        let report = build_report(&procs, &gate("YELLOW", 2, "OK", "ADMIT"), &SortBy::Memory);
 
         assert_eq!(report.total_processes, 4);
         assert_eq!(report.total_memory_mb, 650);
@@ -328,7 +357,7 @@ mod tests {
     fn test_top_consumers_order_and_limit() {
         let procs: Vec<ProcessInfo> =
             (0u32..8).map(|i| make_proc(i, "proc", None, (i as u64 + 1) * 100, 0)).collect();
-        let report = build_report(&procs, "GREEN", &SortBy::Memory);
+        let report = build_report(&procs, &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Memory);
 
         assert_eq!(report.top_consumers.len(), 5);
         // First element must be the highest memory consumer
@@ -342,12 +371,15 @@ mod tests {
     #[test]
     fn test_json_roundtrip() {
         let procs = vec![make_proc(10, "claude", Some("proj-a"), 512, 1_700_000_000)];
-        let report = build_report(&procs, "RED", &SortBy::Memory);
+        let report = build_report(&procs, &gate("RED", 8, "REFUSE", "DENY"), &SortBy::Memory);
         let json = serde_json::to_string(&report).expect("serialize");
         let back: FleetReport = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.total_processes, report.total_processes);
         assert_eq!(back.total_memory_mb, report.total_memory_mb);
         assert_eq!(back.thermal_pressure, "RED");
+        assert_eq!(back.detected_agents, 8);
+        assert_eq!(back.agent_contention, "REFUSE");
+        assert_eq!(back.gate_decision, "DENY");
         let pa = back.by_project.get("proj-a").unwrap();
         assert_eq!(pa.count, 1);
         assert_eq!(pa.memory_mb, 512);
@@ -364,7 +396,7 @@ mod tests {
             make_proc(2, "alpha", None, 100, 0),
             make_proc(3, "mango", None, 300, 0),
         ];
-        let report = build_report(&procs, "GREEN", &SortBy::Name);
+        let report = build_report(&procs, &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Name);
         let names: Vec<&str> = report.top_consumers.iter().map(|c| c.name.as_str()).collect();
         assert_eq!(names, vec!["alpha", "mango", "zebra"]);
     }
@@ -376,7 +408,7 @@ mod tests {
             make_proc(2, "high", None, 900, 0),
             make_proc(3, "mid", None, 400, 0),
         ];
-        let report = build_report(&procs, "GREEN", &SortBy::Memory);
+        let report = build_report(&procs, &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Memory);
         let mems: Vec<u64> = report.top_consumers.iter().map(|c| c.memory_mb).collect();
         assert_eq!(mems, vec![900, 400, 50]);
     }

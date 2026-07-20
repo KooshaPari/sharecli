@@ -426,8 +426,12 @@ speculative coalesce via Allow / Warn / Refuse semantics.
   inventory and prints [`format_gate_status_section`](crates/sharecli-fleet/src/agent_contention.rs)
   with thermal level, detected agent count, contention tier, and ADMIT/DENY gate
   decision (parity with thermal TUI gate panel).
+- **AC-011.6:** `sharecli report` (text + JSON) and `sharecli ps --all` expose the
+  same gate fields via [`gate_status_snapshot`](crates/sharecli-fleet/src/agent_contention.rs)
+  / [`format_gate_status_section`](crates/sharecli-fleet/src/agent_contention.rs)
+  (detected agent count, contention tier, ADMIT/DENY).
 
-**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr011_agent_thermal_gate.rs`, `tests/fr004_status_health.rs`, `tests/fr008_coalesce_mesh.rs`
+**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr011_agent_thermal_gate.rs`, `tests/fr004_status_health.rs`, `tests/fr011_report_gate.rs`, `tests/fr008_coalesce_mesh.rs`
 
 ---
 

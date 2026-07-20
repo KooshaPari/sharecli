@@ -84,23 +84,47 @@ fn contention_tier_label(tier: AgentContentionTier) -> &'static str {
     }
 }
 
+/// Structured gate fields for JSON report / programmatic surfaces (FR-011).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GateStatusSnapshot {
+    /// Thermal level label (`GREEN` / `YELLOW` / `RED`).
+    pub thermal_pressure: String,
+    /// Live proc-scan agent inventory size.
+    pub detected_agents: usize,
+    /// Agent contention tier label (`OK` / `WARN` / `REFUSE`).
+    pub agent_contention: String,
+    /// Effective ADMIT/DENY decision.
+    pub gate_decision: String,
+}
+
+/// Build structured gate fields from live thermal level + agent inventory.
+pub fn gate_status_snapshot(thermal: ThermalLevel, agent_count: usize) -> GateStatusSnapshot {
+    let thresholds = AgentContentionThresholds::default();
+    let tier = agent_contention_tier(agent_count, thresholds);
+    GateStatusSnapshot {
+        thermal_pressure: thermal_level_label(thermal).to_string(),
+        detected_agents: agent_count,
+        agent_contention: contention_tier_label(tier).to_string(),
+        gate_decision: effective_gate_decision(thermal, agent_count).to_string(),
+    }
+}
+
 /// Operator status section: thermal level, agent inventory, effective gate (FR-011).
 pub fn format_gate_status_section(thermal: ThermalLevel, agent_count: usize) -> String {
     let thresholds = AgentContentionThresholds::default();
-    let tier = agent_contention_tier(agent_count, thresholds);
-    let decision = effective_gate_decision(thermal, agent_count);
+    let snap = gate_status_snapshot(thermal, agent_count);
     format!(
         "\n=== Thermal Gate (FR-011) ===\n\n\
          Thermal level: {}\n\
          Detected agents: {}\n\
          Agent contention: {} (warn>={}, refuse>={})\n\
          Gate decision: [{}]\n",
-        thermal_level_label(thermal),
-        agent_count,
-        contention_tier_label(tier),
+        snap.thermal_pressure,
+        snap.detected_agents,
+        snap.agent_contention,
         thresholds.warn_at,
         thresholds.refuse_at,
-        decision,
+        snap.gate_decision,
     )
 }
 
@@ -147,5 +171,14 @@ mod tests {
         assert!(section.contains("Detected agents: 8"));
         assert!(section.contains("Agent contention: REFUSE"));
         assert!(section.contains("Gate decision: [DENY]"));
+    }
+
+    #[test]
+    fn gate_status_snapshot_matches_section() {
+        let snap = gate_status_snapshot(ThermalLevel::Yellow, 4);
+        assert_eq!(snap.thermal_pressure, "YELLOW");
+        assert_eq!(snap.detected_agents, 4);
+        assert_eq!(snap.agent_contention, "WARN");
+        assert_eq!(snap.gate_decision, "ADMIT");
     }
 }
