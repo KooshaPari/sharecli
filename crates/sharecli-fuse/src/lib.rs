@@ -7,6 +7,8 @@
 //! * Coalesce redundant reads across concurrent agent sessions.
 //! * Cache hot paths (Cargo registry, node_modules, build artefacts) in RAM or
 //!   on a fast local device, routing cold misses to the backing path.
+//! * Remember negative dentries (ENOENT) with TTL so repeated missing-path
+//!   lookups skip backing stats until create/mkdir/rename invalidates them.
 //! * Meter and throttle per-process IO to prevent one agent's build from starving
 //!   another's.
 //! * Record provenance — every write carries a (session-id, timestamp) annotation
@@ -24,6 +26,7 @@
 #![warn(missing_docs)]
 
 mod inode_map;
+mod neg_dentry;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod mount_smoke;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -32,6 +35,7 @@ mod read_cache;
 mod write_serialize;
 
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
+pub use neg_dentry::{NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use mount_smoke::{
     force_unmount, fuse_mount_smoke_enabled, run_mount_smoke, MountSession,
@@ -71,6 +75,7 @@ mod platform {
     use tracing::{debug, trace};
 
     use crate::inode_map::{abs_under, InodeMap, ROOT_INO};
+    use crate::neg_dentry::{NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL};
     use crate::provenance::{annotate_write, default_session_id};
     use crate::read_cache::{ReadCacheMeters, ReadContentCache};
     use crate::write_serialize::WriteSerialize;
@@ -85,6 +90,7 @@ mod platform {
         session_id: String,
         inodes: Mutex<InodeMap>,
         read_cache: Mutex<ReadContentCache>,
+        neg_dentry: Mutex<NegativeDentryCache>,
         write_locks: WriteSerialize,
     }
 
@@ -102,6 +108,7 @@ mod platform {
                 session_id: session_id.into(),
                 inodes: Mutex::new(InodeMap::new()),
                 read_cache: Mutex::new(ReadContentCache::new()),
+                neg_dentry: Mutex::new(NegativeDentryCache::with_ttl(DEFAULT_NEG_TTL)),
                 write_locks: WriteSerialize::with_staging_root(staging),
             }
         }
@@ -122,6 +129,51 @@ mod platform {
                 .lock()
                 .expect("read cache lock")
                 .meters()
+        }
+
+        /// Negative-dentry meters (hits / misses) without mounting.
+        pub fn neg_dentry_meters(&self) -> NegDentryMeters {
+            self.neg_dentry
+                .lock()
+                .expect("neg dentry lock")
+                .meters()
+        }
+
+        /// Probe whether relative `rel` exists under the backing root.
+        ///
+        /// Uses the negative dentry cache: a prior ENOENT within TTL returns
+        /// `Ok(false)` without re-statting. A positive result invalidates any
+        /// stale negative entry for `rel`.
+        pub fn exists_rel(&self, rel: &Path) -> std::io::Result<bool> {
+            {
+                let mut neg = self.neg_dentry.lock().expect("neg dentry lock");
+                if neg.is_negative(rel) {
+                    return Ok(false);
+                }
+            }
+            let abs = abs_under(&self.backing, rel);
+            match fs::metadata(&abs) {
+                Ok(_) => {
+                    if let Ok(mut neg) = self.neg_dentry.lock() {
+                        neg.invalidate(rel);
+                    }
+                    Ok(true)
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                    if let Ok(mut neg) = self.neg_dentry.lock() {
+                        neg.remember_miss(rel.to_path_buf());
+                    }
+                    Ok(false)
+                }
+                Err(err) => Err(err),
+            }
+        }
+
+        /// Drop a negative-dentry entry for `rel` (create / mkdir / rename-into).
+        pub fn invalidate_neg_rel(&self, rel: &Path) {
+            if let Ok(mut neg) = self.neg_dentry.lock() {
+                neg.invalidate(rel);
+            }
         }
 
         /// Read a relative path through the in-process coalesce cache (no mount).
@@ -227,6 +279,17 @@ mod platform {
         fn lookup(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
             trace!(?parent, ?name, "lookup");
             let mut map = self.inodes.lock().expect("inode map");
+            let Some(rel) = map.child_rel(parent.0, name) else {
+                reply.error(Errno::ENOENT);
+                return;
+            };
+            {
+                let mut neg = self.neg_dentry.lock().expect("neg dentry lock");
+                if neg.is_negative(&rel) {
+                    reply.error(Errno::ENOENT);
+                    return;
+                }
+            }
             let Some((ino, rel)) = map.lookup_or_alloc(parent.0, name) else {
                 reply.error(Errno::ENOENT);
                 return;
@@ -234,10 +297,18 @@ mod platform {
             let path = abs_under(&self.backing, &rel);
             match fs::metadata(&path) {
                 Ok(meta) => {
+                    if let Ok(mut neg) = self.neg_dentry.lock() {
+                        neg.invalidate(&rel);
+                    }
                     let attr = Self::metadata_to_attr(ino, &meta);
                     reply.entry(&TTL, &attr, Generation(0));
                 }
                 Err(err) => {
+                    if err.kind() == std::io::ErrorKind::NotFound {
+                        if let Ok(mut neg) = self.neg_dentry.lock() {
+                            neg.remember_miss(rel.clone());
+                        }
+                    }
                     map.remove_rel(&rel);
                     reply.error(Self::io_errno(err));
                 }
@@ -429,6 +500,9 @@ mod platform {
             match fs::create_dir(&path) {
                 Ok(()) => {
                     let _ = fs::set_permissions(&path, fs::Permissions::from_mode(mode));
+                    if let Ok(mut neg) = self.neg_dentry.lock() {
+                        neg.invalidate(&rel);
+                    }
                     let ino = map.alloc_or_get(rel);
                     match fs::metadata(&path) {
                         Ok(meta) => {
@@ -453,6 +527,9 @@ mod platform {
                     if let Ok(mut cache) = self.read_cache.lock() {
                         cache.invalidate(&path);
                     }
+                    if let Ok(mut neg) = self.neg_dentry.lock() {
+                        neg.remember_miss(rel.clone());
+                    }
                     map.remove_rel(&rel);
                     reply.ok();
                 }
@@ -469,6 +546,9 @@ mod platform {
             let path = abs_under(&self.backing, &rel);
             match fs::remove_dir(&path) {
                 Ok(()) => {
+                    if let Ok(mut neg) = self.neg_dentry.lock() {
+                        neg.remember_miss(rel.clone());
+                    }
                     map.remove_rel(&rel);
                     reply.ok();
                 }
@@ -502,6 +582,10 @@ mod platform {
                     if let Ok(mut cache) = self.read_cache.lock() {
                         cache.invalidate(&old_path);
                         cache.invalidate(&new_path);
+                    }
+                    if let Ok(mut neg) = self.neg_dentry.lock() {
+                        neg.remember_miss(old_rel.clone());
+                        neg.invalidate(&new_rel);
                     }
                     map.rename_rel(&old_rel, new_rel);
                     reply.ok();

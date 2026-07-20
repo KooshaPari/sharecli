@@ -7,7 +7,8 @@
 //! AC-009.4 in-process read coalesce cache hit/miss meters
 //! AC-009.5 write-serialize per-path lock + CoW stage/commit/discard
 //! AC-009.6 write provenance xattrs on write_rel / commit_rel
-//! AC-009.7 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1)
+//! AC-009.7 negative dentry cache TTL hit/miss + invalidate on create
+//! AC-009.8 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1)
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -188,7 +189,52 @@ fn fr009_write_provenance_xattrs() {
     assert_eq!(fs::read(&file).expect("body"), b"cowed");
 }
 
-/// FR-009 / AC-009.7 — live FUSE mount read/write (privileged; opt-in env).
+/// FR-009 / AC-009.7 — negative dentry: miss → hit; create invalidates.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn fr009_negative_dentry_cache() {
+    use std::fs;
+    use std::io::Write;
+
+    let dir = TempDir::new().expect("tempdir");
+    let fs = sharecli_fuse::InterceptFs::new(dir.path());
+    let missing = Path::new("no-such.txt");
+
+    assert!(!fs.exists_rel(missing).expect("probe miss"));
+    let m1 = fs.neg_dentry_meters();
+    assert_eq!(m1.misses, 1);
+    assert_eq!(m1.hits, 0);
+
+    assert!(!fs.exists_rel(missing).expect("cached ENOENT"));
+    let m2 = fs.neg_dentry_meters();
+    assert_eq!(m2.misses, 1);
+    assert_eq!(m2.hits, 1);
+
+    {
+        let mut f = fs::File::create(dir.path().join("no-such.txt")).expect("create");
+        f.write_all(b"now-here").expect("write");
+    }
+    // Out-of-band create: invalidate so the next probe stats the backing path.
+    fs.invalidate_neg_rel(missing);
+    assert!(fs.exists_rel(missing).expect("positive after create"));
+    assert_eq!(fs.neg_dentry_meters().hits, 1);
+}
+
+/// FR-009 / AC-009.7 — NegativeDentryCache unit surface (all platforms).
+#[test]
+fn fr009_negative_dentry_cache_direct() {
+    use std::time::Duration;
+    use sharecli_fuse::NegativeDentryCache;
+
+    let mut cache = NegativeDentryCache::with_ttl(Duration::from_secs(30));
+    let rel = PathBuf::from("ghost");
+    cache.remember_miss(rel.clone());
+    assert!(cache.is_negative(&rel));
+    cache.invalidate(&rel);
+    assert!(!cache.is_negative(&rel));
+}
+
+/// FR-009 / AC-009.8 — live FUSE mount read/write (privileged; opt-in env).
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn fr009_privileged_mount_smoke() {

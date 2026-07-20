@@ -197,12 +197,14 @@ fallback). Core VFS ops MUST passthrough to the backing path (inode map for
 non-root parents). In-process read content cache MUST coalesce redundant reads
 (keyed by path+mtime) with hit/miss meters. Concurrent writes to the same path
 MUST serialize via a per-path lock; staging CoW commit/discard MUST promote or
-drop staging copies (`NoPending` when none — loud, no silent success).
+drop staging copies (`NoPending` when none — loud, no silent success). Successful
+writes MUST stamp provenance xattrs. Missing-path lookups MUST use a TTL
+negative dentry cache with invalidate-on-create.
 
 **Acceptance:**
 
-- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.7
-- `crates/sharecli-fuse` unit tests — inode map, read cache, write-serialize, provenance, mount_smoke
+- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.8
+- `crates/sharecli-fuse` unit tests — inode map, read cache, neg dentry, write-serialize, provenance, mount_smoke
 
 **Source:** `crates/sharecli-fuse`  
 **Detail:** PRD E3.3; origin Tier-3 FUSE.

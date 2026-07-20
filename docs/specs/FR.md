@@ -261,13 +261,16 @@ Writes to the same path MUST serialize. Staging CoW (`stage_bytes` →
 without silent no-ops; commit/discard with no pending entry MUST return
 `NoPending`. Successful `write_rel` and `commit_rel` MUST stamp write
 provenance extended attributes (`user.sharecli.session`,
-`user.sharecli.written_at`) on the backing file.
+`user.sharecli.written_at`) on the backing file. Missing-path lookups MUST be
+remembered in a TTL negative dentry cache and skipped on subsequent probes
+until create / mkdir / rename-into invalidates the entry.
 
 **Source:**
 
 - `crates/sharecli-fuse/src/lib.rs` — `InterceptFs`, `mount`
 - `crates/sharecli-fuse/src/inode_map.rs` — `InodeMap`
 - `crates/sharecli-fuse/src/read_cache.rs` — `ReadContentCache`
+- `crates/sharecli-fuse/src/neg_dentry.rs` — `NegativeDentryCache`
 - `crates/sharecli-fuse/src/write_serialize.rs` — `WriteSerialize`
 - `crates/sharecli-fuse/src/provenance.rs` — write provenance xattrs
 - `crates/sharecli-fuse/src/mount_smoke.rs` — opt-in privileged mount smoke
@@ -290,7 +293,11 @@ provenance extended attributes (`user.sharecli.session`,
 - **AC-009.6:** `write_rel` and `commit_rel` stamp `user.sharecli.session`
   and `user.sharecli.written_at` on the backing path; session id is readable
   via `read_provenance` / `InterceptFs::session_id` (no privileged mount).
-- **AC-009.7:** With `SHARECLI_FUSE_MOUNT_SMOKE=1`, `run_mount_smoke` performs
+- **AC-009.7:** `exists_rel` / FUSE `lookup` remember ENOENT in
+  `NegativeDentryCache` (miss then hit within TTL); `invalidate_neg_rel` /
+  mkdir / rename-into clear the entry so a newly created path is visible
+  without waiting for TTL expiry (no privileged mount).
+- **AC-009.8:** With `SHARECLI_FUSE_MOUNT_SMOKE=1`, `run_mount_smoke` performs
   a read/write round-trip through a live FUSE mount over a temp backing tree;
   default `cargo test` skips without failure when the env var is unset.
 
