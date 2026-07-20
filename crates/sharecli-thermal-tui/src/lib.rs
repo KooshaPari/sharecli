@@ -22,6 +22,8 @@ use ratatui::{
     Frame,
 };
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli_fleet::ResourceWatchSample;
+use sharecli_fuse::{global_read_cache_meters, ReadCacheMeters};
 
 // ---------------------------------------------------------------------------
 // Pure transforms — unit-testable
@@ -115,6 +117,52 @@ pub fn is_compact(width: u16) -> bool {
     width < COMPACT_WIDTH
 }
 
+/// Lines for the host resource watch panel (FR-007 / AC-007.10 TUI slice).
+pub fn resource_watch_lines(sample: Option<ResourceWatchSample>, compact: bool) -> Vec<Line<'static>> {
+    let Some(sample) = sample else {
+        let msg = if compact {
+            " watch unavailable"
+        } else {
+            "  Resource watch unavailable on this host"
+        };
+        return vec![Line::from(Span::styled(
+            msg,
+            Style::default().fg(Color::Red),
+        ))];
+    };
+
+    if compact {
+        return vec![Line::from(format!(
+            " FD:{} RSS:{} L:{:.1}",
+            sample.fd_count, sample.mem_rss_bytes, sample.load_1m
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Open FDs:  {}", sample.fd_count)),
+        Line::from(format!("  RSS:       {} bytes", sample.mem_rss_bytes)),
+        Line::from(format!("  Load (1m): {:.2}", sample.load_1m)),
+    ]
+}
+
+/// Lines for the FUSE read-coalesce panel (FR-007 / AC-007.9 TUI slice).
+pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " hits:{} miss:{} {}%",
+            meters.hits,
+            meters.misses,
+            meters.hit_rate_pct()
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Cache hits:   {}", meters.hits)),
+        Line::from(format!("  Cache misses: {}", meters.misses)),
+        Line::from(format!("  Hit rate:     {}%", meters.hit_rate_pct())),
+    ]
+}
+
 /// Short pressure blurb for compact terminals; full sentence otherwise.
 pub fn thermal_blurb(level: ThermalLevel, compact: bool) -> &'static str {
     if compact {
@@ -154,6 +202,10 @@ pub struct App {
     pub last_poll: Instant,
     /// Total number of polls performed.
     pub poll_count: u64,
+    /// Latest host resource watch sample (None when capture fails on this host).
+    pub resource_watch: Option<ResourceWatchSample>,
+    /// Process-wide FUSE read-coalesce meters.
+    pub fuse_meters: ReadCacheMeters,
 }
 
 impl App {
@@ -165,6 +217,8 @@ impl App {
             slot_cap,
             last_poll: Instant::now(),
             poll_count: 0,
+            resource_watch: None,
+            fuse_meters: ReadCacheMeters::default(),
         }
     }
 
@@ -174,6 +228,23 @@ impl App {
         self.active_slots = active_slots;
         self.last_poll = Instant::now();
         self.poll_count += 1;
+    }
+
+    /// Refresh operator watch panels from live OS samples + global FUSE meters.
+    pub fn poll_operator_meters(&mut self) {
+        self.resource_watch = ResourceWatchSample::capture().ok();
+        self.fuse_meters = global_read_cache_meters();
+    }
+
+    /// Test/golden helper — pin deterministic operator panel values.
+    pub fn with_operator_meters(
+        mut self,
+        watch: Option<ResourceWatchSample>,
+        fuse: ReadCacheMeters,
+    ) -> Self {
+        self.resource_watch = watch;
+        self.fuse_meters = fuse;
+        self
     }
 }
 
@@ -208,6 +279,8 @@ pub fn render(frame: &mut Frame, app: &App) {
     let compact = is_compact(area.width);
     let margin = if compact { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
+    let watch_h = if compact { 3 } else { 6 };
+    let fuse_h = if compact { 3 } else { 5 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -217,6 +290,8 @@ pub fn render(frame: &mut Frame, app: &App) {
             Constraint::Length(thermal_h), // thermal pressure block
             Constraint::Length(3),         // gate decision
             Constraint::Length(3),         // slot gauge
+            Constraint::Length(watch_h),   // host resource watch
+            Constraint::Length(fuse_h),    // FUSE read coalesce
             Constraint::Length(3),         // footer
         ])
         .split(area);
@@ -225,7 +300,9 @@ pub fn render(frame: &mut Frame, app: &App) {
     render_thermal(frame, chunks[1], app, compact);
     render_decision(frame, chunks[2], app, compact);
     render_slots(frame, chunks[3], app, compact);
-    render_footer(frame, chunks[4], app, compact);
+    render_resource_watch(frame, chunks[4], app, compact);
+    render_fuse_coalesce(frame, chunks[5], app, compact);
+    render_footer(frame, chunks[6], app, compact);
 }
 
 fn render_title(frame: &mut Frame, area: Rect, compact: bool) {
@@ -314,6 +391,20 @@ fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     frame.render_widget(gauge, area);
 }
 
+fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Watch " } else { " Host Resource Watch " };
+    let lines = resource_watch_lines(app.resource_watch, compact);
+    let block = Block::default().borders(Borders::ALL).title(title);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " FUSE " } else { " FUSE Read Coalesce " };
+    let lines = fuse_coalesce_lines(app.fuse_meters, compact);
+    let block = Block::default().borders(Borders::ALL).title(title);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
 fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let elapsed = app.last_poll.elapsed().as_secs();
     let meta = if compact {
@@ -367,6 +458,7 @@ pub fn run(governor: &ThermalGovernor, slot_cap: u32) -> Result<()> {
     let initial_level = governor.poll().unwrap_or(ThermalLevel::Green);
     let initial_slots = count_cargo_builds();
     app.update(initial_level, initial_slots);
+    app.poll_operator_meters();
 
     let result = event_loop(&mut terminal, &mut app, governor);
 
@@ -402,6 +494,7 @@ fn event_loop(
         let level = governor.poll().unwrap_or(ThermalLevel::Green);
         let slots = count_cargo_builds();
         app.update(level, slots);
+        app.poll_operator_meters();
     }
     Ok(())
 }
@@ -612,13 +705,54 @@ mod tests {
         assert_eq!(app.active_slots, 3);
     }
 
+    #[test]
+    fn test_resource_watch_lines_full() {
+        let sample = ResourceWatchSample {
+            fd_count: 42,
+            net_rx_bytes: 0,
+            net_tx_bytes: 0,
+            mem_rss_bytes: 1_048_576,
+            load_1m: 1.25,
+        };
+        let lines = resource_watch_lines(Some(sample), false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Open FDs:") && rendered.contains("42"));
+        assert!(rendered.contains("RSS:") && rendered.contains("1048576"));
+        assert!(rendered.contains("Load (1m):"));
+    }
+
+    #[test]
+    fn test_fuse_coalesce_lines_full() {
+        let meters = ReadCacheMeters { hits: 7, misses: 3 };
+        let lines = fuse_coalesce_lines(meters, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Cache hits:") && rendered.contains("7"));
+        assert!(rendered.contains("Cache misses:") && rendered.contains("3"));
+        assert!(rendered.contains("Hit rate:") && rendered.contains("70"));
+    }
+
+    #[test]
+    fn test_resource_watch_lines_unavailable() {
+        let lines = resource_watch_lines(None, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("unavailable"));
+    }
+
     // --- Headless render smoke test (FakeThermalGate via ThermalGovernor mock) ---
     #[test]
     fn test_render_green_headless() {
         use ratatui::{backend::TestBackend, Terminal};
         let backend = TestBackend::new(120, 30);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(4);
+        let sample = ResourceWatchSample {
+            fd_count: 12,
+            net_rx_bytes: 100,
+            net_tx_bytes: 50,
+            mem_rss_bytes: 4096,
+            load_1m: 0.5,
+        };
+        let mut app = App::new(4)
+            .with_operator_meters(Some(sample), ReadCacheMeters { hits: 2, misses: 1 });
         app.update(ThermalLevel::Green, 0);
         // Should not panic.
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -627,6 +761,10 @@ mod tests {
         let rendered: String = buf.content.iter().map(|c| c.symbol().to_string()).collect();
         assert!(rendered.contains("GREEN"), "expected GREEN in rendered output");
         assert!(rendered.contains("ADMIT"), "expected ADMIT in rendered output");
+        assert!(rendered.contains("Host Resource Watch"), "expected watch panel");
+        assert!(rendered.contains("FUSE Read Coalesce"), "expected fuse panel");
+        assert!(rendered.contains("Open FDs:"), "expected FD watch line");
+        assert!(rendered.contains("Cache hits:"), "expected fuse meters");
     }
 
     #[test]
@@ -634,7 +772,16 @@ mod tests {
         use ratatui::{backend::TestBackend, Terminal};
         let backend = TestBackend::new(120, 30);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(4);
+        let mut app = App::new(4).with_operator_meters(
+            Some(ResourceWatchSample {
+                fd_count: 8,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                mem_rss_bytes: 8192,
+                load_1m: 2.0,
+            }),
+            ReadCacheMeters { hits: 0, misses: 0 },
+        );
         app.update(ThermalLevel::Red, 4);
         terminal.draw(|f| render(f, &app)).unwrap();
         let buf = terminal.backend().buffer().clone();
@@ -648,7 +795,16 @@ mod tests {
         use ratatui::{backend::TestBackend, Terminal};
         let backend = TestBackend::new(120, 30);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(4);
+        let mut app = App::new(4).with_operator_meters(
+            Some(ResourceWatchSample {
+                fd_count: 16,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                mem_rss_bytes: 2048,
+                load_1m: 1.0,
+            }),
+            ReadCacheMeters { hits: 1, misses: 1 },
+        );
         app.update(ThermalLevel::Yellow, 2);
         terminal.draw(|f| render(f, &app)).unwrap();
         let buf = terminal.backend().buffer().clone();

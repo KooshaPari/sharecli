@@ -222,14 +222,28 @@ coalesce. Thermal watch signals MAY surface via FR-011.
 - **AC-007.6:** [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) captures
   a live [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs)
   on every invocation and attaches it to [`SpawnOutcome::resource_watch`](crates/sharecli-core/src/lib.rs).
+- **AC-007.7:** RSS watch samples current process resident memory via
+  `sample_self_rss_bytes` / `ResourceWatchSample::capture`; MUST fail loudly on
+  unsupported OS rather than returning silent zero.
+- **AC-007.8:** Host 1-minute load average is sampled via
+  `sample_host_load_1m` / `ResourceWatchSample::capture`; MUST fail loudly on
+  unsupported OS rather than returning silent zero.
+- **AC-007.9:** `sharecli status` and `sharecli thermal` surface FUSE
+  read-coalesce hit/miss meters via [`global_read_cache_meters`](crates/sharecli-fuse/src/read_cache.rs)
+  / [`format_status_section`](crates/sharecli-fuse/src/read_cache.rs).
 - **AC-007.10:** `sharecli status` captures a live
   [`ResourceWatchSample::capture`](crates/sharecli-fleet/src/resource_watch.rs)
   after the system-memory section and prints
   [`format_status_section`](crates/sharecli-fleet/src/resource_watch.rs)
   with open FD count, RSS bytes, 1-minute load average, and host net RX/TX
   counters; MUST fail loudly via `?` when sampling is unsupported or errors.
+- **AC-007.11:** `sharecli thermal` polls a live
+  [`ResourceWatchSample::capture`](crates/sharecli-fleet/src/resource_watch.rs)
+  on each redraw and renders host FD/RSS/load plus FUSE read-coalesce meters
+  in dedicated TUI panels (Feb harness dashboard slice); capture failure MUST
+  render an explicit unavailable message (no silent zero panel).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr004_status_health.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`
 
 ---
 
