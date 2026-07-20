@@ -152,6 +152,17 @@ enum Commands {
         /// Detailed output
         #[arg(short, long)]
         verbose: bool,
+
+        /// Emit machine-readable JSON (includes detected agent inventory)
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// List host-detected coding agents (proc scan + RSS/FD samples)
+    Proc {
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Run a runtime health probe
@@ -516,7 +527,8 @@ async fn run() -> Result<()> {
         Commands::Stop { pid, project, harness, all, force, yes } => {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
-        Commands::Status { verbose } => status(*verbose).await?,
+        Commands::Status { verbose, json } => status(*verbose, *json).await?,
+        Commands::Proc { json } => commands::proc::run(*json)?,
         Commands::Config { cmd } => config_cmd(cmd)?,
         Commands::Project { cmd } => project_cmd(cmd).await?,
         Commands::Optimize { apply } => optimize(*apply).await?,

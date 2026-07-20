@@ -63,7 +63,8 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use sharecli_fleet::agent_contention::{
-    agent_contention_tier, count_host_agents, AgentContentionThresholds, AgentContentionTier,
+    agent_contention_tier, live_agent_contention_tier, AgentContentionThresholds,
+    AgentContentionTier,
 };
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{
@@ -124,6 +125,12 @@ pub struct SystemThermalGate {
     governor: ThermalGovernor,
 }
 
+impl Default for SystemThermalGate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemThermalGate {
     /// Create a new gate backed by the real [`ThermalGovernor`].
     pub fn new() -> Self {
@@ -163,20 +170,23 @@ pub fn combine_thermal_agent_decision(
 /// Production gate: thermal governor + live host agent inventory escalation.
 ///
 /// Wraps an inner [`ThermalGate`] (typically [`SystemThermalGate`]) and escalates
-/// Allow→Warn or any→Refuse when proc-scan agent count crosses configured thresholds.
+/// Allow→Warn or any→Refuse when proc-scan agent count or aggregate RSS crosses
+/// configured thresholds.
 pub struct AgentAwareThermalGate {
     inner: Arc<dyn ThermalGate>,
-    thresholds: AgentContentionThresholds,
-    agent_count: fn() -> usize,
+    agent_tier: Arc<dyn Fn() -> AgentContentionTier + Send + Sync>,
 }
 
 impl AgentAwareThermalGate {
-    /// Gate with live [`count_host_agents`] on every check.
-    pub fn new(inner: Arc<dyn ThermalGate>, thresholds: AgentContentionThresholds) -> Self {
-        Self::with_agent_count(inner, thresholds, count_host_agents)
+    /// Gate with live proc scan + resource samples on every check.
+    pub fn new(inner: Arc<dyn ThermalGate>, _thresholds: AgentContentionThresholds) -> Self {
+        Self {
+            inner,
+            agent_tier: Arc::new(live_agent_contention_tier),
+        }
     }
 
-    /// Test/injection hook — supply a deterministic agent counter.
+    /// Test/injection hook — supply a deterministic agent-count-only tier fn.
     pub fn with_agent_count(
         inner: Arc<dyn ThermalGate>,
         thresholds: AgentContentionThresholds,
@@ -184,21 +194,27 @@ impl AgentAwareThermalGate {
     ) -> Self {
         Self {
             inner,
-            thresholds,
-            agent_count,
+            agent_tier: Arc::new(move || agent_contention_tier(agent_count(), thresholds)),
         }
+    }
+
+    /// Test/injection hook — supply an explicit contention tier source.
+    pub fn with_agent_tier(
+        inner: Arc<dyn ThermalGate>,
+        agent_tier: Arc<dyn Fn() -> AgentContentionTier + Send + Sync>,
+    ) -> Self {
+        Self { inner, agent_tier }
     }
 }
 
 impl ThermalGate for AgentAwareThermalGate {
     fn check(&self) -> ThermalDecision {
         let base = self.inner.check();
-        let count = (self.agent_count)();
-        let tier = agent_contention_tier(count, self.thresholds);
+        let tier = (self.agent_tier)();
         let effective = combine_thermal_agent_decision(base, tier);
         if tier != AgentContentionTier::Ok && effective != base {
             warn!(
-                agent_count = count,
+                ?tier,
                 ?base,
                 ?effective,
                 "thermal-gate: host agent contention escalated spawn decision"

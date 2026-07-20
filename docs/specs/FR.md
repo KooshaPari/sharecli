@@ -204,8 +204,20 @@ replacing vendor agent executables as the primary detection path.
   / [`watch_detected_agents`](crates/sharecli-fleet/src/resource_watch.rs); thermal
   TUI agent rows and `sharecli ps --all` MUST show RSS (FD on Linux when exposed);
   dead PIDs MUST be omitted rather than silent zero.
+- **AC-006.11:** `sharecli proc` lists host-detected agents with live RSS/FD samples
+  and thermal gate section (parity with `ps --all` agent inventory).
+- **AC-006.12:** Aggregate watched-agent RSS from [`watch_host_agents`](crates/sharecli-fleet/src/resource_watch.rs)
+  escalates [`AgentAwareThermalGate`](crates/sharecli-core/src/lib.rs) via
+  [`combined_agent_contention_tier`](crates/sharecli-fleet/src/agent_contention.rs)
+  (default warn ≥16GiB, refuse ≥32GiB total agent RSS).
+- **AC-006.13:** `sharecli proc --json` and `sharecli status --json` emit structured
+  detected-agent rows (`pid`, `family`, `comm`, `mem_rss_bytes`, `fd_count`) plus
+  gate fields including `agent_total_rss_bytes`.
+- **AC-006.14:** Ambiguous agent `comm` names (`forge`, `goose`, `gemini`) require
+  cmdline fingerprint markers in [`match_known_agent`](crates/sharecli-fleet/src/detect.rs)
+  to avoid false positives from unrelated tooling.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`
 
 ---
 

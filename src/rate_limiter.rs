@@ -21,9 +21,11 @@ impl RateLimiter {
             false
         }
     }
+    #[allow(dead_code)]
     pub fn available(&self) -> usize {
         self.max_per_window.saturating_sub(self.hits.len())
     }
+    #[allow(dead_code)]
     pub fn reset(&mut self) {
         self.hits.clear();
     }

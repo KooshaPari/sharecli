@@ -99,6 +99,10 @@
 | AC-006.4..6 | `tests/fr006_proc_tree.rs`       | (see file)                               |
 | AC-006.7..8 | `tests/fr006_ps_agent_column.rs` | ps AGENT column + `--all` inventory      |
 | AC-006.9    | `tests/fr006_thermal_tui_agents.rs`; `crates/sharecli-thermal-tui` | thermal TUI agent panel |
+| AC-006.10   | `tests/fr006_agent_pid_watch.rs` | per-agent RSS/FD watch rows              |
+| AC-006.11..13 | `tests/fr006_proc_cli.rs`; `src/commands/proc.rs` | `sharecli proc` + JSON status/proc |
+| AC-006.14   | `tests/fr006_proc_fingerprints.rs`; `crates/sharecli-fleet/src/detect.rs` | cmdline fingerprints |
+| AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
 
@@ -201,6 +205,9 @@
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
+- **2026-07-20 — FR-006 proc CLI + RSS gate:** `sharecli proc` / `--json`, status
+  `--json` agent inventory (AC-006.11–006.13); cmdline fingerprints for ambiguous
+  comms (AC-006.14); aggregate agent RSS escalates spawn gate (AC-006.12).
 - **2026-07-20 — FR-006/007 per-agent PID watch:** `AgentResourceSample` +
   `watch_host_agents` attach RSS/FD samples to proc-scan agents (AC-006.10);
   thermal DetectedAgent panel + `ps --all` show per-agent RSS; `SpawnOutcome::agent_family`.

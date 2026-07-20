@@ -234,6 +234,7 @@ async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
             Err(_) => GateStatusSnapshot {
                 thermal_pressure: "UNAVAILABLE".to_string(),
                 detected_agents: count_host_agents(),
+                agent_total_rss_bytes: 0,
                 agent_contention: "UNAVAILABLE".to_string(),
                 gate_decision: "UNAVAILABLE".to_string(),
             },
@@ -310,6 +311,7 @@ mod tests {
         GateStatusSnapshot {
             thermal_pressure: thermal.to_string(),
             detected_agents: agents,
+            agent_total_rss_bytes: 0,
             agent_contention: contention.to_string(),
             gate_decision: decision.to_string(),
         }
