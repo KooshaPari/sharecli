@@ -183,6 +183,10 @@ enum Commands {
         /// Sort inventory rows or tree roots: rss (desc), fd (desc), pid (asc)
         #[arg(long)]
         sort: Option<String>,
+
+        /// Cap inventory rows or tree root forests after filter/sort (N >= 1)
+        #[arg(long)]
+        limit: Option<u64>,
     },
 
     /// Run a runtime health probe
@@ -548,9 +552,17 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, tree, watch, family, min_rss, sort } => {
-            commands::proc::run(*json, *tree, *watch, family.clone(), min_rss.clone(), sort.clone())
-                .await?
+        Commands::Proc { json, tree, watch, family, min_rss, sort, limit } => {
+            commands::proc::run(
+                *json,
+                *tree,
+                *watch,
+                family.clone(),
+                min_rss.clone(),
+                sort.clone(),
+                *limit,
+            )
+            .await?
         }
         Commands::Config { cmd } => config_cmd(cmd)?,
         Commands::Project { cmd } => project_cmd(cmd).await?,

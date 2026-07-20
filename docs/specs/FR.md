@@ -244,8 +244,12 @@ replacing vendor agent executables as the primary detection path.
   `cursor-agent` (node/npx/python wrapper argv). Generic `codex-` path prefixes
   without vendor markers MUST NOT match; bare `gemini` comm remains
   fingerprint-gated per AC-006.14.
+- **AC-006.21:** `sharecli proc --limit N` (N ≥ 1) caps flat inventory rows and
+  tree root forests after `--family`, `--min-rss`, and `--sort`; JSON/NDJSON
+  `agents` / `forests` payloads and `watched` / `roots` counts reflect the cap;
+  `--limit 0` MUST fail loudly.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`
 
 ---
 

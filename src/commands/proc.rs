@@ -45,6 +45,37 @@ pub enum ProcSort {
     Fd,
 }
 
+/// Parse `--limit N` for proc inventory (AC-006.21).
+pub fn parse_proc_limit(raw: Option<u64>) -> Result<Option<usize>> {
+    match raw {
+        None => Ok(None),
+        Some(0) => bail!("--limit must be >= 1"),
+        Some(n) => Ok(Some(n as usize)),
+    }
+}
+
+/// Cap flat inventory rows after filter/sort (`--limit`, AC-006.21).
+pub fn limit_watched_agents(
+    watched: Vec<DetectedAgentWatch>,
+    limit: Option<usize>,
+) -> Vec<DetectedAgentWatch> {
+    match limit {
+        None => watched,
+        Some(max) => watched.into_iter().take(max).collect(),
+    }
+}
+
+/// Cap tree root forests after filter/sort (`--limit`, AC-006.21).
+pub fn limit_agent_forests(
+    forests: Vec<AgentTreeNode>,
+    limit: Option<usize>,
+) -> Vec<AgentTreeNode> {
+    match limit {
+        None => forests,
+        Some(max) => forests.into_iter().take(max).collect(),
+    }
+}
+
 impl ProcSort {
     pub fn from_cli(raw: Option<&str>) -> Result<Option<Self>> {
         match raw {
@@ -387,6 +418,7 @@ pub fn render_once(
     filter: &ProcFilter,
     ndjson: bool,
     sort: Option<ProcSort>,
+    limit: Option<usize>,
 ) -> Result<()> {
     let scanned_agents = scan_host_agents();
     let thermal = ThermalGovernor::new().poll()?;
@@ -398,6 +430,7 @@ pub fn render_once(
     if tree {
         let forests = filter_agent_forests(&build_host_agent_forests(), filter, &rss_by_pid);
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
+        let forests = limit_agent_forests(forests, limit);
         let snap = AgentTreeSnapshot {
             forests: forests.iter().map(tree_node_to_json).collect(),
             roots: forests.len(),
@@ -416,7 +449,10 @@ pub fn render_once(
         return Ok(());
     }
 
-    let watched = apply_sort_watched(filter_watched_agents(&watched_all, filter), sort);
+    let watched = limit_watched_agents(
+        apply_sort_watched(filter_watched_agents(&watched_all, filter), sort),
+        limit,
+    );
     if json {
         let snap = AgentProcSnapshot {
             agents: watched.iter().map(agent_row_from_watch).collect(),
@@ -445,11 +481,13 @@ pub async fn run(
     family: Option<String>,
     min_rss: Option<String>,
     sort: Option<String>,
+    limit: Option<u64>,
 ) -> Result<()> {
     let filter = ProcFilter::from_cli(family, min_rss)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
+    let row_limit = parse_proc_limit(limit)?;
     match watch {
-        None => render_once(json, tree, &filter, false, sort_key),
+        None => render_once(json, tree, &filter, false, sort_key, row_limit),
         Some(interval_secs) => {
             if interval_secs == 0 {
                 bail!("--watch interval must be >= 1 second");
@@ -459,7 +497,7 @@ pub async fn run(
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_once(json, tree, &filter, ndjson, sort_key)?;
+                render_once(json, tree, &filter, ndjson, sort_key, row_limit)?;
                 let footer =
                     format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {
@@ -530,7 +568,7 @@ mod tests {
     fn zero_watch_interval_is_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, Some(0), None, None, None))
+            .block_on(super::run(false, false, Some(0), None, None, None, None))
             .expect_err("watch 0 MUST fail");
         assert!(
             err.to_string().contains(">= 1"),
