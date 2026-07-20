@@ -140,6 +140,7 @@
 | AC-009.9 | `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs` (`fr009_thermal_tui_neg_dentry_lines`); `crates/sharecli-fuse/src/neg_dentry.rs` | FUSE neg dentry in status + thermal TUI |
 | AC-009.10 | `tests/fr009_fuse_intercept.rs` (`fr009_global_write_serialize_meters`); `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-fuse/src/write_serialize_meters.rs` | FUSE write-serialize / CoW in status + thermal TUI |
 | AC-009.11 | `tests/fr009_fuse_cli.rs`; `src/commands/fuse.rs` | `sharecli fuse provenance` reads backing write xattrs |
+| AC-009.12 | `tests/fr009_fuse_hypervisor_session.rs`; `sharecli-core` `fuse_session_id_for_command_key`; `sharecli-fuse` `mount_with_session` | Hypervisor FUSE session from coalesce CommandKey |
 
 ### FR-010 — Mesh
 
@@ -173,6 +174,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-009 Hypervisor FUSE session:** cache-miss mounts pass
+  coalesce-derived session id to `mount_with_session` (AC-009.12).
 - **2026-07-20 — FR-009 fuse provenance CLI:** `sharecli fuse provenance`
   reads backing write xattrs via `read_provenance` (AC-009.11).
 - **2026-07-20 — FR-008 SlotQueue operator meters:** `global_slot_queue_meters`

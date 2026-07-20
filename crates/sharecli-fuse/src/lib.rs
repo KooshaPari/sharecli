@@ -609,12 +609,13 @@ mod platform {
         }
     }
 
-    /// Mount the [`InterceptFs`] at `mountpoint`, mirroring `backing`.
-    ///
-    /// Blocks until the filesystem is unmounted.  Callers should run this on a
-    /// dedicated thread or inside a `tokio::task::spawn_blocking` block.
-    pub fn mount(mountpoint: &Path, backing: &Path) -> anyhow::Result<()> {
-        let fs = InterceptFs::new(backing);
+    /// Mount with an explicit write-provenance session id (Hypervisor coalesce key).
+    pub fn mount_with_session(
+        mountpoint: &Path,
+        backing: &Path,
+        session_id: &str,
+    ) -> anyhow::Result<()> {
+        let fs = InterceptFs::with_session(backing, session_id);
         let mut config = Config::default();
         // RW mount — writes are passthrough + path-serialized; CoW via WriteSerialize.
         config.mount_options = vec![
@@ -639,11 +640,31 @@ pub use platform::InterceptFs;
 pub fn mount(mountpoint: &Path, backing: &Path) -> anyhow::Result<()> {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
-        platform::mount(mountpoint, backing)
+        mount_with_session(mountpoint, backing, &default_session_id())
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         let _ = (mountpoint, backing);
+        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+    }
+}
+
+/// Mount the sharecli FUSE layer with an explicit write-provenance session id.
+///
+/// Hypervisor cache-miss spawns pass a coalesce-derived session so FUSE writes
+/// correlate with the Lock-Wait-Cache key (AC-009.12).
+pub fn mount_with_session(
+    mountpoint: &Path,
+    backing: &Path,
+    session_id: &str,
+) -> anyhow::Result<()> {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        platform::mount_with_session(mountpoint, backing, session_id)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        let _ = (mountpoint, backing, session_id);
         anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
     }
 }
