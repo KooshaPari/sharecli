@@ -113,9 +113,10 @@ fn cli_ps_runs_and_prints_table_header() {
     let out = bin().arg("ps").output().expect("spawn sharecli ps");
     assert!(out.status.success(), "`ps` should exit 0; stderr: {}", stderr(&out));
     let s = stdout(&out);
-    // The header row from `ps` includes `PID` and `MEM(MB)`.
+    // The header row from `ps` includes `PID`, `MEM(MB)`, and FR-006 `AGENT`.
     assert!(s.contains("PID"), "`ps` output should include the PID column header; got: {s}");
     assert!(s.contains("MEM"), "`ps` output should include the MEM column header; got: {s}");
+    assert!(s.contains("AGENT"), "`ps` output should include the AGENT column header; got: {s}");
 }
 
 #[test]
