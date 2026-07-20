@@ -18,7 +18,7 @@ use crate::runtime::{
 };
 use crate::spawn_policy::SpawnPolicy;
 use sharecli_fleet::ResourceWatchSample;
-use sharecli_fuse::global_read_cache_meters;
+use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
 
 /// Shared runtime instance
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();
@@ -258,6 +258,9 @@ pub async fn status(verbose: bool) -> Result<()> {
 
     let fuse_meters = global_read_cache_meters();
     print!("{}", fuse_meters.format_status_section());
+
+    let neg_meters = global_neg_dentry_meters();
+    print!("{}", neg_meters.format_status_section());
 
     if verbose {
         println!("\n=== Detailed Process List ===\n");

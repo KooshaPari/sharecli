@@ -24,6 +24,41 @@ pub struct NegDentryMeters {
     pub misses: u64,
 }
 
+impl NegDentryMeters {
+    /// Hit rate as an integer percentage in `[0, 100]` (0 when no events recorded).
+    pub fn hit_rate_pct(self) -> u64 {
+        let total = self.hits.saturating_add(self.misses);
+        if total == 0 {
+            0
+        } else {
+            self.hits.saturating_mul(100) / total
+        }
+    }
+
+    /// Operator-facing status block for `sharecli status` (FR-009 / AC-009.9).
+    pub fn format_status_section(self) -> String {
+        let mut out = String::from("\n=== FUSE Negative Dentry ===\n\n");
+        out.push_str(&format!(
+            "Neg hits:     {}\nNeg misses:   {}\nHit rate:     {}%\n",
+            self.hits,
+            self.misses,
+            self.hit_rate_pct()
+        ));
+        out
+    }
+}
+
+static GLOBAL_NEG_HITS: AtomicU64 = AtomicU64::new(0);
+static GLOBAL_NEG_MISSES: AtomicU64 = AtomicU64::new(0);
+
+/// Process-wide aggregate of negative-dentry hit/miss events across all FUSE intercepts.
+pub fn global_neg_dentry_meters() -> NegDentryMeters {
+    NegDentryMeters {
+        hits: GLOBAL_NEG_HITS.load(Ordering::Relaxed),
+        misses: GLOBAL_NEG_MISSES.load(Ordering::Relaxed),
+    }
+}
+
 #[derive(Debug, Clone)]
 struct NegEntry {
     expires_at: Instant,
@@ -79,6 +114,7 @@ impl NegativeDentryCache {
         match self.entries.get(rel) {
             Some(entry) if entry.expires_at > now => {
                 self.hits.fetch_add(1, Ordering::Relaxed);
+                GLOBAL_NEG_HITS.fetch_add(1, Ordering::Relaxed);
                 true
             }
             Some(_) => {
@@ -92,6 +128,7 @@ impl NegativeDentryCache {
     /// Record that `rel` was confirmed missing (ENOENT) and count a miss.
     pub fn remember_miss(&mut self, rel: PathBuf) {
         self.misses.fetch_add(1, Ordering::Relaxed);
+        GLOBAL_NEG_MISSES.fetch_add(1, Ordering::Relaxed);
         self.entries.insert(
             rel,
             NegEntry {
@@ -145,5 +182,13 @@ mod tests {
         assert!(!cache.is_negative(&rel));
         assert_eq!(cache.meters().hits, 0);
         assert_eq!(cache.meters().misses, 1);
+    }
+
+    #[test]
+    fn neg_dentry_format_status_section() {
+        let section = NegDentryMeters { hits: 2, misses: 1 }.format_status_section();
+        assert!(section.contains("=== FUSE Negative Dentry ==="));
+        assert!(section.contains("Neg hits:"));
+        assert!(section.contains("Hit rate:     66%"));
     }
 }

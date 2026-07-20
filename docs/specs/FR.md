@@ -331,6 +331,9 @@ until create / mkdir / rename-into invalidates the entry.
   a read/write round-trip through a live FUSE mount over a temp backing tree and
   verifies write provenance xattrs on the backing file after the FUSE write;
   default `cargo test` skips without failure when the env var is unset.
+- **AC-009.9:** `sharecli status` and `sharecli thermal` surface FUSE
+  negative-dentry hit/miss meters via [`global_neg_dentry_meters`](crates/sharecli-fuse/src/neg_dentry.rs)
+  / [`NegDentryMeters::format_status_section`](crates/sharecli-fuse/src/neg_dentry.rs).
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `sharecli-fuse` unit tests.
 

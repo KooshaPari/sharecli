@@ -23,7 +23,7 @@ use ratatui::{
 };
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::ResourceWatchSample;
-use sharecli_fuse::{global_read_cache_meters, ReadCacheMeters};
+use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, NegDentryMeters, ReadCacheMeters};
 
 // ---------------------------------------------------------------------------
 // Pure transforms — unit-testable
@@ -145,6 +145,24 @@ pub fn resource_watch_lines(sample: Option<ResourceWatchSample>, compact: bool) 
     ]
 }
 
+/// Lines for the FUSE negative-dentry panel (FR-009 / AC-009.9 TUI slice).
+pub fn fuse_neg_dentry_lines(meters: NegDentryMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " neg:{} miss:{} {}%",
+            meters.hits,
+            meters.misses,
+            meters.hit_rate_pct()
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Neg hits:     {}", meters.hits)),
+        Line::from(format!("  Neg misses:   {}", meters.misses)),
+        Line::from(format!("  Hit rate:     {}%", meters.hit_rate_pct())),
+    ]
+}
+
 /// Lines for the FUSE read-coalesce panel (FR-007 / AC-007.9 TUI slice).
 pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'static>> {
     if compact {
@@ -206,6 +224,8 @@ pub struct App {
     pub resource_watch: Option<ResourceWatchSample>,
     /// Process-wide FUSE read-coalesce meters.
     pub fuse_meters: ReadCacheMeters,
+    /// Process-wide FUSE negative-dentry meters.
+    pub neg_dentry_meters: NegDentryMeters,
 }
 
 impl App {
@@ -219,6 +239,7 @@ impl App {
             poll_count: 0,
             resource_watch: None,
             fuse_meters: ReadCacheMeters::default(),
+            neg_dentry_meters: NegDentryMeters::default(),
         }
     }
 
@@ -234,6 +255,7 @@ impl App {
     pub fn poll_operator_meters(&mut self) {
         self.resource_watch = ResourceWatchSample::capture().ok();
         self.fuse_meters = global_read_cache_meters();
+        self.neg_dentry_meters = global_neg_dentry_meters();
     }
 
     /// Test/golden helper — pin deterministic operator panel values.
@@ -241,9 +263,11 @@ impl App {
         mut self,
         watch: Option<ResourceWatchSample>,
         fuse: ReadCacheMeters,
+        neg: NegDentryMeters,
     ) -> Self {
         self.resource_watch = watch;
         self.fuse_meters = fuse;
+        self.neg_dentry_meters = neg;
         self
     }
 }
@@ -280,7 +304,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let margin = if compact { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
     let watch_h = if compact { 3 } else { 6 };
-    let fuse_h = if compact { 3 } else { 5 };
+    let fuse_h = if compact { 5 } else { 8 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -399,8 +423,12 @@ fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool
 }
 
 fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
-    let title = if compact { " FUSE " } else { " FUSE Read Coalesce " };
-    let lines = fuse_coalesce_lines(app.fuse_meters, compact);
+    let title = if compact { " FUSE " } else { " FUSE IO Meters " };
+    let mut lines = fuse_coalesce_lines(app.fuse_meters, compact);
+    if !compact {
+        lines.push(Line::from(""));
+    }
+    lines.extend(fuse_neg_dentry_lines(app.neg_dentry_meters, compact));
     let block = Block::default().borders(Borders::ALL).title(title);
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
@@ -752,7 +780,11 @@ mod tests {
             load_1m: 0.5,
         };
         let mut app = App::new(4)
-            .with_operator_meters(Some(sample), ReadCacheMeters { hits: 2, misses: 1 });
+            .with_operator_meters(
+                Some(sample),
+                ReadCacheMeters { hits: 2, misses: 1 },
+                NegDentryMeters { hits: 1, misses: 0 },
+            );
         app.update(ThermalLevel::Green, 0);
         // Should not panic.
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -762,9 +794,10 @@ mod tests {
         assert!(rendered.contains("GREEN"), "expected GREEN in rendered output");
         assert!(rendered.contains("ADMIT"), "expected ADMIT in rendered output");
         assert!(rendered.contains("Host Resource Watch"), "expected watch panel");
-        assert!(rendered.contains("FUSE Read Coalesce"), "expected fuse panel");
+        assert!(rendered.contains("FUSE IO Meters"), "expected fuse panel");
         assert!(rendered.contains("Open FDs:"), "expected FD watch line");
         assert!(rendered.contains("Cache hits:"), "expected fuse meters");
+        assert!(rendered.contains("Neg hits:"), "expected neg dentry meters");
     }
 
     #[test]
@@ -781,6 +814,7 @@ mod tests {
                 load_1m: 2.0,
             }),
             ReadCacheMeters { hits: 0, misses: 0 },
+            NegDentryMeters { hits: 0, misses: 0 },
         );
         app.update(ThermalLevel::Red, 4);
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -804,6 +838,7 @@ mod tests {
                 load_1m: 1.0,
             }),
             ReadCacheMeters { hits: 1, misses: 1 },
+            NegDentryMeters { hits: 0, misses: 1 },
         );
         app.update(ThermalLevel::Yellow, 2);
         terminal.draw(|f| render(f, &app)).unwrap();
