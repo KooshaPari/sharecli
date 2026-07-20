@@ -77,6 +77,41 @@ pub fn format_rss_bytes(bytes: u64) -> String {
     }
 }
 
+/// Parse operator RSS sizes for `--min-rss` (plain bytes or `K`/`M`/`G` suffix).
+pub fn parse_rss_bytes(input: &str) -> Result<u64> {
+    let s = input.trim();
+    if s.is_empty() {
+        anyhow::bail!("--min-rss value MUST be non-empty");
+    }
+    let upper = s.to_ascii_uppercase();
+    const KIB: u64 = 1024;
+    const MIB: u64 = 1_048_576;
+    const GIB: u64 = 1_073_741_824;
+    if let Some(num) = upper.strip_suffix('G') {
+        let value: f64 = num
+            .trim()
+            .parse()
+            .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
+        return Ok((value * GIB as f64) as u64);
+    }
+    if let Some(num) = upper.strip_suffix('M') {
+        let value: f64 = num
+            .trim()
+            .parse()
+            .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
+        return Ok((value * MIB as f64) as u64);
+    }
+    if let Some(num) = upper.strip_suffix('K') {
+        let value: f64 = num
+            .trim()
+            .parse()
+            .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))?;
+        return Ok((value * KIB as f64) as u64);
+    }
+    s.parse::<u64>()
+        .map_err(|_| anyhow::anyhow!("invalid --min-rss size: {input}"))
+}
+
 impl ResourceWatchSample {
     /// Capture FD, network, RSS, and host load for the current process/host.
     pub fn capture() -> Result<Self> {
@@ -402,5 +437,13 @@ mod tests {
     fn test_format_rss_bytes() {
         assert_eq!(super::format_rss_bytes(1_073_741_824), "1.0G");
         assert_eq!(super::format_rss_bytes(52_428_800), "50M");
+    }
+
+    #[test]
+    fn test_parse_rss_bytes() {
+        assert_eq!(super::parse_rss_bytes("100").unwrap(), 100);
+        assert_eq!(super::parse_rss_bytes("50M").unwrap(), 52_428_800);
+        assert_eq!(super::parse_rss_bytes("1G").unwrap(), 1_073_741_824);
+        assert!(super::parse_rss_bytes("not-a-size").is_err());
     }
 }

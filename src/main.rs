@@ -171,6 +171,14 @@ enum Commands {
         /// Re-render every N seconds until Ctrl-C (live watch mode)
         #[arg(short, long)]
         watch: Option<u64>,
+
+        /// Keep only agents matching this family id (case-insensitive)
+        #[arg(long)]
+        family: Option<String>,
+
+        /// Keep only agents at or above this RSS (bytes or K/M/G suffix)
+        #[arg(long)]
+        min_rss: Option<String>,
     },
 
     /// Run a runtime health probe
@@ -536,7 +544,9 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, tree, watch } => commands::proc::run(*json, *tree, *watch).await?,
+        Commands::Proc { json, tree, watch, family, min_rss } => {
+            commands::proc::run(*json, *tree, *watch, family.clone(), min_rss.clone()).await?
+        }
         Commands::Config { cmd } => config_cmd(cmd)?,
         Commands::Project { cmd } => project_cmd(cmd).await?,
         Commands::Optimize { apply } => optimize(*apply).await?,

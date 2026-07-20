@@ -1,5 +1,6 @@
 //! FR-006 — `sharecli proc` host agent inventory CLI.
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
@@ -7,9 +8,104 @@ use serde::Serialize;
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
     build_host_agent_forests, format_gate_status_section, format_rss_bytes, gate_status_snapshot,
-    scan_host_agents, watch_detected_agents, AgentTreeNode, DetectedAgentWatch,
+    parse_rss_bytes, scan_host_agents, watch_detected_agents, AgentTreeNode, DetectedAgentWatch,
 };
 use tokio::time::sleep;
+
+/// Inventory filter for `sharecli proc` (AC-006.17).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ProcFilter {
+    pub family: Option<String>,
+    pub min_rss_bytes: Option<u64>,
+}
+
+impl ProcFilter {
+    pub fn from_cli(family: Option<String>, min_rss: Option<String>) -> Result<Self> {
+        let min_rss_bytes = match min_rss {
+            None => None,
+            Some(raw) => Some(parse_rss_bytes(&raw)?),
+        };
+        Ok(Self { family, min_rss_bytes })
+    }
+
+    fn active(&self) -> bool {
+        self.family.is_some() || self.min_rss_bytes.is_some()
+    }
+}
+
+/// Apply `--family` / `--min-rss` to watched agent rows.
+pub fn filter_watched_agents(
+    watched: &[DetectedAgentWatch],
+    filter: &ProcFilter,
+) -> Vec<DetectedAgentWatch> {
+    if !filter.active() {
+        return watched.to_vec();
+    }
+    watched
+        .iter()
+        .filter(|row| agent_row_matches_filter(row, filter))
+        .cloned()
+        .collect()
+}
+
+fn agent_row_matches_filter(row: &DetectedAgentWatch, filter: &ProcFilter) -> bool {
+    if let Some(ref family) = filter.family {
+        if !row.agent.family.eq_ignore_ascii_case(family) {
+            return false;
+        }
+    }
+    if let Some(min) = filter.min_rss_bytes {
+        if row.resource.mem_rss_bytes < min {
+            return false;
+        }
+    }
+    true
+}
+
+fn rss_map_from_watched(watched: &[DetectedAgentWatch]) -> HashMap<u32, u64> {
+    watched
+        .iter()
+        .map(|row| (row.agent.pid, row.resource.mem_rss_bytes))
+        .collect()
+}
+
+/// Apply filters to agent-rooted forests (family on root; min-rss via live samples).
+pub fn filter_agent_forests(
+    forests: &[AgentTreeNode],
+    filter: &ProcFilter,
+    rss_by_pid: &HashMap<u32, u64>,
+) -> Vec<AgentTreeNode> {
+    if !filter.active() {
+        return forests.to_vec();
+    }
+    forests
+        .iter()
+        .filter(|root| forest_root_matches_filter(root, filter, rss_by_pid))
+        .cloned()
+        .collect()
+}
+
+fn forest_root_matches_filter(
+    root: &AgentTreeNode,
+    filter: &ProcFilter,
+    rss_by_pid: &HashMap<u32, u64>,
+) -> bool {
+    if let Some(ref family) = filter.family {
+        let Some(root_family) = root.family else {
+            return false;
+        };
+        if !root_family.eq_ignore_ascii_case(family) {
+            return false;
+        }
+    }
+    if let Some(min) = filter.min_rss_bytes {
+        let rss = rss_by_pid.get(&root.pid).copied().unwrap_or(0);
+        if rss < min {
+            return false;
+        }
+    }
+    true
+}
 
 /// One detected agent row for text/JSON surfaces (AC-006.11).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -82,15 +178,6 @@ fn tree_node_to_json(node: &AgentTreeNode) -> AgentTreeNodeJson {
         comm: node.comm.clone(),
         family: node.family.map(str::to_string),
         children: node.children.iter().map(tree_node_to_json).collect(),
-    }
-}
-
-fn capture_tree_snapshot() -> AgentTreeSnapshot {
-    let forests = build_host_agent_forests();
-    let roots = forests.len();
-    AgentTreeSnapshot {
-        forests: forests.iter().map(tree_node_to_json).collect(),
-        roots,
     }
 }
 
@@ -170,23 +257,29 @@ pub fn render_agent_tree(forests: &[AgentTreeNode]) {
 }
 
 /// Render one host agent inventory snapshot (text or JSON).
-pub fn render_once(json: bool, tree: bool) -> Result<()> {
+pub fn render_once(json: bool, tree: bool, filter: &ProcFilter) -> Result<()> {
     let scanned_agents = scan_host_agents();
     let thermal = ThermalGovernor::new().poll()?;
     let gate = gate_status_snapshot(thermal, scanned_agents.len());
+    let watched_all = watch_detected_agents(&scanned_agents);
+    let rss_by_pid = rss_map_from_watched(&watched_all);
 
     if tree {
-        let snap = capture_tree_snapshot();
+        let forests = filter_agent_forests(&build_host_agent_forests(), filter, &rss_by_pid);
+        let snap = AgentTreeSnapshot {
+            forests: forests.iter().map(tree_node_to_json).collect(),
+            roots: forests.len(),
+        };
         if json {
             println!("{}", serde_json::to_string_pretty(&snap)?);
             return Ok(());
         }
-        render_agent_tree(&build_host_agent_forests());
+        render_agent_tree(&forests);
         print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
         return Ok(());
     }
 
-    let watched = watch_detected_agents(&scanned_agents);
+    let watched = filter_watched_agents(&watched_all, filter);
     if json {
         let snap = AgentProcSnapshot {
             agents: watched.iter().map(agent_row_from_watch).collect(),
@@ -203,16 +296,23 @@ pub fn render_once(json: bool, tree: bool) -> Result<()> {
 }
 
 /// `sharecli proc` — list host-detected agents with live RSS/FD samples.
-pub async fn run(json: bool, tree: bool, watch: Option<u64>) -> Result<()> {
+pub async fn run(
+    json: bool,
+    tree: bool,
+    watch: Option<u64>,
+    family: Option<String>,
+    min_rss: Option<String>,
+) -> Result<()> {
+    let filter = ProcFilter::from_cli(family, min_rss)?;
     match watch {
-        None => render_once(json, tree),
+        None => render_once(json, tree, &filter),
         Some(interval_secs) => {
             if interval_secs == 0 {
                 bail!("--watch interval must be >= 1 second");
             }
             loop {
                 print!("\x1b[2J\x1b[H");
-                render_once(json, tree)?;
+                render_once(json, tree, &filter)?;
                 println!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 tokio::select! {
                     _ = sleep(Duration::from_secs(interval_secs)) => {},
@@ -273,7 +373,7 @@ mod tests {
     fn zero_watch_interval_is_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, Some(0)))
+            .block_on(super::run(false, false, Some(0), None, None))
             .expect_err("watch 0 MUST fail");
         assert!(
             err.to_string().contains(">= 1"),
