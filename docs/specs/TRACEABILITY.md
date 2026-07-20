@@ -112,6 +112,7 @@
 | AC-008.5 | `tests/fr008_coalesce_mesh.rs` (`fr008_ttl_stale_entry_is_miss`); `sharecli-ipc` `ttl_lookup_miss_and_evict_on_store` | TTL miss + eviction |
 | AC-008.6 | `tests/fr008_coalesce_mesh.rs` (`fr008_debounce_waits_and_shares`); `sharecli-ipc` `debounce_shares_recent_store` | debounce share window |
 | AC-008.7..9 | `tests/fr008_coalesce_mesh.rs` (`fr008_nocache_*`, `fr008_slot_queue_*`, `fr008_hypervisor_nocache_*`) | nocache bypass + SlotQueue + Hypervisor queue route |
+| AC-008.10 | `tests/e2e_hypervisor_nocache.rs` | Hypervisor nocache e2e: re-exec, serialize, coalesce isolation |
 
 ### FR-009 — FUSE
 
@@ -152,6 +153,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-008 Hypervisor nocache e2e:** AC-008.10 side-effect
+  re-exec + concurrent SlotQueue serialize + coalesce isolation
+  (`tests/e2e_hypervisor_nocache.rs`).
 - **2026-07-20 — FR-009 negative dentry cache:** `NegativeDentryCache` +
   `exists_rel` / FUSE lookup ENOENT TTL (AC-009.7).
 - **2026-07-20 — FR-010 mesh CLI:** `MaildirQueue::status` + `reclaim_owner`

@@ -243,8 +243,9 @@ be served from the coalesce cache.
 - **AC-008.7:** Argv containing a configured `nocache_args` flag (`--fix`, `--force`, `--write`, …) MUST bypass coalesce detection (`should_bypass_coalesce`).
 - **AC-008.8:** `SlotQueue` with `max_concurrent=1` MUST serialize concurrent lane work.
 - **AC-008.9:** `Hypervisor::run` with nocache argv MUST execute via `SlotQueue` and MUST NOT set `from_cache` on replay.
+- **AC-008.10:** End-to-end Hypervisor nocache MUST (a) re-execute identical mutating argv (side-effect counter increments per run), (b) serialize concurrent nocache runs through the Hypervisor queue (`max_concurrent=1`), and (c) remain isolated from a seeded coalesce cache hit on a read-only twin argv.
 
-**Test refs:** `tests/fr008_coalesce_mesh.rs`; `sharecli-ipc` unit tests for TTL/debounce/queue/nocache.
+**Test refs:** `tests/fr008_coalesce_mesh.rs`; `tests/e2e_hypervisor_nocache.rs`; `sharecli-ipc` unit tests for TTL/debounce/queue/nocache.
 
 ---
 
