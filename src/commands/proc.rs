@@ -437,6 +437,40 @@ fn render_pid_detail(pid: u32, json: bool) -> Result<()> {
     render_proc_detail(&detail, json)
 }
 
+/// Escape one CSV field (RFC 4180-style quoting when needed).
+pub fn csv_escape_field(raw: &str) -> String {
+    if raw.contains(',') || raw.contains('"') || raw.contains('\n') || raw.contains('\r') {
+        format!("\"{}\"", raw.replace('"', "\"\""))
+    } else {
+        raw.to_string()
+    }
+}
+
+/// Render flat agent inventory as CSV (AC-006.24).
+pub fn render_agent_inventory_csv(watched: &[DetectedAgentWatch]) -> String {
+    const HEADER: &str = "pid,family,comm,mem_rss_bytes,mem_rss,fd_count";
+    let mut out = String::from(HEADER);
+    for row in watched {
+        let fd = row
+            .resource
+            .fd_count
+            .map(|n| n.to_string())
+            .unwrap_or_default();
+        out.push('\n');
+        out.push_str(&format!(
+            "{},{},{},{},{},{}",
+            row.agent.pid,
+            csv_escape_field(&row.agent.family),
+            csv_escape_field(&row.agent.comm),
+            row.resource.mem_rss_bytes,
+            csv_escape_field(&format_rss_bytes(row.resource.mem_rss_bytes)),
+            fd,
+        ));
+    }
+    out.push('\n');
+    out
+}
+
 /// Render host agent inventory (text mode).
 pub fn render_agent_inventory(watched: &[DetectedAgentWatch], scanned: usize) {
     println!("=== Host agents (proc scan) ===\n");
@@ -508,6 +542,7 @@ pub fn render_agent_tree(forests: &[AgentTreeNode]) {
 /// Render one host agent inventory snapshot (text or JSON).
 pub fn render_once(
     json: bool,
+    csv: bool,
     tree: bool,
     filter: &ProcFilter,
     ndjson: bool,
@@ -547,6 +582,10 @@ pub fn render_once(
         apply_sort_watched(filter_watched_agents(&watched_all, filter), sort),
         limit,
     );
+    if csv {
+        print!("{}", render_agent_inventory_csv(&watched));
+        return Ok(());
+    }
     if json {
         let snap = AgentProcSnapshot {
             agents: watched.iter().map(agent_row_from_watch).collect(),
@@ -570,6 +609,7 @@ pub fn render_once(
 /// `sharecli proc` — list host-detected agents with live RSS/FD samples.
 pub async fn run(
     json: bool,
+    csv: bool,
     tree: bool,
     watch: Option<u64>,
     family: Option<String>,
@@ -578,17 +618,31 @@ pub async fn run(
     limit: Option<u64>,
     pid: Option<u32>,
 ) -> Result<()> {
+    if csv {
+        if json {
+            bail!("--csv cannot be combined with --json");
+        }
+        if tree {
+            bail!("--csv cannot be combined with --tree");
+        }
+    }
     if let Some(target_pid) = pid {
         if watch.is_some() {
             bail!("--pid cannot be combined with --watch");
         }
+        if csv {
+            bail!("--csv cannot be combined with --pid");
+        }
         return render_pid_detail(target_pid, json);
+    }
+    if csv && watch.is_some() {
+        bail!("--csv cannot be combined with --watch");
     }
     let filter = ProcFilter::from_cli(family, min_rss)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
-        None => render_once(json, tree, &filter, false, sort_key, row_limit),
+        None => render_once(json, csv, tree, &filter, false, sort_key, row_limit),
         Some(interval_secs) => {
             if interval_secs == 0 {
                 bail!("--watch interval must be >= 1 second");
@@ -598,7 +652,7 @@ pub async fn run(
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_once(json, tree, &filter, ndjson, sort_key, row_limit)?;
+                render_once(json, csv, tree, &filter, ndjson, sort_key, row_limit)?;
                 let footer =
                     format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {
@@ -669,7 +723,7 @@ mod tests {
     fn zero_watch_interval_is_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, Some(0), None, None, None, None, None))
+            .block_on(super::run(false, false, false, Some(0), None, None, None, None, None))
             .expect_err("watch 0 MUST fail");
         assert!(
             err.to_string().contains(">= 1"),
@@ -735,7 +789,7 @@ mod tests {
     fn pid_watch_combo_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, Some(1), None, None, None, None, Some(42)))
+            .block_on(super::run(false, false, false, Some(1), None, None, None, None, Some(42)))
             .expect_err("pid+watch MUST fail");
         assert!(
             err.to_string().contains("--watch") || err.to_string().contains("--pid"),
