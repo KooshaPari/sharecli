@@ -64,8 +64,8 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{
-    command_key, has_nocache_arg, CachedResult, CoalesceCache, QueuePriority, SlotQueue,
-    DEFAULT_NOCACHE_ARGS,
+    command_key, has_nocache_arg, CachedResult, CoalesceCache, CoalesceHitKind, QueuePriority,
+    SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
 use tracing::{debug, error, warn};
 
@@ -658,30 +658,37 @@ impl Hypervisor {
         // Lock-Wait-Cache: spawn is the closure called only on a cache miss.
         // We use `effective_req` (with a potentially FUSE-wrapped cwd)
         // inside the closure to avoid any borrow conflict with `req`.
-        let cached: CachedResult = self.cache.with_lock(&key, || {
-            // Blocking spawn — `with_lock` is a sync callback.
-            // Uses `effective_req` (owned clone, not borrowing from `req`).
-            let outcome = spawn_process_sync(&effective_req)?;
-            Ok(CachedResult {
-                exit_code: outcome.exit_code,
-                stdout: outcome.stdout,
-                stderr: outcome.stderr,
-            })
-        })?;
+        let (cached, hit_kind) = self.coalesce_via_lock(&key, &effective_req)?;
 
-        // We came through `with_lock` — the result is fresh (spawned by us
-        // or by a sibling that held the lock; either way, not in the cache
-        // when we last checked before entering with_lock).
         Ok(SpawnOutcome {
             exit_code: cached.exit_code,
             stdout: cached.stdout,
             stderr: cached.stderr,
-            from_cache: false,
+            from_cache: hit_kind.shared_from_cache(),
             resource_watch: ResourceWatchSample::default(),
             detected_agent: None,
         }
         .with_resource_watch(watch)
         .with_detected_agent(detected_agent))
+    }
+
+    /// Coalesce miss path: advisory flock + debounce re-check + optional spawn.
+    ///
+    /// Every Hypervisor coalesce miss MUST flow through here so
+    /// [`CoalesceCache::with_lock_detailed`] applies the configured debounce window.
+    fn coalesce_via_lock(
+        &self,
+        key: &sharecli_ipc::CommandKey,
+        effective_req: &SpawnRequest,
+    ) -> Result<(CachedResult, CoalesceHitKind)> {
+        self.cache.with_lock_detailed(key, || {
+            let outcome = spawn_process_sync(effective_req)?;
+            Ok(CachedResult {
+                exit_code: outcome.exit_code,
+                stdout: outcome.stdout,
+                stderr: outcome.stderr,
+            })
+        })
     }
 
     /// Poll the thermal gate with a visible sleep-retry loop on RED.
