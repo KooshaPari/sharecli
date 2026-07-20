@@ -44,6 +44,7 @@ fn fr006_watch_detected_agents_skips_dead_pid() {
         ppid: 1,
         comm: "claude".into(),
         cmdline: vec!["claude".into()],
+        state: 'R',
     }]);
     let agents = sharecli_fleet::scan_agents(&src);
     let rows = watch_detected_agents(&agents);

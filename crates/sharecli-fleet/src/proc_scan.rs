@@ -13,6 +13,28 @@ pub struct ProcSnapshot {
     pub ppid: u32,
     pub comm: String,
     pub cmdline: Vec<String>,
+    /// Linux `/proc` state letter (R|S|D|Z|T|t|…); AC-006.31.
+    pub state: char,
+}
+
+/// Map sysinfo process status to a Linux-style state letter.
+pub fn sysinfo_status_to_char(status: sysinfo::ProcessStatus) -> char {
+    use sysinfo::ProcessStatus;
+    match status {
+        ProcessStatus::Run => 'R',
+        ProcessStatus::Sleep => 'S',
+        ProcessStatus::UninterruptibleDiskSleep => 'D',
+        ProcessStatus::Stop => 'T',
+        ProcessStatus::Zombie => 'Z',
+        ProcessStatus::Tracing => 't',
+        ProcessStatus::Dead => 'X',
+        ProcessStatus::Wakekill => 'K',
+        ProcessStatus::Waking => 'W',
+        ProcessStatus::Parked => 'P',
+        ProcessStatus::Idle => 'I',
+        ProcessStatus::LockBlocked | ProcessStatus::Suspended => '?',
+        ProcessStatus::Unknown(_) => '?',
+    }
 }
 
 /// A detected agent instance on the host.
@@ -211,7 +233,8 @@ fn list_linux_proc() -> Vec<ProcSnapshot> {
         let cmdline_raw = std::fs::read(base.join("cmdline")).unwrap_or_default();
         let cmdline = parse_cmdline(&cmdline_raw);
         let ppid = read_ppid(&base.join("status")).unwrap_or(0);
-        out.push(ProcSnapshot { pid, ppid, comm, cmdline });
+        let state = read_state_from_stat(&base.join("stat")).unwrap_or('?');
+        out.push(ProcSnapshot { pid, ppid, comm, cmdline, state });
     }
     out
 }
@@ -222,6 +245,13 @@ fn parse_cmdline(raw: &[u8]) -> Vec<String> {
         .filter(|s| !s.is_empty())
         .map(|s| String::from_utf8_lossy(s).into_owned())
         .collect()
+}
+
+#[cfg(target_os = "linux")]
+fn read_state_from_stat(stat: &std::path::Path) -> Option<char> {
+    let content = std::fs::read_to_string(stat).ok()?;
+    let rparen = content.rfind(')')?;
+    content[rparen + 1..].trim_start().chars().next()
 }
 
 #[cfg(target_os = "linux")]
@@ -247,7 +277,8 @@ fn list_sysinfo_proc() -> Vec<ProcSnapshot> {
         let comm = proc.name().to_string_lossy().into_owned();
         let cmdline: Vec<String> =
             proc.cmd().iter().map(|c| c.to_string_lossy().into_owned()).collect();
-        out.push(ProcSnapshot { pid: pid_u, ppid, comm, cmdline });
+        let state = sysinfo_status_to_char(proc.status());
+        out.push(ProcSnapshot { pid: pid_u, ppid, comm, cmdline, state });
     }
     out
 }
@@ -258,22 +289,30 @@ mod tests {
 
     fn tree() -> FakeProcSource {
         FakeProcSource::new(vec![
-            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
-            ProcSnapshot { pid: 10, ppid: 1, comm: "launchd".into(), cmdline: vec![] },
+            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
+            ProcSnapshot { pid: 10, ppid: 1, comm: "launchd".into(), cmdline: vec![], state: 'R' },
             ProcSnapshot {
                 pid: 100,
                 ppid: 10,
                 comm: "claude".into(),
                 cmdline: vec!["/usr/local/bin/claude".into()],
+                state: 'R',
             },
-            ProcSnapshot { pid: 200, ppid: 100, comm: "bash".into(), cmdline: vec!["bash".into()] },
+            ProcSnapshot {
+                pid: 200,
+                ppid: 100,
+                comm: "bash".into(),
+                cmdline: vec!["bash".into()],
+                state: 'R',
+            },
             ProcSnapshot {
                 pid: 300,
                 ppid: 200,
                 comm: "ruff".into(),
                 cmdline: vec!["ruff".into(), "check".into(), ".".into()],
+                state: 'R',
             },
-            ProcSnapshot { pid: 400, ppid: 10, comm: "zsh".into(), cmdline: vec!["-l".into()] },
+            ProcSnapshot { pid: 400, ppid: 10, comm: "zsh".into(), cmdline: vec!["-l".into()], state: 'R' },
         ])
     }
 
@@ -348,20 +387,28 @@ mod tests {
     #[test]
     fn build_forests_nested_agent_under_parent() {
         let src = FakeProcSource::new(vec![
-            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
+            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
             ProcSnapshot {
                 pid: 10,
                 ppid: 1,
                 comm: "claude".into(),
                 cmdline: vec!["claude".into()],
+                state: 'R',
             },
             ProcSnapshot {
                 pid: 20,
                 ppid: 10,
                 comm: "forge".into(),
                 cmdline: vec!["forge".into(), "conversation".into(), "list".into()],
+                state: 'R',
             },
-            ProcSnapshot { pid: 21, ppid: 20, comm: "bash".into(), cmdline: vec!["bash".into()] },
+            ProcSnapshot {
+                pid: 21,
+                ppid: 20,
+                comm: "bash".into(),
+                cmdline: vec!["bash".into()],
+                state: 'R',
+            },
         ]);
         let forests = build_agent_forests(&src);
         assert_eq!(forests.len(), 1);
