@@ -259,7 +259,9 @@ In-process read content cache MUST key by path+mtime with hit/miss meters.
 Writes to the same path MUST serialize. Staging CoW (`stage_bytes` →
 `commit_pending` / `discard_pending`) MUST promote or drop staging copies
 without silent no-ops; commit/discard with no pending entry MUST return
-`NoPending`.
+`NoPending`. Successful `write_rel` and `commit_rel` MUST stamp write
+provenance extended attributes (`user.sharecli.session`,
+`user.sharecli.written_at`) on the backing file.
 
 **Source:**
 
@@ -267,6 +269,7 @@ without silent no-ops; commit/discard with no pending entry MUST return
 - `crates/sharecli-fuse/src/inode_map.rs` — `InodeMap`
 - `crates/sharecli-fuse/src/read_cache.rs` — `ReadContentCache`
 - `crates/sharecli-fuse/src/write_serialize.rs` — `WriteSerialize`
+- `crates/sharecli-fuse/src/provenance.rs` — write provenance xattrs
 
 **Acceptance Criteria:**
 
@@ -283,6 +286,9 @@ without silent no-ops; commit/discard with no pending entry MUST return
   backing; `stage_bytes` + `discard_pending` leaves backing unchanged;
   commit/discard with no pending returns `NoPending`. InterceptFs exposes
   `stage_rel` / `commit_rel` / `discard_rel` for FR tests without mount.
+- **AC-009.6:** `write_rel` and `commit_rel` stamp `user.sharecli.session`
+  and `user.sharecli.written_at` on the backing path; session id is readable
+  via `read_provenance` / `InterceptFs::session_id` (no privileged mount).
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `sharecli-fuse` unit tests.
 

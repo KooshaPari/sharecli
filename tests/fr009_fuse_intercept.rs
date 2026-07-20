@@ -6,6 +6,7 @@
 //! AC-009.3 inode map / path resolution (pure)
 //! AC-009.4 in-process read coalesce cache hit/miss meters
 //! AC-009.5 write-serialize per-path lock + CoW stage/commit/discard
+//! AC-009.6 write provenance xattrs on write_rel / commit_rel
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -152,4 +153,36 @@ fn fr009_write_passthrough_and_cow_commit_discard() {
         fs.discard_rel(Path::new("rw.txt")),
         Err(WriteSerializeError::NoPending(_))
     ));
+}
+
+/// FR-009 / AC-009.6 — write_rel / commit_rel stamp provenance xattrs.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn fr009_write_provenance_xattrs() {
+    use std::fs;
+    use std::io::Write;
+    use sharecli_fuse::read_provenance;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("prov.txt");
+    {
+        let mut f = fs::File::create(&file).expect("create");
+        f.write_all(b"seed").expect("write");
+    }
+
+    let fs = sharecli_fuse::InterceptFs::with_session(dir.path(), "sess-ac0096");
+    assert_eq!(fs.session_id(), "sess-ac0096");
+
+    fs.write_rel(Path::new("prov.txt"), 0, b"live")
+        .expect("write_rel");
+    let after_write = read_provenance(&file).expect("read xattr").expect("present");
+    assert_eq!(after_write.session_id, "sess-ac0096");
+    assert!(after_write.written_at_unix > 0);
+
+    fs.stage_rel(Path::new("prov.txt"), b"cowed")
+        .expect("stage");
+    fs.commit_rel(Path::new("prov.txt")).expect("commit");
+    let after_commit = read_provenance(&file).expect("read").expect("present");
+    assert_eq!(after_commit.session_id, "sess-ac0096");
+    assert_eq!(fs::read(&file).expect("body"), b"cowed");
 }

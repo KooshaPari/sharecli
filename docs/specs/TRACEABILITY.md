@@ -121,6 +121,7 @@
 | AC-009.3 | `tests/fr009_fuse_intercept.rs`; `inode_map` unit tests | inode map / path resolution |
 | AC-009.4 | `tests/fr009_fuse_intercept.rs`; `read_cache` unit tests | read coalesce hit/miss meters |
 | AC-009.5 | `tests/fr009_fuse_intercept.rs`; `write_serialize` unit tests | path lock + CoW stage/commit/discard |
+| AC-009.6 | `tests/fr009_fuse_intercept.rs`; `provenance` unit tests | write provenance xattrs on write_rel/commit_rel |
 
 ### FR-010 — Mesh
 
@@ -147,6 +148,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-009 write provenance:** `user.sharecli.session` /
+  `user.sharecli.written_at` stamped on `write_rel` / `commit_rel` (AC-009.6).
 - **2026-07-19 — FR-009/010 A+ closeout:** CoW `stage_bytes`/`commit_pending`/
   `discard_pending` (AC-009.5); `SmartMerger` + `WorktreePool` (AC-010.7..8).
 - **2026-07-19 — FR-009 A+ recovery:** InterceptFs passthrough + inode map +
