@@ -24,6 +24,9 @@ libc = "0.2"
 tokio-tungstenite = { version = "0.30", features = ["connect"] }
 futures-util = "0.3"
 
+# Hypervisor coalesce operator meters (FR-008 / AC-008.11)
+sharecli-fleet = { path = "../sharecli-fleet" }
+
 # IPC server (bin only)
 sharecli = { path = "../../" }
 tokio = { version = "1", features = ["full"] }

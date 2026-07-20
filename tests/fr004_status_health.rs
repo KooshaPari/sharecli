@@ -3,7 +3,7 @@
 //!
 //! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status),
 //! AC-007.10 (host resource watch in status), AC-009.9 (FUSE neg dentry in status),
-//! AC-011.5 (thermal+agent gate in status).
+//! AC-008.11 (Hypervisor coalesce in status), AC-011.5 (thermal+agent gate in status).
 
 use std::collections::HashMap;
 
@@ -11,6 +11,7 @@ use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::format_gate_status_section;
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
+use sharecli_ipc::global_coalesce_meters;
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
 /// Mirror of the per-harness aggregation + status tables in `commands::status`.
@@ -56,6 +57,7 @@ fn format_status(
     out.push_str(&resource_watch.format_status_section());
     out.push_str(&global_read_cache_meters().format_status_section());
     out.push_str(&global_neg_dentry_meters().format_status_section());
+    out.push_str(&global_coalesce_meters().format_status_section());
     let thermal = ThermalGovernor::with_mock(ThermalLevel::Green)
         .poll()
         .expect("mock thermal poll");
@@ -136,6 +138,14 @@ async fn fr004_status_prints_harness_table() {
             && out.contains("Neg hits:")
             && out.contains("Neg misses:"),
         "status MUST surface FUSE negative-dentry meters (AC-009.9); got: {out}"
+    );
+    assert!(
+        out.contains("=== Hypervisor Coalesce ===")
+            && out.contains("Cache hits:")
+            && out.contains("Cache misses:")
+            && out.contains("Nocache runs:")
+            && out.contains("Hit rate:"),
+        "status MUST surface Hypervisor coalesce meters (AC-008.11); got: {out}"
     );
     assert!(
         out.contains("=== Thermal Gate (FR-011) ===")

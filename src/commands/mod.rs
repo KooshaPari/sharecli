@@ -24,6 +24,7 @@ use sharecli_fleet::{
 };
 use sharecli_fleet::{format_rss_bytes, ResourceWatchSample};
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
+use sharecli_fleet::global_coalesce_meters;
 
 /// Shared runtime instance
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();
@@ -320,6 +321,8 @@ pub async fn status(verbose: bool) -> Result<()> {
 
     let neg_meters = global_neg_dentry_meters();
     print!("{}", neg_meters.format_status_section());
+
+    print!("{}", global_coalesce_meters().format_status_section());
 
     print_live_gate_section()?;
 

@@ -4463,6 +4463,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "sharecli",
+ "sharecli-fleet",
  "tempfile",
  "tokio",
  "tokio-tungstenite 0.30.0",

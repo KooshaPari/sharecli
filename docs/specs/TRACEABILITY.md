@@ -123,6 +123,7 @@
 | AC-008.6 | `tests/fr008_coalesce_mesh.rs` (`fr008_debounce_waits_and_shares`, `fr008_hypervisor_debounce_waits_and_shares`); `sharecli-ipc` `debounce_shares_recent_store` | debounce share window |
 | AC-008.7..9 | `tests/fr008_coalesce_mesh.rs` (`fr008_nocache_*`, `fr008_slot_queue_*`, `fr008_hypervisor_nocache_*`) | nocache bypass + SlotQueue + Hypervisor queue route |
 | AC-008.10 | `tests/e2e_hypervisor_nocache.rs` | Hypervisor nocache e2e: re-exec, serialize, coalesce isolation |
+| AC-008.11 | `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-ipc` `global_coalesce_meters_record_hit_miss_and_nocache` | coalesce operator meters in status + thermal TUI |
 
 ### FR-009 — FUSE
 
@@ -168,6 +169,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-008 coalesce operator meters:** `global_coalesce_meters` +
+  status/thermal TUI panels (AC-008.11); mirrors FUSE read-coalesce surfacing.
 - **2026-07-20 — FR-011 pool/health gate parity:** `sharecli pool` and
   `sharecli health` print `format_gate_status_section` after runtime health
   (AC-011.7).
