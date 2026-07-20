@@ -220,8 +220,13 @@ replacing vendor agent executables as the primary detection path.
   re-renders the host agent inventory every N seconds until Ctrl-C; MUST honor
   `--json` (pretty JSON each refresh) and print a `[watch]` footer with the
   refresh interval.
+- **AC-006.16:** `sharecli proc --tree` renders parent-child process forests
+  rooted at top-level detected agents (nested agents appear as child subtrees;
+  human-only shells are omitted). `--tree --json` emits a `forests` array of
+  nested nodes (`pid`, `ppid`, `comm`, optional `family`, `children`) plus
+  `roots`; `--tree --watch` re-renders the forest each refresh.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`
 
 ---
 

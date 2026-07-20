@@ -23,6 +23,16 @@ pub struct DetectedAgent {
     pub comm: String,
 }
 
+/// One node in an agent-rooted process subtree (AC-006.16).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentTreeNode {
+    pub pid: u32,
+    pub ppid: u32,
+    pub comm: String,
+    pub family: Option<&'static str>,
+    pub children: Vec<AgentTreeNode>,
+}
+
 /// Abstract process table — production backends + in-memory fixtures for tests.
 pub trait ProcSource {
     fn list(&self) -> Vec<ProcSnapshot>;
@@ -123,6 +133,70 @@ impl ProcSource for HostProcSource {
 /// Convenience: scan the live host for known agents.
 pub fn scan_host_agents() -> Vec<DetectedAgent> {
     scan_agents(&HostProcSource)
+}
+
+/// Build parent-child forests rooted at top-level detected agents (AC-006.16).
+///
+/// Each forest includes the agent root and descendant processes until a nested
+/// agent boundary (nested agents appear as child subtrees). Human-only shells
+/// outside any agent ancestry are omitted.
+pub fn build_agent_forests(source: &dyn ProcSource) -> Vec<AgentTreeNode> {
+    let procs = source.list();
+    let by_pid: HashMap<u32, ProcSnapshot> =
+        procs.iter().cloned().map(|p| (p.pid, p)).collect();
+    let agents = scan_agents(source);
+    if agents.is_empty() {
+        return Vec::new();
+    }
+    let agent_pids: std::collections::HashSet<u32> = agents.iter().map(|a| a.pid).collect();
+    let mut roots: Vec<u32> = agents
+        .iter()
+        .filter(|a| {
+            let ppid = by_pid.get(&a.pid).map(|p| p.ppid).unwrap_or(0);
+            !agent_pids.contains(&ppid)
+        })
+        .map(|a| a.pid)
+        .collect();
+    roots.sort_unstable();
+    roots
+        .into_iter()
+        .filter_map(|root_pid| build_agent_subtree(root_pid, &by_pid, &agent_pids))
+        .collect()
+}
+
+/// Live-host convenience for [`build_agent_forests`].
+pub fn build_host_agent_forests() -> Vec<AgentTreeNode> {
+    build_agent_forests(&HostProcSource)
+}
+
+fn build_agent_subtree(
+    pid: u32,
+    by_pid: &HashMap<u32, ProcSnapshot>,
+    agent_pids: &std::collections::HashSet<u32>,
+) -> Option<AgentTreeNode> {
+    let proc = by_pid.get(&pid)?;
+    let family = if agent_pids.contains(&pid) {
+        match_known_agent(&proc.comm, &proc.cmdline)
+    } else {
+        None
+    };
+    let mut child_pids: Vec<u32> = by_pid
+        .values()
+        .filter(|p| p.ppid == pid)
+        .map(|p| p.pid)
+        .collect();
+    child_pids.sort_unstable();
+    let children = child_pids
+        .into_iter()
+        .filter_map(|child| build_agent_subtree(child, by_pid, agent_pids))
+        .collect();
+    Some(AgentTreeNode {
+        pid,
+        ppid: proc.ppid,
+        comm: proc.comm.clone(),
+        family,
+        children,
+    })
 }
 
 /// Nearest known-agent ancestor for the current process (hypervisor spawn context).
@@ -279,5 +353,72 @@ mod tests {
     fn agent_label_for_child_and_human() {
         assert_eq!(agent_label_for_pid(&tree(), 300), "claude");
         assert_eq!(agent_label_for_pid(&tree(), 400), "-");
+    }
+
+    #[test]
+    fn build_forests_agent_child_tools_only() {
+        let forests = build_agent_forests(&tree());
+        assert_eq!(forests.len(), 1);
+        assert_eq!(forests[0].pid, 100);
+        assert_eq!(forests[0].family, Some("claude"));
+        assert_eq!(forests[0].children.len(), 1);
+        assert_eq!(forests[0].children[0].pid, 200);
+        assert_eq!(forests[0].children[0].children.len(), 1);
+        assert_eq!(forests[0].children[0].children[0].pid, 300);
+    }
+
+    #[test]
+    fn build_forests_excludes_human_shell_subtrees() {
+        let forests = build_agent_forests(&tree());
+        let all_pids: Vec<u32> = flatten_pids(&forests);
+        assert!(!all_pids.contains(&400));
+        assert!(!all_pids.contains(&60));
+    }
+
+    fn flatten_pids(nodes: &[AgentTreeNode]) -> Vec<u32> {
+        let mut out = Vec::new();
+        for n in nodes {
+            out.push(n.pid);
+            out.extend(flatten_pids(&n.children));
+        }
+        out
+    }
+
+    #[test]
+    fn build_forests_nested_agent_under_parent() {
+        let src = FakeProcSource::new(vec![
+            ProcSnapshot {
+                pid: 1,
+                ppid: 0,
+                comm: "init".into(),
+                cmdline: vec![],
+            },
+            ProcSnapshot {
+                pid: 10,
+                ppid: 1,
+                comm: "claude".into(),
+                cmdline: vec!["claude".into()],
+            },
+            ProcSnapshot {
+                pid: 20,
+                ppid: 10,
+                comm: "forge".into(),
+                cmdline: vec!["forge".into(), "conversation".into(), "list".into()],
+            },
+            ProcSnapshot {
+                pid: 21,
+                ppid: 20,
+                comm: "bash".into(),
+                cmdline: vec!["bash".into()],
+            },
+        ]);
+        let forests = build_agent_forests(&src);
+        assert_eq!(forests.len(), 1);
+        assert_eq!(forests[0].pid, 10);
+        assert_eq!(forests[0].children.len(), 1);
+        assert_eq!(forests[0].children[0].pid, 20);
+        assert_eq!(forests[0].children[0].family, Some("forge"));
+        assert_eq!(forests[0].children[0].children.len(), 1);
+        assert_eq!(forests[0].children[0].children[0].pid, 21);
     }
 }
