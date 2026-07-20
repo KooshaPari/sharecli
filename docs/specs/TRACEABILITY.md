@@ -121,6 +121,7 @@
 | AC-006.31   | `tests/fr006_proc_state.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/proc_scan.rs` | `sharecli proc --state` process-state letter filter |
 | AC-006.32   | `tests/fr006_proc_state_export.rs`; `src/commands/proc.rs` | `state` on flat `--json` / `--csv` and `--tree --csv` exports |
 | AC-006.33   | `tests/fr006_proc_state_text.rs`; `tests/fr006_proc_pid_detail.rs`; `src/commands/proc.rs`; `src/commands/mod.rs` | `state` on flat text inventory and `proc --pid` detail |
+| AC-006.34   | `tests/fr006_proc_tree_state.rs`; `src/commands/proc.rs` | `state` on `--tree` text nodes and `--tree --json` rows |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -224,6 +225,8 @@
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
+- **2026-07-20 — FR-006 proc tree state surfaces:** `--tree` text nodes and
+  `--tree --json` `AgentTreeNodeJson` rows include `state` letter (AC-006.34).
 - **2026-07-20 — FR-006 proc state text surfaces:** flat text inventory and
   `proc --pid` detail expose process state letter (AC-006.33).
 - **2026-07-20 — FR-006 proc state export:** flat `--json` agent rows and `--csv`

@@ -583,6 +583,8 @@ pub struct AgentTreeNodeJson {
     pub comm: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub family: Option<String>,
+    /// Linux `/proc` state letter (R|S|D|Z|T|t|…); AC-006.34.
+    pub state: String,
     pub children: Vec<AgentTreeNodeJson>,
 }
 
@@ -643,13 +645,19 @@ pub fn agent_row_from_watch(
     }
 }
 
-fn tree_node_to_json(node: &AgentTreeNode) -> AgentTreeNodeJson {
+/// Build one tree JSON node including process state (AC-006.34).
+pub fn agent_tree_node_to_json(node: &AgentTreeNode, state_by_pid: &HashMap<u32, char>) -> AgentTreeNodeJson {
     AgentTreeNodeJson {
         pid: node.pid,
         ppid: node.ppid,
         comm: node.comm.clone(),
         family: node.family.map(str::to_string),
-        children: node.children.iter().map(tree_node_to_json).collect(),
+        state: state_letter_for_pid(state_by_pid, node.pid),
+        children: node
+            .children
+            .iter()
+            .map(|child| agent_tree_node_to_json(child, state_by_pid))
+            .collect(),
     }
 }
 
@@ -851,7 +859,7 @@ pub fn render_agent_inventory(
     println!("\nTotal: {} agent process(es)", watched.len());
 }
 
-fn render_tree_node(node: &AgentTreeNode, prefix: &str, is_last: bool) {
+fn render_tree_node(node: &AgentTreeNode, prefix: &str, is_last: bool, state_by_pid: &HashMap<u32, char>) {
     let connector = if prefix.is_empty() {
         String::new()
     } else if is_last {
@@ -860,19 +868,24 @@ fn render_tree_node(node: &AgentTreeNode, prefix: &str, is_last: bool) {
         "├── ".to_string()
     };
     let family = node.family.map(|f| format!("{f} ")).unwrap_or_else(String::new);
-    println!("{prefix}{connector}[{pid}] {family}{comm}", pid = node.pid, comm = node.comm);
+    let state = state_text_for_pid(state_by_pid, node.pid);
+    println!(
+        "{prefix}{connector}[{pid}] {state} {family}{comm}",
+        pid = node.pid,
+        comm = node.comm
+    );
     let child_prefix = if prefix.is_empty() {
         String::new()
     } else {
         format!("{}{}", prefix, if is_last { "    " } else { "│   " })
     };
     for (i, child) in node.children.iter().enumerate() {
-        render_tree_node(child, &child_prefix, i + 1 == node.children.len());
+        render_tree_node(child, &child_prefix, i + 1 == node.children.len(), state_by_pid);
     }
 }
 
-/// Render parent-child agent process forests (text mode, AC-006.16).
-pub fn render_agent_tree(forests: &[AgentTreeNode]) {
+/// Render parent-child agent process forests (text mode, AC-006.16, AC-006.34).
+pub fn render_agent_tree(forests: &[AgentTreeNode], state_by_pid: &HashMap<u32, char>) {
     println!("=== Agent process tree (proc scan) ===\n");
     if forests.is_empty() {
         println!("No known agent processes detected on this host.");
@@ -882,7 +895,7 @@ pub fn render_agent_tree(forests: &[AgentTreeNode]) {
         if i > 0 {
             println!();
         }
-        render_tree_node(root, "", true);
+        render_tree_node(root, "", true, state_by_pid);
     }
     println!("\nTotal: {} agent root(s)", forests.len());
 }
@@ -920,7 +933,10 @@ pub fn render_once(
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
         let forests = limit_agent_forests(forests, limit);
         let snap = AgentTreeSnapshot {
-            forests: forests.iter().map(tree_node_to_json).collect(),
+            forests: forests
+                .iter()
+                .map(|root| agent_tree_node_to_json(root, &state_by_pid))
+                .collect(),
             roots: forests.len(),
         };
         if json {
@@ -936,7 +952,7 @@ pub fn render_once(
             print!("{}", render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid, &state_by_pid));
             return Ok(());
         }
-        render_agent_tree(&forests);
+        render_agent_tree(&forests, &state_by_pid);
         print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
         return Ok(());
     }
@@ -1151,13 +1167,19 @@ mod tests {
             ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
         ]);
         let forests = sharecli_fleet::build_agent_forests(&src);
+        let state_by_pid = HashMap::from([(50, 'R'), (51, 'R')]);
         let snap = AgentTreeSnapshot {
-            forests: forests.iter().map(tree_node_to_json).collect(),
+            forests: forests
+                .iter()
+                .map(|root| agent_tree_node_to_json(root, &state_by_pid))
+                .collect(),
             roots: forests.len(),
         };
         assert_eq!(snap.roots, 1);
+        assert_eq!(snap.forests[0].state, "R");
         assert_eq!(snap.forests[0].children.len(), 1);
         assert_eq!(snap.forests[0].children[0].pid, 51);
+        assert_eq!(snap.forests[0].children[0].state, "R");
     }
 
     #[test]
