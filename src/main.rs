@@ -187,6 +187,10 @@ enum Commands {
         /// Cap inventory rows or tree root forests after filter/sort (N >= 1)
         #[arg(long)]
         limit: Option<u64>,
+
+        /// Show RSS/FD/cmdline/parent detail for one live host PID
+        #[arg(long)]
+        pid: Option<u32>,
     },
 
     /// Run a runtime health probe
@@ -554,7 +558,7 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, tree, watch, family, min_rss, sort, limit } => {
+        Commands::Proc { json, tree, watch, family, min_rss, sort, limit, pid } => {
             commands::proc::run(
                 *json,
                 *tree,
@@ -563,6 +567,7 @@ async fn run() -> Result<()> {
                 min_rss.clone(),
                 sort.clone(),
                 *limit,
+                *pid,
             )
             .await?
         }

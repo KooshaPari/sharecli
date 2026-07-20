@@ -125,6 +125,16 @@ pub fn scan_host_agents() -> Vec<DetectedAgent> {
     scan_agents(&HostProcSource)
 }
 
+/// Lookup one live process row by PID (AC-006.23).
+pub fn lookup_proc(source: &dyn ProcSource, pid: u32) -> Option<ProcSnapshot> {
+    source.list().into_iter().find(|p| p.pid == pid)
+}
+
+/// Lookup one process on the live host by PID.
+pub fn lookup_host_proc(pid: u32) -> Option<ProcSnapshot> {
+    lookup_proc(&HostProcSource, pid)
+}
+
 /// Build parent-child forests rooted at top-level detected agents (AC-006.16).
 ///
 /// Each forest includes the agent root and descendant processes until a nested
@@ -273,6 +283,15 @@ mod tests {
         assert_eq!(agents.len(), 1);
         assert_eq!(agents[0].family, "claude");
         assert_eq!(agents[0].pid, 100);
+    }
+
+    #[test]
+    fn lookup_proc_returns_row_or_none() {
+        let src = tree();
+        let hit = lookup_proc(&src, 300).expect("ruff child");
+        assert_eq!(hit.comm, "ruff");
+        assert_eq!(hit.ppid, 200);
+        assert!(lookup_proc(&src, 999).is_none());
     }
 
     #[test]

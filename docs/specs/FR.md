@@ -254,8 +254,13 @@ replacing vendor agent executables as the primary detection path.
   `├──` / `└──` connectors (parity with `sharecli proc --tree`); agent roots
   show family plus live RSS from per-PID watch; compact layout keeps the flat
   summary; empty forests fall back to flat inventory lines.
+- **AC-006.23:** `sharecli proc --pid N` (N ≥ 1) prints a one-shot detail view
+  for a live host process: `ppid`, parent `comm`, `cmdline`, live RSS/FD samples,
+  direct agent `family` when the PID is a known agent, otherwise nearest agent
+  ancestor when under an agent subtree. `--pid --json` emits a structured object;
+  missing or dead PIDs MUST fail loudly; `--pid` MUST NOT combine with `--watch`.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`
 
 ---
 

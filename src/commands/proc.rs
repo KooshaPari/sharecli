@@ -3,12 +3,14 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
     build_host_agent_forests, format_gate_status_section, format_rss_bytes, gate_status_snapshot,
-    parse_rss_bytes, scan_host_agents, watch_detected_agents, AgentTreeNode, DetectedAgentWatch,
+    lookup_proc, match_known_agent, parse_rss_bytes, scan_host_agents, walk_agent_ancestors,
+    watch_detected_agents, AgentResourceSample, AgentTreeNode, DetectedAgentWatch, HostProcSource,
+    ProcSource,
 };
 use tokio::time::sleep;
 
@@ -274,6 +276,32 @@ pub struct AgentTreeSnapshot {
     pub roots: usize,
 }
 
+/// Nearest ancestor agent reference for proc detail (AC-006.23).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AgentAncestorRef {
+    pub pid: u32,
+    pub family: String,
+}
+
+/// JSON payload for `sharecli proc --pid N --json` (AC-006.23).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ProcDetailSnapshot {
+    pub pid: u32,
+    pub ppid: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_comm: Option<String>,
+    pub comm: String,
+    pub cmdline: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_ancestor: Option<AgentAncestorRef>,
+    pub mem_rss_bytes: u64,
+    pub mem_rss: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fd_count: Option<u64>,
+}
+
 /// One NDJSON watch line for flat inventory (`proc --watch --json`, AC-006.18).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentProcNdjsonLine {
@@ -338,6 +366,75 @@ fn tree_node_to_json(node: &AgentTreeNode) -> AgentTreeNodeJson {
         family: node.family.map(str::to_string),
         children: node.children.iter().map(tree_node_to_json).collect(),
     }
+}
+
+/// Build proc detail for one PID from a proc source (AC-006.23).
+pub fn build_proc_detail(source: &dyn ProcSource, pid: u32) -> Result<ProcDetailSnapshot> {
+    let proc = lookup_proc(source, pid)
+        .with_context(|| format!("process {pid} not found on this host"))?;
+    let parent_comm = lookup_proc(source, proc.ppid).map(|p| p.comm);
+    let direct_family = match_known_agent(&proc.comm, &proc.cmdline).map(str::to_string);
+    let agent_ancestor = if direct_family.is_some() {
+        None
+    } else {
+        walk_agent_ancestors(source, pid).map(|agent| AgentAncestorRef {
+            pid: agent.pid,
+            family: agent.family.to_string(),
+        })
+    };
+    let resource = AgentResourceSample::capture_for_pid(pid)
+        .with_context(|| format!("failed to sample RSS/FD for process {pid}"))?;
+    Ok(ProcDetailSnapshot {
+        pid: proc.pid,
+        ppid: proc.ppid,
+        parent_comm,
+        comm: proc.comm,
+        cmdline: proc.cmdline,
+        family: direct_family,
+        agent_ancestor,
+        mem_rss_bytes: resource.mem_rss_bytes,
+        mem_rss: format_rss_bytes(resource.mem_rss_bytes),
+        fd_count: resource.fd_count,
+    })
+}
+
+fn format_cmdline(cmdline: &[String]) -> String {
+    if cmdline.is_empty() {
+        return "(empty)".into();
+    }
+    cmdline.join(" ")
+}
+
+/// Render one process detail snapshot (text or JSON, AC-006.23).
+pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()> {
+    if json {
+        println!("{}", serde_json::to_string_pretty(detail)?);
+        return Ok(());
+    }
+    println!("=== Process detail (PID {}) ===\n", detail.pid);
+    println!("PID:       {}", detail.pid);
+    let parent = match (&detail.parent_comm, detail.ppid) {
+        (Some(comm), ppid) => format!("{ppid} ({comm})"),
+        (None, ppid) if ppid == 0 => "0".into(),
+        (None, ppid) => ppid.to_string(),
+    };
+    println!("Parent:    {parent}");
+    println!("COMM:      {}", detail.comm);
+    println!("CMDLINE:   {}", format_cmdline(&detail.cmdline));
+    if let Some(ref family) = detail.family {
+        println!("Family:    {family}");
+    } else if let Some(ref ancestor) = detail.agent_ancestor {
+        println!("Agent:     {} (pid {})", ancestor.family, ancestor.pid);
+    }
+    println!("RSS:       {} ({} bytes)", detail.mem_rss, detail.mem_rss_bytes);
+    let fd = detail.fd_count.map(|n| n.to_string()).unwrap_or_else(|| "-".into());
+    println!("FD:        {fd}");
+    Ok(())
+}
+
+fn render_pid_detail(pid: u32, json: bool) -> Result<()> {
+    let detail = build_proc_detail(&HostProcSource, pid)?;
+    render_proc_detail(&detail, json)
 }
 
 /// Render host agent inventory (text mode).
@@ -479,7 +576,14 @@ pub async fn run(
     min_rss: Option<String>,
     sort: Option<String>,
     limit: Option<u64>,
+    pid: Option<u32>,
 ) -> Result<()> {
+    if let Some(target_pid) = pid {
+        if watch.is_some() {
+            bail!("--pid cannot be combined with --watch");
+        }
+        return render_pid_detail(target_pid, json);
+    }
     let filter = ProcFilter::from_cli(family, min_rss)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
@@ -565,7 +669,7 @@ mod tests {
     fn zero_watch_interval_is_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, Some(0), None, None, None, None))
+            .block_on(super::run(false, false, Some(0), None, None, None, None, None))
             .expect_err("watch 0 MUST fail");
         assert!(
             err.to_string().contains(">= 1"),
@@ -615,5 +719,27 @@ mod tests {
         assert_eq!(snap.roots, 1);
         assert_eq!(snap.forests[0].children.len(), 1);
         assert_eq!(snap.forests[0].children[0].pid, 51);
+    }
+
+    #[test]
+    fn build_proc_detail_missing_pid_fails() {
+        let src = FakeProcSource::new(vec![]);
+        let err = build_proc_detail(&src, 42).expect_err("missing pid");
+        assert!(
+            err.to_string().contains("not found"),
+            "error MUST mention missing process; got: {err}"
+        );
+    }
+
+    #[test]
+    fn pid_watch_combo_rejected() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let err = rt
+            .block_on(super::run(false, false, Some(1), None, None, None, None, Some(42)))
+            .expect_err("pid+watch MUST fail");
+        assert!(
+            err.to_string().contains("--watch") || err.to_string().contains("--pid"),
+            "error MUST mention flag conflict; got: {err}"
+        );
     }
 }
