@@ -54,7 +54,9 @@
 //!   idle periods and pre-populate the coalesce cache.
 
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
@@ -63,7 +65,7 @@ use sharecli_ipc::{
     command_key, has_nocache_arg, CachedResult, CoalesceCache, QueuePriority, SlotQueue,
     DEFAULT_NOCACHE_ARGS,
 };
-use tracing::{debug, warn};
+use tracing::{debug, error, warn};
 
 pub mod detect;
 pub mod proc_scan;
@@ -151,22 +153,61 @@ pub const THERMAL_RETRY_SLEEP: Duration = Duration::from_secs(2);
 // FUSE IO-intercept guard
 // ---------------------------------------------------------------------------
 
+/// Max time to wait for the FUSE mount to become readable after spawn.
+const FUSE_READY_TIMEOUT: Duration = Duration::from_secs(5);
+/// Poll interval while waiting for mount readiness.
+const FUSE_READY_POLL: Duration = Duration::from_millis(50);
+/// Marker filename written under `backing` and probed via the mountpoint.
+const FUSE_READY_MARKER: &str = ".sharecli-fuse-ready";
+
+/// Poll until `probe` is readable, `fail_rx` reports a mount error, or `timeout`.
+///
+/// Returns `Ok(())` when the probe path becomes a readable file. Returns `Err`
+/// with a loud, actionable message on mount failure or timeout — never silently
+/// treats an unmounted directory as ready.
+fn wait_fuse_mount_ready(
+    probe: &Path,
+    fail_rx: &mpsc::Receiver<String>,
+    timeout: Duration,
+    poll: Duration,
+) -> Result<(), String> {
+    let mut waited = Duration::ZERO;
+    while waited < timeout {
+        if probe.is_file() && std::fs::read(probe).is_ok() {
+            return Ok(());
+        }
+        if let Ok(msg) = fail_rx.try_recv() {
+            return Err(format!("sharecli-fuse mount failed: {msg}"));
+        }
+        thread::sleep(poll);
+        waited = waited.saturating_add(poll);
+    }
+    Err(format!(
+        "sharecli-fuse mount readiness timed out after {}ms waiting for {} \
+         (is FUSE installed and permitted?)",
+        timeout.as_millis(),
+        probe.display()
+    ))
+}
+
 /// RAII guard that manages a sharecli-fuse intercept mount lifetime.
 ///
 /// On construction (best-effort) it creates a temporary directory, spawns a
 /// background thread running the FUSE event loop that mirrors a backing path,
-/// and exposes the mountpoint via [`mountpoint()`][FuseGuard::mountpoint].
+/// polls until a readiness marker is visible through the mount, and exposes
+/// the mountpoint via [`mountpoint()`][FuseGuard::mountpoint].
 ///
 /// On drop the guard force-unmounts the FUSE filesystem and removes the
 /// temporary mountpoint directory.
 ///
 /// # Best-effort semantics
 ///
-/// [`FuseGuard::try_mount`] **never** returns an error.  If mounting fails
-/// (platform unsupported, FUSE kernel module not loaded, etc.) a no-op guard
-/// is returned and [`mountpoint()`][FuseGuard::mountpoint] returns `None`.
-/// Callers should always check `mountpoint()` and fall back to the original
-/// path when it returns `None`.
+/// [`FuseGuard::try_mount`] **never** returns an error to callers.  If mounting
+/// fails or readiness polling times out, a loud message is printed to stderr /
+/// the error log, a no-op guard is returned, and
+/// [`mountpoint()`][FuseGuard::mountpoint] returns `None`. Callers must check
+/// `mountpoint()` and fall back to the original path when it returns `None`.
+/// An unready mountpoint is **never** returned as `Some`.
 struct FuseGuard {
     /// Path to the temporary mountpoint directory.
     /// `None` when FUSE could not be started (no-op guard).
@@ -174,42 +215,102 @@ struct FuseGuard {
     /// Keep the TempDir alive so it is not cleaned up before the unmount in
     /// [`Drop`] runs.
     _tmpdir: Option<tempfile::TempDir>,
+    /// Readiness marker path on the backing tree (removed on drop).
+    readiness_marker: Option<PathBuf>,
 }
 
 impl FuseGuard {
     /// Attempt to mount a sharecli-fuse IO-intercept layer mirroring `backing`.
     ///
-    /// When FUSE is unavailable or the mount fails a no-op guard is returned
-    /// (the spawn proceeds without interception).
+    /// When FUSE is unavailable, the mount fails, or readiness never appears, a
+    /// no-op guard is returned (the spawn proceeds without interception) after a
+    /// loud failure report.
     fn try_mount(backing: &Path) -> Self {
         // Non-Linux/macOS: no-op guard — FUSE is not available.
         #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         {
             let _ = backing;
-            return Self { mountpoint: None, _tmpdir: None };
+            return Self { mountpoint: None, _tmpdir: None, readiness_marker: None };
         }
 
-        // Linux / macOS: try to start FUSE.
+        // Linux / macOS: try to start FUSE and wait until it is ready.
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             let tmpdir = match tempfile::tempdir() {
                 Ok(d) => d,
-                Err(_) => return Self { mountpoint: None, _tmpdir: None },
+                Err(e) => {
+                    let msg = format!(
+                        "sharecli-fuse: cannot create mount tempdir: {e} — proceeding without FUSE"
+                    );
+                    eprintln!("{msg}");
+                    error!("{msg}");
+                    return Self { mountpoint: None, _tmpdir: None, readiness_marker: None };
+                }
             };
             let mountpoint = tmpdir.path().to_path_buf();
             let backing = backing.to_path_buf();
-            let mp = mountpoint.clone();
 
+            // Unique marker under backing; InterceptFs mirrors it through the mount.
+            let marker_name = format!(
+                "{FUSE_READY_MARKER}-{}",
+                std::process::id()
+            );
+            let marker_rel = Path::new(&marker_name);
+            let marker_backing = backing.join(marker_rel);
+            if let Err(e) = std::fs::write(&marker_backing, b"ready") {
+                let msg = format!(
+                    "sharecli-fuse: cannot write readiness marker {}: {e} — proceeding without FUSE",
+                    marker_backing.display()
+                );
+                eprintln!("{msg}");
+                error!("{msg}");
+                return Self { mountpoint: None, _tmpdir: None, readiness_marker: None };
+            }
+
+            let mp = mountpoint.clone();
+            let backing_for_mount = backing.clone();
+            let (fail_tx, fail_rx) = mpsc::channel::<String>();
             // Spawn the FUSE event loop on a background thread — it blocks
             // until unmounted.
-            std::thread::spawn(move || {
-                let _ = sharecli_fuse::mount(&mp, &backing);
+            thread::spawn(move || {
+                if let Err(err) = sharecli_fuse::mount(&mp, &backing_for_mount) {
+                    let _ = fail_tx.send(err.to_string());
+                }
             });
 
-            // Brief pause so the mount is ready when the child process spawns.
-            std::thread::sleep(Duration::from_millis(100));
-
-            Self { mountpoint: Some(mountpoint), _tmpdir: Some(tmpdir) }
+            let probe = mountpoint.join(marker_rel);
+            match wait_fuse_mount_ready(&probe, &fail_rx, FUSE_READY_TIMEOUT, FUSE_READY_POLL) {
+                Ok(()) => Self {
+                    mountpoint: Some(mountpoint),
+                    _tmpdir: Some(tmpdir),
+                    readiness_marker: Some(marker_backing),
+                },
+                Err(msg) => {
+                    let loud = format!("{msg} — proceeding without FUSE intercept");
+                    eprintln!("{loud}");
+                    error!("{loud}");
+                    // Best-effort unmount of a half-started mount before drop.
+                    #[cfg(target_os = "linux")]
+                    {
+                        let _ = std::process::Command::new("fusermount")
+                            .arg("-uz")
+                            .arg(&mountpoint)
+                            .stdout(std::process::Stdio::null())
+                            .stderr(std::process::Stdio::null())
+                            .status();
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        let _ = std::process::Command::new("umount")
+                            .arg(&mountpoint)
+                            .stdout(std::process::Stdio::null())
+                            .stderr(std::process::Stdio::null())
+                            .status();
+                    }
+                    let _ = std::fs::remove_file(&marker_backing);
+                    Self { mountpoint: None, _tmpdir: None, readiness_marker: None }
+                }
+            }
         }
     }
 
@@ -233,6 +334,9 @@ impl Drop for FuseGuard {
                 let _ = std::process::Command::new("umount").arg(mp).status();
             }
         }
+        if let Some(ref marker) = self.readiness_marker {
+            let _ = std::fs::remove_file(marker);
+        }
     }
 }
 
@@ -249,6 +353,11 @@ pub struct HypervisorConfig {
     pub queue_root: PathBuf,
     /// Max parallel slots for queued (mutating) commands.
     pub queue_max_concurrent: usize,
+    /// Debounce window for the coalesce miss path (origin harness `debounce_ms`).
+    ///
+    /// When non-zero, [`CoalesceCache::with_lock`] waits then re-checks so an
+    /// in-window sibling store is shared (AC-008.6). [`Duration::ZERO`] disables.
+    pub coalesce_debounce: Duration,
 }
 
 /// A request to spawn a managed process.
@@ -337,6 +446,7 @@ impl Hypervisor {
                 cache_root,
                 queue_root,
                 queue_max_concurrent: 1,
+                coalesce_debounce: Duration::ZERO,
             },
             gate,
             DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect(),
@@ -352,7 +462,11 @@ impl Hypervisor {
         gate: Arc<dyn ThermalGate>,
         nocache_args: Vec<String>,
     ) -> Self {
-        let cache = CoalesceCache::new(config.cache_root.clone());
+        let cache = CoalesceCache::with_options(
+            config.cache_root.clone(),
+            CoalesceCache::DEFAULT_TTL,
+            config.coalesce_debounce,
+        );
         let queue = SlotQueue::new(config.queue_root.clone(), config.queue_max_concurrent);
         Self {
             cache,
@@ -366,6 +480,12 @@ impl Hypervisor {
     /// Borrow the mutating-path [`SlotQueue`] (Hypervisor API for external callers).
     pub fn queue(&self) -> &SlotQueue {
         &self.queue
+    }
+
+    /// Configured coalesce debounce window (zero = disabled). Wired into every
+    /// [`Hypervisor::run`] coalesce path via [`CoalesceCache::with_lock`].
+    pub fn coalesce_debounce(&self) -> Duration {
+        self.cache.debounce()
     }
 
     /// Configured nocache / mutating flags (Feb `nocache_args`).
@@ -457,8 +577,9 @@ impl Hypervisor {
 
         // ── FUSE intercept (cache-miss only) ─────────────────────────────────
         // Mount the IO-intercept layer over the child's working directory.
-        // `FuseGuard::try_mount` never fails — if FUSE is unavailable a no-op
-        // guard is returned and the spawn proceeds normally.
+        // `FuseGuard::try_mount` never fails the spawn — if FUSE is unavailable
+        // or readiness never appears, a loud error is reported and a no-op
+        // guard is returned so the spawn proceeds without interception.
         let fuse_guard = FuseGuard::try_mount(&req.cwd);
 
         // Build an effective SpawnRequest whose cwd points at the FUSE
@@ -770,7 +891,8 @@ mod tests {
 
     /// FuseGuard::try_mount never panics and returns a valid object on all
     /// platforms.  On non-FUSE platforms the guard is a no-op; on Linux/macOS
-    /// it may or may not succeed depending on the FUSE kernel module.
+    /// it may or may not succeed depending on the FUSE kernel module. When the
+    /// mount is not ready, mountpoint() MUST be None (never an unready Some).
     #[test]
     fn fuse_guard_try_mount_never_panics() {
         let dir = TempDir::new().expect("tempdir");
@@ -780,8 +902,9 @@ mod tests {
         drop(guard);
     }
 
-    /// When FUSE is active the mountpoint must differ from the backing path.
-    /// When FUSE is inactive mountpoint() returns None — the no-op guard.
+    /// When FUSE is active the mountpoint must differ from the backing path
+    /// and the readiness marker must be readable through it. When FUSE is
+    /// inactive mountpoint() returns None — the no-op guard.
     #[test]
     fn fuse_guard_mountpoint_returns_path_or_none() {
         let dir = TempDir::new().expect("tempdir");
@@ -791,11 +914,109 @@ mod tests {
                 // FUSE is active — mountpoint must be different from backing.
                 assert_ne!(mp, dir.path(), "mountpoint must differ from backing");
                 assert!(mp.starts_with(std::env::temp_dir()), "mountpoint must be under temp dir");
+                let probe_found = std::fs::read_dir(mp)
+                    .expect("read mountpoint")
+                    .filter_map(|e| e.ok())
+                    .any(|e| {
+                        e.file_name()
+                            .to_string_lossy()
+                            .starts_with(FUSE_READY_MARKER)
+                    });
+                assert!(
+                    probe_found,
+                    "readiness marker must be visible through mountpoint before Some is returned"
+                );
             }
             None => {
                 // FUSE not available — best-effort, still valid.
             }
         }
+    }
+
+    /// Readiness poll reports mount failure immediately when fail_rx fires.
+    #[test]
+    fn fuse_ready_poll_fails_loudly_on_mount_error() {
+        let (tx, rx) = mpsc::channel();
+        tx.send("simulated mount boom".into()).expect("send");
+        let probe = Path::new("/tmp/sharecli-fuse-ready-poll-never");
+        let err = wait_fuse_mount_ready(probe, &rx, Duration::from_secs(2), Duration::from_millis(10))
+            .expect_err("must fail when mount reports error");
+        assert!(
+            err.contains("mount failed"),
+            "loud error must mention mount failure: {err}"
+        );
+        assert!(
+            err.contains("simulated mount boom"),
+            "loud error must include mount message: {err}"
+        );
+    }
+
+    /// Readiness poll times out with a loud message when the probe never appears.
+    #[test]
+    fn fuse_ready_poll_times_out_loudly_when_probe_missing() {
+        let (_tx, rx) = mpsc::channel::<String>();
+        let probe = Path::new("/tmp/sharecli-fuse-ready-poll-missing-xyz");
+        let err = wait_fuse_mount_ready(
+            probe,
+            &rx,
+            Duration::from_millis(80),
+            Duration::from_millis(20),
+        )
+        .expect_err("must time out when probe never appears");
+        assert!(
+            err.contains("timed out"),
+            "loud error must mention timeout: {err}"
+        );
+        assert!(
+            err.contains("sharecli-fuse"),
+            "loud error must identify sharecli-fuse: {err}"
+        );
+    }
+
+    /// Readiness poll succeeds when the probe file becomes readable.
+    #[test]
+    fn fuse_ready_poll_succeeds_when_probe_appears() {
+        let dir = TempDir::new().expect("tempdir");
+        let probe = dir.path().join("appears.txt");
+        let (_tx, rx) = mpsc::channel::<String>();
+        let probe_bg = probe.clone();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(30));
+            std::fs::write(&probe_bg, b"ready").expect("write probe");
+        });
+        wait_fuse_mount_ready(&probe, &rx, Duration::from_secs(2), Duration::from_millis(10))
+            .expect("probe must become ready");
+    }
+
+    /// HypervisorConfig.coalesce_debounce is plumbed into CoalesceCache so every
+    /// Hypervisor::run coalesce path uses with_lock's debounce re-check (AC-008.6).
+    #[test]
+    fn hypervisor_coalesce_debounce_wired_from_config() {
+        let dir = TempDir::new().expect("tempdir");
+        let debounce = Duration::from_millis(75);
+        let hv = Hypervisor::with_options(
+            HypervisorConfig {
+                cache_root: dir.path().join("cache"),
+                queue_root: dir.path().join("queue"),
+                queue_max_concurrent: 1,
+                coalesce_debounce: debounce,
+            },
+            Arc::new(FakeThermalGate::new(ThermalDecision::Allow)),
+            vec![],
+        );
+        assert_eq!(
+            hv.coalesce_debounce(),
+            debounce,
+            "AC-008.6: Hypervisor coalesce path MUST carry config debounce"
+        );
+    }
+
+    /// Default Hypervisor constructors leave debounce disabled (opt-in via config).
+    #[test]
+    fn hypervisor_default_debounce_is_zero() {
+        let dir = TempDir::new().expect("tempdir");
+        let hv = Hypervisor::new(dir.path());
+        assert_eq!(hv.coalesce_debounce(), Duration::ZERO);
     }
 
     /// With FUSE wired into the run() path, a spawn must still succeed
