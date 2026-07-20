@@ -205,7 +205,8 @@ negative dentry cache with invalidate-on-create.
 
 **Acceptance:**
 
-- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.8
+- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.10
+- `tests/fr009_fuse_cli.rs` — AC-009.11 CLI provenance inspect
 - `crates/sharecli-fuse` unit tests — inode map, read cache, neg dentry, write-serialize, provenance, mount_smoke
 
 **Source:** `crates/sharecli-fuse`  

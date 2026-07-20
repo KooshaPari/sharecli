@@ -139,6 +139,7 @@
 | AC-009.8 | `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` unit tests | opt-in live FUSE mount + provenance xattrs (`SHARECLI_FUSE_MOUNT_SMOKE=1`) |
 | AC-009.9 | `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs` (`fr009_thermal_tui_neg_dentry_lines`); `crates/sharecli-fuse/src/neg_dentry.rs` | FUSE neg dentry in status + thermal TUI |
 | AC-009.10 | `tests/fr009_fuse_intercept.rs` (`fr009_global_write_serialize_meters`); `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-fuse/src/write_serialize_meters.rs` | FUSE write-serialize / CoW in status + thermal TUI |
+| AC-009.11 | `tests/fr009_fuse_cli.rs`; `src/commands/fuse.rs` | `sharecli fuse provenance` reads backing write xattrs |
 
 ### FR-010 — Mesh
 
@@ -172,6 +173,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-009 fuse provenance CLI:** `sharecli fuse provenance`
+  reads backing write xattrs via `read_provenance` (AC-009.11).
 - **2026-07-20 — FR-008 SlotQueue operator meters:** `global_slot_queue_meters`
   + status/thermal TUI panels (AC-008.12); acquire/wait/timeout on nocache lane.
 - **2026-07-20 — FR-009 write-serialize operator meters:** `global_write_serialize_meters`

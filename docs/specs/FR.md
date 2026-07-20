@@ -317,6 +317,7 @@ until create / mkdir / rename-into invalidates the entry.
 - `crates/sharecli-fuse/src/write_serialize.rs` — `WriteSerialize`
 - `crates/sharecli-fuse/src/provenance.rs` — write provenance xattrs
 - `crates/sharecli-fuse/src/mount_smoke.rs` — opt-in privileged mount smoke
+- `src/commands/fuse.rs` — `sharecli fuse provenance`
 
 **Acceptance Criteria:**
 
@@ -353,8 +354,12 @@ until create / mkdir / rename-into invalidates the entry.
   / [`WriteSerializeMeters::format_status_section`](crates/sharecli-fuse/src/write_serialize_meters.rs);
   counters MUST increment on `write_rel`, `stage_rel` / `stage_bytes`, `commit_rel` /
   `commit_pending`, and `discard_rel` / `discard_pending`.
+- **AC-009.11:** `sharecli fuse provenance <path>` reads write-provenance xattrs via
+  [`read_provenance`](crates/sharecli-fuse/src/provenance.rs) on a backing file (no live
+  mount required); `--json` emits `{path,session_id,written_at_unix}` or `null` when absent;
+  missing paths and directories fail loudly.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
 
 ---
 
