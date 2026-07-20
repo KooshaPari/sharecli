@@ -195,6 +195,10 @@ enum Commands {
         /// Show RSS/FD/cmdline/parent detail for one live host PID
         #[arg(long)]
         pid: Option<u32>,
+
+        /// Keep only agents whose parent PID equals N
+        #[arg(long)]
+        ppid: Option<u32>,
     },
 
     /// Run a runtime health probe
@@ -562,7 +566,7 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, csv, tree, watch, family, min_rss, sort, limit, pid } => {
+        Commands::Proc { json, csv, tree, watch, family, min_rss, sort, limit, pid, ppid } => {
             commands::proc::run(
                 *json,
                 *csv,
@@ -573,6 +577,7 @@ async fn run() -> Result<()> {
                 sort.clone(),
                 *limit,
                 *pid,
+                *ppid,
             )
             .await?
         }

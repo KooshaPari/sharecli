@@ -11,6 +11,10 @@ use sharecli_fleet::{
     AgentResourceSample, DetectedAgentWatch,
 };
 
+fn empty_ppid_map() -> std::collections::HashMap<u32, u32> {
+    std::collections::HashMap::new()
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -31,7 +35,8 @@ fn fr006_proc_family_filter() {
     let rows = vec![watch_row("claude", 10, 100), watch_row("codex", 11, 200)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter { family: Some("claude".into()), min_rss_bytes: None },
+        &ProcFilter { family: Some("claude".into()), min_rss_bytes: None, ppid: None },
+        &empty_ppid_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.family, "claude");
@@ -44,7 +49,8 @@ fn fr006_proc_min_rss_filter() {
         vec![watch_row("claude", 10, 50 * 1_048_576), watch_row("codex", 11, 200 * 1_048_576)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter { family: None, min_rss_bytes: Some(100 * 1_048_576) },
+        &ProcFilter { family: None, min_rss_bytes: Some(100 * 1_048_576), ppid: None },
+        &empty_ppid_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 11);
@@ -62,7 +68,7 @@ fn fr006_proc_tree_family_filter() {
     assert_eq!(forests.len(), 2);
     let filtered = filter_agent_forests(
         &forests,
-        &ProcFilter { family: Some("codex".into()), min_rss_bytes: None },
+        &ProcFilter { family: Some("codex".into()), min_rss_bytes: None, ppid: None },
         &std::collections::HashMap::new(),
     );
     assert_eq!(filtered.len(), 1);

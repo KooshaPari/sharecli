@@ -14,25 +14,38 @@ use sharecli_fleet::{
 };
 use tokio::time::sleep;
 
-/// Inventory filter for `sharecli proc` (AC-006.17).
+/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
     pub family: Option<String>,
     pub min_rss_bytes: Option<u64>,
+    pub ppid: Option<u32>,
 }
 
 impl ProcFilter {
-    pub fn from_cli(family: Option<String>, min_rss: Option<String>) -> Result<Self> {
+    pub fn from_cli(
+        family: Option<String>,
+        min_rss: Option<String>,
+        ppid: Option<u32>,
+    ) -> Result<Self> {
         let min_rss_bytes = match min_rss {
             None => None,
             Some(raw) => Some(parse_rss_bytes(&raw)?),
         };
-        Ok(Self { family, min_rss_bytes })
+        Ok(Self { family, min_rss_bytes, ppid })
     }
 
     fn active(&self) -> bool {
-        self.family.is_some() || self.min_rss_bytes.is_some()
+        self.family.is_some() || self.min_rss_bytes.is_some() || self.ppid.is_some()
     }
+}
+
+/// Map agent PID → parent PID from a proc source (AC-006.25).
+pub fn build_agent_ppid_map(source: &dyn ProcSource, agent_pids: &[u32]) -> HashMap<u32, u32> {
+    agent_pids
+        .iter()
+        .filter_map(|&pid| lookup_proc(source, pid).map(|proc| (pid, proc.ppid)))
+        .collect()
 }
 
 /// Sort key for `sharecli proc` inventory rows (AC-006.19).
@@ -155,18 +168,27 @@ pub fn sort_agent_forests(
     roots
 }
 
-/// Apply `--family` / `--min-rss` to watched agent rows.
+/// Apply `--family` / `--min-rss` / `--ppid` to watched agent rows.
 pub fn filter_watched_agents(
     watched: &[DetectedAgentWatch],
     filter: &ProcFilter,
+    ppid_by_pid: &HashMap<u32, u32>,
 ) -> Vec<DetectedAgentWatch> {
     if !filter.active() {
         return watched.to_vec();
     }
-    watched.iter().filter(|row| agent_row_matches_filter(row, filter)).cloned().collect()
+    watched
+        .iter()
+        .filter(|row| agent_row_matches_filter(row, filter, ppid_by_pid))
+        .cloned()
+        .collect()
 }
 
-fn agent_row_matches_filter(row: &DetectedAgentWatch, filter: &ProcFilter) -> bool {
+fn agent_row_matches_filter(
+    row: &DetectedAgentWatch,
+    filter: &ProcFilter,
+    ppid_by_pid: &HashMap<u32, u32>,
+) -> bool {
     if let Some(ref family) = filter.family {
         if !row.agent.family.eq_ignore_ascii_case(family) {
             return false;
@@ -174,6 +196,11 @@ fn agent_row_matches_filter(row: &DetectedAgentWatch, filter: &ProcFilter) -> bo
     }
     if let Some(min) = filter.min_rss_bytes {
         if row.resource.mem_rss_bytes < min {
+            return false;
+        }
+    }
+    if let Some(target_ppid) = filter.ppid {
+        if ppid_by_pid.get(&row.agent.pid).copied().unwrap_or(0) != target_ppid {
             return false;
         }
     }
@@ -242,6 +269,11 @@ fn forest_root_matches_filter(
     if let Some(min) = filter.min_rss_bytes {
         let rss = rss_by_pid.get(&root.pid).copied().unwrap_or(0);
         if rss < min {
+            return false;
+        }
+    }
+    if let Some(target_ppid) = filter.ppid {
+        if root.ppid != target_ppid {
             return false;
         }
     }
@@ -555,6 +587,8 @@ pub fn render_once(
     let watched_all = watch_detected_agents(&scanned_agents);
     let rss_by_pid = rss_map_from_watched(&watched_all);
     let fd_by_pid = fd_map_from_watched(&watched_all);
+    let agent_pids: Vec<u32> = scanned_agents.iter().map(|a| a.pid).collect();
+    let ppid_by_pid = build_agent_ppid_map(&HostProcSource, &agent_pids);
 
     if tree {
         let forests = filter_agent_forests(&build_host_agent_forests(), filter, &rss_by_pid);
@@ -579,7 +613,7 @@ pub fn render_once(
     }
 
     let watched = limit_watched_agents(
-        apply_sort_watched(filter_watched_agents(&watched_all, filter), sort),
+        apply_sort_watched(filter_watched_agents(&watched_all, filter, &ppid_by_pid), sort),
         limit,
     );
     if csv {
@@ -617,6 +651,7 @@ pub async fn run(
     sort: Option<String>,
     limit: Option<u64>,
     pid: Option<u32>,
+    ppid: Option<u32>,
 ) -> Result<()> {
     if csv {
         if json {
@@ -625,6 +660,9 @@ pub async fn run(
         if tree {
             bail!("--csv cannot be combined with --tree");
         }
+    }
+    if pid.is_some() && ppid.is_some() {
+        bail!("--ppid cannot be combined with --pid");
     }
     if let Some(target_pid) = pid {
         if watch.is_some() {
@@ -638,7 +676,7 @@ pub async fn run(
     if csv && watch.is_some() {
         bail!("--csv cannot be combined with --watch");
     }
-    let filter = ProcFilter::from_cli(family, min_rss)?;
+    let filter = ProcFilter::from_cli(family, min_rss, ppid)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
@@ -723,7 +761,7 @@ mod tests {
     fn zero_watch_interval_is_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, false, Some(0), None, None, None, None, None))
+            .block_on(super::run(false, false, false, Some(0), None, None, None, None, None, None))
             .expect_err("watch 0 MUST fail");
         assert!(
             err.to_string().contains(">= 1"),
@@ -789,7 +827,7 @@ mod tests {
     fn pid_watch_combo_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, false, Some(1), None, None, None, None, Some(42)))
+            .block_on(super::run(false, false, false, Some(1), None, None, None, None, Some(42), None))
             .expect_err("pid+watch MUST fail");
         assert!(
             err.to_string().contains("--watch") || err.to_string().contains("--pid"),
