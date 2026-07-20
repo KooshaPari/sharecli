@@ -14,11 +14,12 @@ use sharecli_fleet::{
 };
 use tokio::time::sleep;
 
-/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29).
+/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
     pub family: Option<String>,
     pub comm: Option<String>,
+    pub cmdline: Option<String>,
     pub min_rss_bytes: Option<u64>,
     pub max_rss_bytes: Option<u64>,
     pub min_fd_count: Option<u64>,
@@ -28,7 +29,16 @@ pub struct ProcFilter {
 
 /// Case-insensitive substring match on process COMM (AC-006.29).
 pub fn comm_matches_pattern(comm: &str, pattern: &str) -> bool {
-    comm.to_ascii_lowercase().contains(&pattern.to_ascii_lowercase())
+    substring_matches_pattern(comm, pattern)
+}
+
+/// Case-insensitive substring match on joined argv/cmdline (AC-006.30).
+pub fn cmdline_matches_pattern(cmdline: &str, pattern: &str) -> bool {
+    substring_matches_pattern(cmdline, pattern)
+}
+
+fn substring_matches_pattern(haystack: &str, pattern: &str) -> bool {
+    haystack.to_ascii_lowercase().contains(&pattern.to_ascii_lowercase())
 }
 
 /// Parse `--min-fd` / `--max-fd` count (non-negative integer).
@@ -41,6 +51,7 @@ impl ProcFilter {
     pub fn from_cli(
         family: Option<String>,
         comm: Option<String>,
+        cmdline: Option<String>,
         min_rss: Option<String>,
         max_rss: Option<String>,
         min_fd: Option<String>,
@@ -50,6 +61,11 @@ impl ProcFilter {
         let comm = match comm {
             None => None,
             Some(raw) if raw.is_empty() => bail!("--comm pattern must not be empty"),
+            Some(raw) => Some(raw),
+        };
+        let cmdline = match cmdline {
+            None => None,
+            Some(raw) if raw.is_empty() => bail!("--cmdline pattern must not be empty"),
             Some(raw) => Some(raw),
         };
         let min_rss_bytes = match min_rss {
@@ -81,6 +97,7 @@ impl ProcFilter {
         Ok(Self {
             family,
             comm,
+            cmdline,
             min_rss_bytes,
             max_rss_bytes,
             min_fd_count,
@@ -92,6 +109,7 @@ impl ProcFilter {
     fn active(&self) -> bool {
         self.family.is_some()
             || self.comm.is_some()
+            || self.cmdline.is_some()
             || self.min_rss_bytes.is_some()
             || self.max_rss_bytes.is_some()
             || self.min_fd_count.is_some()
@@ -105,6 +123,16 @@ pub fn build_agent_ppid_map(source: &dyn ProcSource, agent_pids: &[u32]) -> Hash
     agent_pids
         .iter()
         .filter_map(|&pid| lookup_proc(source, pid).map(|proc| (pid, proc.ppid)))
+        .collect()
+}
+
+/// Map agent PID → joined argv/cmdline from a proc source (AC-006.30).
+pub fn build_agent_cmdline_map(source: &dyn ProcSource, agent_pids: &[u32]) -> HashMap<u32, String> {
+    agent_pids
+        .iter()
+        .filter_map(|&pid| {
+            lookup_proc(source, pid).map(|proc| (pid, format_cmdline(&proc.cmdline)))
+        })
         .collect()
 }
 
@@ -228,18 +256,19 @@ pub fn sort_agent_forests(
     roots
 }
 
-/// Apply `--family` / RSS / FD / `--ppid` bounds to watched agent rows.
+/// Apply inventory filters to watched agent rows.
 pub fn filter_watched_agents(
     watched: &[DetectedAgentWatch],
     filter: &ProcFilter,
     ppid_by_pid: &HashMap<u32, u32>,
+    cmdline_by_pid: &HashMap<u32, String>,
 ) -> Vec<DetectedAgentWatch> {
     if !filter.active() {
         return watched.to_vec();
     }
     watched
         .iter()
-        .filter(|row| agent_row_matches_filter(row, filter, ppid_by_pid))
+        .filter(|row| agent_row_matches_filter(row, filter, ppid_by_pid, cmdline_by_pid))
         .cloned()
         .collect()
 }
@@ -248,6 +277,7 @@ fn agent_row_matches_filter(
     row: &DetectedAgentWatch,
     filter: &ProcFilter,
     ppid_by_pid: &HashMap<u32, u32>,
+    cmdline_by_pid: &HashMap<u32, String>,
 ) -> bool {
     if let Some(ref family) = filter.family {
         if !row.agent.family.eq_ignore_ascii_case(family) {
@@ -256,6 +286,12 @@ fn agent_row_matches_filter(
     }
     if let Some(ref pattern) = filter.comm {
         if !comm_matches_pattern(&row.agent.comm, pattern) {
+            return false;
+        }
+    }
+    if let Some(ref pattern) = filter.cmdline {
+        let joined = cmdline_by_pid.get(&row.agent.pid).map(String::as_str).unwrap_or("");
+        if !cmdline_matches_pattern(joined, pattern) {
             return false;
         }
     }
@@ -324,13 +360,16 @@ pub fn filter_agent_forests(
     filter: &ProcFilter,
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
+    cmdline_by_pid: &HashMap<u32, String>,
 ) -> Vec<AgentTreeNode> {
     if !filter.active() {
         return forests.to_vec();
     }
     forests
         .iter()
-        .filter(|root| forest_root_matches_filter(root, filter, rss_by_pid, fd_by_pid))
+        .filter(|root| {
+            forest_root_matches_filter(root, filter, rss_by_pid, fd_by_pid, cmdline_by_pid)
+        })
         .cloned()
         .collect()
 }
@@ -340,6 +379,7 @@ fn forest_root_matches_filter(
     filter: &ProcFilter,
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
+    cmdline_by_pid: &HashMap<u32, String>,
 ) -> bool {
     if let Some(ref family) = filter.family {
         let Some(root_family) = root.family else {
@@ -351,6 +391,12 @@ fn forest_root_matches_filter(
     }
     if let Some(ref pattern) = filter.comm {
         if !comm_matches_pattern(&root.comm, pattern) {
+            return false;
+        }
+    }
+    if let Some(ref pattern) = filter.cmdline {
+        let joined = cmdline_by_pid.get(&root.pid).map(String::as_str).unwrap_or("");
+        if !cmdline_matches_pattern(joined, pattern) {
             return false;
         }
     }
@@ -740,9 +786,16 @@ pub fn render_once(
     let fd_by_pid = fd_map_from_watched(&watched_all);
     let agent_pids: Vec<u32> = scanned_agents.iter().map(|a| a.pid).collect();
     let ppid_by_pid = build_agent_ppid_map(&HostProcSource, &agent_pids);
+    let cmdline_by_pid = build_agent_cmdline_map(&HostProcSource, &agent_pids);
 
     if tree {
-        let forests = filter_agent_forests(&build_host_agent_forests(), filter, &rss_by_pid, &fd_by_pid);
+        let forests = filter_agent_forests(
+            &build_host_agent_forests(),
+            filter,
+            &rss_by_pid,
+            &fd_by_pid,
+            &cmdline_by_pid,
+        );
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
         let forests = limit_agent_forests(forests, limit);
         let snap = AgentTreeSnapshot {
@@ -768,7 +821,10 @@ pub fn render_once(
     }
 
     let watched = limit_watched_agents(
-        apply_sort_watched(filter_watched_agents(&watched_all, filter, &ppid_by_pid), sort),
+        apply_sort_watched(
+            filter_watched_agents(&watched_all, filter, &ppid_by_pid, &cmdline_by_pid),
+            sort,
+        ),
         limit,
     );
     if csv {
@@ -803,6 +859,7 @@ pub async fn run(
     watch: Option<u64>,
     family: Option<String>,
     comm: Option<String>,
+    cmdline: Option<String>,
     min_rss: Option<String>,
     max_rss: Option<String>,
     min_fd: Option<String>,
@@ -832,7 +889,7 @@ pub async fn run(
     if csv && watch.is_some() {
         bail!("--csv cannot be combined with --watch");
     }
-    let filter = ProcFilter::from_cli(family, comm, min_rss, max_rss, min_fd, max_fd, ppid)?;
+    let filter = ProcFilter::from_cli(family, comm, cmdline, min_rss, max_rss, min_fd, max_fd, ppid)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
@@ -918,8 +975,8 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, false, false, Some(0), None, None, None, None, None, None, None, None, None,
-                None,
+                false, false, false, Some(0), None, None, None, None, None, None, None, None,
+                None, None, None,
             ))
             .expect_err("watch 0 MUST fail");
         assert!(
@@ -988,7 +1045,7 @@ mod tests {
         let err = rt
             .block_on(super::run(
                 false, false, false, Some(1), None, None, None, None, None, None, None, None,
-                Some(42), None,
+                Some(42), None, None,
             ))
             .expect_err("pid+watch MUST fail");
         assert!(

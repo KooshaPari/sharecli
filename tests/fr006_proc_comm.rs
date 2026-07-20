@@ -15,6 +15,10 @@ fn empty_ppid_map() -> std::collections::HashMap<u32, u32> {
     std::collections::HashMap::new()
 }
 
+fn empty_cmdline_map() -> std::collections::HashMap<u32, String> {
+    std::collections::HashMap::new()
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -50,6 +54,7 @@ fn fr006_proc_comm_filter_substring_case_insensitive() {
             ..Default::default()
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 10);
@@ -71,6 +76,7 @@ fn fr006_proc_comm_composes_with_family() {
             ..Default::default()
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 10);
@@ -97,6 +103,7 @@ fn fr006_proc_tree_comm_filter() {
             comm: Some("CURSOR".into()),
             ..Default::default()
         },
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );

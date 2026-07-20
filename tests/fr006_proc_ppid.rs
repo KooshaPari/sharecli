@@ -11,6 +11,10 @@ use sharecli_fleet::{
     AgentResourceSample, DetectedAgentWatch,
 };
 
+fn empty_cmdline_map() -> std::collections::HashMap<u32, String> {
+    std::collections::HashMap::new()
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -61,8 +65,10 @@ fn fr006_proc_ppid_filter_keeps_matching_parent() {
             min_fd_count: None,
             max_fd_count: None,
             comm: None,
+            cmdline: None,
         },
         &ppid_map,
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 2);
     assert!(filtered.iter().any(|r| r.agent.pid == 10));
@@ -90,8 +96,10 @@ fn fr006_proc_ppid_composes_with_family() {
             min_fd_count: None,
             max_fd_count: None,
             comm: None,
+            cmdline: None,
         },
         &ppid_map,
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.family, "claude");
@@ -117,7 +125,9 @@ fn fr006_proc_tree_ppid_filter() {
             min_fd_count: None,
             max_fd_count: None,
             comm: None,
+            cmdline: None,
         },
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );
@@ -132,7 +142,9 @@ fn fr006_proc_tree_ppid_filter() {
             min_fd_count: None,
             max_fd_count: None,
             comm: None,
+            cmdline: None,
         },
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );
