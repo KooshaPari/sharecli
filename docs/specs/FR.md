@@ -299,7 +299,8 @@ until create / mkdir / rename-into invalidates the entry.
   mkdir / rename-into clear the entry so a newly created path is visible
   without waiting for TTL expiry (no privileged mount).
 - **AC-009.8:** With `SHARECLI_FUSE_MOUNT_SMOKE=1`, `run_mount_smoke` performs
-  a read/write round-trip through a live FUSE mount over a temp backing tree;
+  a read/write round-trip through a live FUSE mount over a temp backing tree and
+  verifies write provenance xattrs on the backing file after the FUSE write;
   default `cargo test` skips without failure when the env var is unset.
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `sharecli-fuse` unit tests.

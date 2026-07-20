@@ -124,7 +124,7 @@
 | AC-009.5 | `tests/fr009_fuse_intercept.rs`; `write_serialize` unit tests | path lock + CoW stage/commit/discard |
 | AC-009.6 | `tests/fr009_fuse_intercept.rs`; `provenance` unit tests | write provenance xattrs on write_rel/commit_rel |
 | AC-009.7 | `tests/fr009_fuse_intercept.rs`; `neg_dentry` unit tests | negative dentry TTL hit/miss + invalidate |
-| AC-009.8 | `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` unit tests | opt-in live FUSE mount (`SHARECLI_FUSE_MOUNT_SMOKE=1`) |
+| AC-009.8 | `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` unit tests | opt-in live FUSE mount + provenance xattrs (`SHARECLI_FUSE_MOUNT_SMOKE=1`) |
 
 ### FR-010 — Mesh
 
@@ -161,6 +161,8 @@
 - **2026-07-20 — FR-010 mesh CLI:** `MaildirQueue::status` + `reclaim_owner`
   operator surface; `sharecli mesh status|reclaim` (AC-010.9..10);
   TRACEABILITY AC-008.7..9 marked covered (was stale TBD).
+- **2026-07-20 — FR-009 mount smoke provenance:** `run_mount_smoke` verifies
+  write provenance xattrs on backing after live FUSE write (AC-009.6 × AC-009.8).
 - **2026-07-20 — FR-009 mount smoke:** opt-in privileged FUSE read/write via
   `SHARECLI_FUSE_MOUNT_SMOKE=1` (`run_mount_smoke`, AC-009.8).
 - **2026-07-20 — FR-009 write provenance:** `user.sharecli.session` /
