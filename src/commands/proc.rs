@@ -14,13 +14,21 @@ use sharecli_fleet::{
 };
 use tokio::time::sleep;
 
-/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27).
+/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
     pub family: Option<String>,
     pub min_rss_bytes: Option<u64>,
     pub max_rss_bytes: Option<u64>,
+    pub min_fd_count: Option<u64>,
+    pub max_fd_count: Option<u64>,
     pub ppid: Option<u32>,
+}
+
+/// Parse `--min-fd` / `--max-fd` count (non-negative integer).
+pub fn parse_fd_count(raw: &str, flag: &str) -> Result<u64> {
+    let value = raw.parse::<u64>().with_context(|| format!("invalid {flag} value '{raw}'"))?;
+    Ok(value)
 }
 
 impl ProcFilter {
@@ -28,6 +36,8 @@ impl ProcFilter {
         family: Option<String>,
         min_rss: Option<String>,
         max_rss: Option<String>,
+        min_fd: Option<String>,
+        max_fd: Option<String>,
         ppid: Option<u32>,
     ) -> Result<Self> {
         let min_rss_bytes = match min_rss {
@@ -43,13 +53,35 @@ impl ProcFilter {
                 bail!("--min-rss MUST NOT exceed --max-rss");
             }
         }
-        Ok(Self { family, min_rss_bytes, max_rss_bytes, ppid })
+        let min_fd_count = match min_fd {
+            None => None,
+            Some(raw) => Some(parse_fd_count(&raw, "--min-fd")?),
+        };
+        let max_fd_count = match max_fd {
+            None => None,
+            Some(raw) => Some(parse_fd_count(&raw, "--max-fd")?),
+        };
+        if let (Some(min), Some(max)) = (min_fd_count, max_fd_count) {
+            if min > max {
+                bail!("--min-fd MUST NOT exceed --max-fd");
+            }
+        }
+        Ok(Self {
+            family,
+            min_rss_bytes,
+            max_rss_bytes,
+            min_fd_count,
+            max_fd_count,
+            ppid,
+        })
     }
 
     fn active(&self) -> bool {
         self.family.is_some()
             || self.min_rss_bytes.is_some()
             || self.max_rss_bytes.is_some()
+            || self.min_fd_count.is_some()
+            || self.max_fd_count.is_some()
             || self.ppid.is_some()
     }
 }
@@ -182,7 +214,7 @@ pub fn sort_agent_forests(
     roots
 }
 
-/// Apply `--family` / `--min-rss` / `--max-rss` / `--ppid` to watched agent rows.
+/// Apply `--family` / RSS / FD / `--ppid` bounds to watched agent rows.
 pub fn filter_watched_agents(
     watched: &[DetectedAgentWatch],
     filter: &ProcFilter,
@@ -215,6 +247,17 @@ fn agent_row_matches_filter(
     }
     if let Some(max) = filter.max_rss_bytes {
         if row.resource.mem_rss_bytes > max {
+            return false;
+        }
+    }
+    let fd = row.resource.fd_count.unwrap_or(0);
+    if let Some(min) = filter.min_fd_count {
+        if fd < min {
+            return false;
+        }
+    }
+    if let Some(max) = filter.max_fd_count {
+        if fd > max {
             return false;
         }
     }
@@ -256,18 +299,19 @@ fn apply_sort_forests(
     }
 }
 
-/// Apply filters to agent-rooted forests (family on root; RSS bounds via live samples).
+/// Apply filters to agent-rooted forests (family on root; RSS/FD bounds via live samples).
 pub fn filter_agent_forests(
     forests: &[AgentTreeNode],
     filter: &ProcFilter,
     rss_by_pid: &HashMap<u32, u64>,
+    fd_by_pid: &HashMap<u32, u64>,
 ) -> Vec<AgentTreeNode> {
     if !filter.active() {
         return forests.to_vec();
     }
     forests
         .iter()
-        .filter(|root| forest_root_matches_filter(root, filter, rss_by_pid))
+        .filter(|root| forest_root_matches_filter(root, filter, rss_by_pid, fd_by_pid))
         .cloned()
         .collect()
 }
@@ -276,6 +320,7 @@ fn forest_root_matches_filter(
     root: &AgentTreeNode,
     filter: &ProcFilter,
     rss_by_pid: &HashMap<u32, u64>,
+    fd_by_pid: &HashMap<u32, u64>,
 ) -> bool {
     if let Some(ref family) = filter.family {
         let Some(root_family) = root.family else {
@@ -294,6 +339,17 @@ fn forest_root_matches_filter(
     if let Some(max) = filter.max_rss_bytes {
         let rss = rss_by_pid.get(&root.pid).copied().unwrap_or(0);
         if rss > max {
+            return false;
+        }
+    }
+    let fd = fd_by_pid.get(&root.pid).copied().unwrap_or(0);
+    if let Some(min) = filter.min_fd_count {
+        if fd < min {
+            return false;
+        }
+    }
+    if let Some(max) = filter.max_fd_count {
+        if fd > max {
             return false;
         }
     }
@@ -662,7 +718,7 @@ pub fn render_once(
     let ppid_by_pid = build_agent_ppid_map(&HostProcSource, &agent_pids);
 
     if tree {
-        let forests = filter_agent_forests(&build_host_agent_forests(), filter, &rss_by_pid);
+        let forests = filter_agent_forests(&build_host_agent_forests(), filter, &rss_by_pid, &fd_by_pid);
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
         let forests = limit_agent_forests(forests, limit);
         let snap = AgentTreeSnapshot {
@@ -724,6 +780,8 @@ pub async fn run(
     family: Option<String>,
     min_rss: Option<String>,
     max_rss: Option<String>,
+    min_fd: Option<String>,
+    max_fd: Option<String>,
     sort: Option<String>,
     limit: Option<u64>,
     pid: Option<u32>,
@@ -749,7 +807,7 @@ pub async fn run(
     if csv && watch.is_some() {
         bail!("--csv cannot be combined with --watch");
     }
-    let filter = ProcFilter::from_cli(family, min_rss, max_rss, ppid)?;
+    let filter = ProcFilter::from_cli(family, min_rss, max_rss, min_fd, max_fd, ppid)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
@@ -834,7 +892,9 @@ mod tests {
     fn zero_watch_interval_is_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, false, Some(0), None, None, None, None, None, None, None))
+            .block_on(super::run(
+                false, false, false, Some(0), None, None, None, None, None, None, None, None, None,
+            ))
             .expect_err("watch 0 MUST fail");
         assert!(
             err.to_string().contains(">= 1"),
@@ -900,7 +960,9 @@ mod tests {
     fn pid_watch_combo_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
-            .block_on(super::run(false, false, false, Some(1), None, None, None, None, None, Some(42), None))
+            .block_on(super::run(
+                false, false, false, Some(1), None, None, None, None, None, None, None, Some(42), None,
+            ))
             .expect_err("pid+watch MUST fail");
         assert!(
             err.to_string().contains("--watch") || err.to_string().contains("--pid"),
