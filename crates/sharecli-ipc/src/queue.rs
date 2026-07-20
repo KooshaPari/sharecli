@@ -17,6 +17,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use fs2::FileExt;
+use sharecli_fleet::{record_slot_acquire, record_slot_timeout, record_slot_wait};
 
 /// Queue priority levels (Feb harness `HARNESS_PRIORITY_LEVELS`).
 ///
@@ -170,6 +171,7 @@ impl SlotQueue {
         let result = (|| {
             loop {
                 if Instant::now() >= deadline {
+                    record_slot_timeout();
                     anyhow::bail!(
                         "queue timeout: no free slot for lane `{lane}` within {}s \
                          (max_concurrent={})",
@@ -180,6 +182,7 @@ impl SlotQueue {
 
                 // Prefer higher-priority waiters (Feb yield-to-higher-priority).
                 if !self.is_highest_priority(lane, priority)? {
+                    record_slot_wait();
                     thread::sleep(self.poll);
                     continue;
                 }
@@ -197,6 +200,7 @@ impl SlotQueue {
                         Ok(()) => {
                             // Drop waiter before running so peers can reorder.
                             let _ = fs::remove_file(&ticket_path);
+                            record_slot_acquire();
                             let value = f()?;
                             // Lock releases on drop of lock_file.
                             drop(lock_file);
@@ -206,6 +210,7 @@ impl SlotQueue {
                     }
                 }
 
+                record_slot_wait();
                 thread::sleep(self.poll);
             }
         })();

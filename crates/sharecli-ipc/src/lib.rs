@@ -40,8 +40,9 @@ pub use nocache::{
 };
 pub use queue::{PriorityQueue, QueuePriority, SlotQueue};
 pub use sharecli_fleet::{
-    global_coalesce_meters, record_coalesce_hit_kind, record_coalesce_lookup_hit, record_nocache_run,
-    CoalesceHitKind, CoalesceMeters,
+    global_coalesce_meters, global_slot_queue_meters, record_coalesce_hit_kind,
+    record_coalesce_lookup_hit, record_nocache_run, record_slot_acquire, record_slot_timeout,
+    record_slot_wait, CoalesceHitKind, CoalesceMeters, SlotQueueMeters,
 };
 
 use std::fs;

@@ -12,7 +12,7 @@ use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::format_gate_status_section;
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters};
-use sharecli_ipc::global_coalesce_meters;
+use sharecli_ipc::{global_coalesce_meters, global_slot_queue_meters};
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
 /// Mirror of the per-harness aggregation + status tables in `commands::status`.
@@ -59,6 +59,7 @@ fn format_status(
     out.push_str(&global_read_cache_meters().format_status_section());
     out.push_str(&global_neg_dentry_meters().format_status_section());
     out.push_str(&global_coalesce_meters().format_status_section());
+    out.push_str(&global_slot_queue_meters().format_status_section());
     out.push_str(&global_write_serialize_meters().format_status_section());
     let thermal = ThermalGovernor::with_mock(ThermalLevel::Green)
         .poll()
@@ -148,6 +149,13 @@ async fn fr004_status_prints_harness_table() {
             && out.contains("Nocache runs:")
             && out.contains("Hit rate:"),
         "status MUST surface Hypervisor coalesce meters (AC-008.11); got: {out}"
+    );
+    assert!(
+        out.contains("=== Hypervisor SlotQueue ===")
+            && out.contains("Acquires:")
+            && out.contains("Waits:")
+            && out.contains("Timeouts:"),
+        "status MUST surface Hypervisor SlotQueue meters (AC-008.12); got: {out}"
     );
     assert!(
         out.contains("=== FUSE Write Serialize ===")

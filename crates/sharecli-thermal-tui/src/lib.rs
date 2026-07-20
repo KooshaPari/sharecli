@@ -24,8 +24,8 @@ use ratatui::{
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
-    effective_gate_decision, format_rss_bytes, global_coalesce_meters, watch_host_agents,
-    CoalesceMeters, DetectedAgentWatch, ResourceWatchSample,
+    effective_gate_decision, format_rss_bytes, global_coalesce_meters, global_slot_queue_meters,
+    watch_host_agents, CoalesceMeters, DetectedAgentWatch, ResourceWatchSample, SlotQueueMeters,
 };
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters, NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 
@@ -220,6 +220,22 @@ pub fn hypervisor_coalesce_lines(meters: CoalesceMeters, compact: bool) -> Vec<L
     ]
 }
 
+/// Lines for the Hypervisor SlotQueue panel (FR-008 / AC-008.12 TUI slice).
+pub fn hypervisor_slot_queue_lines(meters: SlotQueueMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " slot:{} wait:{} to:{}",
+            meters.acquires, meters.waits, meters.timeouts
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Slot acquires: {}", meters.acquires)),
+        Line::from(format!("  Slot waits:    {}", meters.waits)),
+        Line::from(format!("  Slot timeouts: {}", meters.timeouts)),
+    ]
+}
+
 /// Lines for the FUSE write-serialize / CoW panel (FR-009 / AC-009.10 TUI slice).
 pub fn fuse_write_serialize_lines(meters: WriteSerializeMeters, compact: bool) -> Vec<Line<'static>> {
     if compact {
@@ -366,6 +382,8 @@ pub struct App {
     pub neg_dentry_meters: NegDentryMeters,
     /// Process-wide Hypervisor coalesce cache meters.
     pub coalesce_meters: CoalesceMeters,
+    /// Process-wide Hypervisor SlotQueue meters.
+    pub slot_queue_meters: SlotQueueMeters,
     /// Process-wide FUSE write-serialize / CoW meters.
     pub write_serialize_meters: WriteSerializeMeters,
     /// Host agent inventory with per-PID resource watch (FR-006 × FR-007).
@@ -385,6 +403,7 @@ impl App {
             fuse_meters: ReadCacheMeters::default(),
             neg_dentry_meters: NegDentryMeters::default(),
             coalesce_meters: CoalesceMeters::default(),
+            slot_queue_meters: SlotQueueMeters::default(),
             write_serialize_meters: WriteSerializeMeters::default(),
             detected_agents: Vec::new(),
         }
@@ -404,6 +423,7 @@ impl App {
         self.fuse_meters = global_read_cache_meters();
         self.neg_dentry_meters = global_neg_dentry_meters();
         self.coalesce_meters = global_coalesce_meters();
+        self.slot_queue_meters = global_slot_queue_meters();
         self.write_serialize_meters = global_write_serialize_meters();
         self.detected_agents = watch_host_agents();
     }
@@ -415,12 +435,14 @@ impl App {
         fuse: ReadCacheMeters,
         neg: NegDentryMeters,
         coalesce: CoalesceMeters,
+        slot_queue: SlotQueueMeters,
         write_serialize: WriteSerializeMeters,
     ) -> Self {
         self.resource_watch = watch;
         self.fuse_meters = fuse;
         self.neg_dentry_meters = neg;
         self.coalesce_meters = coalesce;
+        self.slot_queue_meters = slot_queue;
         self.write_serialize_meters = write_serialize;
         self
     }
@@ -465,7 +487,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let thermal_h = if compact { 4 } else { 5 };
     let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 6 };
-    let fuse_h = if compact { 7 } else { 15 };
+    let fuse_h = if compact { 8 } else { 18 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -601,6 +623,7 @@ fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool
 fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " IO " } else { " Hypervisor IO Meters " };
     let mut lines = hypervisor_coalesce_lines(app.coalesce_meters, compact);
+    lines.extend(hypervisor_slot_queue_lines(app.slot_queue_meters, compact));
     lines.extend(fuse_coalesce_lines(app.fuse_meters, compact));
     lines.extend(fuse_neg_dentry_lines(app.neg_dentry_meters, compact));
     lines.extend(fuse_write_serialize_lines(app.write_serialize_meters, compact));
@@ -1027,6 +1050,11 @@ mod tests {
                 ReadCacheMeters { hits: 2, misses: 1 },
                 NegDentryMeters { hits: 1, misses: 0 },
                 CoalesceMeters { hits: 4, misses: 1, nocache_runs: 2 },
+                SlotQueueMeters {
+                    acquires: 3,
+                    waits: 2,
+                    timeouts: 0,
+                },
                 WriteSerializeMeters {
                     passthrough_writes: 2,
                     stages: 1,
@@ -1056,6 +1084,7 @@ mod tests {
         assert!(rendered.contains("Hypervisor IO Meters"), "expected io panel");
         assert!(rendered.contains("Open FDs:"), "expected FD watch line");
         assert!(rendered.contains("Coalesce hits:"), "expected coalesce meters");
+        assert!(rendered.contains("Slot acquires:"), "expected slot queue meters");
         assert!(rendered.contains("Cache hits:"), "expected fuse meters");
         assert!(rendered.contains("Neg hits:"), "expected neg dentry meters");
         assert!(rendered.contains("Passthrough:"), "expected write-serialize meters");
@@ -1077,6 +1106,7 @@ mod tests {
             ReadCacheMeters { hits: 0, misses: 0 },
             NegDentryMeters { hits: 0, misses: 0 },
             CoalesceMeters::default(),
+            SlotQueueMeters::default(),
             WriteSerializeMeters::default(),
         );
         app.update(ThermalLevel::Red, 4);
@@ -1103,6 +1133,7 @@ mod tests {
             ReadCacheMeters { hits: 1, misses: 1 },
             NegDentryMeters { hits: 0, misses: 1 },
             CoalesceMeters::default(),
+            SlotQueueMeters::default(),
             WriteSerializeMeters::default(),
         );
         app.update(ThermalLevel::Yellow, 2);
