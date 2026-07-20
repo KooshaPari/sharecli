@@ -24,10 +24,17 @@
 #![warn(missing_docs)]
 
 mod inode_map;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod provenance;
 mod read_cache;
 mod write_serialize;
 
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub use provenance::{
+    annotate_write, annotate_write_at, default_session_id, read_provenance, WriteProvenance,
+    ATTR_SESSION, ATTR_WRITTEN_AT,
+};
 pub use read_cache::{ReadCacheMeters, ReadContentCache};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 
@@ -57,6 +64,7 @@ mod platform {
     use tracing::{debug, trace};
 
     use crate::inode_map::{abs_under, InodeMap, ROOT_INO};
+    use crate::provenance::{annotate_write, default_session_id};
     use crate::read_cache::{ReadCacheMeters, ReadContentCache};
     use crate::write_serialize::WriteSerialize;
 
@@ -66,17 +74,25 @@ mod platform {
     pub struct InterceptFs {
         /// Root of the real filesystem subtree being mirrored.
         backing: PathBuf,
+        /// Session id stamped onto every write / CoW commit (`user.sharecli.session`).
+        session_id: String,
         inodes: Mutex<InodeMap>,
         read_cache: Mutex<ReadContentCache>,
         write_locks: WriteSerialize,
     }
 
     impl InterceptFs {
-        /// Create a new [`InterceptFs`] rooted at `backing`.
+        /// Create a new [`InterceptFs`] rooted at `backing` with a default session id.
         pub fn new(backing: &Path) -> Self {
+            Self::with_session(backing, default_session_id())
+        }
+
+        /// Create a new [`InterceptFs`] rooted at `backing` with an explicit session id.
+        pub fn with_session(backing: &Path, session_id: impl Into<String>) -> Self {
             let staging = backing.join(".sharecli-cow-staging");
             Self {
                 backing: backing.to_path_buf(),
+                session_id: session_id.into(),
                 inodes: Mutex::new(InodeMap::new()),
                 read_cache: Mutex::new(ReadContentCache::new()),
                 write_locks: WriteSerialize::with_staging_root(staging),
@@ -86,6 +102,11 @@ mod platform {
         /// Backing root path.
         pub fn backing(&self) -> &Path {
             &self.backing
+        }
+
+        /// Session id used for write provenance xattrs.
+        pub fn session_id(&self) -> &str {
+            &self.session_id
         }
 
         /// Read-coalesce meters (hits / misses) without mounting.
@@ -115,10 +136,12 @@ mod platform {
             self.write_locks.stage_bytes(&abs, contents)
         }
 
-        /// Commit pending CoW staging for a relative path; invalidates read cache.
+        /// Commit pending CoW staging for a relative path; invalidates read cache
+        /// and stamps write provenance xattrs on the promoted backing file.
         pub fn commit_rel(&self, rel: &Path) -> Result<(), crate::WriteSerializeError> {
             let abs = abs_under(&self.backing, rel);
             self.write_locks.commit_pending(&abs)?;
+            annotate_write(&abs, &self.session_id).map_err(crate::WriteSerializeError::Io)?;
             if let Ok(mut cache) = self.read_cache.lock() {
                 cache.invalidate(&abs);
             }
@@ -132,14 +155,19 @@ mod platform {
         }
 
         /// Passthrough write at `offset` for relative `rel`, serialized per path.
+        ///
+        /// On success, stamps [`crate::ATTR_SESSION`] / [`crate::ATTR_WRITTEN_AT`]
+        /// on the backing file (write provenance).
         pub fn write_rel(&self, rel: &Path, offset: u64, data: &[u8]) -> std::io::Result<u32> {
             let abs = abs_under(&self.backing, rel);
             let data = data.to_vec();
+            let session = self.session_id.clone();
             self.write_locks
                 .with_locked_path(&abs, || {
                     let mut file = OpenOptions::new().write(true).open(&abs)?;
                     file.seek(SeekFrom::Start(offset))?;
                     file.write_all(&data)?;
+                    annotate_write(&abs, &session)?;
                     Ok::<u32, std::io::Error>(data.len() as u32)
                 })
                 .map_err(|e| std::io::Error::other(e.to_string()))?
@@ -294,10 +322,12 @@ mod platform {
                 }
             };
             let payload = data.to_vec();
+            let session = self.session_id.clone();
             let result = self.write_locks.with_locked_path(&path, || {
                 let mut file = OpenOptions::new().write(true).open(&path)?;
                 file.seek(SeekFrom::Start(offset))?;
                 file.write_all(&payload)?;
+                annotate_write(&path, &session)?;
                 Ok::<u32, std::io::Error>(payload.len() as u32)
             });
             match result {
