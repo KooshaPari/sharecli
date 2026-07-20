@@ -114,6 +114,7 @@
 | AC-006.24   | `tests/fr006_proc_csv.rs`; `src/commands/proc.rs` | `sharecli proc --csv` flat inventory export |
 | AC-006.25   | `tests/fr006_proc_ppid.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`lookup_proc`) | `sharecli proc --ppid N` parent-PID inventory filter |
 | AC-006.26   | `tests/fr006_proc_tree_csv.rs`; `src/commands/proc.rs` | `sharecli proc --tree --csv` forest inventory CSV export |
+| AC-006.27   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/resource_watch.rs` (`parse_rss_bytes`) | `sharecli proc --max-rss` upper RSS bound filter |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -217,6 +218,8 @@
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
+- **2026-07-20 — FR-006 proc max-rss:** `sharecli proc --max-rss <size>` upper RSS
+  bound filter composes with `--min-rss` and other proc flags (AC-006.27).
 - **2026-07-20 — FR-006 thermal TUI agent tree:** full-layout Detected Agents panel
   renders `build_host_agent_forests` subtrees with live RSS (AC-006.22).
 - **2026-07-20 — FR-006 proc pid detail:** `sharecli proc --pid N` one-shot

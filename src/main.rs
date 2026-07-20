@@ -184,6 +184,10 @@ enum Commands {
         #[arg(long)]
         min_rss: Option<String>,
 
+        /// Keep only agents at or below this RSS (bytes or K/M/G suffix)
+        #[arg(long)]
+        max_rss: Option<String>,
+
         /// Sort inventory rows or tree roots: rss (desc), fd (desc), pid (asc)
         #[arg(long)]
         sort: Option<String>,
@@ -566,7 +570,7 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, csv, tree, watch, family, min_rss, sort, limit, pid, ppid } => {
+        Commands::Proc { json, csv, tree, watch, family, min_rss, max_rss, sort, limit, pid, ppid } => {
             commands::proc::run(
                 *json,
                 *csv,
@@ -574,6 +578,7 @@ async fn run() -> Result<()> {
                 *watch,
                 family.clone(),
                 min_rss.clone(),
+                max_rss.clone(),
                 sort.clone(),
                 *limit,
                 *pid,
