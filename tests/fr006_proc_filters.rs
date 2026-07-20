@@ -17,6 +17,10 @@ fn empty_ppid_map() -> std::collections::HashMap<u32, u32> {
     std::collections::HashMap::new()
 }
 
+fn empty_cmdline_map() -> std::collections::HashMap<u32, String> {
+    std::collections::HashMap::new()
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -48,8 +52,10 @@ fn fr006_proc_family_filter() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.family, "claude");
@@ -70,8 +76,10 @@ fn fr006_proc_min_rss_filter() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 11);
@@ -97,7 +105,9 @@ fn fr006_proc_tree_family_filter() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );
@@ -135,8 +145,10 @@ fn fr006_proc_max_rss_filter() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 10);
@@ -160,8 +172,10 @@ fn fr006_proc_rss_band_filter() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 11);
@@ -189,8 +203,10 @@ fn fr006_proc_tree_max_rss_filter() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &rss_by_pid,
+        &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
     );
     assert_eq!(filtered.len(), 1);
@@ -214,8 +230,10 @@ fn fr006_proc_min_fd_filter() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 11);
@@ -238,8 +256,10 @@ fn fr006_proc_max_fd_filter() {
             max_fd_count: Some(20),
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 10);
@@ -263,8 +283,10 @@ fn fr006_proc_fd_band_filter() {
             max_fd_count: Some(40),
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 11);
@@ -284,8 +306,10 @@ fn fr006_proc_min_fd_treats_missing_as_zero() {
             max_fd_count: None,
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &empty_ppid_map(),
+        &empty_cmdline_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 11);
@@ -313,9 +337,11 @@ fn fr006_proc_tree_max_fd_filter() {
             max_fd_count: Some(20),
             ppid: None,
             comm: None,
+            cmdline: None,
         },
         &std::collections::HashMap::new(),
         &fd_by_pid,
+        &std::collections::HashMap::new(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].pid, 50);
