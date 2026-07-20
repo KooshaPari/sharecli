@@ -154,8 +154,9 @@ FUSE intercept is enabled, IO paths used by coalesce.
 
 **Acceptance:**
 
-- `tests/fr007_resource_thermal_watch.rs` — AC-007.1..AC-007.6
-- `crates/sharecli-fleet/src/resource_watch.rs` — FD/net sampling + Hypervisor path
+- `tests/fr007_resource_thermal_watch.rs` — AC-007.1..AC-007.8, AC-007.10
+- `tests/fr004_status_health.rs` — AC-007.10 (host resource watch in status)
+- `crates/sharecli-fleet/src/resource_watch.rs` — FD/net/RSS/load sampling + status section
 
 **Source:** `crates/sharecli-core`, `crates/sharecli-fleet`, `src/monitoring.rs`  
 **Detail:** PRD E2.

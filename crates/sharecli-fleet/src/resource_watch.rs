@@ -30,6 +30,20 @@ impl ResourceWatchSample {
             load_1m,
         })
     }
+
+    /// Operator-facing status block for `sharecli status` (FR-007 / AC-007.10).
+    pub fn format_status_section(self) -> String {
+        let mut out = String::from("\n=== Host Resource Watch ===\n\n");
+        out.push_str(&format!(
+            "Open FDs:     {}\nRSS:          {} bytes\nLoad (1m):    {:.2}\nNet RX:       {} bytes\nNet TX:       {} bytes\n",
+            self.fd_count,
+            self.mem_rss_bytes,
+            self.load_1m,
+            self.net_rx_bytes,
+            self.net_tx_bytes,
+        ));
+        out
+    }
 }
 
 /// Count open file descriptors for the current process.
@@ -237,5 +251,17 @@ mod tests {
     fn test_sample_host_net() {
         let (rx, tx) = super::sample_host_net().expect("network sample");
         let _ = (rx, tx);
+    }
+
+    #[test]
+    fn test_format_status_section() {
+        let sample = ResourceWatchSample::capture().expect("resource watch sample");
+        let section = sample.format_status_section();
+        assert!(section.contains("=== Host Resource Watch ==="));
+        assert!(section.contains("Open FDs:"));
+        assert!(section.contains("RSS:"));
+        assert!(section.contains("Load (1m):"));
+        assert!(section.contains("Net RX:"));
+        assert!(section.contains("Net TX:"));
     }
 }

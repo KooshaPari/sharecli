@@ -1,11 +1,12 @@
 //! FR-004 — Process & Pool Health Status (status / HealthStatus / ProcessStats)
 //! FR: FR-004
 //!
-//! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status).
+//! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status),
+//! AC-007.10 (host resource watch in status).
 
 use std::collections::HashMap;
 
-use sharecli::monitoring::{HealthStatus, ProcessStats};
+use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
 use sharecli_fuse::global_read_cache_meters;
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
@@ -48,6 +49,8 @@ fn format_status(
     let pct = used_mb.saturating_mul(100).checked_div(total_mb).unwrap_or(0);
     out.push_str("\n=== System Memory ===\n\n");
     out.push_str(&format!("Used: {used_mb} MB / {total_mb} MB ({pct}%)\n"));
+    let resource_watch = ResourceWatchSample::capture().expect("resource watch capture");
+    out.push_str(&resource_watch.format_status_section());
     out.push_str(&global_read_cache_meters().format_status_section());
     out
 }
@@ -104,6 +107,15 @@ async fn fr004_status_prints_harness_table() {
         "status MUST include system-memory line; got: {out}"
     );
     assert!(total_mb > 0, "system_memory_usage MUST report a non-zero total");
+    assert!(
+        out.contains("=== Host Resource Watch ===")
+            && out.contains("Open FDs:")
+            && out.contains("RSS:")
+            && out.contains("Load (1m):")
+            && out.contains("Net RX:")
+            && out.contains("Net TX:"),
+        "status MUST surface host resource watch (AC-007.10); got: {out}"
+    );
     assert!(
         out.contains("=== FUSE Read Coalesce ===")
             && out.contains("Cache hits:")
