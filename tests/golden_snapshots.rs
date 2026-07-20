@@ -13,7 +13,7 @@ use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::ResourceWatchSample;
-use sharecli_fuse::ReadCacheMeters;
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
 use sharecli_thermal_tui::{render, App};
 
 const TUI_W: u16 = 80;
@@ -28,6 +28,7 @@ const GOLDEN_WATCH: ResourceWatchSample = ResourceWatchSample {
 };
 
 const GOLDEN_FUSE: ReadCacheMeters = ReadCacheMeters { hits: 3, misses: 1 };
+const GOLDEN_NEG: NegDentryMeters = NegDentryMeters { hits: 2, misses: 1 };
 
 fn golden_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("golden")
@@ -75,7 +76,7 @@ fn render_thermal(level: ThermalLevel, slots: u32) -> String {
     let backend = TestBackend::new(TUI_W, TUI_H);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
-        .with_operator_meters(Some(GOLDEN_WATCH), GOLDEN_FUSE);
+        .with_operator_meters(Some(GOLDEN_WATCH), GOLDEN_FUSE, GOLDEN_NEG);
     app.update(level, slots);
     terminal.draw(|f| render(f, &app)).expect("draw");
     let buf = terminal.backend().buffer();
@@ -135,8 +136,9 @@ fn golden_thermal_tui_levels() {
         }
         assert!(actual.contains("sharecli thermal monitor"), "{name} MUST show TUI title");
         assert!(
-            actual.contains("Host Resource Watch") && actual.contains("FUSE Read Coalesce"),
+            actual.contains("Host Resource Watch") && actual.contains("FUSE IO Meters"),
             "{name} MUST include operator watch panels"
         );
+        assert!(actual.contains("Neg hits:"), "{name} MUST include neg dentry meters");
     }
 }

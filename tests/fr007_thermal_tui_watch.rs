@@ -8,8 +8,8 @@ use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::ResourceWatchSample;
-use sharecli_fuse::ReadCacheMeters;
-use sharecli_thermal_tui::{fuse_coalesce_lines, render, resource_watch_lines, App};
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
+use sharecli_thermal_tui::{fuse_coalesce_lines, fuse_neg_dentry_lines, render, resource_watch_lines, App};
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
     fd_count: 24,
@@ -20,6 +20,7 @@ const SAMPLE: ResourceWatchSample = ResourceWatchSample {
 };
 
 const FUSE_METERS: ReadCacheMeters = ReadCacheMeters { hits: 5, misses: 2 };
+const NEG_METERS: NegDentryMeters = NegDentryMeters { hits: 3, misses: 1 };
 
 /// FR-007 / AC-007.10 — thermal TUI renders host resource watch lines.
 #[test]
@@ -41,13 +42,23 @@ fn fr007_thermal_tui_fuse_coalesce_lines() {
     assert!(text.contains("Hit rate:") && text.contains("71"));
 }
 
-/// FR-007 / AC-007.9 + AC-007.10 — headless thermal render includes both panels.
+/// FR-009 / AC-009.9 — thermal TUI renders FUSE negative-dentry meters.
+#[test]
+fn fr009_thermal_tui_neg_dentry_lines() {
+    let lines = fuse_neg_dentry_lines(NEG_METERS, false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(text.contains("Neg hits:") && text.contains('3'));
+    assert!(text.contains("Neg misses:") && text.contains('1'));
+    assert!(text.contains("Hit rate:") && text.contains("75"));
+}
+
+/// FR-007 / AC-007.9 + AC-007.10 + FR-009 AC-009.9 — headless thermal render includes panels.
 #[test]
 fn fr007_thermal_tui_render_includes_operator_panels() {
     let backend = TestBackend::new(120, 30);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
-        .with_operator_meters(Some(SAMPLE), FUSE_METERS);
+        .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS);
     app.update(ThermalLevel::Green, 1);
 
     terminal.draw(|f| render(f, &app)).expect("draw");
@@ -64,7 +75,11 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
         "thermal TUI MUST surface host resource watch; got excerpt missing panels"
     );
     assert!(
-        rendered.contains("FUSE Read Coalesce") && rendered.contains("Cache hits:"),
+        rendered.contains("FUSE IO Meters") && rendered.contains("Cache hits:"),
         "thermal TUI MUST surface FUSE read-coalesce meters"
+    );
+    assert!(
+        rendered.contains("Neg hits:") && rendered.contains("Neg misses:"),
+        "thermal TUI MUST surface FUSE negative-dentry meters"
     );
 }

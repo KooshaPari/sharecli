@@ -9,6 +9,7 @@
 //! AC-009.6 write provenance xattrs on write_rel / commit_rel
 //! AC-009.7 negative dentry cache TTL hit/miss + invalidate on create
 //! AC-009.8 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1) + provenance xattrs
+//! AC-009.9 global neg dentry meters aggregate for status/TUI
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -232,6 +233,42 @@ fn fr009_negative_dentry_cache_direct() {
     assert!(cache.is_negative(&rel));
     cache.invalidate(&rel);
     assert!(!cache.is_negative(&rel));
+}
+
+/// FR-009 / AC-009.9 — process-wide neg dentry meters track InterceptFs probes.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn fr009_global_neg_dentry_meters() {
+    use sharecli_fuse::{global_neg_dentry_meters, InterceptFs};
+
+    let before = global_neg_dentry_meters();
+    let dir = TempDir::new().expect("tempdir");
+    let fs = InterceptFs::new(dir.path());
+    let missing = Path::new("global-meter-miss.txt");
+
+    assert!(!fs.exists_rel(missing).expect("first probe"));
+    assert!(!fs.exists_rel(missing).expect("cached probe"));
+
+    let local = fs.neg_dentry_meters();
+    assert_eq!(local.misses, 1);
+    assert_eq!(local.hits, 1);
+
+    let after = global_neg_dentry_meters();
+    assert_eq!(
+        after.misses.saturating_sub(before.misses),
+        local.misses,
+        "global MUST aggregate neg misses"
+    );
+    assert_eq!(
+        after.hits.saturating_sub(before.hits),
+        local.hits,
+        "global MUST aggregate neg hits"
+    );
+    let section = after.format_status_section();
+    assert!(
+        section.contains("=== FUSE Negative Dentry ===") && section.contains("Neg hits:"),
+        "status section MUST format global neg meters"
+    );
 }
 
 /// FR-009 / AC-009.8 — live FUSE mount read/write (privileged; opt-in env).

@@ -2,12 +2,12 @@
 //! FR: FR-004
 //!
 //! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status),
-//! AC-007.10 (host resource watch in status).
+//! AC-007.10 (host resource watch in status), AC-009.9 (FUSE neg dentry in status).
 
 use std::collections::HashMap;
 
 use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
-use sharecli_fuse::global_read_cache_meters;
+use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
 /// Mirror of the per-harness aggregation + status tables in `commands::status`.
@@ -52,6 +52,7 @@ fn format_status(
     let resource_watch = ResourceWatchSample::capture().expect("resource watch capture");
     out.push_str(&resource_watch.format_status_section());
     out.push_str(&global_read_cache_meters().format_status_section());
+    out.push_str(&global_neg_dentry_meters().format_status_section());
     out
 }
 
@@ -122,6 +123,12 @@ async fn fr004_status_prints_harness_table() {
             && out.contains("Cache misses:")
             && out.contains("Hit rate:"),
         "status MUST surface FUSE read-coalesce meters (AC-007.9); got: {out}"
+    );
+    assert!(
+        out.contains("=== FUSE Negative Dentry ===")
+            && out.contains("Neg hits:")
+            && out.contains("Neg misses:"),
+        "status MUST surface FUSE negative-dentry meters (AC-009.9); got: {out}"
     );
 }
 

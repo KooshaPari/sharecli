@@ -133,6 +133,7 @@
 | AC-009.6 | `tests/fr009_fuse_intercept.rs`; `provenance` unit tests | write provenance xattrs on write_rel/commit_rel |
 | AC-009.7 | `tests/fr009_fuse_intercept.rs`; `neg_dentry` unit tests | negative dentry TTL hit/miss + invalidate |
 | AC-009.8 | `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` unit tests | opt-in live FUSE mount + provenance xattrs (`SHARECLI_FUSE_MOUNT_SMOKE=1`) |
+| AC-009.9 | `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs` (`fr009_thermal_tui_neg_dentry_lines`); `crates/sharecli-fuse/src/neg_dentry.rs` | FUSE neg dentry in status + thermal TUI |
 
 ### FR-010 — Mesh
 
@@ -161,6 +162,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-009 negative dentry operator meters:** `global_neg_dentry_meters`
+  + status/thermal TUI panels (AC-009.9); mirrors read-coalesce surfacing from #414.
 - **2026-07-20 — FR-007 thermal TUI dashboard slice:** `sharecli thermal`
   polls ResourceWatchSample + FUSE read-coalesce meters each redraw
   (AC-007.9 TUI + AC-007.11); formalized AC-007.7..9 in FR.md.
