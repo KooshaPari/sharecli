@@ -28,4 +28,11 @@ fn fr008_status_includes_coalesce_section() {
             && text.contains("Hit rate:"),
         "status MUST include coalesce meter fields (AC-008.11); got: {text}"
     );
+    assert!(
+        text.contains("=== Hypervisor SlotQueue ===")
+            && text.contains("Acquires:")
+            && text.contains("Waits:")
+            && text.contains("Timeouts:"),
+        "status MUST include SlotQueue meter fields (AC-008.12); got: {text}"
+    );
 }

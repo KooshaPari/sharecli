@@ -5,6 +5,7 @@
 
 pub mod agent_contention;
 pub mod coalesce_meters;
+pub mod slot_queue_meters;
 pub mod detect;
 pub mod proc_scan;
 pub mod registry;
@@ -20,6 +21,10 @@ pub use agent_contention::{
 pub use coalesce_meters::{
     global_coalesce_meters, record_coalesce_hit_kind, record_coalesce_lookup_hit, record_nocache_run,
     CoalesceHitKind, CoalesceMeters,
+};
+pub use slot_queue_meters::{
+    global_slot_queue_meters, record_slot_acquire, record_slot_timeout, record_slot_wait,
+    SlotQueueMeters,
 };
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{

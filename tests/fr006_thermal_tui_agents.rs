@@ -11,6 +11,7 @@ use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::{AgentResourceSample, DetectedAgentWatch, ResourceWatchSample};
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
+use sharecli_fleet::SlotQueueMeters;
 use sharecli_thermal_tui::{agent_lines, render, App};
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
@@ -70,6 +71,7 @@ fn fr006_thermal_tui_render_includes_agent_panel() {
             ReadCacheMeters { hits: 1, misses: 0 },
             NegDentryMeters { hits: 0, misses: 0 },
             CoalesceMeters::default(),
+            SlotQueueMeters::default(),
             WriteSerializeMeters::default(),
         )
         .with_detected_agents(fixture_agents());

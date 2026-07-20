@@ -12,9 +12,10 @@ use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch, ResourceWatchSample};
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
+use sharecli_fleet::SlotQueueMeters;
 use sharecli_thermal_tui::{
     fuse_coalesce_lines, fuse_neg_dentry_lines, fuse_write_serialize_lines, host_agent_lines,
-    hypervisor_coalesce_lines, render, resource_watch_lines, App,
+    hypervisor_coalesce_lines, hypervisor_slot_queue_lines, render, resource_watch_lines, App,
 };
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
@@ -37,6 +38,11 @@ const WRITE_SERIALIZE_METERS: WriteSerializeMeters = WriteSerializeMeters {
     stages: 2,
     commits: 1,
     discards: 1,
+};
+const SLOT_QUEUE_METERS: SlotQueueMeters = SlotQueueMeters {
+    acquires: 5,
+    waits: 3,
+    timeouts: 1,
 };
 
 /// FR-007 / AC-007.10 — thermal TUI renders host resource watch lines.
@@ -80,6 +86,16 @@ fn fr008_thermal_tui_hypervisor_coalesce_lines() {
     assert!(text.contains("Hit rate:") && text.contains("75"));
 }
 
+/// FR-008 / AC-008.12 — thermal TUI renders Hypervisor SlotQueue meters.
+#[test]
+fn fr008_thermal_tui_slot_queue_lines() {
+    let lines = hypervisor_slot_queue_lines(SLOT_QUEUE_METERS, false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(text.contains("Slot acquires:") && text.contains('5'));
+    assert!(text.contains("Slot waits:") && text.contains('3'));
+    assert!(text.contains("Slot timeouts:") && text.contains('1'));
+}
+
 /// FR-009 / AC-009.10 — thermal TUI renders FUSE write-serialize meters.
 #[test]
 fn fr009_thermal_tui_write_serialize_lines() {
@@ -112,7 +128,7 @@ fn fr006_thermal_tui_host_agent_lines() {
 /// FR-007 / AC-007.9 + AC-007.10 + FR-009 AC-009.9 — headless thermal render includes panels.
 #[test]
 fn fr007_thermal_tui_render_includes_operator_panels() {
-    let backend = TestBackend::new(120, 44);
+    let backend = TestBackend::new(120, 48);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
         .with_operator_meters(
@@ -120,6 +136,7 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
             FUSE_METERS,
             NEG_METERS,
             COALESCE_METERS,
+            SLOT_QUEUE_METERS,
             WRITE_SERIALIZE_METERS,
         )
         .with_detected_agents(vec![DetectedAgentWatch {
@@ -155,6 +172,10 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
     assert!(
         rendered.contains("Hypervisor IO Meters") && rendered.contains("Coalesce hits:"),
         "thermal TUI MUST surface Hypervisor coalesce meters"
+    );
+    assert!(
+        rendered.contains("Slot acquires:"),
+        "thermal TUI MUST surface Hypervisor SlotQueue meters (AC-008.12)"
     );
     assert!(
         rendered.contains("Cache hits:"),

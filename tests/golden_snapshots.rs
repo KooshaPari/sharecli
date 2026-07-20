@@ -15,10 +15,11 @@ use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::ResourceWatchSample;
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
 use sharecli_fleet::CoalesceMeters;
+use sharecli_fleet::SlotQueueMeters;
 use sharecli_thermal_tui::{render, App};
 
 const TUI_W: u16 = 80;
-const TUI_H: u16 = 40;
+const TUI_H: u16 = 52;
 
 const GOLDEN_WATCH: ResourceWatchSample = ResourceWatchSample {
     fd_count: 16,
@@ -40,6 +41,11 @@ const GOLDEN_WRITE_SERIALIZE: WriteSerializeMeters = WriteSerializeMeters {
     stages: 2,
     commits: 1,
     discards: 1,
+};
+const GOLDEN_SLOT_QUEUE: SlotQueueMeters = SlotQueueMeters {
+    acquires: 2,
+    waits: 1,
+    timeouts: 0,
 };
 
 fn golden_dir() -> PathBuf {
@@ -93,6 +99,7 @@ fn render_thermal(level: ThermalLevel, slots: u32) -> String {
             GOLDEN_FUSE,
             GOLDEN_NEG,
             GOLDEN_COALESCE,
+            GOLDEN_SLOT_QUEUE,
             GOLDEN_WRITE_SERIALIZE,
         );
     app.update(level, slots);
@@ -160,6 +167,10 @@ fn golden_thermal_tui_levels() {
         assert!(
             actual.contains("Coalesce hits:"),
             "{name} MUST include Hypervisor coalesce meters"
+        );
+        assert!(
+            actual.contains("Slot acquires:"),
+            "{name} MUST include Hypervisor SlotQueue meters"
         );
         assert!(
             actual.contains("Detected Agents"),

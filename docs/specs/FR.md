@@ -285,6 +285,7 @@ be served from the coalesce cache.
 - **AC-008.9:** `Hypervisor::run` with nocache argv MUST execute via `SlotQueue` and MUST NOT set `from_cache` on replay.
 - **AC-008.10:** End-to-end Hypervisor nocache MUST (a) re-execute identical mutating argv (side-effect counter increments per run), (b) serialize concurrent nocache runs through the Hypervisor queue (`max_concurrent=1`), and (c) remain isolated from a seeded coalesce cache hit on a read-only twin argv.
 - **AC-008.11:** `sharecli status` and `sharecli thermal` surface Hypervisor coalesce hit/miss/nocache counters via [`global_coalesce_meters`](crates/sharecli-ipc/src/lib.rs) / [`CoalesceMeters::format_status_section`](crates/sharecli-ipc/src/lib.rs); counters MUST increment on lookup hits, [`CoalesceCache::with_lock_detailed`](crates/sharecli-ipc/src/lib.rs) outcomes, and nocache queue runs.
+- **AC-008.12:** `sharecli status` and `sharecli thermal` surface Hypervisor SlotQueue acquire/wait/timeout counters via [`global_slot_queue_meters`](crates/sharecli-fleet/src/slot_queue_meters.rs) / [`SlotQueueMeters::format_status_section`](crates/sharecli-fleet/src/slot_queue_meters.rs); counters MUST increment on successful [`SlotQueue::with_slot`](crates/sharecli-ipc/src/queue.rs) acquisitions, wait-loop iterations, and queue timeouts.
 
 **Test refs:** `tests/fr008_coalesce_mesh.rs`; `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `tests/e2e_hypervisor_nocache.rs`; `sharecli-ipc` unit tests for TTL/debounce/queue/nocache/meters.
 
