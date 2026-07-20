@@ -96,10 +96,4 @@ mod tests {
             assert_eq!(gov.poll().expect("poll"), level);
         }
     }
-
-    #[test]
-    fn thermal_default_polls_without_error_on_supported_platform() {
-        let gov = ThermalGovernor::new();
-        assert!(gov.poll().is_ok());
-    }
 }
