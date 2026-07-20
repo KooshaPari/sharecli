@@ -106,6 +106,7 @@
 | AC-006.16   | `tests/fr006_proc_tree_cli.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`build_agent_forests`); `src/commands/proc.rs` | `sharecli proc --tree` parent-child forests |
 | AC-006.17   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/resource_watch.rs` (`parse_rss_bytes`) | `sharecli proc --family` / `--min-rss` filters |
 | AC-006.18   | `tests/fr006_proc_ndjson.rs`; `tests/fr006_proc_watch.rs`; `src/commands/proc.rs` | `sharecli proc --watch --json` NDJSON stream |
+| AC-006.19   | `tests/fr006_proc_sort.rs`; `src/commands/proc.rs` | `sharecli proc --sort rss|fd|pid` |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -209,6 +210,8 @@
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
+- **2026-07-20 — FR-006 proc sort:** `sharecli proc --sort rss|fd|pid` orders
+  inventory rows and tree root forests after filters (AC-006.19).
 - **2026-07-20 — FR-006 proc filters:** `sharecli proc --family` and `--min-rss`
   narrow inventory rows and tree root forests (AC-006.17); `parse_rss_bytes`
   accepts plain bytes or K/M/G suffixes.

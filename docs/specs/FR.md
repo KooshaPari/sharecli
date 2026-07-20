@@ -234,8 +234,13 @@ replacing vendor agent executables as the primary detection path.
   inventory or tree fields). Watch footer and exit messages go to stderr; stdout
   MUST stay pipe-clean (no ANSI clear, no pretty-print). One-shot `--json`
   without `--watch` remains pretty-printed multi-line JSON without `ts`.
+- **AC-006.19:** `sharecli proc --sort rss|fd|pid` orders flat inventory rows
+  and `--tree` root forests after filters apply: `rss` and `fd` descending
+  (missing FD counts as zero; PID ascending tie-break), `pid` ascending.
+  `--json` / NDJSON `agents` arrays and text tables MUST reflect the chosen
+  order; invalid sort keys fail loudly.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`
 
 ---
 

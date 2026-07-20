@@ -179,6 +179,10 @@ enum Commands {
         /// Keep only agents at or above this RSS (bytes or K/M/G suffix)
         #[arg(long)]
         min_rss: Option<String>,
+
+        /// Sort inventory rows or tree roots: rss (desc), fd (desc), pid (asc)
+        #[arg(long)]
+        sort: Option<String>,
     },
 
     /// Run a runtime health probe
@@ -544,8 +548,9 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, tree, watch, family, min_rss } => {
-            commands::proc::run(*json, *tree, *watch, family.clone(), min_rss.clone()).await?
+        Commands::Proc { json, tree, watch, family, min_rss, sort } => {
+            commands::proc::run(*json, *tree, *watch, family.clone(), min_rss.clone(), sort.clone())
+                .await?
         }
         Commands::Config { cmd } => config_cmd(cmd)?,
         Commands::Project { cmd } => project_cmd(cmd).await?,
