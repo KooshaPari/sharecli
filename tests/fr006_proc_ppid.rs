@@ -15,6 +15,10 @@ fn empty_cmdline_map() -> std::collections::HashMap<u32, String> {
     std::collections::HashMap::new()
 }
 
+fn empty_state_map() -> std::collections::HashMap<u32, char> {
+    std::collections::HashMap::new()
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -39,14 +43,15 @@ fn fr006_proc_ppid_help_documents_flag() {
 #[test]
 fn fr006_proc_ppid_filter_keeps_matching_parent() {
     let src = FakeProcSource::new(vec![
-        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
-        ProcSnapshot { pid: 10, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()] },
-        ProcSnapshot { pid: 20, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()] },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
+        ProcSnapshot { pid: 10, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()], state: 'R' },
+        ProcSnapshot { pid: 20, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()], state: 'R' },
         ProcSnapshot {
             pid: 30,
             ppid: 10,
             comm: "forge".into(),
             cmdline: vec!["forge".into(), "conversation".into(), "list".into()],
+            state: 'R',
         },
     ]);
     let ppid_map = build_agent_ppid_map(&src, &[10, 20, 30]);
@@ -66,9 +71,11 @@ fn fr006_proc_ppid_filter_keeps_matching_parent() {
             max_fd_count: None,
             comm: None,
             cmdline: None,
+            state: None,
         },
         &ppid_map,
         &empty_cmdline_map(),
+        &empty_state_map(),
     );
     assert_eq!(filtered.len(), 2);
     assert!(filtered.iter().any(|r| r.agent.pid == 10));
@@ -80,9 +87,9 @@ fn fr006_proc_ppid_filter_keeps_matching_parent() {
 #[test]
 fn fr006_proc_ppid_composes_with_family() {
     let src = FakeProcSource::new(vec![
-        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
-        ProcSnapshot { pid: 10, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()] },
-        ProcSnapshot { pid: 20, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()] },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
+        ProcSnapshot { pid: 10, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()], state: 'R' },
+        ProcSnapshot { pid: 20, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()], state: 'R' },
     ]);
     let ppid_map = build_agent_ppid_map(&src, &[10, 20]);
     let rows = vec![watch_row("claude", 10, 100), watch_row("codex", 20, 100)];
@@ -97,9 +104,11 @@ fn fr006_proc_ppid_composes_with_family() {
             max_fd_count: None,
             comm: None,
             cmdline: None,
+            state: None,
         },
         &ppid_map,
         &empty_cmdline_map(),
+        &empty_state_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.family, "claude");
@@ -109,9 +118,9 @@ fn fr006_proc_ppid_composes_with_family() {
 #[test]
 fn fr006_proc_tree_ppid_filter() {
     let src = FakeProcSource::new(vec![
-        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
-        ProcSnapshot { pid: 50, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()] },
-        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()] },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
+        ProcSnapshot { pid: 50, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()], state: 'R' },
+        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()], state: 'R' },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     assert_eq!(forests.len(), 2);
@@ -126,10 +135,12 @@ fn fr006_proc_tree_ppid_filter() {
             max_fd_count: None,
             comm: None,
             cmdline: None,
+            state: None,
         },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
+        &empty_state_map(),
     );
     assert_eq!(filtered.len(), 2);
     let filtered_launchd = filter_agent_forests(
@@ -143,10 +154,12 @@ fn fr006_proc_tree_ppid_filter() {
             max_fd_count: None,
             comm: None,
             cmdline: None,
+            state: None,
         },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
+        &empty_state_map(),
     );
     assert!(filtered_launchd.is_empty());
 }

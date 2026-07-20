@@ -13,14 +13,15 @@ fn bin() -> Command {
 
 fn fixture() -> FakeProcSource {
     FakeProcSource::new(vec![
-        ProcSnapshot { pid: 100, ppid: 1, comm: "forge".into(), cmdline: vec!["forge".into()] },
+        ProcSnapshot { pid: 100, ppid: 1, comm: "forge".into(), cmdline: vec!["forge".into()], state: 'R' },
         ProcSnapshot {
             pid: 200,
             ppid: 100,
             comm: "cargo".into(),
             cmdline: vec!["cargo".into(), "test".into()],
+            state: 'R',
         },
-        ProcSnapshot { pid: 300, ppid: 1, comm: "zsh".into(), cmdline: vec!["-i".into()] },
+        ProcSnapshot { pid: 300, ppid: 1, comm: "zsh".into(), cmdline: vec!["-i".into()], state: 'R' },
     ])
 }
 

@@ -19,6 +19,10 @@ fn empty_cmdline_map() -> std::collections::HashMap<u32, String> {
     std::collections::HashMap::new()
 }
 
+fn empty_state_map() -> std::collections::HashMap<u32, char> {
+    std::collections::HashMap::new()
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -55,6 +59,7 @@ fn fr006_proc_comm_filter_substring_case_insensitive() {
         },
         &empty_ppid_map(),
         &empty_cmdline_map(),
+        &empty_state_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 10);
@@ -77,6 +82,7 @@ fn fr006_proc_comm_composes_with_family() {
         },
         &empty_ppid_map(),
         &empty_cmdline_map(),
+        &empty_state_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].agent.pid, 10);
@@ -86,14 +92,15 @@ fn fr006_proc_comm_composes_with_family() {
 #[test]
 fn fr006_proc_tree_comm_filter() {
     let src = FakeProcSource::new(vec![
-        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
         ProcSnapshot {
             pid: 50,
             ppid: 1,
             comm: "cursor-agent".into(),
             cmdline: vec!["cursor-agent".into()],
+            state: 'R',
         },
-        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()] },
+        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()], state: 'R' },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     assert_eq!(forests.len(), 2);
@@ -106,6 +113,7 @@ fn fr006_proc_tree_comm_filter() {
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
+        &empty_state_map(),
     );
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].comm, "cursor-agent");

@@ -15,14 +15,15 @@ fn bin() -> Command {
 
 fn fixture_forests() -> Vec<AgentTreeNode> {
     let src = FakeProcSource::new(vec![
-        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
         ProcSnapshot {
             pid: 50,
             ppid: 1,
             comm: "cursor-agent".into(),
             cmdline: vec!["cursor-agent".into()],
+            state: 'R',
         },
-        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()] },
+        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
     ]);
     sharecli_fleet::build_agent_forests(&src)
 }
@@ -50,9 +51,9 @@ fn fr006_proc_tree_csv_header_and_depth() {
 #[test]
 fn fr006_proc_tree_csv_multiple_roots() {
     let src = FakeProcSource::new(vec![
-        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
-        ProcSnapshot { pid: 10, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()] },
-        ProcSnapshot { pid: 20, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()] },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
+        ProcSnapshot { pid: 10, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()], state: 'R' },
+        ProcSnapshot { pid: 20, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()], state: 'R' },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     assert_eq!(forests.len(), 2);

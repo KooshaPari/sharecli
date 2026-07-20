@@ -14,12 +14,13 @@ use sharecli_fleet::{
 };
 use tokio::time::sleep;
 
-/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30).
+/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30, AC-006.31).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
     pub family: Option<String>,
     pub comm: Option<String>,
     pub cmdline: Option<String>,
+    pub state: Option<char>,
     pub min_rss_bytes: Option<u64>,
     pub max_rss_bytes: Option<u64>,
     pub min_fd_count: Option<u64>,
@@ -41,6 +42,34 @@ fn substring_matches_pattern(haystack: &str, pattern: &str) -> bool {
     haystack.to_ascii_lowercase().contains(&pattern.to_ascii_lowercase())
 }
 
+/// Parse `--state <R|S|D|Z|…>` (AC-006.31).
+pub fn parse_proc_state(raw: &str) -> Result<char> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        bail!("--state must not be empty");
+    }
+    if trimmed.len() != 1 {
+        bail!("invalid --state value '{raw}'; expected single process state letter (R|S|D|Z|T|…)");
+    }
+    let ch = trimmed.chars().next().unwrap();
+    let normalized = match ch {
+        'r' | 'R' => 'R',
+        's' | 'S' => 'S',
+        'd' | 'D' => 'D',
+        'z' | 'Z' => 'Z',
+        'T' => 'T',
+        't' => 't',
+        'X' => 'X',
+        'x' => 'x',
+        'k' | 'K' => 'K',
+        'w' | 'W' => 'W',
+        'p' | 'P' => 'P',
+        'i' | 'I' => 'I',
+        other => bail!("invalid --state value '{other}'; expected R, S, D, Z, T, t, …"),
+    };
+    Ok(normalized)
+}
+
 /// Parse `--min-fd` / `--max-fd` count (non-negative integer).
 pub fn parse_fd_count(raw: &str, flag: &str) -> Result<u64> {
     let value = raw.parse::<u64>().with_context(|| format!("invalid {flag} value '{raw}'"))?;
@@ -52,6 +81,7 @@ impl ProcFilter {
         family: Option<String>,
         comm: Option<String>,
         cmdline: Option<String>,
+        state: Option<String>,
         min_rss: Option<String>,
         max_rss: Option<String>,
         min_fd: Option<String>,
@@ -67,6 +97,10 @@ impl ProcFilter {
             None => None,
             Some(raw) if raw.is_empty() => bail!("--cmdline pattern must not be empty"),
             Some(raw) => Some(raw),
+        };
+        let state = match state {
+            None => None,
+            Some(raw) => Some(parse_proc_state(&raw)?),
         };
         let min_rss_bytes = match min_rss {
             None => None,
@@ -98,6 +132,7 @@ impl ProcFilter {
             family,
             comm,
             cmdline,
+            state,
             min_rss_bytes,
             max_rss_bytes,
             min_fd_count,
@@ -110,6 +145,7 @@ impl ProcFilter {
         self.family.is_some()
             || self.comm.is_some()
             || self.cmdline.is_some()
+            || self.state.is_some()
             || self.min_rss_bytes.is_some()
             || self.max_rss_bytes.is_some()
             || self.min_fd_count.is_some()
@@ -133,6 +169,14 @@ pub fn build_agent_cmdline_map(source: &dyn ProcSource, agent_pids: &[u32]) -> H
         .filter_map(|&pid| {
             lookup_proc(source, pid).map(|proc| (pid, format_cmdline(&proc.cmdline)))
         })
+        .collect()
+}
+
+/// Map agent PID → process state letter from a proc source (AC-006.31).
+pub fn build_agent_state_map(source: &dyn ProcSource, agent_pids: &[u32]) -> HashMap<u32, char> {
+    agent_pids
+        .iter()
+        .filter_map(|&pid| lookup_proc(source, pid).map(|proc| (pid, proc.state)))
         .collect()
 }
 
@@ -262,13 +306,16 @@ pub fn filter_watched_agents(
     filter: &ProcFilter,
     ppid_by_pid: &HashMap<u32, u32>,
     cmdline_by_pid: &HashMap<u32, String>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> Vec<DetectedAgentWatch> {
     if !filter.active() {
         return watched.to_vec();
     }
     watched
         .iter()
-        .filter(|row| agent_row_matches_filter(row, filter, ppid_by_pid, cmdline_by_pid))
+        .filter(|row| {
+            agent_row_matches_filter(row, filter, ppid_by_pid, cmdline_by_pid, state_by_pid)
+        })
         .cloned()
         .collect()
 }
@@ -278,6 +325,7 @@ fn agent_row_matches_filter(
     filter: &ProcFilter,
     ppid_by_pid: &HashMap<u32, u32>,
     cmdline_by_pid: &HashMap<u32, String>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> bool {
     if let Some(ref family) = filter.family {
         if !row.agent.family.eq_ignore_ascii_case(family) {
@@ -292,6 +340,11 @@ fn agent_row_matches_filter(
     if let Some(ref pattern) = filter.cmdline {
         let joined = cmdline_by_pid.get(&row.agent.pid).map(String::as_str).unwrap_or("");
         if !cmdline_matches_pattern(joined, pattern) {
+            return false;
+        }
+    }
+    if let Some(target_state) = filter.state {
+        if state_by_pid.get(&row.agent.pid).copied() != Some(target_state) {
             return false;
         }
     }
@@ -361,6 +414,7 @@ pub fn filter_agent_forests(
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
     cmdline_by_pid: &HashMap<u32, String>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> Vec<AgentTreeNode> {
     if !filter.active() {
         return forests.to_vec();
@@ -368,7 +422,14 @@ pub fn filter_agent_forests(
     forests
         .iter()
         .filter(|root| {
-            forest_root_matches_filter(root, filter, rss_by_pid, fd_by_pid, cmdline_by_pid)
+            forest_root_matches_filter(
+                root,
+                filter,
+                rss_by_pid,
+                fd_by_pid,
+                cmdline_by_pid,
+                state_by_pid,
+            )
         })
         .cloned()
         .collect()
@@ -380,6 +441,7 @@ fn forest_root_matches_filter(
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
     cmdline_by_pid: &HashMap<u32, String>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> bool {
     if let Some(ref family) = filter.family {
         let Some(root_family) = root.family else {
@@ -397,6 +459,11 @@ fn forest_root_matches_filter(
     if let Some(ref pattern) = filter.cmdline {
         let joined = cmdline_by_pid.get(&root.pid).map(String::as_str).unwrap_or("");
         if !cmdline_matches_pattern(joined, pattern) {
+            return false;
+        }
+    }
+    if let Some(target_state) = filter.state {
+        if state_by_pid.get(&root.pid).copied() != Some(target_state) {
             return false;
         }
     }
@@ -787,6 +854,7 @@ pub fn render_once(
     let agent_pids: Vec<u32> = scanned_agents.iter().map(|a| a.pid).collect();
     let ppid_by_pid = build_agent_ppid_map(&HostProcSource, &agent_pids);
     let cmdline_by_pid = build_agent_cmdline_map(&HostProcSource, &agent_pids);
+    let state_by_pid = build_agent_state_map(&HostProcSource, &agent_pids);
 
     if tree {
         let forests = filter_agent_forests(
@@ -795,6 +863,7 @@ pub fn render_once(
             &rss_by_pid,
             &fd_by_pid,
             &cmdline_by_pid,
+            &state_by_pid,
         );
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
         let forests = limit_agent_forests(forests, limit);
@@ -822,7 +891,7 @@ pub fn render_once(
 
     let watched = limit_watched_agents(
         apply_sort_watched(
-            filter_watched_agents(&watched_all, filter, &ppid_by_pid, &cmdline_by_pid),
+            filter_watched_agents(&watched_all, filter, &ppid_by_pid, &cmdline_by_pid, &state_by_pid),
             sort,
         ),
         limit,
@@ -860,6 +929,7 @@ pub async fn run(
     family: Option<String>,
     comm: Option<String>,
     cmdline: Option<String>,
+    state: Option<String>,
     min_rss: Option<String>,
     max_rss: Option<String>,
     min_fd: Option<String>,
@@ -889,7 +959,7 @@ pub async fn run(
     if csv && watch.is_some() {
         bail!("--csv cannot be combined with --watch");
     }
-    let filter = ProcFilter::from_cli(family, comm, cmdline, min_rss, max_rss, min_fd, max_fd, ppid)?;
+    let filter = ProcFilter::from_cli(family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, ppid)?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
@@ -963,6 +1033,7 @@ mod tests {
             ppid: 1,
             comm: "claude".into(),
             cmdline: vec!["claude".into()],
+            state: 'R',
         }]);
         let (watched, scanned) = host_agent_inventory_from_source(&src);
         assert_eq!(scanned, 1);
@@ -976,7 +1047,7 @@ mod tests {
         let err = rt
             .block_on(super::run(
                 false, false, false, Some(0), None, None, None, None, None, None, None, None,
-                None, None, None,
+                None, None, None, None,
             ))
             .expect_err("watch 0 MUST fail");
         assert!(
@@ -1010,14 +1081,15 @@ mod tests {
     #[test]
     fn tree_json_from_fixture() {
         let src = FakeProcSource::new(vec![
-            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
+            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
             ProcSnapshot {
                 pid: 50,
                 ppid: 1,
                 comm: "cursor-agent".into(),
                 cmdline: vec!["cursor-agent".into()],
+                state: 'R',
             },
-            ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()] },
+            ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
         ]);
         let forests = sharecli_fleet::build_agent_forests(&src);
         let snap = AgentTreeSnapshot {
@@ -1045,7 +1117,7 @@ mod tests {
         let err = rt
             .block_on(super::run(
                 false, false, false, Some(1), None, None, None, None, None, None, None, None,
-                Some(42), None, None,
+                None, None, Some(42), None,
             ))
             .expect_err("pid+watch MUST fail");
         assert!(

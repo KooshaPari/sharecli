@@ -118,6 +118,7 @@
 | AC-006.28   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs` | `sharecli proc --min-fd` / `--max-fd` FD band filters |
 | AC-006.29   | `tests/fr006_proc_comm.rs`; `src/commands/proc.rs` | `sharecli proc --comm` COMM substring filter |
 | AC-006.30   | `tests/fr006_proc_cmdline.rs`; `src/commands/proc.rs` | `sharecli proc --cmdline` joined argv/cmdline substring filter |
+| AC-006.31   | `tests/fr006_proc_state.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/proc_scan.rs` | `sharecli proc --state` process-state letter filter |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -221,6 +222,9 @@
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
   (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
+- **2026-07-20 — FR-006 proc state filter:** `sharecli proc --state <letter>`
+  filters flat inventory and `--tree` roots by Linux/sysinfo process state,
+  composed with other proc filters (AC-006.31).
 - **2026-07-20 — FR-006 proc cmdline filter:** `sharecli proc --cmdline <pattern>`
   case-insensitive joined argv/cmdline substring filter composes with other proc
   flags (AC-006.30).

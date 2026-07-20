@@ -188,6 +188,10 @@ enum Commands {
         #[arg(long)]
         cmdline: Option<String>,
 
+        /// Keep only agents in this process state (R|S|D|Z|T|t|…)
+        #[arg(long)]
+        state: Option<String>,
+
         /// Keep only agents at or above this RSS (bytes or K/M/G suffix)
         #[arg(long)]
         min_rss: Option<String>,
@@ -586,7 +590,7 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, csv, tree, watch, family, comm, cmdline, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
+        Commands::Proc { json, csv, tree, watch, family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
             commands::proc::run(
                 *json,
                 *csv,
@@ -595,6 +599,7 @@ async fn run() -> Result<()> {
                 family.clone(),
                 comm.clone(),
                 cmdline.clone(),
+                state.clone(),
                 min_rss.clone(),
                 max_rss.clone(),
                 min_fd.clone(),
