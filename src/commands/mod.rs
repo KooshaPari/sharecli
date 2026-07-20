@@ -23,7 +23,7 @@ use sharecli_fleet::{
     watch_detected_agents, HostProcSource,
 };
 use sharecli_fleet::{format_rss_bytes, ResourceWatchSample};
-use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters};
+use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters};
 use sharecli_fleet::global_coalesce_meters;
 
 /// Shared runtime instance
@@ -323,6 +323,8 @@ pub async fn status(verbose: bool) -> Result<()> {
     print!("{}", neg_meters.format_status_section());
 
     print!("{}", global_coalesce_meters().format_status_section());
+
+    print!("{}", global_write_serialize_meters().format_status_section());
 
     print_live_gate_section()?;
 

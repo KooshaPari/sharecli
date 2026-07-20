@@ -33,6 +33,7 @@ mod mount_smoke;
 mod provenance;
 mod read_cache;
 mod write_serialize;
+mod write_serialize_meters;
 
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
 pub use neg_dentry::{
@@ -50,6 +51,10 @@ pub use provenance::{
 };
 pub use read_cache::{global_read_cache_meters, ReadCacheMeters, ReadContentCache};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
+pub use write_serialize_meters::{
+    global_write_serialize_meters, record_commit, record_discard, record_passthrough_write,
+    record_stage, WriteSerializeMeters,
+};
 
 use std::path::Path;
 
@@ -81,6 +86,7 @@ mod platform {
     use crate::provenance::{annotate_write, default_session_id};
     use crate::read_cache::{ReadCacheMeters, ReadContentCache};
     use crate::write_serialize::WriteSerialize;
+    use crate::write_serialize_meters::record_passthrough_write;
 
     const TTL: Duration = Duration::from_secs(1);
 
@@ -225,7 +231,7 @@ mod platform {
             let abs = abs_under(&self.backing, rel);
             let data = data.to_vec();
             let session = self.session_id.clone();
-            self.write_locks
+            let n = self.write_locks
                 .with_locked_path(&abs, || {
                     let mut file = OpenOptions::new().write(true).open(&abs)?;
                     file.seek(SeekFrom::Start(offset))?;
@@ -233,13 +239,12 @@ mod platform {
                     annotate_write(&abs, &session)?;
                     Ok::<u32, std::io::Error>(data.len() as u32)
                 })
-                .map_err(|e| std::io::Error::other(e.to_string()))?
-                .and_then(|n| {
-                    if let Ok(mut cache) = self.read_cache.lock() {
-                        cache.invalidate(&abs);
-                    }
-                    Ok(n)
-                })
+                .map_err(|e| std::io::Error::other(e.to_string()))??;
+            record_passthrough_write();
+            if let Ok(mut cache) = self.read_cache.lock() {
+                cache.invalidate(&abs);
+            }
+            Ok(n)
         }
 
         fn io_errno(err: std::io::Error) -> Errno {

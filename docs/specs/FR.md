@@ -346,8 +346,14 @@ until create / mkdir / rename-into invalidates the entry.
 - **AC-009.9:** `sharecli status` and `sharecli thermal` surface FUSE
   negative-dentry hit/miss meters via [`global_neg_dentry_meters`](crates/sharecli-fuse/src/neg_dentry.rs)
   / [`NegDentryMeters::format_status_section`](crates/sharecli-fuse/src/neg_dentry.rs).
+- **AC-009.10:** `sharecli status` and `sharecli thermal` surface FUSE
+  write-serialize / CoW counters (passthrough writes, stages, commits, discards) via
+  [`global_write_serialize_meters`](crates/sharecli-fuse/src/write_serialize_meters.rs)
+  / [`WriteSerializeMeters::format_status_section`](crates/sharecli-fuse/src/write_serialize_meters.rs);
+  counters MUST increment on `write_rel`, `stage_rel` / `stage_bytes`, `commit_rel` /
+  `commit_pending`, and `discard_rel` / `discard_pending`.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `sharecli-fuse` unit tests.
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
 
 ---
 

@@ -137,6 +137,7 @@
 | AC-009.7 | `tests/fr009_fuse_intercept.rs`; `neg_dentry` unit tests | negative dentry TTL hit/miss + invalidate |
 | AC-009.8 | `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` unit tests | opt-in live FUSE mount + provenance xattrs (`SHARECLI_FUSE_MOUNT_SMOKE=1`) |
 | AC-009.9 | `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs` (`fr009_thermal_tui_neg_dentry_lines`); `crates/sharecli-fuse/src/neg_dentry.rs` | FUSE neg dentry in status + thermal TUI |
+| AC-009.10 | `tests/fr009_fuse_intercept.rs` (`fr009_global_write_serialize_meters`); `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-fuse/src/write_serialize_meters.rs` | FUSE write-serialize / CoW in status + thermal TUI |
 
 ### FR-010 — Mesh
 
@@ -169,6 +170,8 @@
 
 ## Change log
 
+- **2026-07-20 — FR-009 write-serialize operator meters:** `global_write_serialize_meters`
+  + status/thermal TUI panels (AC-009.10); mirrors read-coalesce / neg-dentry surfacing.
 - **2026-07-20 — FR-008 coalesce operator meters:** `global_coalesce_meters` +
   status/thermal TUI panels (AC-008.11); mirrors FUSE read-coalesce surfacing.
 - **2026-07-20 — FR-011 pool/health gate parity:** `sharecli pool` and
