@@ -989,4 +989,37 @@ mod tests {
     fn m3u_demo_round_trip() {
         run_cli(&["gateway-tools", "m3u", "demo"]).expect("m3u demo");
     }
+
+    #[test]
+    fn tls_demo_prints_handshake_trace() {
+        run_cli(&["gateway-tools", "tls", "--demo"]).expect("tls demo");
+    }
+
+    #[test]
+    fn chunked_demo_encode_and_decode() {
+        run_cli(&["gateway-tools", "chunked", "encode", "--size", "16", "--demo"])
+            .expect("chunked encode");
+        run_cli(&["gateway-tools", "chunked", "demo"]).expect("chunked demo");
+    }
+
+    #[test]
+    fn patch_demo_applies_operations() {
+        run_cli(&["gateway-tools", "patch", "--demo"]).expect("patch demo");
+    }
+
+    #[test]
+    fn metrics_demo_renders_prometheus() {
+        run_cli(&["gateway-tools", "metrics", "--demo"]).expect("metrics demo");
+    }
+
+    #[test]
+    fn pem_demo_encode_and_decode() {
+        run_cli(&["gateway-tools", "pem", "demo"]).expect("pem demo");
+    }
+
+    #[test]
+    fn inspect_demo_lists_modules() {
+        run_cli(&["gateway-tools", "inspect"]).expect("inspect root");
+        run_cli(&["gateway-tools", "inspect", "dns"]).expect("inspect dns");
+    }
 }

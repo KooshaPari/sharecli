@@ -77,3 +77,17 @@ async fn fr003_ipc_handler_process_kill_missing_pid() {
         .await;
     assert!(resp.error.is_some());
 }
+
+#[tokio::test]
+async fn fr003_ipc_handler_monitoring_report() {
+    let handler = Handler::new().await.expect("handler init");
+    let resp = handler
+        .dispatch(r#"{"id":10,"method":"monitoring.report","params":{}}"#)
+        .await;
+    assert!(
+        resp.error.is_none(),
+        "monitoring.report error: {:?}",
+        resp.error
+    );
+    assert!(resp.result.is_object());
+}

@@ -1,3 +1,7 @@
+//! FR-003 / C01 — coordination lock and priority queue coverage lift.
+//!
+//! FR: FR-003
+
 use sharecli::coordination::{
     CommandLockStore, LockStatus, PriorityTaskQueue, QueuePriority, TaskStatus,
 };

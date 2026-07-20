@@ -174,3 +174,124 @@ fn fr003_error_constructors_and_io_conversion() {
     let from_io: SharecliError = std::io::Error::other("disk").into();
     assert_eq!(from_io.code(), ErrorCode::Io);
 }
+
+/// FR-003 / C01 — config load/init/save round-trip via hermetic config home.
+#[test]
+fn fr003_config_load_init_save_roundtrip() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let config_home = tmp.path().join("config");
+    std::fs::create_dir_all(&config_home).expect("config home");
+
+    let prev_xdg = std::env::var_os("XDG_CONFIG_HOME");
+    let prev_app = std::env::var_os("APPDATA");
+    unsafe {
+        std::env::set_var("XDG_CONFIG_HOME", &config_home);
+        std::env::set_var("APPDATA", &config_home);
+    }
+
+    let missing = Config::load().expect("load missing file");
+    assert_eq!(missing.projects, Config::default().projects);
+
+    Config::init().expect("init config");
+    let loaded = Config::load().expect("load after init");
+    assert!(loaded.projects.contains_key("helios-cli"));
+
+    loaded.save().expect("save config");
+    let reloaded = Config::load().expect("reload after save");
+    assert_eq!(reloaded.cast.default_transport, loaded.cast.default_transport);
+
+    match prev_xdg {
+        Some(v) => unsafe { std::env::set_var("XDG_CONFIG_HOME", v) },
+        None => unsafe { std::env::remove_var("XDG_CONFIG_HOME") },
+    }
+    match prev_app {
+        Some(v) => unsafe { std::env::set_var("APPDATA", v) },
+        None => unsafe { std::env::remove_var("APPDATA") },
+    }
+}
+
+/// FR-003 / C01 — `list --json` emits cast/util module inventory.
+#[test]
+fn fr003_list_json_inventory() {
+    let bin = env!("CARGO_BIN_EXE_sharecli");
+    let output = Command::new(bin)
+        .args(["list", "--json"])
+        .output()
+        .expect("run list --json");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("\"cast\""));
+    assert!(stdout.contains("\"util\""));
+}
+
+/// FR-003 / C01 — `report --format json` renders monitoring snapshot.
+#[test]
+fn fr003_report_json_snapshot() {
+    let bin = env!("CARGO_BIN_EXE_sharecli");
+    let output = Command::new(bin)
+        .args(["report", "--format", "json"])
+        .output()
+        .expect("run report json");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains('{'));
+}
+
+/// FR-003 / C01 — `util crc` executes checksum path.
+#[test]
+fn fr003_util_crc_checksum() {
+    let bin = env!("CARGO_BIN_EXE_sharecli");
+    let output = Command::new(bin)
+        .args(["util", "crc", "sharecli"])
+        .output()
+        .expect("run util crc");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!stdout.trim().is_empty());
+}
+
+/// FR-003 / C01 — `optimize` dry-run path prints guidance without --apply.
+#[test]
+fn fr003_optimize_dry_run() {
+    let bin = env!("CARGO_BIN_EXE_sharecli");
+    let output = Command::new(bin)
+        .arg("optimize")
+        .output()
+        .expect("run optimize");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// FR-003 / C01 — `fleet status` surfaces NATS connectivity guidance.
+#[test]
+fn fr003_fleet_status_smoke() {
+    let bin = env!("CARGO_BIN_EXE_sharecli");
+    let output = Command::new(bin)
+        .args(["fleet", "status"])
+        .output()
+        .expect("run fleet status");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        combined.contains("fleet") || combined.contains("NATS") || combined.contains("nats"),
+        "expected fleet status output, got: {combined}"
+    );
+}

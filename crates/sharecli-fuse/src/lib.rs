@@ -282,3 +282,35 @@ pub fn mount(mountpoint: &Path, backing: &Path) -> anyhow::Result<()> {
         anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    /// FR-003 / C01 — non-FUSE targets return a stable unsupported error.
+    #[test]
+    fn fr003_mount_stub_on_unsupported_platform() {
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        {
+            let err = mount(Path::new("/mnt"), Path::new("/tmp")).unwrap_err();
+            assert!(
+                err.to_string().contains("only supported"),
+                "expected platform stub error, got: {err}"
+            );
+        }
+    }
+
+    /// FR-003 / C01 — Linux/macOS mount path is exercised (FUSE may fail without privileges).
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[test]
+    fn fr003_mount_without_fuse_privilege_surfaces_error() {
+        let mountpoint = tempfile::tempdir().expect("mountpoint tempdir");
+        let backing = tempfile::tempdir().expect("backing tempdir");
+        let err = mount(mountpoint.path(), backing.path()).unwrap_err();
+        assert!(
+            !err.to_string().is_empty(),
+            "mount should fail without FUSE privileges"
+        );
+    }
+}
