@@ -4415,6 +4415,8 @@ dependencies = [
  "anyhow",
  "fuser",
  "libc",
+ "tempfile",
+ "thiserror 2.0.18",
  "tracing",
 ]
 
@@ -4439,7 +4441,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
 ]
-
 
 [[package]]
 name = "sharecli-mesh"
