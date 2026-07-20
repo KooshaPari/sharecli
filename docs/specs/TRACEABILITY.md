@@ -13,8 +13,8 @@
 4. The `Status` column tracks whether the FR has at least one passing
    acceptance test.
 
-**Phase:** 3 (spec+test+traceability e2e)
-**Last updated:** 2026-07-19 (T-670 FR SSOT gate)
+**Phase:** 3+ runtime thesis (FR-006..011) · operator AuthN (FR-012)
+**Last updated:** 2026-07-19 (thesis re-enum from origin export)
 
 ---
 
@@ -22,14 +22,20 @@
 
 | FR ID   | Title                                | Source                                                                                       | Tests                                                                                              | Status |
 |---------|--------------------------------------|----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|--------|
-| FR-001  | Managed Process Lifecycle            | `src/main.rs:38-91`, `src/commands/mod.rs:25-138`, `src/runtime.rs:44-156`                  | `tests/fr001_process_lifecycle.rs`, `tests/fr001_stop_filter.rs`                                  | ACCEPTED |
-| FR-002  | TOML Configuration Management        | `src/config.rs:1-119`, `src/commands/mod.rs:194-222`                                         | `tests/fr002_config_load.rs`, `tests/fr002_config_init.rs`                                         | ACCEPTED |
-| FR-003  | Project Registry                     | `src/config.rs:8-68`, `src/commands/mod.rs:225-313`                                          | `tests/fr003_project_registry.rs`, `tests/fr003_project_discover.rs`                              | ACCEPTED |
-| FR-004  | Process & Pool Health Status         | `src/runtime.rs:152-356`, `src/monitoring.rs:1-118`, `src/commands/mod.rs:140-191`, `:325-396` | `tests/fr004_status_health.rs`, `tests/fr004_pool_status.rs`                                      | ACCEPTED |
-| FR-005  | Per-Project Resource Limits          | `src/runtime.rs:358-455`, `src/commands/mod.rs:398-447`                                     | `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs`                                  | ACCEPTED |
+| FR-001  | Managed Process Lifecycle            | `src/main.rs`, `src/commands/mod.rs`, `src/runtime.rs`                                      | `tests/fr001_process_lifecycle.rs`, `tests/fr001_stop_filter.rs`                                  | ACCEPTED |
+| FR-002  | TOML Configuration Management        | `src/config.rs`, `src/commands/mod.rs`                                                       | `tests/fr002_config_load.rs`, `tests/fr002_config_init.rs`                                         | ACCEPTED |
+| FR-003  | Project Registry                     | `src/config.rs`, `src/commands/mod.rs`                                                       | `tests/fr003_project_registry.rs`, `tests/fr003_project_discover.rs`                              | ACCEPTED |
+| FR-004  | Process & Pool Health Status         | `src/runtime.rs`, `src/monitoring.rs`, `src/commands/mod.rs`                                 | `tests/fr004_status_health.rs`, `tests/fr004_pool_status.rs`                                      | ACCEPTED |
+| FR-005  | Per-Project Resource Limits          | `src/runtime.rs`, `src/commands/mod.rs`                                                      | `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs`                                  | ACCEPTED |
+| FR-006  | Agent Detection (proc scan)          | `crates/sharecli-core/src/detect.rs`, `proc_scan.rs`                                         | `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`                                      | ACCEPTED |
+| FR-007  | Resource & Syscall-Relevant Watch    | `sharecli-core`, `sharecli-fleet`, `src/monitoring.rs`                                       | `tests/fr007_resource_thermal_watch.rs`                                                           | ACCEPTED |
+| FR-008  | Speculative Coalesce / Debounce / Queue | `sharecli-ipc`, `sharecli-core` Hypervisor                                                | `tests/fr008_coalesce_mesh.rs`                                                                    | ACCEPTED |
+| FR-009  | FUSE IO Intercept                    | `crates/sharecli-fuse`                                                                       | `tests/fr009_fuse_intercept.rs`                                                                   | ACCEPTED |
+| FR-010  | Agent Mesh / Shared Substrate        | `crates/sharecli-fleet/src/registry.rs`                                                      | `tests/fr010_mesh_substrate.rs`                                                                   | ACCEPTED |
+| FR-011  | Thermal Contention Gate              | `sharecli-fleet` thermal, `sharecli-core` FakeThermalGate                                    | `tests/fr011_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`                                     | ACCEPTED |
 | FR-012  | Serve HTTP Federated AuthN           | `src/serve_auth.rs`, `src/config.rs` (`ServeJwtConfig`), `src/commands/serve.rs`            | `tests/fr012_serve_jwt_auth.rs`                                                                   | ACCEPTED |
 
-**Coverage summary:** 6 FRs mapped (FR-001..005 + FR-012), acceptance tests present, 0 gaps.
+**Coverage summary:** 12 FRs mapped (FR-001..012), acceptance tests present, 0 gaps.
 
 ---
 
@@ -85,10 +91,55 @@
 | AC-005.4  | `tests/fr005_resource_check.rs`    | `fr005_resource_check_overall_ok_logic`  |
 | AC-005.5  | `tests/fr005_resource_check.rs`    | `fr005_check_prints_status_lines`        |
 
+### FR-006 — Agent Detection
+
+| AC        | Test file                          | Test function                            |
+|-----------|------------------------------------|------------------------------------------|
+| AC-006.1..3 | `tests/fr006_agent_detection.rs` | (see file)                               |
+| AC-006.4..6 | `tests/fr006_proc_tree.rs`       | (see file)                               |
+
+### FR-007 — Resource Watch
+
+| AC        | Test file                                | Notes |
+|-----------|------------------------------------------|-------|
+| AC-007.1..3 | `tests/fr007_resource_thermal_watch.rs` | thermal as watch signal |
+
+### FR-008 — Coalesce
+
+| AC        | Test file                        | Notes |
+|-----------|----------------------------------|-------|
+| AC-008.1..4 | `tests/fr008_coalesce_mesh.rs` | debounce/queue ACs TBD |
+
+### FR-009 — FUSE
+
+| AC        | Test file                        | Notes |
+|-----------|----------------------------------|-------|
+| AC-009.1..2 | `tests/fr009_fuse_intercept.rs` | no privileged mount |
+
+### FR-010 — Mesh
+
+| AC        | Test file                        | Notes |
+|-----------|----------------------------------|-------|
+| AC-010.1..3 | `tests/fr010_mesh_substrate.rs` | registry primitives |
+
+### FR-011 — Thermal Gate
+
+| AC        | Test file                     | Notes |
+|-----------|-------------------------------|-------|
+| AC-011.1..3 | `tests/fr011_thermal_gate.rs` | also AC-008.3 |
+
+### FR-012 — Serve JWT AuthN
+
+| AC        | Test file                        | Test function |
+|-----------|----------------------------------|---------------|
+| AC-012.1..3 | `tests/fr012_serve_jwt_auth.rs` | (see file) |
+
 ---
 
 ## Change log
 
+- **2026-07-19 — thesis re-enum:** Published FR-006..FR-011 from origin export
+  (paste + agent-mesh WBS + harness). Traceability matrix expanded to 12 FRs.
 - **2026-07-12 — T-220:** Landed `tests/fr004_status_health.rs` + `tests/fr004_pool_status.rs` (AC-004.1..004.5).
 - **2026-07-12 — T-210:** Landed `tests/fr003_project_registry.rs` + `tests/fr003_project_discover.rs` (AC-003.1..003.5). Also T-260 claim-lock + T-270 loop budgets.
 - **2026-07-12 — T-200:** Landed `tests/fr002_config_init.rs` + `tests/fr002_config_load.rs` (AC-002.1..002.5). FR-002 Status remains ACCEPTED with files on disk. Governance: `docs/ops/governance/{WBS-PHASED,GAP-QA-MATRIX}.md`.

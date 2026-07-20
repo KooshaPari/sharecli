@@ -8,8 +8,9 @@
 
 - IDs are stable: `FR-NNN`. Do not renumber published entries.
 - Each FR below uses: title, role story, MUST statement, acceptance test refs.
-- Phase 3 covers **FR-001..FR-005** (supervise surface). **FR-006..FR-008**
-  capture the OS-adjacent runtime thesis (detect / watch / coalesce+mesh).
+- Phase 3 covers **FR-001..FR-005** (supervise surface). **FR-006..FR-011**
+  capture the OS-adjacent runtime thesis (detect / watch / coalesce /
+  FUSE / mesh / thermal). **FR-012** is serve JWT AuthN (operator surface).
 - PRs that change behavior MUST cite at least one `FR-NNN` in the PR body.
 
 **Legacy alias map** (pre-FR-NNN root doc → current IDs)
@@ -160,22 +161,82 @@ FUSE intercept is enabled, IO paths used by coalesce.
 
 ---
 
-## FR-008 — Speculative Coalesce & Agent Mesh
+## FR-008 — Speculative Coalesce / Debounce / Queue
 
 **As a** host running many agents on overlapping worktrees, **I want**
-redundant concurrent IO/work coalesced and coordinated on a shared substrate,
-**so that** agents do not thrash the same files/locks unnecessarily.
+redundant concurrent tool invocations coalesced (and mutating / `nocache`
+work debounced or queued), **so that** agents do not thrash the same
+files / locks unnecessarily.
 
-**MUST:** Provide coalesce primitives (for example CoalesceCache) and a mesh /
-substrate coordination path under contention; thermal gate before speculative
-work.
+**MUST:** Provide Lock-Wait-Cache coalesce (`CoalesceCache`) for identical
+concurrent invocations; debounce / queue paths for mutating or `nocache`
+args MUST exist as documented product intent (implementation may land
+incrementally behind the same FR).
 
 **Acceptance:**
 
-- `tests/fr008_coalesce_mesh.rs` — AC-008.1..AC-008.4
+- `tests/fr008_coalesce_mesh.rs` — AC-008.1..AC-008.4 (coalesce + gate wiring)
+- Debounce / queue: tracked in `sharecli-ipc` crate docs until dedicated ACs land
 
-**Source:** `crates/sharecli-ipc`, `crates/sharecli-core`, `crates/sharecli-fuse`  
-**Detail:** PRD E3.
+**Source:** `crates/sharecli-ipc`, `crates/sharecli-core` (`Hypervisor::run`)  
+**Detail:** PRD E3; origin harness coalesce / debounce / queue strategies.
+
+---
+
+## FR-009 — FUSE IO Intercept
+
+**As a** multi-agent host operator, **I want** an optional FUSE attach point
+over agent cwd / build-cache paths, **so that** sharecli can meter IO and
+extend shared-read coalesce without wrapping vendor binaries.
+
+**MUST:** Provide `InterceptFs` / `mount` on Linux and macOS as the hypervisor
+IO intercept attach point; unsupported platforms MUST fail loudly (no silent
+fallback). Full coalesce / write-serialize hooks MAY land incrementally.
+
+**Acceptance:**
+
+- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.2
+
+**Source:** `crates/sharecli-fuse`  
+**Detail:** PRD E3.3; origin Tier-3 FUSE.
+
+---
+
+## FR-010 — Agent Mesh / Shared Substrate
+
+**As an** operator of many concurrent agents, **I want** mesh / substrate
+coordination state (membership, registry subjects), **so that** agents share
+a coordination surface without a full Kanban / BFT stack in-product.
+
+**MUST:** Expose mesh membership or substrate coordination primitives
+(for example `FleetRegistry` subject namespace / device records); full mesh
+orchestration (tmux inject, consensus, blackboard) is out-of-band / deferred.
+
+**Acceptance:**
+
+- `tests/fr010_mesh_substrate.rs` — AC-010.1..AC-010.3
+
+**Source:** `crates/sharecli-fleet` (`FleetRegistry`, `DeviceRecord`)  
+**Detail:** PRD E1.2; agent-mesh WBS Phase 11–12.
+
+---
+
+## FR-011 — Thermal Contention Gate
+
+**As a** host under VM / CPU pressure, **I want** speculative coalesce gated
+by thermal level, **so that** Red pressure refuses new speculative work
+loudly instead of thrashing.
+
+**MUST:** Map host pressure to Green / Yellow / Red and gate speculative
+coalesce (`Allow` / `Warn` / `Refuse`).
+
+**Acceptance:**
+
+- `tests/fr011_thermal_gate.rs` — AC-011.1..AC-011.3
+- Overlap: `tests/fr007_resource_thermal_watch.rs`, `tests/fr008_coalesce_mesh.rs` (Refuse path)
+
+**Source:** `crates/sharecli-fleet` (`ThermalGovernor`), `crates/sharecli-core` (`FakeThermalGate`)  
+**Detail:** PRD E2.2.
 
 ---
 

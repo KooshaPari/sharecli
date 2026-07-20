@@ -16,8 +16,9 @@ for the CLI surface.
 - The `Source` column points at the canonical Rust source file(s) that implement
   the requirement. The `Test` column points at the acceptance test file(s) that
   cover it.
-- Phase 3 only covers FR-001..FR-005. New FRs MAY be appended in later phases
-  (FR-006, FR-007, …) but MUST NOT renumber or rewrite existing entries.
+- Phase 3 only covers FR-001..FR-005. Runtime thesis FRs FR-006..FR-011 and
+  operator FR-012 MAY be appended but MUST NOT renumber or rewrite existing
+  entries.
 
 ---
 
@@ -172,6 +173,138 @@ project are within those limits.
 
 ---
 
+## FR-006 — Agent Detection (proc scan, no bin wrap)
+
+**Statement:** The runtime MUST discover agents via process / pattern scan
+(including process-tree ancestor walk) and MUST NOT require wrapping or
+replacing vendor agent executables as the primary detection path.
+
+**Source:**
+
+- `crates/sharecli-core/src/detect.rs` — known-agent pattern registry
+- `crates/sharecli-core/src/proc_scan.rs` — `/proc` + ancestor walk
+- `crates/sharecli-core` Hypervisor — observation path (direct argv)
+
+**Acceptance Criteria:**
+
+- **AC-006.1:** Known agent names / path basenames resolve to agent families.
+- **AC-006.2:** Ordinary shells / tools are not classified as agents.
+- **AC-006.3:** Hypervisor executes argv directly (no wrap).
+- **AC-006.4:** Process scan lists agent PIDs only.
+- **AC-006.5:** Child tool under an agent walks to the agent family.
+- **AC-006.6:** Human tool under a non-agent shell is not an agent path.
+
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`
+
+---
+
+## FR-007 — Resource & Syscall-Relevant Watch
+
+**Statement:** The runtime MUST expose resource watch signals (CPU / MEM /
+Net / FD at minimum) and, when FUSE intercept is enabled, IO paths used by
+coalesce. Thermal watch signals MAY surface via FR-011.
+
+**Source:**
+
+- `crates/sharecli-core`, `crates/sharecli-fleet`, `src/monitoring.rs`
+
+**Acceptance Criteria:**
+
+- **AC-007.1:** Mock thermal levels are visible via poll (watch signal).
+- **AC-007.2:** Fake thermal gate decisions are stable for a level.
+- **AC-007.3:** Idle heuristic encodes CPU + uptime watch signal.
+
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`
+
+---
+
+## FR-008 — Speculative Coalesce / Debounce / Queue
+
+**Statement:** Identical concurrent invocations MUST coalesce via
+Lock-Wait-Cache (`CoalesceCache`). Debounce / queue for mutating or
+`nocache` args are product MUST intent; dedicated ACs MAY land as those
+APIs harden.
+
+**Source:**
+
+- `crates/sharecli-ipc` — `command_key`, `CoalesceCache`
+- `crates/sharecli-core` — `Hypervisor::run`
+
+**Acceptance Criteria:**
+
+- **AC-008.1:** Identical argv / cwd / env → same `command_key`; different argv → different.
+- **AC-008.2:** `CoalesceCache::with_lock` runs the miss path once per key.
+- **AC-008.3:** Thermal `Refuse` fails loudly before speculative coalesce / spawn.
+- **AC-008.4:** Second identical `Allow` run is served from coalesce cache.
+
+**Test refs:** `tests/fr008_coalesce_mesh.rs`
+
+---
+
+## FR-009 — FUSE IO Intercept
+
+**Statement:** On Linux and macOS, sharecli MUST provide a FUSE attach point
+(`InterceptFs` / `mount`) over a backing path as the hypervisor IO intercept
+extension point. Other platforms MUST return a clear unsupported error.
+
+**Source:**
+
+- `crates/sharecli-fuse/src/lib.rs` — `InterceptFs`, `mount`
+
+**Acceptance Criteria:**
+
+- **AC-009.1:** `InterceptFs::new` constructs over an existing backing path
+  without requiring a privileged mount (unit / pure construct).
+- **AC-009.2:** `mount` is publicly exported; on unsupported platforms it
+  returns an error mentioning unsupported (no silent success).
+
+**Test refs:** `tests/fr009_fuse_intercept.rs`
+
+---
+
+## FR-010 — Agent Mesh / Shared Substrate
+
+**Statement:** sharecli MUST expose mesh / substrate coordination primitives
+for participating hosts (registry subject namespace + device records). Full
+mesh orchestration beyond registry / membership is deferred.
+
+**Source:**
+
+- `crates/sharecli-fleet/src/registry.rs` — `FleetRegistry`, `DeviceRecord`
+
+**Acceptance Criteria:**
+
+- **AC-010.1:** Disconnected registry uses default subject prefix
+  `sharecli.fleet`.
+- **AC-010.2:** `subject_for(device_id)` yields `{prefix}.devices.{device_id}`.
+- **AC-010.3:** `DeviceRecord` JSON round-trips with required keys; register
+  without NATS fails loudly (no silent publish).
+
+**Test refs:** `tests/fr010_mesh_substrate.rs`
+
+---
+
+## FR-011 — Thermal Contention Gate
+
+**Statement:** Host pressure MUST map to Green / Yellow / Red and gate
+speculative coalesce via Allow / Warn / Refuse semantics.
+
+**Source:**
+
+- `crates/sharecli-fleet/src/thermal.rs` — `ThermalGovernor`, `ThermalLevel`
+- `crates/sharecli-core` — `FakeThermalGate`, `ThermalDecision`
+
+**Acceptance Criteria:**
+
+- **AC-011.1:** `ThermalGovernor::with_mock` returns the configured level on poll.
+- **AC-011.2:** `FakeThermalGate` Refuse / Allow decisions are stable.
+- **AC-011.3:** Hypervisor Refuse path errors with thermally throttled
+  (see also AC-008.3).
+
+**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`
+
+---
+
 ## FR-012 — Serve HTTP Federated AuthN
 
 **Statement:** When `sharecli serve` is configured with `auth_mode = "jwt"` (or an
@@ -198,7 +331,7 @@ against the configured JWKS. `/healthz` and `/readyz` MUST remain public.
 
 ---
 
-## NFR Notes (out of scope for FR-001..FR-005 / FR-012)
+## NFR Notes
 
 - **NFR-001 Platform Support:** The CLI MUST build and run on Linux, macOS,
   and Windows. Process-pool tests are gated with `#[cfg(unix)]` /
@@ -208,6 +341,5 @@ against the configured JWKS. `/healthz` and `/readyz` MUST remain public.
 - **NFR-003 Error Handling:** All commands MUST return `anyhow::Result<()>`
   and MUST NOT panic on missing config (FR-002 covers the missing-file case
   by returning `Config::default()`).
-
-These NFRs are documented for context only; acceptance tests for them will
-land in a later phase (FR-006+).
+- **NFR-004 Eval boundary:** Harbor soak is not a sharecli product acceptance
+  criterion (ADR 0002).
