@@ -1,7 +1,7 @@
 //! FR-006 — `sharecli proc` host agent inventory CLI.
 
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Result};
 use serde::Serialize;
@@ -41,11 +41,7 @@ pub fn filter_watched_agents(
     if !filter.active() {
         return watched.to_vec();
     }
-    watched
-        .iter()
-        .filter(|row| agent_row_matches_filter(row, filter))
-        .cloned()
-        .collect()
+    watched.iter().filter(|row| agent_row_matches_filter(row, filter)).cloned().collect()
 }
 
 fn agent_row_matches_filter(row: &DetectedAgentWatch, filter: &ProcFilter) -> bool {
@@ -63,10 +59,7 @@ fn agent_row_matches_filter(row: &DetectedAgentWatch, filter: &ProcFilter) -> bo
 }
 
 fn rss_map_from_watched(watched: &[DetectedAgentWatch]) -> HashMap<u32, u64> {
-    watched
-        .iter()
-        .map(|row| (row.agent.pid, row.resource.mem_rss_bytes))
-        .collect()
+    watched.iter().map(|row| (row.agent.pid, row.resource.mem_rss_bytes)).collect()
 }
 
 /// Apply filters to agent-rooted forests (family on root; min-rss via live samples).
@@ -133,6 +126,26 @@ pub struct AgentProcSnapshot {
 pub struct AgentTreeSnapshot {
     pub forests: Vec<AgentTreeNodeJson>,
     pub roots: usize,
+}
+
+/// One NDJSON watch line for flat inventory (`proc --watch --json`, AC-006.18).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AgentProcNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: AgentProcSnapshot,
+}
+
+/// One NDJSON watch line for tree inventory (`proc --tree --watch --json`, AC-006.18).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AgentTreeNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: AgentTreeSnapshot,
+}
+
+fn unix_ts_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -221,15 +234,8 @@ fn render_tree_node(node: &AgentTreeNode, prefix: &str, is_last: bool) {
     } else {
         "├── ".to_string()
     };
-    let family = node
-        .family
-        .map(|f| format!("{f} "))
-        .unwrap_or_else(String::new);
-    println!(
-        "{prefix}{connector}[{pid}] {family}{comm}",
-        pid = node.pid,
-        comm = node.comm
-    );
+    let family = node.family.map(|f| format!("{f} ")).unwrap_or_else(String::new);
+    println!("{prefix}{connector}[{pid}] {family}{comm}", pid = node.pid, comm = node.comm);
     let child_prefix = if prefix.is_empty() {
         String::new()
     } else {
@@ -257,7 +263,7 @@ pub fn render_agent_tree(forests: &[AgentTreeNode]) {
 }
 
 /// Render one host agent inventory snapshot (text or JSON).
-pub fn render_once(json: bool, tree: bool, filter: &ProcFilter) -> Result<()> {
+pub fn render_once(json: bool, tree: bool, filter: &ProcFilter, ndjson: bool) -> Result<()> {
     let scanned_agents = scan_host_agents();
     let thermal = ThermalGovernor::new().poll()?;
     let gate = gate_status_snapshot(thermal, scanned_agents.len());
@@ -271,6 +277,11 @@ pub fn render_once(json: bool, tree: bool, filter: &ProcFilter) -> Result<()> {
             roots: forests.len(),
         };
         if json {
+            if ndjson {
+                let line = AgentTreeNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
+                println!("{}", serde_json::to_string(&line)?);
+                return Ok(());
+            }
             println!("{}", serde_json::to_string_pretty(&snap)?);
             return Ok(());
         }
@@ -287,6 +298,11 @@ pub fn render_once(json: bool, tree: bool, filter: &ProcFilter) -> Result<()> {
             watched: watched.len(),
             gate,
         };
+        if ndjson {
+            let line = AgentProcNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
+            println!("{}", serde_json::to_string(&line)?);
+            return Ok(());
+        }
         println!("{}", serde_json::to_string_pretty(&snap)?);
         return Ok(());
     }
@@ -305,19 +321,32 @@ pub async fn run(
 ) -> Result<()> {
     let filter = ProcFilter::from_cli(family, min_rss)?;
     match watch {
-        None => render_once(json, tree, &filter),
+        None => render_once(json, tree, &filter, false),
         Some(interval_secs) => {
             if interval_secs == 0 {
                 bail!("--watch interval must be >= 1 second");
             }
+            let ndjson = json;
             loop {
-                print!("\x1b[2J\x1b[H");
-                render_once(json, tree, &filter)?;
-                println!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_once(json, tree, &filter, ndjson)?;
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                } else {
+                    println!("{footer}");
+                }
                 tokio::select! {
                     _ = sleep(Duration::from_secs(interval_secs)) => {},
                     _ = tokio::signal::ctrl_c() => {
-                        println!("\nExiting watch mode.");
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
                         break;
                     }
                 }
@@ -382,26 +411,38 @@ mod tests {
     }
 
     #[test]
+    fn ndjson_line_includes_ts_and_agents() {
+        let line = AgentProcNdjsonLine {
+            ts: 1_750_000_000,
+            snapshot: AgentProcSnapshot {
+                agents: vec![],
+                scanned: 0,
+                watched: 0,
+                gate: sharecli_fleet::GateStatusSnapshot {
+                    thermal_pressure: "GREEN".into(),
+                    detected_agents: 0,
+                    agent_total_rss_bytes: 0,
+                    agent_contention: "OK".into(),
+                    gate_decision: "ADMIT".into(),
+                },
+            },
+        };
+        let json = serde_json::to_string(&line).expect("serialize");
+        assert!(json.contains("\"ts\":1750000000"));
+        assert!(json.contains("\"agents\":[]"));
+    }
+
+    #[test]
     fn tree_json_from_fixture() {
         let src = FakeProcSource::new(vec![
-            ProcSnapshot {
-                pid: 1,
-                ppid: 0,
-                comm: "init".into(),
-                cmdline: vec![],
-            },
+            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![] },
             ProcSnapshot {
                 pid: 50,
                 ppid: 1,
                 comm: "cursor-agent".into(),
                 cmdline: vec!["cursor-agent".into()],
             },
-            ProcSnapshot {
-                pid: 51,
-                ppid: 50,
-                comm: "node".into(),
-                cmdline: vec!["node".into()],
-            },
+            ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()] },
         ]);
         let forests = sharecli_fleet::build_agent_forests(&src);
         let snap = AgentTreeSnapshot {
