@@ -216,8 +216,12 @@ replacing vendor agent executables as the primary detection path.
 - **AC-006.14:** Ambiguous agent `comm` names (`forge`, `goose`, `gemini`) require
   cmdline fingerprint markers in [`match_known_agent`](crates/sharecli-fleet/src/detect.rs)
   to avoid false positives from unrelated tooling.
+- **AC-006.15:** `sharecli proc --watch N` (N ≥ 1) clears the terminal and
+  re-renders the host agent inventory every N seconds until Ctrl-C; MUST honor
+  `--json` (pretty JSON each refresh) and print a `[watch]` footer with the
+  refresh interval.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`
 
 ---
 

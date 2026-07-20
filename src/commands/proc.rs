@@ -1,12 +1,15 @@
 //! FR-006 — `sharecli proc` host agent inventory CLI.
 
-use anyhow::Result;
+use std::time::Duration;
+
+use anyhow::{bail, Result};
 use serde::Serialize;
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
     format_gate_status_section, format_rss_bytes, gate_status_snapshot, scan_host_agents,
     watch_detected_agents, DetectedAgentWatch,
 };
+use tokio::time::sleep;
 
 /// One detected agent row for text/JSON surfaces (AC-006.11).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -61,20 +64,14 @@ pub fn render_agent_inventory(watched: &[DetectedAgentWatch], scanned: usize) {
     if watched.is_empty() {
         println!("No known agent processes detected on this host.");
         if scanned > 0 {
-            println!(
-                "\n({scanned} agent(s) omitted — process exited before resource sample)"
-            );
+            println!("\n({scanned} agent(s) omitted — process exited before resource sample)");
         }
         return;
     }
     println!("{:<8} {:<16} {:<10} {:<8} COMM", "PID", "FAMILY", "RSS", "FD");
     println!("{}", "-".repeat(56));
     for row in watched {
-        let fd = row
-            .resource
-            .fd_count
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| "-".into());
+        let fd = row.resource.fd_count.map(|n| n.to_string()).unwrap_or_else(|| "-".into());
         println!(
             "{:<8} {:<16} {:<10} {:<8} {}",
             row.agent.pid,
@@ -93,8 +90,8 @@ pub fn render_agent_inventory(watched: &[DetectedAgentWatch], scanned: usize) {
     println!("\nTotal: {} agent process(es)", watched.len());
 }
 
-/// `sharecli proc` — list host-detected agents with live RSS/FD samples.
-pub fn run(json: bool) -> Result<()> {
+/// Render one host agent inventory snapshot (text or JSON).
+pub fn render_once(json: bool) -> Result<()> {
     let scanned_agents = scan_host_agents();
     let watched = watch_detected_agents(&scanned_agents);
     let thermal = ThermalGovernor::new().poll()?;
@@ -112,6 +109,31 @@ pub fn run(json: bool) -> Result<()> {
     render_agent_inventory(&watched, scanned_agents.len());
     print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
     Ok(())
+}
+
+/// `sharecli proc` — list host-detected agents with live RSS/FD samples.
+pub async fn run(json: bool, watch: Option<u64>) -> Result<()> {
+    match watch {
+        None => render_once(json),
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                bail!("--watch interval must be >= 1 second");
+            }
+            loop {
+                print!("\x1b[2J\x1b[H");
+                render_once(json)?;
+                println!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                tokio::select! {
+                    _ = sleep(Duration::from_secs(interval_secs)) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        println!("\nExiting watch mode.");
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 /// Host inventory from a proc source (used by `ps --all` tests).
@@ -132,11 +154,7 @@ mod tests {
     #[test]
     fn agent_row_from_watch_formats_rss() {
         let row = agent_row_from_watch(&DetectedAgentWatch {
-            agent: DetectedAgent {
-                pid: 42,
-                family: "claude",
-                comm: "claude".into(),
-            },
+            agent: DetectedAgent { pid: 42, family: "claude", comm: "claude".into() },
             resource: sharecli_fleet::AgentResourceSample {
                 mem_rss_bytes: 52_428_800,
                 fd_count: Some(10),
@@ -158,5 +176,15 @@ mod tests {
         assert_eq!(scanned, 1);
         assert_eq!(watched.len(), 0, "fixture PID is not live on host");
         let _ = watched;
+    }
+
+    #[test]
+    fn zero_watch_interval_is_rejected() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let err = rt.block_on(super::run(false, Some(0))).expect_err("watch 0 MUST fail");
+        assert!(
+            err.to_string().contains(">= 1"),
+            "error MUST mention minimum interval; got: {err}"
+        );
     }
 }
