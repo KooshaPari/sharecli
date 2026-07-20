@@ -263,13 +263,20 @@ replacing vendor agent executables as the primary detection path.
   inventory (`pid,family,comm,mem_rss_bytes,mem_rss,fd_count`) after
   `--family`, `--min-rss`, `--sort`, and `--limit`; empty inventory emits the
   header row only; fields with commas or quotes MUST be escaped; `--csv` MUST
-  NOT combine with `--json`, `--tree`, `--watch`, or `--pid`.
+  NOT combine with `--json`, `--watch`, or `--pid` (without `--tree`).
 - **AC-006.25:** `sharecli proc --ppid N` keeps flat inventory rows and `--tree`
   root forests whose agent parent PID equals `N`, composed with `--family`,
   `--min-rss`, `--sort`, `--limit`, `--json`, and `--csv`; `--ppid` MUST NOT
   combine with `--pid`.
+- **AC-006.26:** `sharecli proc --tree --csv` emits RFC 4180-style CSV of agent
+  process forests with pre-order rows
+  (`root_index,depth,pid,ppid,family,comm,mem_rss_bytes,mem_rss,fd_count`) after
+  `--family`, `--min-rss`, `--ppid`, `--sort`, and `--limit`; `root_index`
+  separates forests, `depth` is 0 at each agent root; empty forests emit the
+  header row only; `--tree --csv` MUST NOT combine with `--json`, `--watch`, or
+  `--pid`.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`, `tests/fr006_proc_csv.rs`, `tests/fr006_proc_ppid.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`, `tests/fr006_proc_csv.rs`, `tests/fr006_proc_ppid.rs`, `tests/fr006_proc_tree_csv.rs`
 
 ---
 

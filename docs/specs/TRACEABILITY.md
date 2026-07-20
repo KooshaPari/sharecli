@@ -113,6 +113,7 @@
 | AC-006.23   | `tests/fr006_proc_pid_detail.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`lookup_proc`) | `sharecli proc --pid N` detail view |
 | AC-006.24   | `tests/fr006_proc_csv.rs`; `src/commands/proc.rs` | `sharecli proc --csv` flat inventory export |
 | AC-006.25   | `tests/fr006_proc_ppid.rs`; `src/commands/proc.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`lookup_proc`) | `sharecli proc --ppid N` parent-PID inventory filter |
+| AC-006.26   | `tests/fr006_proc_tree_csv.rs`; `src/commands/proc.rs` | `sharecli proc --tree --csv` forest inventory CSV export |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch

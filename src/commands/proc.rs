@@ -478,6 +478,52 @@ pub fn csv_escape_field(raw: &str) -> String {
     }
 }
 
+fn append_tree_csv_row(
+    out: &mut String,
+    root_index: usize,
+    depth: u32,
+    node: &AgentTreeNode,
+    rss_by_pid: &HashMap<u32, u64>,
+    fd_by_pid: &HashMap<u32, u64>,
+) {
+    let rss = rss_by_pid.get(&node.pid).copied().unwrap_or(0);
+    let fd = fd_by_pid.get(&node.pid).map(|n| n.to_string()).unwrap_or_default();
+    let family = node.family.map(csv_escape_field).unwrap_or_default();
+    out.push_str(&format!(
+        "{root_index},{depth},{pid},{ppid},{family},{comm},{rss},{mem_rss},{fd}\n",
+        root_index = root_index,
+        depth = depth,
+        pid = node.pid,
+        ppid = node.ppid,
+        family = family,
+        comm = csv_escape_field(&node.comm),
+        rss = rss,
+        mem_rss = csv_escape_field(&format_rss_bytes(rss)),
+        fd = fd,
+    ));
+    for child in &node.children {
+        append_tree_csv_row(out, root_index, depth + 1, child, rss_by_pid, fd_by_pid);
+    }
+}
+
+/// Render agent process forests as CSV (AC-006.26).
+pub fn render_agent_tree_csv(
+    forests: &[AgentTreeNode],
+    rss_by_pid: &HashMap<u32, u64>,
+    fd_by_pid: &HashMap<u32, u64>,
+) -> String {
+    const HEADER: &str = "root_index,depth,pid,ppid,family,comm,mem_rss_bytes,mem_rss,fd_count";
+    let mut out = String::from(HEADER);
+    out.push('\n');
+    for (root_index, root) in forests.iter().enumerate() {
+        append_tree_csv_row(&mut out, root_index, 0, root, rss_by_pid, fd_by_pid);
+    }
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
 /// Render flat agent inventory as CSV (AC-006.24).
 pub fn render_agent_inventory_csv(watched: &[DetectedAgentWatch]) -> String {
     const HEADER: &str = "pid,family,comm,mem_rss_bytes,mem_rss,fd_count";
@@ -607,6 +653,10 @@ pub fn render_once(
             println!("{}", serde_json::to_string_pretty(&snap)?);
             return Ok(());
         }
+        if csv {
+            print!("{}", render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid));
+            return Ok(());
+        }
         render_agent_tree(&forests);
         print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
         return Ok(());
@@ -656,9 +706,6 @@ pub async fn run(
     if csv {
         if json {
             bail!("--csv cannot be combined with --json");
-        }
-        if tree {
-            bail!("--csv cannot be combined with --tree");
         }
     }
     if pid.is_some() && ppid.is_some() {
