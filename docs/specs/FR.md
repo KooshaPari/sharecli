@@ -415,8 +415,15 @@ speculative coalesce via Allow / Warn / Refuse semantics.
 - **AC-011.2:** `FakeThermalGate` Refuse / Allow decisions are stable.
 - **AC-011.3:** Hypervisor Refuse path errors with thermally throttled
   (see also AC-008.3).
+- **AC-011.4:** Production [`Hypervisor`](crates/sharecli-core/src/lib.rs) wraps
+  [`SystemThermalGate`](crates/sharecli-core/src/lib.rs) with
+  [`AgentAwareThermalGate`](crates/sharecli-core/src/lib.rs): live proc-scan agent
+  count escalates Allow→Warn at `warn_at` (default 4) and any decision→Refuse at
+  `refuse_at` (default 8); `sharecli thermal` gate panel uses
+  [`effective_gate_decision`](crates/sharecli-fleet/src/agent_contention.rs) so
+  agent Refuse shows DENY even when thermal is Green.
 
-**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`
+**Test refs:** `tests/fr011_thermal_gate.rs`, `tests/fr011_agent_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`
 
 ---
 

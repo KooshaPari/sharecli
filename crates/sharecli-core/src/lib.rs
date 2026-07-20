@@ -62,6 +62,9 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use sharecli_fleet::agent_contention::{
+    agent_contention_tier, count_host_agents, AgentContentionThresholds, AgentContentionTier,
+};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{
     command_key, has_nocache_arg, CachedResult, CoalesceCache, CoalesceHitKind, QueuePriority,
@@ -139,6 +142,69 @@ impl ThermalGate for SystemThermalGate {
                 ThermalDecision::Allow
             }
         }
+    }
+}
+
+/// Combine hardware thermal gate output with host agent-count contention (FR-011).
+pub fn combine_thermal_agent_decision(
+    thermal: ThermalDecision,
+    agents: AgentContentionTier,
+) -> ThermalDecision {
+    use AgentContentionTier::{Ok as AgentsOk, Refuse as AgentsRefuse, Warn as AgentsWarn};
+    use ThermalDecision::{Allow, Refuse, Warn};
+    match (thermal, agents) {
+        (Refuse, _) | (_, AgentsRefuse) => Refuse,
+        (Allow, AgentsWarn) => Warn,
+        (Allow, AgentsOk) => Allow,
+        (Warn, _) => Warn,
+    }
+}
+
+/// Production gate: thermal governor + live host agent inventory escalation.
+///
+/// Wraps an inner [`ThermalGate`] (typically [`SystemThermalGate`]) and escalates
+/// Allow→Warn or any→Refuse when proc-scan agent count crosses configured thresholds.
+pub struct AgentAwareThermalGate {
+    inner: Arc<dyn ThermalGate>,
+    thresholds: AgentContentionThresholds,
+    agent_count: fn() -> usize,
+}
+
+impl AgentAwareThermalGate {
+    /// Gate with live [`count_host_agents`] on every check.
+    pub fn new(inner: Arc<dyn ThermalGate>, thresholds: AgentContentionThresholds) -> Self {
+        Self::with_agent_count(inner, thresholds, count_host_agents)
+    }
+
+    /// Test/injection hook — supply a deterministic agent counter.
+    pub fn with_agent_count(
+        inner: Arc<dyn ThermalGate>,
+        thresholds: AgentContentionThresholds,
+        agent_count: fn() -> usize,
+    ) -> Self {
+        Self {
+            inner,
+            thresholds,
+            agent_count,
+        }
+    }
+}
+
+impl ThermalGate for AgentAwareThermalGate {
+    fn check(&self) -> ThermalDecision {
+        let base = self.inner.check();
+        let count = (self.agent_count)();
+        let tier = agent_contention_tier(count, self.thresholds);
+        let effective = combine_thermal_agent_decision(base, tier);
+        if tier != AgentContentionTier::Ok && effective != base {
+            warn!(
+                agent_count = count,
+                ?base,
+                ?effective,
+                "thermal-gate: host agent contention escalated spawn decision"
+            );
+        }
+        effective
     }
 }
 
@@ -461,11 +527,16 @@ pub struct Hypervisor {
 
 impl Hypervisor {
     /// Create a new `Hypervisor` with its coalesce cache rooted at `cache_root`
-    /// and the production [`SystemThermalGate`].
+    /// and the production thermal gate (hardware + host agent contention).
     ///
     /// Queue root defaults to `{cache_root}/queue` with `max_concurrent = 1`.
     pub fn new(cache_root: impl Into<PathBuf>) -> Self {
-        Self::with_thermal_gate(cache_root, Arc::new(SystemThermalGate::new()))
+        let inner = Arc::new(SystemThermalGate::new());
+        let gate = Arc::new(AgentAwareThermalGate::new(
+            inner,
+            AgentContentionThresholds::default(),
+        ));
+        Self::with_thermal_gate(cache_root, gate)
     }
 
     /// Create a `Hypervisor` with an explicit [`ThermalGate`] implementation.
@@ -816,6 +887,14 @@ mod tests {
         return vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), msg.to_string()];
     }
 
+    /// Hypervisor with Allow gate and no agent-contention wrapper (unit tests).
+    fn allow_hypervisor(dir: &Path) -> Hypervisor {
+        Hypervisor::with_thermal_gate(
+            dir,
+            Arc::new(FakeThermalGate::new(ThermalDecision::Allow)),
+        )
+    }
+
     // ── Existing cache-coalescing tests ──────────────────────────────────────
 
     /// (a) Running a simple echo command for the first time should succeed with
@@ -823,7 +902,7 @@ mod tests {
     #[tokio::test]
     async fn run_echo_fresh() {
         let dir = TempDir::new().expect("tempdir");
-        let hv = Hypervisor::new(dir.path());
+        let hv = allow_hypervisor(dir.path());
 
         let req =
             SpawnRequest { argv: echo_argv("hello"), cwd: dir.path().to_path_buf(), env: vec![] };
@@ -842,7 +921,7 @@ mod tests {
     #[tokio::test]
     async fn run_echo_coalesces_on_second_call() {
         let dir = TempDir::new().expect("tempdir");
-        let hv = Hypervisor::new(dir.path());
+        let hv = allow_hypervisor(dir.path());
 
         let req =
             SpawnRequest { argv: echo_argv("world"), cwd: dir.path().to_path_buf(), env: vec![] };
@@ -1103,7 +1182,7 @@ mod tests {
     #[tokio::test]
     async fn fuse_io_run_succeeds_with_or_without_intercept() {
         let dir = TempDir::new().expect("tempdir");
-        let hv = Hypervisor::new(dir.path());
+        let hv = allow_hypervisor(dir.path());
 
         let req = SpawnRequest {
             argv: echo_argv("fuse-run"),
@@ -1134,5 +1213,52 @@ mod tests {
         let b = a;
         assert_eq!(a, b);
         assert_ne!(ThermalDecision::Allow, ThermalDecision::Refuse);
+    }
+
+    #[test]
+    fn combine_thermal_agent_decision_escalates_allow_to_warn() {
+        assert_eq!(
+            combine_thermal_agent_decision(ThermalDecision::Allow, AgentContentionTier::Warn),
+            ThermalDecision::Warn
+        );
+    }
+
+    #[test]
+    fn combine_thermal_agent_decision_agent_refuse_overrides_allow() {
+        assert_eq!(
+            combine_thermal_agent_decision(ThermalDecision::Allow, AgentContentionTier::Refuse),
+            ThermalDecision::Refuse
+        );
+    }
+
+    /// FR-011 / AC-011.4 — high agent inventory refuses spawn even when thermal Allows.
+    #[tokio::test(start_paused = true)]
+    async fn agent_aware_gate_refuses_at_contention_limit() {
+        fn eight_agents() -> usize {
+            8
+        }
+        let dir = TempDir::new().expect("tempdir");
+        let inner = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+        let gate = Arc::new(AgentAwareThermalGate::with_agent_count(
+            inner,
+            AgentContentionThresholds::default(),
+            eight_agents,
+        ));
+        let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
+
+        let err = hv
+            .run(SpawnRequest {
+                argv: echo_argv("gated"),
+                cwd: dir.path().to_path_buf(),
+                env: vec![],
+            })
+            .await
+            .expect_err("agent contention Refuse MUST err after retries");
+
+        let msg = err.to_string();
+        assert!(
+            msg.contains("thermally throttled"),
+            "error must mention thermally throttled, got: {msg}"
+        );
     }
 }

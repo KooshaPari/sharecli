@@ -153,6 +153,7 @@
 | AC        | Test file                     | Notes |
 |-----------|-------------------------------|-------|
 | AC-011.1..3 | `tests/fr011_thermal_gate.rs` | also AC-008.3 |
+| AC-011.4 | `tests/fr011_agent_thermal_gate.rs`; `sharecli-core` / `sharecli-fleet` agent_contention unit tests | agent-count thermal escalation |
 
 ### FR-012 — Serve JWT AuthN
 
@@ -164,6 +165,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
+  production Hypervisor gate; proc-scan agent count escalates spawn decisions
+  (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
 - **2026-07-20 — FR-006/007 per-agent PID watch:** `AgentResourceSample` +
   `watch_host_agents` attach RSS/FD samples to proc-scan agents (AC-006.10);
   thermal DetectedAgent panel + `ps --all` show per-agent RSS; `SpawnOutcome::agent_family`.
