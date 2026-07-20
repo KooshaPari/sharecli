@@ -20,6 +20,7 @@ Commands:
   serve         Start the HTTP + WebSocket dashboard server
   report        Print a fleet analytics snapshot (one-shot or live watch mode)
   fleet         Fleet device management
+  mesh          Maildir mesh task-queue operator surface (status / reclaim)
   cast          Cross-machine text injection into registered terminal panes
   proc-compose  process-compose.yaml integration
   completions   Generate shell completion script

@@ -217,17 +217,20 @@ a coordination surface without a full Kanban / BFT stack in-product.
 
 **MUST:** Expose mesh membership or substrate coordination primitives
 (for example `FleetRegistry` subject namespace / device records), Maildir task
-queue, `SmartMerger` (mergiraf optional / git merge-file fallback), and
+queue (including operator `status` / `reclaim_owner` and `sharecli mesh`
+CLI), `SmartMerger` (mergiraf optional / git merge-file fallback), and
 `WorktreePool` (git worktree allocate/release; non-git fails loudly). Full
 mesh orchestration (tmux inject, consensus, blackboard) is out-of-band /
 deferred.
 
 **Acceptance:**
 
-- `tests/fr010_mesh_substrate.rs` — AC-010.1..AC-010.8
+- `tests/fr010_mesh_substrate.rs` — AC-010.1..AC-010.10
+- `tests/fr010_mesh_cli.rs` — AC-010.9..AC-010.10 CLI surface
 
 **Source:** `crates/sharecli-fleet` (`FleetRegistry`, `DeviceRecord`);
-`crates/sharecli-mesh` (`MaildirQueue`, `SmartMerger`, `WorktreePool`)  
+`crates/sharecli-mesh` (`MaildirQueue`, `SmartMerger`, `WorktreePool`);
+`src/commands/mesh.rs` (`sharecli mesh status|reclaim`)  
 **Detail:** PRD E1.2; agent-mesh WBS Phase 11–12.
 
 ---

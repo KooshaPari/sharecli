@@ -9,6 +9,8 @@
 //! AC-010.6 Maildir nack returns task to new/
 //! AC-010.7 SmartMerger git merge-file fallback (clean + conflict)
 //! AC-010.8 WorktreePool allocate/release; non-git fails loudly
+//! AC-010.9 MaildirQueue::status counts ready / in_flight / pending
+//! AC-010.10 MaildirQueue::reclaim_owner returns cur→new for matching owner
 
 use sharecli_fleet::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
 use sharecli_mesh::{MaildirQueue, SmartMerger, WorktreePool, WorktreePoolError};
@@ -212,4 +214,43 @@ fn fr010_worktree_pool_rejects_non_git() {
         matches!(err, WorktreePoolError::NotGitRepo(_)),
         "AC-010.8: non-git MUST be NotGitRepo, got {err}"
     );
+}
+
+/// FR-010 / AC-010.9 — status reports ready / in_flight / pending depths.
+#[test]
+fn fr010_maildir_status_counts() {
+    let dir = TempDir::new().expect("tempdir");
+    let q = MaildirQueue::open(dir.path()).expect("open");
+    q.enqueue(json!({"a": 1}), 2).expect("enq");
+    q.enqueue(json!({"b": 2}), 3).expect("enq");
+    q.claim(Some("worker-a")).expect("claim").expect("some");
+    let st = q.status().expect("status");
+    assert_eq!(st.ready, 1, "AC-010.9: one task remains in new/");
+    assert_eq!(st.in_flight, 1, "AC-010.9: one task in cur/");
+    assert_eq!(st.pending, 2, "AC-010.9: pending = ready + in_flight");
+    assert_eq!(st.path, dir.path());
+}
+
+/// FR-010 / AC-010.10 — reclaim_owner moves matching cur/ tasks back to new/.
+#[test]
+fn fr010_maildir_reclaim_owner() {
+    let dir = TempDir::new().expect("tempdir");
+    let q = MaildirQueue::open(dir.path()).expect("open");
+    let id = q.enqueue(json!({"op": "mesh"}), 1).expect("enq");
+    q.claim(Some("dead-agent")).expect("claim").expect("some");
+    assert_eq!(
+        q.reclaim_owner("other").expect("reclaim other"),
+        0,
+        "AC-010.10: non-matching owner MUST reclaim 0"
+    );
+    assert_eq!(
+        q.reclaim_owner("dead-agent").expect("reclaim"),
+        1,
+        "AC-010.10: matching owner MUST reclaim 1"
+    );
+    assert!(
+        dir.path().join("new").join(&id).exists(),
+        "AC-010.10: reclaimed task MUST land in new/"
+    );
+    assert!(!dir.path().join("cur").join(&id).exists());
 }
