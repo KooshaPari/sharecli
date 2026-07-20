@@ -10,6 +10,7 @@
 //! The event loop in [`run`] polls the [`ThermalGovernor`] on a configurable
 //! interval and redraws until the user presses `q` or `Ctrl-C`.
 
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -24,8 +25,9 @@ use ratatui::{
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
-    effective_gate_decision, format_rss_bytes, global_coalesce_meters, global_slot_queue_meters,
-    watch_host_agents, CoalesceMeters, DetectedAgentWatch, ResourceWatchSample, SlotQueueMeters,
+    build_host_agent_forests, effective_gate_decision, format_rss_bytes, global_coalesce_meters,
+    global_slot_queue_meters, watch_host_agents, AgentTreeNode, CoalesceMeters, DetectedAgentWatch,
+    ResourceWatchSample, SlotQueueMeters,
 };
 use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
@@ -330,6 +332,92 @@ pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'st
     lines
 }
 
+/// Max tree lines rendered in the full-layout DetectedAgent panel (AC-006.22).
+pub const MAX_AGENT_TREE_LINES: usize = 4;
+
+fn format_tree_node_line(node: &AgentTreeNode, rss_by_pid: &HashMap<u32, u64>) -> String {
+    let family = node.family.map(|f| format!("{f} ")).unwrap_or_default();
+    let rss = rss_by_pid
+        .get(&node.pid)
+        .map(|bytes| format!(" RSS {}", format_rss_bytes(*bytes)))
+        .unwrap_or_default();
+    format!("[{}] {family}{}{}", node.pid, rss, format_comm_suffix(&node.comm))
+}
+
+fn format_comm_suffix(comm: &str) -> String {
+    if comm.is_empty() { String::new() } else { format!(" ({comm})") }
+}
+
+fn append_agent_tree_lines(
+    node: &AgentTreeNode,
+    prefix: &str,
+    is_last: bool,
+    rss_by_pid: &HashMap<u32, u64>,
+    lines: &mut Vec<Line<'static>>,
+    budget: &mut usize,
+) {
+    if *budget == 0 {
+        return;
+    }
+    let connector = if prefix.is_empty() {
+        String::new()
+    } else if is_last {
+        "└── ".to_string()
+    } else {
+        "├── ".to_string()
+    };
+    let lead = if prefix.is_empty() { "  " } else { prefix };
+    lines.push(Line::from(format!(
+        "{lead}{connector}{}",
+        format_tree_node_line(node, rss_by_pid)
+    )));
+    *budget -= 1;
+
+    let child_prefix = if prefix.is_empty() {
+        "    ".to_string()
+    } else {
+        format!("{}{}", prefix, if is_last { "    " } else { "│   " })
+    };
+    for (i, child) in node.children.iter().enumerate() {
+        append_agent_tree_lines(
+            child,
+            &child_prefix,
+            i + 1 == node.children.len(),
+            rss_by_pid,
+            lines,
+            budget,
+        );
+        if *budget == 0 {
+            break;
+        }
+    }
+}
+
+/// Lines for the host agent inventory panel — tree when forests are present (AC-006.22).
+pub fn agent_forest_lines(
+    forests: &[AgentTreeNode],
+    watched: &[DetectedAgentWatch],
+    compact: bool,
+) -> Vec<Line<'static>> {
+    if compact || forests.is_empty() {
+        return agent_lines(watched, compact);
+    }
+    let rss_by_pid: HashMap<u32, u64> =
+        watched.iter().map(|row| (row.agent.pid, row.resource.mem_rss_bytes)).collect();
+    let mut lines = vec![Line::from(format!("  Forests: {}", forests.len()))];
+    let mut budget = MAX_AGENT_TREE_LINES;
+    for (i, root) in forests.iter().enumerate() {
+        if budget == 0 {
+            if i < forests.len() {
+                lines.push(Line::from(format!("    … +{} more roots", forests.len() - i)));
+            }
+            break;
+        }
+        append_agent_tree_lines(root, "", true, &rss_by_pid, &mut lines, &mut budget);
+    }
+    lines
+}
+
 /// Short pressure blurb for compact terminals; full sentence otherwise.
 pub fn thermal_blurb(level: ThermalLevel, compact: bool) -> &'static str {
     if compact {
@@ -385,6 +473,8 @@ pub struct App {
     pub maildir_status: Option<MaildirStatus>,
     /// Host agent inventory with per-PID resource watch (FR-006 × FR-007).
     pub detected_agents: Vec<DetectedAgentWatch>,
+    /// Agent-rooted process forests from proc scan (FR-006 / AC-006.22).
+    pub agent_forests: Vec<AgentTreeNode>,
 }
 
 impl App {
@@ -404,6 +494,7 @@ impl App {
             write_serialize_meters: WriteSerializeMeters::default(),
             maildir_status: None,
             detected_agents: Vec::new(),
+            agent_forests: Vec::new(),
         }
     }
 
@@ -425,6 +516,7 @@ impl App {
         self.write_serialize_meters = global_write_serialize_meters();
         self.maildir_status = capture_maildir_status().ok().flatten();
         self.detected_agents = watch_host_agents();
+        self.agent_forests = build_host_agent_forests();
     }
 
     /// Test/golden helper — pin deterministic operator panel values.
@@ -455,6 +547,12 @@ impl App {
     /// Test helper — pin deterministic agent inventory for headless render tests.
     pub fn with_detected_agents(mut self, agents: Vec<DetectedAgentWatch>) -> Self {
         self.detected_agents = agents;
+        self
+    }
+
+    /// Test helper — pin agent process forests for headless render tests (AC-006.22).
+    pub fn with_agent_forests(mut self, forests: Vec<AgentTreeNode>) -> Self {
+        self.agent_forests = forests;
         self
     }
 }
@@ -609,7 +707,7 @@ fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 
 fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " Agents " } else { " Detected Agents " };
-    let lines = agent_lines(&app.detected_agents, compact);
+    let lines = agent_forest_lines(&app.agent_forests, &app.detected_agents, compact);
     let block = Block::default().borders(Borders::ALL).title(title);
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }

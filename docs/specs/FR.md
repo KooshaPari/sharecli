@@ -248,8 +248,14 @@ replacing vendor agent executables as the primary detection path.
   tree root forests after `--family`, `--min-rss`, and `--sort`; JSON/NDJSON
   `agents` / `forests` payloads and `watched` / `roots` counts reflect the cap;
   `--limit 0` MUST fail loudly.
+- **AC-006.22:** `sharecli thermal` full-layout Detected Agents panel renders
+  parent-child process forests from
+  [`build_host_agent_forests`](crates/sharecli-fleet/src/proc_scan.rs) with
+  `├──` / `└──` connectors (parity with `sharecli proc --tree`); agent roots
+  show family plus live RSS from per-PID watch; compact layout keeps the flat
+  summary; empty forests fall back to flat inventory lines.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`
 
 ---
 
