@@ -225,8 +225,12 @@ replacing vendor agent executables as the primary detection path.
   human-only shells are omitted). `--tree --json` emits a `forests` array of
   nested nodes (`pid`, `ppid`, `comm`, optional `family`, `children`) plus
   `roots`; `--tree --watch` re-renders the forest each refresh.
+- **AC-006.17:** `sharecli proc --family <id>` and `--min-rss <size>` filter
+  host agent inventory rows and `--tree` root forests (RSS suffix `K`/`M`/`G` or
+  plain bytes; invalid sizes fail loudly). Gate snapshot remains host-wide;
+  filtered `--json` payloads list only matching agents/roots.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`
 
 ---
 
