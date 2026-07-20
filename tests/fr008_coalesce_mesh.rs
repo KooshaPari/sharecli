@@ -7,12 +7,18 @@
 //! AC-008.4 second identical Hypervisor run hits cache
 //! AC-008.5 CoalesceCache TTL treats stale entries as miss
 //! AC-008.6 debounce window waits/shares before re-run
+//! AC-008.7 nocache_args mutating flags bypass coalesce
+//! AC-008.8 SlotQueue serializes max_concurrent=1
+//! AC-008.9 Hypervisor routes nocache argv through queue (not cache)
 //! (Mesh membership ACs live under FR-010.)
 
 use sharecli_core::{
     FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision, THERMAL_MAX_RETRIES,
 };
-use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
+use sharecli_ipc::{
+    command_key, has_nocache_arg, should_bypass_coalesce, CachedResult, CoalesceCache,
+    QueuePriority, SlotQueue, DEFAULT_NOCACHE_ARGS,
+};
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -221,4 +227,109 @@ fn fr008_debounce_waits_and_shares() {
         1,
         "miss path MUST NOT run when debounce shares a recent store (AC-008.6)"
     );
+}
+
+
+/// FR-008 / AC-008.7 — mutating nocache_args bypass coalesce detection.
+#[test]
+fn fr008_nocache_args_bypass_coalesce() {
+    assert!(
+        should_bypass_coalesce(&["ruff", "check", "--fix", "."], DEFAULT_NOCACHE_ARGS),
+        "AC-008.7: --fix MUST bypass coalesce"
+    );
+    assert!(
+        has_nocache_arg(&["eslint", "--fix", "src"], DEFAULT_NOCACHE_ARGS),
+        "AC-008.7: --fix exact match"
+    );
+    assert!(
+        has_nocache_arg(&["tool", "--force"], DEFAULT_NOCACHE_ARGS),
+        "AC-008.7: --force is a default mutating flag"
+    );
+    assert!(
+        has_nocache_arg(&["tool", "--write"], DEFAULT_NOCACHE_ARGS),
+        "AC-008.7: --write is a default mutating flag"
+    );
+    assert!(
+        !should_bypass_coalesce(&["ruff", "check", "."], DEFAULT_NOCACHE_ARGS),
+        "read-only check MUST remain coalesce-eligible"
+    );
+}
+
+/// FR-008 / AC-008.8 — SlotQueue with max_concurrent=1 serializes work.
+#[test]
+fn fr008_slot_queue_serializes() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
+    use std::thread;
+    use std::time::Duration;
+
+    let dir = TempDir::new().expect("tempdir");
+    let active = Arc::new(AtomicU32::new(0));
+    let peak = Arc::new(AtomicU32::new(0));
+    let mut handles = vec![];
+    for _ in 0..3 {
+        let root = dir.path().to_path_buf();
+        let active = Arc::clone(&active);
+        let peak = Arc::clone(&peak);
+        handles.push(thread::spawn(move || {
+            let q = SlotQueue::with_options(
+                root,
+                1,
+                Duration::from_secs(5),
+                Duration::from_millis(15),
+            );
+            q.with_slot("lane", QueuePriority::Normal, || {
+                let n = active.fetch_add(1, Ordering::SeqCst) + 1;
+                peak.fetch_max(n, Ordering::SeqCst);
+                thread::sleep(Duration::from_millis(35));
+                active.fetch_sub(1, Ordering::SeqCst);
+                Ok(())
+            })
+            .expect("slot");
+        }));
+    }
+    for h in handles {
+        h.join().expect("join");
+    }
+    assert_eq!(
+        peak.load(Ordering::SeqCst),
+        1,
+        "AC-008.8: max_concurrent=1 MUST serialize"
+    );
+}
+
+/// FR-008 / AC-008.9 — Hypervisor nocache path never serves from_cache.
+#[tokio::test]
+async fn fr008_hypervisor_nocache_routes_to_queue() {
+    let dir = TempDir::new().expect("tempdir");
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
+
+    #[cfg(unix)]
+    let argv = vec!["echo".to_string(), "--force".to_string(), "nocache".to_string()];
+    #[cfg(windows)]
+    let argv = vec![
+        "cmd".to_string(),
+        "/C".to_string(),
+        "echo".to_string(),
+        "--force".to_string(),
+        "nocache".to_string(),
+    ];
+
+    // echo ignores unknown flags on unix; we care about routing, not exit.
+    let req = SpawnRequest {
+        argv,
+        cwd: dir.path().to_path_buf(),
+        env: vec![],
+    };
+    let first = hv.run(req.clone()).await.expect("first nocache run");
+    assert!(!first.from_cache, "AC-008.9: nocache MUST NOT use coalesce cache");
+    let second = hv.run(req).await.expect("second nocache run");
+    assert!(
+        !second.from_cache,
+        "AC-008.9: second identical mutating run MUST still bypass cache"
+    );
+    // Queue API is exposed for Hypervisor callers.
+    assert_eq!(hv.queue().max_concurrent(), 1);
+    assert!(hv.nocache_args().iter().any(|f| f == "--force"));
 }

@@ -13,16 +13,15 @@
 //!                ├─ ThermalGate::poll() ─► Green/Yellow → proceed
 //!                │                         Red → sleep-retry (loud) or Err
 //!                │
+//!                ├─ nocache_args match? ─► SlotQueue::with_slot → spawn (no cache)
+//!                │
 //!                ├─ compute command_key (sharecli-ipc)
 //!                │
 //!                └─ CoalesceCache::with_lock
 //!                       │
 //!                       ├─ [cache hit]  → SpawnOutcome { from_cache: true }
 //!                       │
-//!                       └─ [cache miss] → tokio::process::Command::spawn
-//!                                             → capture stdout/stderr/exit_code
-//!                                             → store in cache
-//!                                             → SpawnOutcome { from_cache: false }
+//!                       └─ [cache miss] → spawn + store → from_cache: false
 //! ```
 //!
 //! # Thermal gate behaviour
@@ -60,7 +59,10 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
-use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
+use sharecli_ipc::{
+    command_key, has_nocache_arg, CachedResult, CoalesceCache, QueuePriority, SlotQueue,
+    DEFAULT_NOCACHE_ARGS,
+};
 use tracing::{debug, warn};
 
 pub mod detect;
@@ -243,6 +245,10 @@ impl Drop for FuseGuard {
 pub struct HypervisorConfig {
     /// Root directory for the coalesce cache.
     pub cache_root: PathBuf,
+    /// Root directory for the mutating/nocache [`SlotQueue`].
+    pub queue_root: PathBuf,
+    /// Max parallel slots for queued (mutating) commands.
+    pub queue_max_concurrent: usize,
 }
 
 /// A request to spawn a managed process.
@@ -302,6 +308,9 @@ impl From<SpawnOutcome> for CachedResult {
 /// explicit error rather than silently dropping or degrading the spawn.
 pub struct Hypervisor {
     cache: CoalesceCache,
+    queue: SlotQueue,
+    /// Mutating flags that force queue routing (Feb `nocache_args`).
+    nocache_args: Vec<String>,
     #[allow(dead_code)]
     config: HypervisorConfig,
     thermal_gate: Arc<dyn ThermalGate>,
@@ -310,6 +319,8 @@ pub struct Hypervisor {
 impl Hypervisor {
     /// Create a new `Hypervisor` with its coalesce cache rooted at `cache_root`
     /// and the production [`SystemThermalGate`].
+    ///
+    /// Queue root defaults to `{cache_root}/queue` with `max_concurrent = 1`.
     pub fn new(cache_root: impl Into<PathBuf>) -> Self {
         Self::with_thermal_gate(cache_root, Arc::new(SystemThermalGate::new()))
     }
@@ -320,8 +331,51 @@ impl Hypervisor {
     /// implementation) to exercise gate behaviour without real hardware.
     pub fn with_thermal_gate(cache_root: impl Into<PathBuf>, gate: Arc<dyn ThermalGate>) -> Self {
         let cache_root = cache_root.into();
-        let config = HypervisorConfig { cache_root: cache_root.clone() };
-        Self { cache: CoalesceCache::new(cache_root), config, thermal_gate: gate }
+        let queue_root = cache_root.join("queue");
+        Self::with_options(
+            HypervisorConfig {
+                cache_root,
+                queue_root,
+                queue_max_concurrent: 1,
+            },
+            gate,
+            DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect(),
+        )
+    }
+
+    /// Full constructor: coalesce cache + slot queue + nocache flag list + thermal gate.
+    ///
+    /// Hypervisor / external callers that need a custom queue root or mutating-flag
+    /// set should use this (or [`Self::queue`] after construction).
+    pub fn with_options(
+        config: HypervisorConfig,
+        gate: Arc<dyn ThermalGate>,
+        nocache_args: Vec<String>,
+    ) -> Self {
+        let cache = CoalesceCache::new(config.cache_root.clone());
+        let queue = SlotQueue::new(config.queue_root.clone(), config.queue_max_concurrent);
+        Self {
+            cache,
+            queue,
+            nocache_args,
+            config,
+            thermal_gate: gate,
+        }
+    }
+
+    /// Borrow the mutating-path [`SlotQueue`] (Hypervisor API for external callers).
+    pub fn queue(&self) -> &SlotQueue {
+        &self.queue
+    }
+
+    /// Configured nocache / mutating flags (Feb `nocache_args`).
+    pub fn nocache_args(&self) -> &[String] {
+        &self.nocache_args
+    }
+
+    /// Replace the nocache flag list (e.g. from a rules.conf fragment).
+    pub fn set_nocache_args(&mut self, flags: Vec<String>) {
+        self.nocache_args = flags;
     }
 
     /// Run a managed spawn with Lock-Wait-Cache coalescing.
@@ -359,6 +413,29 @@ impl Hypervisor {
     pub async fn run(&self, req: SpawnRequest) -> Result<SpawnOutcome> {
         // ── Thermal gate ─────────────────────────────────────────────────────
         self.thermal_gate_check().await?;
+
+        // ── nocache_args → queue (never coalesce) ────────────────────────────
+        // Feb harness: if argv contains a mutating flag, fall back to queue.
+        if has_nocache_arg(&req.argv, &self.nocache_args) {
+            let lane = req
+                .argv
+                .first()
+                .map(|s| s.as_str())
+                .unwrap_or("unknown")
+                .rsplit('/')
+                .next()
+                .unwrap_or("unknown");
+            debug!(lane, argv = ?req.argv, "hypervisor::run — nocache → queue");
+            let outcome = self.queue.with_slot(lane, QueuePriority::Normal, || {
+                spawn_process_sync(&req)
+            })?;
+            return Ok(SpawnOutcome {
+                exit_code: outcome.exit_code,
+                stdout: outcome.stdout,
+                stderr: outcome.stderr,
+                from_cache: false,
+            });
+        }
 
         // ── Cache lookup ─────────────────────────────────────────────────────
         // NOTE: the cache key uses the *original* `req.cwd` so that identical
