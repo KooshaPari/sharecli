@@ -24,7 +24,8 @@ use ratatui::{
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
-    format_rss_bytes, watch_host_agents, DetectedAgentWatch, ResourceWatchSample,
+    effective_gate_decision, format_rss_bytes, watch_host_agents, DetectedAgentWatch,
+    ResourceWatchSample,
 };
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, NegDentryMeters, ReadCacheMeters};
 
@@ -481,13 +482,22 @@ fn render_thermal(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 
 fn render_decision(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let level = app.thermal_level;
-    let decision = gate_decision(level);
-    let color = decision_color(level);
+    let agent_count = app.detected_agents.len();
+    let decision = effective_gate_decision(level, agent_count);
+    let color = if decision == "DENY" {
+        Color::Red
+    } else {
+        decision_color(level)
+    };
 
     let hint = if compact {
         ""
-    } else if level == ThermalLevel::Red {
-        "  — hypervisor will retry up to 5x before returning Err"
+    } else if decision == "DENY" {
+        if level == ThermalLevel::Red {
+            "  — hypervisor will retry up to 5x before returning Err"
+        } else {
+            "  — agent contention limit reached; hypervisor will back-pressure"
+        }
     } else {
         ""
     };

@@ -3,6 +3,7 @@
 //! Provides the device registry (NATS-backed) and thermal-aware scheduling
 //! primitives for sharecli's fleet runtime.
 
+pub mod agent_contention;
 pub mod detect;
 pub mod proc_scan;
 pub mod registry;
@@ -10,6 +11,10 @@ pub mod resource_watch;
 pub mod thermal;
 
 use async_nats::Client;
+pub use agent_contention::{
+    agent_contention_tier, count_host_agents, effective_gate_decision, AgentContentionThresholds,
+    AgentContentionTier,
+};
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{
     agent_label_for_pid, detect_caller_agent, is_under_agent, scan_agents, scan_host_agents,
