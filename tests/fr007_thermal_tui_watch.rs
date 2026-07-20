@@ -8,7 +8,7 @@
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
-use sharecli_fleet::{DetectedAgent, ResourceWatchSample};
+use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch, ResourceWatchSample};
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
 use sharecli_thermal_tui::{
     fuse_coalesce_lines, fuse_neg_dentry_lines, host_agent_lines, render, resource_watch_lines, App,
@@ -80,10 +80,16 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
         .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS)
-        .with_detected_agents(vec![DetectedAgent {
-            pid: 100,
-            family: "forge",
-            comm: "forge".into(),
+        .with_detected_agents(vec![DetectedAgentWatch {
+            agent: DetectedAgent {
+                pid: 100,
+                family: "forge",
+                comm: "forge".into(),
+            },
+            resource: AgentResourceSample {
+                mem_rss_bytes: 8_388_608,
+                fd_count: Some(16),
+            },
         }]);
     app.update(ThermalLevel::Green, 1);
 

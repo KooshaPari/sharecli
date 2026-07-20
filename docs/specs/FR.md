@@ -199,8 +199,13 @@ replacing vendor agent executables as the primary detection path.
   [`scan_host_agents`](crates/sharecli-fleet/src/proc_scan.rs).
 - **AC-006.9:** `sharecli thermal` polls [`scan_host_agents`](crates/sharecli-fleet/src/proc_scan.rs)
   on each redraw and renders a DetectedAgent inventory panel.
+- **AC-006.10:** Detected agent PIDs carry live per-process resource samples
+  via [`AgentResourceSample::capture_for_pid`](crates/sharecli-fleet/src/resource_watch.rs)
+  / [`watch_detected_agents`](crates/sharecli-fleet/src/resource_watch.rs); thermal
+  TUI agent rows and `sharecli ps --all` MUST show RSS (FD on Linux when exposed);
+  dead PIDs MUST be omitted rather than silent zero.
 
-**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`
+**Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_agent_pid_watch.rs`
 
 ---
 

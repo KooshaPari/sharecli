@@ -405,6 +405,11 @@ impl SpawnOutcome {
         self.detected_agent = agent;
         self
     }
+
+    /// Nearest known-agent family from proc-scan ancestor walk, if any (FR-006).
+    pub fn agent_family(&self) -> Option<&'static str> {
+        self.detected_agent.as_ref().map(|a| a.family)
+    }
 }
 
 // ---------------------------------------------------------------------------
