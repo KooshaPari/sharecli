@@ -29,9 +29,9 @@
 | FR-005  | Per-Project Resource Limits          | `src/runtime.rs`, `src/commands/mod.rs`                                                      | `tests/fr005_project_limits.rs`, `tests/fr005_resource_check.rs`                                  | ACCEPTED |
 | FR-006  | Agent Detection (proc scan)          | `crates/sharecli-core/src/detect.rs`, `proc_scan.rs`                                         | `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`                                      | ACCEPTED |
 | FR-007  | Resource & Syscall-Relevant Watch    | `sharecli-core`, `sharecli-fleet`, `src/monitoring.rs`                                       | `tests/fr007_resource_thermal_watch.rs`                                                           | ACCEPTED |
-| FR-008  | Speculative Coalesce / Debounce / Queue | `sharecli-ipc`, `sharecli-core` Hypervisor                                                | `tests/fr008_coalesce_mesh.rs`                                                                    | ACCEPTED |
+| FR-008  | Speculative Coalesce / Debounce / Queue | `sharecli-ipc` (cache+queue+nocache), `sharecli-core` Hypervisor                          | `tests/fr008_coalesce_mesh.rs`                                                                    | ACCEPTED |
 | FR-009  | FUSE IO Intercept                    | `crates/sharecli-fuse`                                                                       | `tests/fr009_fuse_intercept.rs`                                                                   | ACCEPTED |
-| FR-010  | Agent Mesh / Shared Substrate        | `crates/sharecli-fleet/src/registry.rs`                                                      | `tests/fr010_mesh_substrate.rs`                                                                   | ACCEPTED |
+| FR-010  | Agent Mesh / Shared Substrate        | `sharecli-fleet` registry, `crates/sharecli-mesh` MaildirQueue                               | `tests/fr010_mesh_substrate.rs`                                                                   | ACCEPTED |
 | FR-011  | Thermal Contention Gate              | `sharecli-fleet` thermal, `sharecli-core` FakeThermalGate                                    | `tests/fr011_thermal_gate.rs`, `tests/fr008_coalesce_mesh.rs`                                     | ACCEPTED |
 | FR-012  | Serve HTTP Federated AuthN           | `src/serve_auth.rs`, `src/config.rs` (`ServeJwtConfig`), `src/commands/serve.rs`            | `tests/fr012_serve_jwt_auth.rs`                                                                   | ACCEPTED |
 
@@ -117,7 +117,10 @@
 
 | AC        | Test file                        | Notes |
 |-----------|----------------------------------|-------|
-| AC-009.1..2 | `tests/fr009_fuse_intercept.rs` | no privileged mount |
+| AC-009.1..2 | `tests/fr009_fuse_intercept.rs` | construct + mount API; no privileged mount |
+| AC-009.3 | `tests/fr009_fuse_intercept.rs`; `inode_map` unit tests | inode map / path resolution |
+| AC-009.4 | `tests/fr009_fuse_intercept.rs`; `read_cache` unit tests | read coalesce hit/miss meters |
+| AC-009.5 | `tests/fr009_fuse_intercept.rs`; `write_serialize` unit tests | path lock + CoW stubs; write no ENOSYS |
 
 ### FR-010 — Mesh
 
@@ -141,6 +144,9 @@
 
 ## Change log
 
+- **2026-07-19 — FR-009 A+ recovery:** InterceptFs passthrough + inode map +
+  read coalesce meters + write-serialize scaffold (AC-009.3..5). CoW
+  commit/discard remain TODO stubs.
 - **2026-07-19 — thesis re-enum:** Published FR-006..FR-011 from origin export
   (paste + agent-mesh WBS + harness). Traceability matrix expanded to 12 FRs.
 - **2026-07-12 — T-220:** Landed `tests/fr004_status_health.rs` + `tests/fr004_pool_status.rs` (AC-004.1..004.5).

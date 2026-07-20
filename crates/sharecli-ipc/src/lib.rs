@@ -6,11 +6,13 @@
 //! all run `ruff check .`), only one execution actually runs; the other 7 block on an
 //! advisory `flock` and then read the result written by the winner.
 //!
-//! The three building blocks are:
+//! The building blocks are:
 //!
 //! 1. **[`command_key`]** — SHA-256 of (argv + cwd + relevant env) → deterministic hex key.
 //! 2. **[`CoalesceCache`]** — atomic JSON store: `lookup` / `store` / `with_lock`.
 //! 3. **[`CachedResult`]** — the serialisable exit_code + stdout + stderr bundle.
+//! 4. **[`SlotQueue`] / [`PriorityQueue`]** — N-slot concurrency limiter for mutating paths.
+//! 5. **[`has_nocache_arg`]** — Feb `nocache_args` detection (coalesce → queue fallback).
 //!
 //! # TTL + debounce (origin harness coalesce)
 //!
@@ -20,10 +22,23 @@
 //! - **Debounce** — on a miss, `with_lock` waits `debounce` then re-checks the cache so
 //!   a concurrent store completed in-window is shared instead of re-running (origin
 //!   harness `debounce_ms`; default off).
+//!
+//! # Queue + nocache (Feb harness FR-008)
+//!
+//! Mutating argv (`--fix`, `--force`, `--write`, …) MUST NOT hit [`CoalesceCache`].
+//! Use [`should_bypass_coalesce`] then [`SlotQueue::with_slot`]. Hypervisor callers:
+//! see `sharecli_core::Hypervisor::{queue, run}`.
 
 pub mod handler;
+pub mod nocache;
+pub mod queue;
 pub mod serve_lock;
 pub mod ws_client;
+
+pub use nocache::{
+    has_nocache_arg, parse_nocache_args_csv, should_bypass_coalesce, DEFAULT_NOCACHE_ARGS,
+};
+pub use queue::{PriorityQueue, QueuePriority, SlotQueue};
 
 use std::fs;
 use std::io::{self, Write};

@@ -222,13 +222,15 @@ coalesce. Thermal watch signals MAY surface via FR-011.
 
 **Statement:** Identical concurrent invocations MUST coalesce via
 Lock-Wait-Cache (`CoalesceCache`) with configurable TTL (default 300s) and
-optional debounce window. Queue / mutating `nocache` strategies remain
-product MUST intent; dedicated ACs MAY land as those APIs harden.
+optional debounce window. Mutating argv matching `nocache_args` (Feb harness)
+MUST route through an N-slot [`SlotQueue`] / [`PriorityQueue`] and MUST NOT
+be served from the coalesce cache.
 
 **Source:**
 
-- `crates/sharecli-ipc` — `command_key`, `CoalesceCache::{new,with_ttl,with_options}`
-- `crates/sharecli-core` — `Hypervisor::run`
+- `crates/sharecli-ipc` — `command_key`, `CoalesceCache::{new,with_ttl,with_options}`,
+  `SlotQueue` / `PriorityQueue`, `has_nocache_arg` / `DEFAULT_NOCACHE_ARGS`
+- `crates/sharecli-core` — `Hypervisor::{run,queue,nocache_args}`
 
 **Acceptance Criteria:**
 
@@ -238,8 +240,11 @@ product MUST intent; dedicated ACs MAY land as those APIs harden.
 - **AC-008.4:** Second identical `Allow` run is served from coalesce cache.
 - **AC-008.5:** Entries older than configured TTL are treated as miss; `store` evicts stale `*.json`.
 - **AC-008.6:** When debounce is set, a miss waits then shares an in-window sibling store instead of re-running.
+- **AC-008.7:** Argv containing a configured `nocache_args` flag (`--fix`, `--force`, `--write`, …) MUST bypass coalesce detection (`should_bypass_coalesce`).
+- **AC-008.8:** `SlotQueue` with `max_concurrent=1` MUST serialize concurrent lane work.
+- **AC-008.9:** `Hypervisor::run` with nocache argv MUST execute via `SlotQueue` and MUST NOT set `from_cache` on replay.
 
-**Test refs:** `tests/fr008_coalesce_mesh.rs`; `sharecli-ipc` unit tests for TTL/debounce.
+**Test refs:** `tests/fr008_coalesce_mesh.rs`; `sharecli-ipc` unit tests for TTL/debounce/queue/nocache.
 
 ---
 
@@ -248,10 +253,18 @@ product MUST intent; dedicated ACs MAY land as those APIs harden.
 **Statement:** On Linux and macOS, sharecli MUST provide a FUSE attach point
 (`InterceptFs` / `mount`) over a backing path as the hypervisor IO intercept
 extension point. Other platforms MUST return a clear unsupported error.
+Core VFS ops (lookup, getattr, open, read, write, readdir, mkdir, unlink,
+rmdir, rename) MUST forward to the backing filesystem via an inode map.
+In-process read content cache MUST key by path+mtime with hit/miss meters.
+Writes to the same path MUST serialize; CoW commit/discard stubs MUST fail
+loudly until implemented.
 
 **Source:**
 
 - `crates/sharecli-fuse/src/lib.rs` — `InterceptFs`, `mount`
+- `crates/sharecli-fuse/src/inode_map.rs` — `InodeMap`
+- `crates/sharecli-fuse/src/read_cache.rs` — `ReadContentCache`
+- `crates/sharecli-fuse/src/write_serialize.rs` — `WriteSerialize`
 
 **Acceptance Criteria:**
 
@@ -259,20 +272,29 @@ extension point. Other platforms MUST return a clear unsupported error.
   without requiring a privileged mount (unit / pure construct).
 - **AC-009.2:** `mount` is publicly exported; on unsupported platforms it
   returns an error mentioning unsupported (no silent success).
+- **AC-009.3:** `InodeMap` resolves nested parent/child paths and allocates
+  stable inodes without a privileged mount.
+- **AC-009.4:** In-process read coalesce cache records a miss then a hit for
+  identical path+mtime; meters expose hits/misses (no privileged mount).
+- **AC-009.5:** Per-path write serialization is available; passthrough write
+  succeeds (no ENOSYS); CoW `commit_pending` / `discard_pending` stubs fail
+  loudly with explicit TODO errors.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `sharecli-fuse` unit tests.
 
 ---
 
 ## FR-010 — Agent Mesh / Shared Substrate
 
 **Statement:** sharecli MUST expose mesh / substrate coordination primitives
-for participating hosts (registry subject namespace + device records). Full
-mesh orchestration beyond registry / membership is deferred.
+for participating hosts (registry subject namespace + device records) and a
+Maildir-style filesystem task queue (`enqueue` / `claim` / `ack`) as the
+execution-substrate port of `thegent.mesh.task_queue`.
 
 **Source:**
 
 - `crates/sharecli-fleet/src/registry.rs` — `FleetRegistry`, `DeviceRecord`
+- `crates/sharecli-mesh` — `MaildirQueue::{enqueue,claim,ack,nack}`
 
 **Acceptance Criteria:**
 
@@ -281,8 +303,12 @@ mesh orchestration beyond registry / membership is deferred.
 - **AC-010.2:** `subject_for(device_id)` yields `{prefix}.devices.{device_id}`.
 - **AC-010.3:** `DeviceRecord` JSON round-trips with required keys; register
   without NATS fails loudly (no silent publish).
+- **AC-010.4:** `MaildirQueue::enqueue` writes via `tmp/`→`new/`; `claim` moves
+  `new/`→`cur/`; `ack` removes from `cur/`.
+- **AC-010.5:** Lower `priority` values are claimed before higher ones.
+- **AC-010.6:** `nack` returns a claimed task from `cur/` to `new/` for retry.
 
-**Test refs:** `tests/fr010_mesh_substrate.rs`
+**Test refs:** `tests/fr010_mesh_substrate.rs`; `sharecli-mesh` unit tests.
 
 ---
 
