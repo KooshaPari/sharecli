@@ -120,7 +120,11 @@ pub fn sort_consumers(consumers: &mut [TopConsumer], sort: &SortBy) {
 ///
 /// `gate` carries live thermal + agent inventory gate fields (FR-011).
 /// `sort` controls the order of `top_consumers`.
-pub fn build_report(processes: &[ProcessInfo], gate: &GateStatusSnapshot, sort: &SortBy) -> FleetReport {
+pub fn build_report(
+    processes: &[ProcessInfo],
+    gate: &GateStatusSnapshot,
+    sort: &SortBy,
+) -> FleetReport {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
     let total_memory_mb: u64 = processes.iter().map(|p| p.memory_mb).sum();

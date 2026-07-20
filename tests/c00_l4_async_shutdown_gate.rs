@@ -16,10 +16,7 @@ fn c00_l4_serve_uses_graceful_shutdown() {
         serve_rs.contains("with_graceful_shutdown"),
         "serve.rs must call axum::serve with_graceful_shutdown"
     );
-    assert!(
-        serve_rs.contains("serve_shutdown_signal"),
-        "serve.rs must wire serve_shutdown_signal"
-    );
+    assert!(serve_rs.contains("serve_shutdown_signal"), "serve.rs must wire serve_shutdown_signal");
     assert!(
         serve_rs.contains("thermal_cancel"),
         "serve.rs must fan out CancellationToken to thermal poller"
@@ -33,10 +30,7 @@ fn c00_l4_spawn_env_blocking_scope() {
         runtime_rs.contains("spawn_blocking"),
         "runtime.rs must scope env overrides in spawn_blocking"
     );
-    assert!(
-        runtime_rs.contains("EnvGuard"),
-        "runtime.rs must retain EnvGuard RAII restore"
-    );
+    assert!(runtime_rs.contains("EnvGuard"), "runtime.rs must retain EnvGuard RAII restore");
 }
 
 #[test]

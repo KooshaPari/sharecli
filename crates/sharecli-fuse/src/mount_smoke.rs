@@ -26,10 +26,8 @@ pub fn fuse_mount_smoke_enabled() -> bool {
 pub fn force_unmount(mountpoint: &Path) -> std::io::Result<()> {
     #[cfg(target_os = "linux")]
     {
-        let status = std::process::Command::new("fusermount")
-            .arg("-uz")
-            .arg(mountpoint)
-            .status()?;
+        let status =
+            std::process::Command::new("fusermount").arg("-uz").arg(mountpoint).status()?;
         if status.success() {
             return Ok(());
         }
@@ -118,10 +116,7 @@ pub fn verify_mount_smoke_provenance(backing_file: &Path) -> anyhow::Result<()> 
     let prov = read_provenance(backing_file)
         .map_err(|e| anyhow::anyhow!("mount smoke provenance read failed: {e}"))?
         .ok_or_else(|| {
-            anyhow::anyhow!(
-                "mount smoke provenance: missing xattrs on {}",
-                backing_file.display()
-            )
+            anyhow::anyhow!("mount smoke provenance: missing xattrs on {}", backing_file.display())
         })?;
     let expected_session = default_session_id();
     anyhow::ensure!(
@@ -130,10 +125,7 @@ pub fn verify_mount_smoke_provenance(backing_file: &Path) -> anyhow::Result<()> 
         prov.session_id,
         expected_session
     );
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     anyhow::ensure!(
         prov.written_at_unix <= now.saturating_add(5),
         "mount smoke provenance: written_at {} is in the future (now {now})",

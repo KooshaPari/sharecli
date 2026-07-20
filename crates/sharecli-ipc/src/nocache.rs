@@ -8,15 +8,8 @@
 ///
 /// Drawn from Feb `rules.conf` (`--fix`, `--unsafe-fixes`) plus common
 /// write/force flags used by mutating tools.
-pub const DEFAULT_NOCACHE_ARGS: &[&str] = &[
-    "--fix",
-    "--unsafe-fixes",
-    "--force",
-    "--write",
-    "--in-place",
-    "-w",
-    "-i",
-];
+pub const DEFAULT_NOCACHE_ARGS: &[&str] =
+    &["--fix", "--unsafe-fixes", "--force", "--write", "--in-place", "-w", "-i"];
 
 /// Return `true` when any argv token exactly matches a configured nocache flag.
 ///
@@ -46,11 +39,7 @@ pub fn should_bypass_coalesce(argv: &[impl AsRef<str>], nocache_args: &[impl AsR
 
 /// Parse a comma-separated `nocache_args=X,Y` option value (rules.conf style).
 pub fn parse_nocache_args_csv(csv: &str) -> Vec<String> {
-    csv.split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .collect()
+    csv.split(',').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
 }
 
 #[cfg(test)]

@@ -2,8 +2,8 @@
 mod alloc;
 mod plugins;
 
-use anyhow::Result;
 use crate::error::SharecliError;
+use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use sharecli_thermal_tui as thermal_tui;
@@ -51,9 +51,9 @@ mod xxhash3;
 mod xxtea;
 
 use commands::{
-    cast as cast_cmd, check_limits, config as config_cmd, fuse as fuse_cmd, health, mesh as mesh_cmd,
-    pool_status,
-    project as project_cmd, ps, run_pool, serve_run, set_limits, start, status, stop,
+    cast as cast_cmd, check_limits, config as config_cmd, fuse as fuse_cmd, health,
+    mesh as mesh_cmd, pool_status, project as project_cmd, ps, run_pool, serve_run, set_limits,
+    start, status, stop,
 };
 use progress::StepProgress;
 use runtime::ProcessPool;
@@ -484,12 +484,14 @@ async fn run() -> Result<()> {
     let _dhat_profiler = dhat::Profiler::new_heap();
 
     let cli = Cli::parse();
-    let tokens = theme::Tokens::from_name(&cli.theme).ok_or_else(|| {
-        SharecliError::user_input(format!(
-            "unknown theme '{}': expected backbone-2 / bb2 / dark or backbone-2-light / light",
-            cli.theme,
-        ))
-    }).map_err(|e| anyhow::Error::new(e))?;
+    let tokens = theme::Tokens::from_name(&cli.theme)
+        .ok_or_else(|| {
+            SharecliError::user_input(format!(
+                "unknown theme '{}': expected backbone-2 / bb2 / dark or backbone-2-light / light",
+                cli.theme,
+            ))
+        })
+        .map_err(|e| anyhow::Error::new(e))?;
     eprintln!("{}", tokens.panel.ansi_fg());
 
     // Initialise global config (must happen before any command handler)
@@ -629,8 +631,7 @@ fn cli_man(install: bool) -> Result<()> {
 
     let man = Man::new(Cli::command());
     let mut buffer: Vec<u8> = Vec::new();
-    man.render(&mut buffer)
-        .map_err(|e| anyhow::anyhow!("man page render failed: {e}"))?;
+    man.render(&mut buffer).map_err(|e| anyhow::anyhow!("man page render failed: {e}"))?;
     let rendered = String::from_utf8(buffer).map_err(|e| anyhow::anyhow!("man page utf-8: {e}"))?;
 
     if install {
@@ -665,15 +666,14 @@ fn cli_list(as_json: bool) -> Result<()> {
 
     let mesh_modules: &[(&str, &str)] = &[
         ("status", "Show Maildir queue depth (`mesh status --queue <path>`)"),
-        ("reclaim", "Return in-flight tasks for an owner (`mesh reclaim --queue <path> --owner <id>`)"),
-    ];
-
-    let fuse_modules: &[(&str, &str)] = &[
         (
-            "provenance",
-            "Read FUSE write xattrs on a backing file (`fuse provenance <path>`)",
+            "reclaim",
+            "Return in-flight tasks for an owner (`mesh reclaim --queue <path> --owner <id>`)",
         ),
     ];
+
+    let fuse_modules: &[(&str, &str)] =
+        &[("provenance", "Read FUSE write xattrs on a backing file (`fuse provenance <path>`)")];
 
     let util_modules: &[(&str, &str)] = &[
         ("base85", "Base85 encode / decode"),

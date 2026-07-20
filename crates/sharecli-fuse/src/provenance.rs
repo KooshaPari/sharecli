@@ -32,10 +32,7 @@ pub fn default_session_id() -> String {
 
 /// Current Unix epoch seconds (0 if the clock is before the epoch).
 pub fn now_unix_secs() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
 /// Annotate `path` with session + timestamp xattrs (loud fail on IO/xattr errors).
@@ -56,12 +53,8 @@ pub fn annotate_write_at(
         ));
     }
     xattr::set(path, ATTR_SESSION, session_id.as_bytes()).map_err(map_xattr_err)?;
-    xattr::set(
-        path,
-        ATTR_WRITTEN_AT,
-        written_at_unix.to_string().as_bytes(),
-    )
-    .map_err(map_xattr_err)?;
+    xattr::set(path, ATTR_WRITTEN_AT, written_at_unix.to_string().as_bytes())
+        .map_err(map_xattr_err)?;
     Ok(())
 }
 
@@ -91,17 +84,11 @@ pub fn read_provenance(path: &Path) -> std::io::Result<Option<WriteProvenance>> 
             format!("sharecli-fuse provenance: written_at parse: {e}"),
         )
     })?;
-    Ok(Some(WriteProvenance {
-        session_id: session,
-        written_at_unix,
-    }))
+    Ok(Some(WriteProvenance { session_id: session, written_at_unix }))
 }
 
 fn map_xattr_err(err: std::io::Error) -> std::io::Error {
-    std::io::Error::new(
-        err.kind(),
-        format!("sharecli-fuse provenance xattr: {err}"),
-    )
+    std::io::Error::new(err.kind(), format!("sharecli-fuse provenance xattr: {err}"))
 }
 
 #[cfg(test)]

@@ -10,12 +10,14 @@
 use std::collections::HashMap;
 
 use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
-use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 use sharecli_fleet::format_gate_status_section;
-use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters};
+use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli_fuse::{
+    global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
+};
 use sharecli_ipc::{global_coalesce_meters, global_slot_queue_meters};
 use sharecli_mesh::{capture_maildir_status, MESH_QUEUE_ENV};
-use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
 
 /// Mirror of the per-harness aggregation + status tables in `commands::status`.
 fn format_status(
@@ -66,9 +68,8 @@ fn format_status(
         out.push_str(&st.format_status_section());
     }
     out.push_str(&global_write_serialize_meters().format_status_section());
-    let thermal = ThermalGovernor::with_mock(ThermalLevel::Green)
-        .poll()
-        .expect("mock thermal poll");
+    let thermal =
+        ThermalGovernor::with_mock(ThermalLevel::Green).poll().expect("mock thermal poll");
     out.push_str(&format_gate_status_section(thermal, 0));
     out
 }
@@ -166,8 +167,8 @@ async fn fr004_status_prints_harness_table() {
     // AC-010.11 — when mesh queue is configured, status surfaces Maildir depth.
     let mesh_dir = tempfile::tempdir().expect("mesh tempdir");
     {
-        use sharecli_mesh::MaildirQueue;
         use serde_json::json;
+        use sharecli_mesh::MaildirQueue;
         let q = MaildirQueue::open(mesh_dir.path()).expect("open mesh queue");
         q.enqueue(json!({"probe": true}), 0).expect("enqueue");
     }

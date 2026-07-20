@@ -26,10 +26,10 @@
 #![warn(missing_docs)]
 
 mod inode_map;
-mod neg_dentry;
-mod path_remap;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod mount_smoke;
+mod neg_dentry;
+mod path_remap;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod provenance;
 mod read_cache;
@@ -37,15 +37,15 @@ mod write_serialize;
 mod write_serialize_meters;
 
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
-pub use path_remap::remap_mount_to_backing;
-pub use neg_dentry::{
-    global_neg_dentry_meters, NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL,
-};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use mount_smoke::{
     force_unmount, fuse_mount_smoke_enabled, run_mount_smoke, verify_mount_smoke_provenance,
     MountSession, ENV_FUSE_MOUNT_SMOKE,
 };
+pub use neg_dentry::{
+    global_neg_dentry_meters, NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL,
+};
+pub use path_remap::remap_mount_to_backing;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use provenance::{
     annotate_write, annotate_write_at, default_session_id, read_provenance, WriteProvenance,
@@ -135,18 +135,12 @@ mod platform {
 
         /// Read-coalesce meters (hits / misses) without mounting.
         pub fn cache_meters(&self) -> ReadCacheMeters {
-            self.read_cache
-                .lock()
-                .expect("read cache lock")
-                .meters()
+            self.read_cache.lock().expect("read cache lock").meters()
         }
 
         /// Negative-dentry meters (hits / misses) without mounting.
         pub fn neg_dentry_meters(&self) -> NegDentryMeters {
-            self.neg_dentry
-                .lock()
-                .expect("neg dentry lock")
-                .meters()
+            self.neg_dentry.lock().expect("neg dentry lock").meters()
         }
 
         /// Probe whether relative `rel` exists under the backing root.
@@ -191,10 +185,7 @@ mod platform {
         /// Read a relative path through the in-process coalesce cache (no mount).
         pub fn read_coalesced_rel(&self, rel: &Path) -> std::io::Result<Vec<u8>> {
             let abs = abs_under(&self.backing, rel);
-            self.read_cache
-                .lock()
-                .expect("read cache lock")
-                .read_coalesced(&abs)
+            self.read_cache.lock().expect("read cache lock").read_coalesced(&abs)
         }
 
         /// Stage CoW bytes for a relative path (no mount; FR-009 helpers).
@@ -233,7 +224,8 @@ mod platform {
             let abs = abs_under(&self.backing, rel);
             let data = data.to_vec();
             let session = self.session_id.clone();
-            let n = self.write_locks
+            let n = self
+                .write_locks
                 .with_locked_path(&abs, || {
                     let mut file = OpenOptions::new().write(true).open(&abs)?;
                     file.seek(SeekFrom::Start(offset))?;
@@ -378,12 +370,7 @@ mod platform {
                     }
                 }
             };
-            match self
-                .read_cache
-                .lock()
-                .expect("read cache")
-                .read_slice(&path, offset, size)
-            {
+            match self.read_cache.lock().expect("read cache").read_slice(&path, offset, size) {
                 Ok(buf) => reply.data(&buf),
                 Err(err) => reply.error(Self::io_errno(err)),
             }
@@ -467,11 +454,7 @@ mod platform {
                 };
                 let mut entries: Vec<(u64, FileType, std::ffi::OsString)> = Vec::new();
                 entries.push((ino.0, FileType::Directory, std::ffi::OsString::from(".")));
-                entries.push((
-                    parent_ino,
-                    FileType::Directory,
-                    std::ffi::OsString::from(".."),
-                ));
+                entries.push((parent_ino, FileType::Directory, std::ffi::OsString::from("..")));
                 for ent in read_dir.flatten() {
                     let name = ent.file_name();
                     let child_rel = crate::inode_map::join_rel(&rel, &name);
@@ -620,10 +603,8 @@ mod platform {
         let fs = InterceptFs::with_session(backing, session_id);
         let mut config = Config::default();
         // RW mount — writes are passthrough + path-serialized; CoW via WriteSerialize.
-        config.mount_options = vec![
-            MountOption::FSName("sharecli-fuse".to_string()),
-            MountOption::AutoUnmount,
-        ];
+        config.mount_options =
+            vec![MountOption::FSName("sharecli-fuse".to_string()), MountOption::AutoUnmount];
         fuser::mount2(fs, mountpoint, &config)?;
         Ok(())
     }

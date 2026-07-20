@@ -33,21 +33,14 @@ fn fr003_coverage_snapshot_artifact_matches_pin() {
     let snapshot: serde_json::Value =
         serde_json::from_str(&raw).expect("parse coverage snapshot JSON");
 
-    let lines_percent = snapshot["coverage"]["lines"]["percent"]
-        .as_f64()
-        .expect("lines.percent");
+    let lines_percent = snapshot["coverage"]["lines"]["percent"].as_f64().expect("lines.percent");
     assert!(
         (lines_percent - 83.48).abs() < 0.01,
         "snapshot lines.percent must match matrix pin; got {lines_percent}"
     );
 
-    let sha = snapshot["source"]["git_sha"]
-        .as_str()
-        .expect("source.git_sha");
-    assert!(
-        sha.starts_with("d3cb7c4"),
-        "snapshot git_sha must match filename pin; got {sha}"
-    );
+    let sha = snapshot["source"]["git_sha"].as_str().expect("source.git_sha");
+    assert!(sha.starts_with("d3cb7c4"), "snapshot git_sha must match filename pin; got {sha}");
 }
 
 /// FR-003 / C01 L11 — coverage workflow retains compact llvm-cov snapshot artifact.

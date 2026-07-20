@@ -4,10 +4,10 @@
 //! AC-006.10 proc-scan agents carry live RSS (and FD on Linux) samples.
 
 use sharecli_fleet::proc_scan::DetectedAgent;
+use sharecli_fleet::proc_scan::{FakeProcSource, ProcSnapshot};
 use sharecli_fleet::{
     watch_detected_agents, AgentResourceSample, DetectedAgentWatch, ResourceWatchSample,
 };
-use sharecli_fleet::proc_scan::{FakeProcSource, ProcSnapshot};
 
 fn fixture_agents() -> Vec<DetectedAgent> {
     vec![DetectedAgent {
@@ -21,14 +21,10 @@ fn fixture_agents() -> Vec<DetectedAgent> {
 #[test]
 fn fr006_agent_resource_sample_self_pid() {
     let pid = std::process::id();
-    let sample =
-        AgentResourceSample::capture_for_pid(pid).expect("self PID MUST be sampleable");
+    let sample = AgentResourceSample::capture_for_pid(pid).expect("self PID MUST be sampleable");
     assert!(sample.mem_rss_bytes > 0, "RSS MUST be non-zero for live process");
     #[cfg(target_os = "linux")]
-    assert!(
-        sample.fd_count.unwrap_or(0) >= 3,
-        "Linux self FD count MUST include stdio"
-    );
+    assert!(sample.fd_count.unwrap_or(0) >= 3, "Linux self FD count MUST include stdio");
 }
 
 /// FR-006 / AC-006.10 — watch_detected_agents joins proc scan + per-PID watch.
@@ -67,10 +63,7 @@ fn fr007_host_resource_watch_still_host_scoped() {
 fn fr006_detected_agent_watch_shape() {
     let row = DetectedAgentWatch {
         agent: fixture_agents()[0].clone(),
-        resource: AgentResourceSample {
-            mem_rss_bytes: 1_048_576,
-            fd_count: Some(10),
-        },
+        resource: AgentResourceSample { mem_rss_bytes: 1_048_576, fd_count: Some(10) },
     };
     assert_eq!(row.agent.pid, std::process::id());
     assert_eq!(row.resource.mem_rss_bytes, 1_048_576);

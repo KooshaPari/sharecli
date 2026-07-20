@@ -49,21 +49,13 @@ fn fr008_with_lock_runs_once() {
     let first = cache
         .with_lock(&key, || {
             hits.fetch_add(1, Ordering::SeqCst);
-            Ok(CachedResult {
-                exit_code: 0,
-                stdout: b"once".to_vec(),
-                stderr: vec![],
-            })
+            Ok(CachedResult { exit_code: 0, stdout: b"once".to_vec(), stderr: vec![] })
         })
         .expect("first lock");
     let second = cache
         .with_lock(&key, || {
             hits.fetch_add(1, Ordering::SeqCst);
-            Ok(CachedResult {
-                exit_code: 1,
-                stdout: b"again".to_vec(),
-                stderr: vec![],
-            })
+            Ok(CachedResult { exit_code: 1, stdout: b"again".to_vec(), stderr: vec![] })
         })
         .expect("second lock");
 
@@ -82,19 +74,11 @@ async fn fr008_thermal_gate_before_coalesce() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "should-not-run".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "should-not-run".to_string(),
-    ];
+    let argv =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "should-not-run".to_string()];
 
     let err = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
         .await
         .expect_err("Refuse MUST err after retries");
 
@@ -115,18 +99,10 @@ async fn fr008_second_run_from_cache() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "coalesce".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "coalesce".to_string(),
-    ];
+    let argv =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "coalesce".to_string()];
 
-    let req = SpawnRequest {
-        argv,
-        cwd: dir.path().to_path_buf(),
-        env: vec![],
-    };
+    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] };
     let first = hv.run(req.clone()).await.expect("first");
     assert!(!first.from_cache);
     let second = hv.run(req).await.expect("second");
@@ -143,14 +119,7 @@ fn fr008_ttl_stale_entry_is_miss() {
     let key = command_key(&["ttl-probe".into()], dir.path(), &[]);
 
     cache
-        .store(
-            &key,
-            &CachedResult {
-                exit_code: 0,
-                stdout: b"fresh".to_vec(),
-                stderr: vec![],
-            },
-        )
+        .store(&key, &CachedResult { exit_code: 0, stdout: b"fresh".to_vec(), stderr: vec![] })
         .expect("store");
 
     let hit = cache.lookup(&key).expect("lookup").expect("fresh hit");
@@ -167,11 +136,7 @@ fn fr008_ttl_stale_entry_is_miss() {
     let rerun = cache
         .with_lock(&key, || {
             hits.fetch_add(1, Ordering::SeqCst);
-            Ok(CachedResult {
-                exit_code: 0,
-                stdout: b"rerun".to_vec(),
-                stderr: vec![],
-            })
+            Ok(CachedResult { exit_code: 0, stdout: b"rerun".to_vec(), stderr: vec![] })
         })
         .expect("with_lock after TTL");
     assert_eq!(hits.load(Ordering::SeqCst), 1, "stale miss MUST re-run");
@@ -195,11 +160,7 @@ fn fr008_debounce_waits_and_shares() {
         cache_bg
             .store(
                 &key_bg,
-                &CachedResult {
-                    exit_code: 0,
-                    stdout: b"shared".to_vec(),
-                    stderr: vec![],
-                },
+                &CachedResult { exit_code: 0, stdout: b"shared".to_vec(), stderr: vec![] },
             )
             .expect("bg store");
         hits_bg.fetch_add(1, Ordering::SeqCst);
@@ -208,21 +169,14 @@ fn fr008_debounce_waits_and_shares() {
     let result = cache
         .with_lock(&key, || {
             hits.fetch_add(1, Ordering::SeqCst);
-            Ok(CachedResult {
-                exit_code: 1,
-                stdout: b"should-not-run".to_vec(),
-                stderr: vec![],
-            })
+            Ok(CachedResult { exit_code: 1, stdout: b"should-not-run".to_vec(), stderr: vec![] })
         })
         .expect("debounced with_lock");
 
     producer.join().expect("producer join");
 
     assert_eq!(result.stdout, b"shared", "debounce MUST share in-window result");
-    assert_eq!(
-        result.exit_code, 0,
-        "shared result MUST come from producer, not miss path"
-    );
+    assert_eq!(result.exit_code, 0, "shared result MUST come from producer, not miss path");
     assert_eq!(
         hits.load(Ordering::SeqCst),
         1,
@@ -259,34 +213,23 @@ async fn fr008_hypervisor_debounce_waits_and_shares() {
         cache_bg
             .store(
                 &key_bg,
-                &CachedResult {
-                    exit_code: 0,
-                    stdout: b"shared-hv".to_vec(),
-                    stderr: vec![],
-                },
+                &CachedResult { exit_code: 0, stdout: b"shared-hv".to_vec(), stderr: vec![] },
             )
             .expect("bg store");
     });
 
-    let outcome = hv
-        .run(SpawnRequest { argv, cwd, env: vec![] })
-        .await
-        .expect("debounced hypervisor run");
+    let outcome =
+        hv.run(SpawnRequest { argv, cwd, env: vec![] }).await.expect("debounced hypervisor run");
 
     producer.join().expect("producer join");
 
     assert_eq!(
-        outcome.stdout,
-        b"shared-hv",
+        outcome.stdout, b"shared-hv",
         "Hypervisor debounce MUST share in-window result (AC-008.6)"
     );
     assert_eq!(outcome.exit_code, 0);
-    assert!(
-        outcome.from_cache,
-        "debounce share MUST surface as from_cache on Hypervisor::run"
-    );
+    assert!(outcome.from_cache, "debounce share MUST surface as from_cache on Hypervisor::run");
 }
-
 
 /// FR-008 / AC-008.7 — mutating nocache_args bypass coalesce detection.
 #[test]
@@ -330,12 +273,8 @@ fn fr008_slot_queue_serializes() {
         let active = Arc::clone(&active);
         let peak = Arc::clone(&peak);
         handles.push(thread::spawn(move || {
-            let q = SlotQueue::with_options(
-                root,
-                1,
-                Duration::from_secs(5),
-                Duration::from_millis(15),
-            );
+            let q =
+                SlotQueue::with_options(root, 1, Duration::from_secs(5), Duration::from_millis(15));
             q.with_slot("lane", QueuePriority::Normal, || {
                 let n = active.fetch_add(1, Ordering::SeqCst) + 1;
                 peak.fetch_max(n, Ordering::SeqCst);
@@ -349,11 +288,7 @@ fn fr008_slot_queue_serializes() {
     for h in handles {
         h.join().expect("join");
     }
-    assert_eq!(
-        peak.load(Ordering::SeqCst),
-        1,
-        "AC-008.8: max_concurrent=1 MUST serialize"
-    );
+    assert_eq!(peak.load(Ordering::SeqCst), 1, "AC-008.8: max_concurrent=1 MUST serialize");
 }
 
 /// FR-008 / AC-008.9 — Hypervisor nocache path never serves from_cache.
@@ -375,18 +310,11 @@ async fn fr008_hypervisor_nocache_routes_to_queue() {
     ];
 
     // echo ignores unknown flags on unix; we care about routing, not exit.
-    let req = SpawnRequest {
-        argv,
-        cwd: dir.path().to_path_buf(),
-        env: vec![],
-    };
+    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] };
     let first = hv.run(req.clone()).await.expect("first nocache run");
     assert!(!first.from_cache, "AC-008.9: nocache MUST NOT use coalesce cache");
     let second = hv.run(req).await.expect("second nocache run");
-    assert!(
-        !second.from_cache,
-        "AC-008.9: second identical mutating run MUST still bypass cache"
-    );
+    assert!(!second.from_cache, "AC-008.9: second identical mutating run MUST still bypass cache");
     // Queue API is exposed for Hypervisor callers.
     assert_eq!(hv.queue().max_concurrent(), 1);
     assert!(hv.nocache_args().iter().any(|f| f == "--force"));

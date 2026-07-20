@@ -34,9 +34,7 @@ pub fn reclaim(queue: &Path, owner: &str) -> Result<()> {
     }
     let q = MaildirQueue::open(queue)
         .with_context(|| format!("open mesh queue {}", queue.display()))?;
-    let n = q
-        .reclaim_owner(owner)
-        .with_context(|| format!("reclaim owner '{owner}'"))?;
+    let n = q.reclaim_owner(owner).with_context(|| format!("reclaim owner '{owner}'"))?;
     println!("reclaimed {n} task(s) for owner '{owner}'");
     Ok(())
 }

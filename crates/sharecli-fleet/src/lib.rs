@@ -5,14 +5,13 @@
 
 pub mod agent_contention;
 pub mod coalesce_meters;
-pub mod slot_queue_meters;
 pub mod detect;
 pub mod proc_scan;
 pub mod registry;
 pub mod resource_watch;
+pub mod slot_queue_meters;
 pub mod thermal;
 
-use async_nats::Client;
 pub use agent_contention::{
     agent_contention_tier, agent_resource_contention_tier, combined_agent_contention_tier,
     count_host_agents, effective_gate_decision, effective_gate_decision_for_tier,
@@ -20,13 +19,10 @@ pub use agent_contention::{
     live_agent_contention_tier, total_watched_agent_rss_bytes, AgentContentionThresholds,
     AgentContentionTier, AgentResourceThresholds, GateStatusSnapshot,
 };
+use async_nats::Client;
 pub use coalesce_meters::{
-    global_coalesce_meters, record_coalesce_hit_kind, record_coalesce_lookup_hit, record_nocache_run,
-    CoalesceHitKind, CoalesceMeters,
-};
-pub use slot_queue_meters::{
-    global_slot_queue_meters, record_slot_acquire, record_slot_timeout, record_slot_wait,
-    SlotQueueMeters,
+    global_coalesce_meters, record_coalesce_hit_kind, record_coalesce_lookup_hit,
+    record_nocache_run, CoalesceHitKind, CoalesceMeters,
 };
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{
@@ -36,9 +32,13 @@ pub use proc_scan::{
 };
 pub use registry::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
 pub use resource_watch::{
-    format_rss_bytes, parse_rss_bytes, sample_host_load_1m, sample_host_net, sample_pid_fds, sample_pid_rss_bytes,
-    sample_self_fds, sample_self_rss_bytes, watch_detected_agents, watch_host_agents,
-    AgentResourceSample, DetectedAgentWatch, ResourceWatchSample,
+    format_rss_bytes, parse_rss_bytes, sample_host_load_1m, sample_host_net, sample_pid_fds,
+    sample_pid_rss_bytes, sample_self_fds, sample_self_rss_bytes, watch_detected_agents,
+    watch_host_agents, AgentResourceSample, DetectedAgentWatch, ResourceWatchSample,
+};
+pub use slot_queue_meters::{
+    global_slot_queue_meters, record_slot_acquire, record_slot_timeout, record_slot_wait,
+    SlotQueueMeters,
 };
 pub use thermal::{ThermalGovernor, ThermalLevel};
 

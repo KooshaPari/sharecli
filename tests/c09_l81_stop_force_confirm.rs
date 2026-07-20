@@ -23,30 +23,17 @@ fn fr004_stop_force_without_yes_previews_and_succeeds() {
         combined(&out)
     );
     let body = combined(&out);
-    assert!(
-        body.contains("Would force-kill"),
-        "must preview force-kill; body={body}"
-    );
+    assert!(body.contains("Would force-kill"), "must preview force-kill; body={body}");
     assert!(body.contains("--yes"), "must hint --yes confirmation; body={body}");
 }
 
 /// `stop --all --force --yes` on an empty pool MUST succeed without preview gate.
 #[test]
 fn fr004_stop_force_with_yes_on_empty_pool_succeeds() {
-    let out = bin()
-        .args(["stop", "--all", "--force", "--yes"])
-        .output()
-        .expect("spawn stop");
-    assert!(
-        out.status.success(),
-        "confirmed force stop MUST succeed; combined={}",
-        combined(&out)
-    );
+    let out = bin().args(["stop", "--all", "--force", "--yes"]).output().expect("spawn stop");
+    assert!(out.status.success(), "confirmed force stop MUST succeed; combined={}", combined(&out));
     let body = combined(&out);
-    assert!(
-        !body.contains("Would force-kill"),
-        "confirmed stop must not dry-run; body={body}"
-    );
+    assert!(!body.contains("Would force-kill"), "confirmed stop must not dry-run; body={body}");
 }
 
 /// `project stop --force` without `--yes` MUST preview when processes would match.

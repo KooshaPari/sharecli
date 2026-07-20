@@ -36,11 +36,8 @@ fn fr009_hypervisor_fuse_session_stamps_provenance() {
     let fs = InterceptFs::with_session(dir.path(), &session);
     assert_eq!(fs.session_id(), session);
 
-    fs.write_rel(Path::new("artifact.txt"), 0, b"built")
-        .expect("write_rel");
-    let prov = read_provenance(&file)
-        .expect("read_provenance")
-        .expect("provenance xattrs");
+    fs.write_rel(Path::new("artifact.txt"), 0, b"built").expect("write_rel");
+    let prov = read_provenance(&file).expect("read_provenance").expect("provenance xattrs");
     assert_eq!(prov.session_id, session);
 }
 
@@ -50,10 +47,7 @@ fn fr009_hypervisor_fuse_session_differs_by_command_key() {
     let cwd = Path::new("/workspace");
     let k1 = command_key(&["a".into()], cwd, &[]);
     let k2 = command_key(&["b".into()], cwd, &[]);
-    assert_ne!(
-        fuse_session_id_for_command_key(&k1),
-        fuse_session_id_for_command_key(&k2)
-    );
+    assert_ne!(fuse_session_id_for_command_key(&k1), fuse_session_id_for_command_key(&k2));
 }
 
 /// FR-009 / AC-009.13 — cache-miss Hypervisor run surfaces fuse_session_id when FUSE active.
@@ -73,11 +67,7 @@ async fn fr009_hypervisor_spawn_outcome_fuse_session_id() {
         "fr009-fuse-spawn-outcome".to_string(),
     ];
 
-    let req = SpawnRequest {
-        argv: argv.clone(),
-        cwd: dir.path().to_path_buf(),
-        env: vec![],
-    };
+    let req = SpawnRequest { argv: argv.clone(), cwd: dir.path().to_path_buf(), env: vec![] };
     let key = command_key(&argv, dir.path(), &[]);
     let expected_session = fuse_session_id_for_command_key(&key);
 
@@ -109,11 +99,7 @@ async fn fr009_hypervisor_spawn_outcome_fuse_session_id() {
 
     // Cache hit must never carry a FUSE session id.
     let hit = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
         .await
         .expect("Hypervisor cache hit");
     assert!(hit.from_cache);
@@ -155,11 +141,7 @@ async fn fr009_hypervisor_spawn_outcome_fuse_path_remap() {
     ];
 
     let outcome = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
         .await
         .expect("Hypervisor cache-miss run");
 
@@ -167,15 +149,9 @@ async fn fr009_hypervisor_spawn_outcome_fuse_path_remap() {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     if outcome.fuse_intercept_active() {
         assert_eq!(outcome.fuse_backing.as_deref(), Some(dir.path()));
-        let mount = outcome
-            .fuse_mountpoint
-            .as_ref()
-            .expect("mountpoint when intercept active");
+        let mount = outcome.fuse_mountpoint.as_ref().expect("mountpoint when intercept active");
         assert_ne!(mount, dir.path());
-        assert_eq!(
-            outcome.remap_fuse_path(mount),
-            Some(dir.path().to_path_buf())
-        );
+        assert_eq!(outcome.remap_fuse_path(mount), Some(dir.path().to_path_buf()));
     } else {
         assert!(outcome.fuse_backing.is_none());
         assert!(outcome.fuse_mountpoint.is_none());

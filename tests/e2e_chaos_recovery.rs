@@ -15,13 +15,7 @@ fn pick_port() -> u16 {
 
 fn spawn_serve(port: u16) -> Child {
     bin()
-        .args([
-            "serve",
-            "--bind",
-            &format!("127.0.0.1:{port}"),
-            "--on-conflict",
-            "replace",
-        ])
+        .args(["serve", "--bind", &format!("127.0.0.1:{port}"), "--on-conflict", "replace"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -50,12 +44,7 @@ fn wait_healthz(url: &str, timeout: Duration) -> bool {
 /// FR-003 / C07 L64 — chaos e2e: SIGKILL serve, restart, `/healthz` recovers < 30s.
 #[test]
 fn chaos_restart_healthz_e2e_recovers() {
-    if !Command::new("curl")
-        .arg("--version")
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
-    {
+    if !Command::new("curl").arg("--version").status().map(|s| s.success()).unwrap_or(false) {
         eprintln!("curl not available; skipping chaos_restart_healthz_e2e_recovers");
         return;
     }
@@ -64,10 +53,7 @@ fn chaos_restart_healthz_e2e_recovers() {
     let url = format!("http://127.0.0.1:{port}/healthz");
 
     let mut child = spawn_serve(port);
-    assert!(
-        wait_healthz(&url, Duration::from_secs(20)),
-        "initial serve must answer /healthz"
-    );
+    assert!(wait_healthz(&url, Duration::from_secs(20)), "initial serve must answer /healthz");
 
     let _ = child.kill();
     let _ = child.wait();

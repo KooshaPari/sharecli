@@ -16,10 +16,7 @@ pub fn provenance(path: &Path, json: bool) -> Result<()> {
         anyhow::bail!("fuse provenance: path does not exist: {}", path.display());
     }
     if path.is_dir() {
-        anyhow::bail!(
-            "fuse provenance: path must be a file, not a directory: {}",
-            path.display()
-        );
+        anyhow::bail!("fuse provenance: path must be a file, not a directory: {}", path.display());
     }
 
     let prov = read_provenance(path)

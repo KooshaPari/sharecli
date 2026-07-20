@@ -17,10 +17,7 @@ impl CoalesceMeters {
     /// Hit rate as an integer percentage in `[0, 100]` (0 when no hit/miss events).
     pub fn hit_rate_pct(self) -> u64 {
         let total = self.hits.saturating_add(self.misses);
-        self.hits
-            .saturating_mul(100)
-            .checked_div(total)
-            .unwrap_or(0)
+        self.hits.saturating_mul(100).checked_div(total).unwrap_or(0)
     }
 
     /// Operator-facing status block for `sharecli status` (FR-008 / AC-008.11).

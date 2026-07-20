@@ -33,11 +33,7 @@ fn fr009_cli_fuse_provenance_json() {
         .arg("--json")
         .output()
         .expect("spawn fuse provenance");
-    assert!(
-        out.status.success(),
-        "fuse provenance MUST exit 0; stderr={}",
-        stderr(&out)
-    );
+    assert!(out.status.success(), "fuse provenance MUST exit 0; stderr={}", stderr(&out));
     let body = stdout(&out);
     let v: serde_json::Value = serde_json::from_str(&body).expect("json provenance");
     assert_eq!(v["session_id"], "cli-session-7");
@@ -69,11 +65,7 @@ fn fr009_cli_fuse_provenance_missing_path() {
         .output()
         .expect("spawn fuse provenance");
     assert!(!out.status.success(), "missing path MUST fail");
-    assert!(
-        stderr(&out).contains("does not exist"),
-        "stderr={}",
-        stderr(&out)
-    );
+    assert!(stderr(&out).contains("does not exist"), "stderr={}", stderr(&out));
 }
 
 /// FR-009 / AC-009.11 — library round-trip matches CLI JSON (no mount).
@@ -85,12 +77,7 @@ fn fr009_cli_fuse_provenance_matches_read_provenance() {
     annotate_write_at(&path, "lib-session", 42).expect("stamp");
     let lib = read_provenance(&path).expect("read").expect("present");
 
-    let out = bin()
-        .args(["fuse", "provenance"])
-        .arg(&path)
-        .arg("--json")
-        .output()
-        .expect("spawn");
+    let out = bin().args(["fuse", "provenance"]).arg(&path).arg("--json").output().expect("spawn");
     let v: serde_json::Value = serde_json::from_str(&stdout(&out)).expect("json");
     assert_eq!(v["session_id"], lib.session_id);
     assert_eq!(v["written_at_unix"], lib.written_at_unix);

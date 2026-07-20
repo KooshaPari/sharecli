@@ -50,17 +50,13 @@ fn fr009_mount_api_is_exported() {
 /// FR-009 / AC-009.3 — inode map resolves nested parents without a mount.
 #[test]
 fn fr009_inode_map_path_resolution() {
-    use std::ffi::OsStr;
     use sharecli_fuse::{InodeMap, ROOT_INO};
+    use std::ffi::OsStr;
 
     let mut map = InodeMap::new();
     assert_eq!(map.resolve(ROOT_INO), Some(Path::new("")));
-    let (dir_ino, _) = map
-        .lookup_or_alloc(ROOT_INO, OsStr::new("src"))
-        .expect("dir");
-    let (file_ino, rel) = map
-        .lookup_or_alloc(dir_ino, OsStr::new("main.rs"))
-        .expect("file");
+    let (dir_ino, _) = map.lookup_or_alloc(ROOT_INO, OsStr::new("src")).expect("dir");
+    let (file_ino, rel) = map.lookup_or_alloc(dir_ino, OsStr::new("main.rs")).expect("file");
     assert_eq!(rel, PathBuf::from("src/main.rs"));
     assert_eq!(map.resolve(file_ino), Some(Path::new("src/main.rs")));
 }
@@ -80,17 +76,13 @@ fn fr009_read_coalesce_hit_miss_meters() {
     }
 
     let fs = sharecli_fuse::InterceptFs::new(dir.path());
-    let a = fs
-        .read_coalesced_rel(Path::new("hot.txt"))
-        .expect("first read");
+    let a = fs.read_coalesced_rel(Path::new("hot.txt")).expect("first read");
     assert_eq!(a, b"coalesce-me");
     let m1 = fs.cache_meters();
     assert_eq!(m1.misses, 1);
     assert_eq!(m1.hits, 0);
 
-    let b = fs
-        .read_coalesced_rel(Path::new("hot.txt"))
-        .expect("second read");
+    let b = fs.read_coalesced_rel(Path::new("hot.txt")).expect("second read");
     assert_eq!(b, a);
     let m2 = fs.cache_meters();
     assert_eq!(m2.misses, 1);
@@ -100,8 +92,8 @@ fn fr009_read_coalesce_hit_miss_meters() {
 /// FR-009 / AC-009.4 — ReadContentCache unit surface (all platforms).
 #[test]
 fn fr009_read_content_cache_direct() {
-    use std::io::Write;
     use sharecli_fuse::ReadContentCache;
+    use std::io::Write;
     use tempfile::NamedTempFile;
 
     let mut tmp = NamedTempFile::new().expect("tmp");
@@ -118,9 +110,9 @@ fn fr009_read_content_cache_direct() {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn fr009_write_passthrough_and_cow_commit_discard() {
+    use sharecli_fuse::WriteSerializeError;
     use std::fs;
     use std::io::Write;
-    use sharecli_fuse::WriteSerializeError;
 
     let dir = TempDir::new().expect("tempdir");
     let file = dir.path().join("rw.txt");
@@ -133,39 +125,33 @@ fn fr009_write_passthrough_and_cow_commit_discard() {
     let _ = fs.read_coalesced_rel(Path::new("rw.txt")).expect("warm");
     assert_eq!(fs.cache_meters().misses, 1);
 
-    fs.write_rel(Path::new("rw.txt"), 0, b"bbbb")
-        .expect("passthrough write must not ENOSYS");
+    fs.write_rel(Path::new("rw.txt"), 0, b"bbbb").expect("passthrough write must not ENOSYS");
     let after = fs.read_coalesced_rel(Path::new("rw.txt")).expect("reload");
     assert_eq!(after, b"bbbb");
     // Invalidate + reload => second miss.
     assert!(fs.cache_meters().misses >= 2);
 
     // CoW: stage → commit promotes staging to backing.
-    fs.stage_rel(Path::new("rw.txt"), b"cccc")
-        .expect("stage");
+    fs.stage_rel(Path::new("rw.txt"), b"cccc").expect("stage");
     assert_eq!(fs::read(&file).expect("backing until commit"), b"bbbb");
     fs.commit_rel(Path::new("rw.txt")).expect("commit");
     assert_eq!(fs::read(&file).expect("promoted"), b"cccc");
 
     // CoW: stage → discard leaves backing unchanged.
-    fs.stage_rel(Path::new("rw.txt"), b"dddd")
-        .expect("stage2");
+    fs.stage_rel(Path::new("rw.txt"), b"dddd").expect("stage2");
     fs.discard_rel(Path::new("rw.txt")).expect("discard");
     assert_eq!(fs::read(&file).expect("unchanged"), b"cccc");
 
-    assert!(matches!(
-        fs.discard_rel(Path::new("rw.txt")),
-        Err(WriteSerializeError::NoPending(_))
-    ));
+    assert!(matches!(fs.discard_rel(Path::new("rw.txt")), Err(WriteSerializeError::NoPending(_))));
 }
 
 /// FR-009 / AC-009.6 — write_rel / commit_rel stamp provenance xattrs.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn fr009_write_provenance_xattrs() {
+    use sharecli_fuse::read_provenance;
     use std::fs;
     use std::io::Write;
-    use sharecli_fuse::read_provenance;
 
     let dir = TempDir::new().expect("tempdir");
     let file = dir.path().join("prov.txt");
@@ -177,14 +163,12 @@ fn fr009_write_provenance_xattrs() {
     let fs = sharecli_fuse::InterceptFs::with_session(dir.path(), "sess-ac0096");
     assert_eq!(fs.session_id(), "sess-ac0096");
 
-    fs.write_rel(Path::new("prov.txt"), 0, b"live")
-        .expect("write_rel");
+    fs.write_rel(Path::new("prov.txt"), 0, b"live").expect("write_rel");
     let after_write = read_provenance(&file).expect("read xattr").expect("present");
     assert_eq!(after_write.session_id, "sess-ac0096");
     assert!(after_write.written_at_unix > 0);
 
-    fs.stage_rel(Path::new("prov.txt"), b"cowed")
-        .expect("stage");
+    fs.stage_rel(Path::new("prov.txt"), b"cowed").expect("stage");
     fs.commit_rel(Path::new("prov.txt")).expect("commit");
     let after_commit = read_provenance(&file).expect("read").expect("present");
     assert_eq!(after_commit.session_id, "sess-ac0096");
@@ -226,8 +210,8 @@ fn fr009_negative_dentry_cache() {
 /// FR-009 / AC-009.7 — NegativeDentryCache unit surface (all platforms).
 #[test]
 fn fr009_negative_dentry_cache_direct() {
-    use std::time::Duration;
     use sharecli_fuse::NegativeDentryCache;
+    use std::time::Duration;
 
     let mut cache = NegativeDentryCache::with_ttl(Duration::from_secs(30));
     let rel = PathBuf::from("ghost");

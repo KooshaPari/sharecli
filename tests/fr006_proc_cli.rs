@@ -25,10 +25,7 @@ fn fr006_proc_cli_prints_inventory_header() {
 /// FR-006 / AC-006.13 — proc --json emits agents + gate object.
 #[test]
 fn fr006_proc_cli_json_shape() {
-    let out = bin()
-        .args(["proc", "--json"])
-        .output()
-        .expect("spawn sharecli proc --json");
+    let out = bin().args(["proc", "--json"]).output().expect("spawn sharecli proc --json");
     assert!(out.status.success(), "proc --json should exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("proc --json MUST emit valid JSON");
@@ -40,15 +37,8 @@ fn fr006_proc_cli_json_shape() {
 /// FR-006 / AC-006.13 — status --json includes detected agent inventory.
 #[test]
 fn fr006_status_json_includes_agents() {
-    let out = bin()
-        .args(["status", "--json"])
-        .output()
-        .expect("spawn sharecli status --json");
-    assert!(
-        out.status.success(),
-        "status --json should exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["status", "--json"]).output().expect("spawn sharecli status --json");
+    assert!(out.status.success(), "status --json should exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("status --json MUST emit valid JSON");
     assert!(v.get("total_processes").is_some());

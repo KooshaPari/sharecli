@@ -12,8 +12,8 @@
 //! AC-007.10 status surfaces live ResourceWatchSample via format_status_section
 
 use sharecli::monitoring::{
-    ProcessStats, ResourceWatchSample, sample_host_load_1m, sample_host_net, sample_self_fds,
-    sample_self_rss_bytes,
+    sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes, ProcessStats,
+    ResourceWatchSample,
 };
 use sharecli_core::{FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision, ThermalGate};
 use sharecli_fleet::{ThermalGovernor, ThermalLevel};
@@ -33,18 +33,9 @@ fn fr007_thermal_governor_mock_levels() {
 /// FR-007 / AC-007.2 — FakeThermalGate decisions are stable.
 #[test]
 fn fr007_fake_thermal_gate_maps_decisions() {
-    assert_eq!(
-        FakeThermalGate::new(ThermalDecision::Allow).check(),
-        ThermalDecision::Allow
-    );
-    assert_eq!(
-        FakeThermalGate::new(ThermalDecision::Warn).check(),
-        ThermalDecision::Warn
-    );
-    assert_eq!(
-        FakeThermalGate::new(ThermalDecision::Refuse).check(),
-        ThermalDecision::Refuse
-    );
+    assert_eq!(FakeThermalGate::new(ThermalDecision::Allow).check(), ThermalDecision::Allow);
+    assert_eq!(FakeThermalGate::new(ThermalDecision::Warn).check(), ThermalDecision::Warn);
+    assert_eq!(FakeThermalGate::new(ThermalDecision::Refuse).check(), ThermalDecision::Refuse);
 }
 
 /// FR-007 / AC-007.3 — idle heuristic encodes CPU + uptime watch signal.
@@ -150,11 +141,7 @@ async fn fr007_hypervisor_run_carries_resource_watch() {
     ];
 
     let outcome = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
         .await
         .expect("Hypervisor run MUST sample resource watch");
 
@@ -168,17 +155,11 @@ async fn fr007_hypervisor_run_carries_resource_watch() {
         "Hypervisor MUST attach live RSS watch (got {})",
         outcome.resource_watch.mem_rss_bytes
     );
-    assert!(
-        outcome.resource_watch.load_1m >= 0.0,
-        "Hypervisor MUST attach live load watch"
-    );
+    assert!(outcome.resource_watch.load_1m >= 0.0, "Hypervisor MUST attach live load watch");
     assert!(
         outcome.detected_agent.is_none(),
         "test harness spawn MUST record Option<DetectedAgent>; got {:?}",
         outcome.detected_agent
     );
-    let _ = (
-        outcome.resource_watch.net_rx_bytes,
-        outcome.resource_watch.net_tx_bytes,
-    );
+    let _ = (outcome.resource_watch.net_rx_bytes, outcome.resource_watch.net_tx_bytes);
 }

@@ -23,14 +23,8 @@ fn c00_l9_release_workflow_embeds_sbom_in_archive() {
 fn c00_l9_sbom_workflow_emits_cyclonedx_on_main() {
     let sbom = include_str!("../.github/workflows/sbom.yml");
     assert!(sbom.contains("cargo cyclonedx"), "sbom.yml must run cargo cyclonedx");
-    assert!(
-        sbom.contains("spec-version 1.5"),
-        "sbom.yml must emit CycloneDX 1.5"
-    );
-    assert!(
-        sbom.contains("sharecli.cdx.json"),
-        "sbom.yml must upload sharecli.cdx.json artifact"
-    );
+    assert!(sbom.contains("spec-version 1.5"), "sbom.yml must emit CycloneDX 1.5");
+    assert!(sbom.contains("sharecli.cdx.json"), "sbom.yml must upload sharecli.cdx.json artifact");
     assert!(
         sbom.contains("if-no-files-found: error"),
         "sbom.yml must hard-fail when SBOM artifact missing"
@@ -66,8 +60,5 @@ fn c00_l9_deploy_docs_reference_sbom_in_archive() {
         deploy.contains("sharecli.cdx.json"),
         "deploy.md must document SBOM in release artifacts"
     );
-    assert!(
-        deploy.contains("sbom.yml"),
-        "deploy.md must cite sbom.yml CI workflow"
-    );
+    assert!(deploy.contains("sbom.yml"), "deploy.md must cite sbom.yml CI workflow");
 }

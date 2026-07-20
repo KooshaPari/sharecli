@@ -54,7 +54,10 @@ impl WorktreePool {
     /// Open a pool for `repo_root`, placing worktrees under `pool_root`.
     ///
     /// Fails loudly when `repo_root` is not a git repository.
-    pub fn open(repo_root: impl Into<PathBuf>, pool_root: impl Into<PathBuf>) -> Result<Self, WorktreePoolError> {
+    pub fn open(
+        repo_root: impl Into<PathBuf>,
+        pool_root: impl Into<PathBuf>,
+    ) -> Result<Self, WorktreePoolError> {
         let repo_root = repo_root.into();
         let pool_root = pool_root.into();
         ensure_git_repo(&repo_root)?;
@@ -98,10 +101,8 @@ impl WorktreePool {
 
         if path.exists() {
             // Stale path from a prior crash — force-remove before re-add.
-            let _ = git(
-                &self.repo_root,
-                &["worktree", "remove", "--force", &path.to_string_lossy()],
-            );
+            let _ =
+                git(&self.repo_root, &["worktree", "remove", "--force", &path.to_string_lossy()]);
             if path.exists() {
                 fs::remove_dir_all(&path)?;
             }
@@ -110,27 +111,12 @@ impl WorktreePool {
         // Ensure branch exists from base_ref.
         let list = git(&self.repo_root, &["branch", "--list", &branch])?;
         if list.trim().is_empty() {
-            git(
-                &self.repo_root,
-                &["branch", &branch, &self.base_ref],
-            )?;
+            git(&self.repo_root, &["branch", &branch, &self.base_ref])?;
         }
 
-        git(
-            &self.repo_root,
-            &[
-                "worktree",
-                "add",
-                &path.to_string_lossy(),
-                &branch,
-            ],
-        )?;
+        git(&self.repo_root, &["worktree", "add", &path.to_string_lossy(), &branch])?;
 
-        let lease = WorktreeLease {
-            slot_id: slot_id.to_string(),
-            path,
-            branch,
-        };
+        let lease = WorktreeLease { slot_id: slot_id.to_string(), path, branch };
         leases.insert(slot_id.to_string(), lease.clone());
         Ok(lease)
     }
@@ -143,10 +129,7 @@ impl WorktreePool {
             .ok_or_else(|| WorktreePoolError::NoAllocation(slot_id.to_string()))?;
 
         let path_str = lease.path.to_string_lossy().into_owned();
-        let remove = git(
-            &self.repo_root,
-            &["worktree", "remove", "--force", &path_str],
-        );
+        let remove = git(&self.repo_root, &["worktree", "remove", "--force", &path_str]);
         if remove.is_err() && lease.path.exists() {
             fs::remove_dir_all(&lease.path)?;
             let _ = git(&self.repo_root, &["worktree", "prune"]);
@@ -155,10 +138,7 @@ impl WorktreePool {
         }
 
         // Drop the ephemeral branch (best-effort).
-        let _ = git(
-            &self.repo_root,
-            &["branch", "-D", &lease.branch],
-        );
+        let _ = git(&self.repo_root, &["branch", "-D", &lease.branch]);
         Ok(())
     }
 
@@ -230,10 +210,7 @@ mod tests {
 
         pool.release("agent-a").expect("release");
         assert!(pool.active_slots().unwrap().is_empty());
-        assert!(
-            !lease.path.exists(),
-            "worktree path must be removed after release"
-        );
+        assert!(!lease.path.exists(), "worktree path must be removed after release");
     }
 
     /// FR-010 / AC-010.8 — non-git root fails loudly.

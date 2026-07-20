@@ -49,12 +49,7 @@ impl MaildirStatus {
         }
         let ready = count_queue_files(&new)?;
         let in_flight = count_queue_files(&cur)?;
-        Ok(Some(Self {
-            path,
-            ready,
-            in_flight,
-            pending: ready + in_flight,
-        }))
+        Ok(Some(Self { path, ready, in_flight, pending: ready + in_flight }))
     }
 
     /// Operator-facing status block for `sharecli status` (FR-010 / AC-010.11).

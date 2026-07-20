@@ -377,9 +377,7 @@ async fn serve_rate_limit_middleware(
         let mut response = ErrorEnvelope::rate_limited("HTTP rate limit exceeded; retry later")
             .into_response(StatusCode::TOO_MANY_REQUESTS);
         if let Ok(val) = HeaderValue::from_str(&retry_after.to_string()) {
-            response
-                .headers_mut()
-                .insert(HeaderName::from_static("retry-after"), val);
+            response.headers_mut().insert(HeaderName::from_static("retry-after"), val);
         }
         return response;
     }

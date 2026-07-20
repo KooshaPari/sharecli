@@ -12,9 +12,9 @@
 //! AC-010.9 MaildirQueue::status counts ready / in_flight / pending
 //! AC-010.10 MaildirQueue::reclaim_owner returns cur→new for matching owner
 
+use serde_json::json;
 use sharecli_fleet::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
 use sharecli_mesh::{MaildirQueue, SmartMerger, WorktreePool, WorktreePoolError};
-use serde_json::json;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -25,10 +25,7 @@ use tempfile::TempDir;
 fn fr010_default_subject_prefix() {
     let reg = FleetRegistry::disconnected();
     assert_eq!(DEFAULT_SUBJECT_PREFIX, "sharecli.fleet");
-    assert_eq!(
-        reg.subject_for("dev-x"),
-        format!("{DEFAULT_SUBJECT_PREFIX}.devices.dev-x")
-    );
+    assert_eq!(reg.subject_for("dev-x"), format!("{DEFAULT_SUBJECT_PREFIX}.devices.dev-x"));
 }
 
 /// FR-010 / AC-010.2 — custom prefix still yields devices subject.
@@ -55,10 +52,7 @@ async fn fr010_device_record_and_register_requires_nats() {
     }
 
     let reg = FleetRegistry::disconnected();
-    let err = reg
-        .register(rec)
-        .await
-        .expect_err("register without NATS MUST fail loudly");
+    let err = reg.register(rec).await.expect_err("register without NATS MUST fail loudly");
     let msg = err.to_string().to_lowercase();
     assert!(
         msg.contains("not connected") || msg.contains("nats"),
@@ -72,19 +66,13 @@ fn fr010_maildir_enqueue_claim_ack() {
     let dir = TempDir::new().expect("tempdir");
     let q = MaildirQueue::open(dir.path()).expect("open");
     let id = q.enqueue(json!({"op": "mesh-task"}), 5).expect("enqueue");
-    assert!(
-        dir.path().join("new").join(&id).exists(),
-        "AC-010.4: enqueue MUST land in new/"
-    );
+    assert!(dir.path().join("new").join(&id).exists(), "AC-010.4: enqueue MUST land in new/");
     let claimed = q.claim(Some("worker-1")).expect("claim").expect("some");
     assert_eq!(claimed.id, id);
     assert_eq!(claimed.attempts, 1);
     assert!(dir.path().join("cur").join(&id).exists());
     q.ack(&id).expect("ack");
-    assert!(
-        q.list_pending().expect("list").is_empty(),
-        "AC-010.4: ack MUST remove from cur/"
-    );
+    assert!(q.list_pending().expect("list").is_empty(), "AC-010.4: ack MUST remove from cur/");
 }
 
 /// FR-010 / AC-010.5 — lower priority number claimed first.
@@ -107,10 +95,7 @@ fn fr010_maildir_nack_requeues() {
     let id = q.enqueue(json!({}), 4).expect("enq");
     q.claim(None).expect("claim").expect("some");
     q.nack(&id).expect("nack");
-    assert!(
-        dir.path().join("new").join(&id).exists(),
-        "AC-010.6: nack MUST restore to new/"
-    );
+    assert!(dir.path().join("new").join(&id).exists(), "AC-010.6: nack MUST restore to new/");
     assert!(!dir.path().join("cur").join(&id).exists());
 }
 
@@ -134,11 +119,7 @@ fn fr010_smart_merge_git_fallback_clean() {
     let merger = SmartMerger::new().with_mergiraf_binary("/nonexistent/mergiraf");
     let result = merger.merge(&base, &ours, &theirs, &out);
     assert!(!result.used_mergiraf, "AC-010.7: must use git fallback");
-    assert!(
-        result.success,
-        "AC-010.7: non-overlapping edits MUST succeed: {}",
-        result.output
-    );
+    assert!(result.success, "AC-010.7: non-overlapping edits MUST succeed: {}", result.output);
     let text = fs::read_to_string(&out).expect("out");
     assert!(text.contains("ours-edit"));
     assert!(text.contains("line3-theirs"));
@@ -165,11 +146,7 @@ fn fr010_smart_merge_git_fallback_conflict() {
 
 fn git_init_with_commit(dir: &Path) {
     let run = |args: &[&str]| {
-        let st = Command::new("git")
-            .args(args)
-            .current_dir(dir)
-            .output()
-            .expect("git");
+        let st = Command::new("git").args(args).current_dir(dir).output().expect("git");
         assert!(
             st.status.success(),
             "git {:?} failed: {}",
@@ -198,10 +175,7 @@ fn fr010_worktree_pool_allocate_release() {
         "AC-010.8: allocated worktree MUST contain repo files"
     );
     pool.release("slot-1").expect("release");
-    assert!(
-        !lease.path.exists(),
-        "AC-010.8: release MUST remove worktree path"
-    );
+    assert!(!lease.path.exists(), "AC-010.8: release MUST remove worktree path");
 }
 
 /// FR-010 / AC-010.8 — non-git pool root fails loudly.

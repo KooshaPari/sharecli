@@ -37,11 +37,7 @@ fn ps_bin() -> std::process::Command {
 #[test]
 fn fr011_ps_all_includes_gate_section() {
     let out = ps_bin().args(["ps", "--all"]).output().expect("ps --all");
-    assert!(
-        out.status.success(),
-        "ps --all failed: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.status.success(), "ps --all failed: {}", String::from_utf8_lossy(&out.stderr));
     let text = String::from_utf8_lossy(&out.stdout);
     assert!(
         text.contains("=== Thermal Gate (FR-011) ==="),

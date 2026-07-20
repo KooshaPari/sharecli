@@ -70,12 +70,7 @@ impl SlotQueue {
 
     /// Create a queue rooted at `root` with `max_concurrent` parallel slots.
     pub fn new(root: impl Into<PathBuf>, max_concurrent: usize) -> Self {
-        Self::with_options(
-            root,
-            max_concurrent.max(1),
-            Self::DEFAULT_TIMEOUT,
-            Self::DEFAULT_POLL,
-        )
+        Self::with_options(root, max_concurrent.max(1), Self::DEFAULT_TIMEOUT, Self::DEFAULT_POLL)
     }
 
     /// Create a queue with explicit timeout / poll settings (tests).
@@ -85,12 +80,7 @@ impl SlotQueue {
         timeout: Duration,
         poll: Duration,
     ) -> Self {
-        Self {
-            root: root.into(),
-            max_concurrent: max_concurrent.max(1),
-            timeout,
-            poll,
-        }
+        Self { root: root.into(), max_concurrent: max_concurrent.max(1), timeout, poll }
     }
 
     pub fn root(&self) -> &Path {
@@ -119,10 +109,7 @@ impl SlotQueue {
         let dir = self.waiting_dir(lane);
         fs::create_dir_all(&dir)
             .with_context(|| format!("create waiting dir {}", dir.display()))?;
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
         let ticket = format!("{}.{}", now, std::process::id());
         let path = dir.join(&ticket);
         fs::write(&path, format!("{}\n", priority.as_u8()))
@@ -301,10 +288,7 @@ mod tests {
         for h in handles {
             h.join().unwrap();
         }
-        assert!(
-            peak.load(Ordering::SeqCst) >= 2,
-            "max_concurrent=2 MUST allow parallel slots"
-        );
+        assert!(peak.load(Ordering::SeqCst) >= 2, "max_concurrent=2 MUST allow parallel slots");
         assert!(peak.load(Ordering::SeqCst) <= 2);
     }
 }

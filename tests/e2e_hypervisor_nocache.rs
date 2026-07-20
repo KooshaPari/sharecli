@@ -84,14 +84,9 @@ async fn e2e_hypervisor_nocache_concurrent_serializes() {
         let hv = Arc::clone(&hv);
         let argv = argv.clone();
         let cwd = cwd.clone();
-        joins.push(tokio::spawn(async move {
-            hv.run(SpawnRequest {
-                argv,
-                cwd,
-                env: vec![],
-            })
-            .await
-        }));
+        joins.push(tokio::spawn(
+            async move { hv.run(SpawnRequest { argv, cwd, env: vec![] }).await },
+        ));
     }
     let mut outcomes = Vec::new();
     for j in joins {
@@ -125,23 +120,13 @@ async fn e2e_hypervisor_nocache_isolated_from_coalesce_cache() {
     let hv = allow_hv(dir.path());
 
     #[cfg(unix)]
-    let readonly = vec![
-        "sh".to_string(),
-        "-c".to_string(),
-        format!("printf . >> '{}'", counter.display()),
-    ];
+    let readonly =
+        vec!["sh".to_string(), "-c".to_string(), format!("printf . >> '{}'", counter.display())];
     #[cfg(windows)]
-    let readonly = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        format!("echo.>>\"{}\"", counter.display()),
-    ];
+    let readonly =
+        vec!["cmd".to_string(), "/C".to_string(), format!("echo.>>\"{}\"", counter.display())];
 
-    let read_req = SpawnRequest {
-        argv: readonly,
-        cwd: dir.path().to_path_buf(),
-        env: vec![],
-    };
+    let read_req = SpawnRequest { argv: readonly, cwd: dir.path().to_path_buf(), env: vec![] };
     let miss = hv.run(read_req.clone()).await.expect("coalesce miss");
     assert!(!miss.from_cache);
     let hit = hv.run(read_req).await.expect("coalesce hit");
@@ -154,10 +139,7 @@ async fn e2e_hypervisor_nocache_isolated_from_coalesce_cache() {
         env: vec![],
     };
     let mutating = hv.run(nocache_req).await.expect("nocache after coalesce");
-    assert!(
-        !mutating.from_cache,
-        "AC-008.10: nocache MUST NOT reuse coalesce cache"
-    );
+    assert!(!mutating.from_cache, "AC-008.10: nocache MUST NOT reuse coalesce cache");
     assert_eq!(
         counter_len(&counter),
         2,

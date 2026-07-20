@@ -19,15 +19,17 @@ use crate::runtime::{
     ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
+use sharecli_fleet::global_coalesce_meters;
+use sharecli_fleet::global_slot_queue_meters;
 use sharecli_fleet::thermal::ThermalGovernor;
+use sharecli_fleet::ResourceWatchSample;
 use sharecli_fleet::{
     agent_label_for_pid, count_host_agents, format_gate_status_section, scan_agents,
     watch_detected_agents, HostProcSource,
 };
-use sharecli_fleet::ResourceWatchSample;
-use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters};
-use sharecli_fleet::global_coalesce_meters;
-use sharecli_fleet::global_slot_queue_meters;
+use sharecli_fuse::{
+    global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
+};
 use sharecli_mesh::capture_maildir_status;
 
 /// Shared runtime instance
@@ -113,13 +115,9 @@ fn print_host_agent_scan(source: &HostProcSource) {
 /// Actionable empty-pool copy for `ps` (C10 L100).
 fn print_ps_empty_hint(project: Option<&str>, harness: Option<&str>) {
     if let Some(p) = project {
-        println!(
-            "\nNo processes match project '{p}'. Try: sharecli start {p} <harness>"
-        );
+        println!("\nNo processes match project '{p}'. Try: sharecli start {p} <harness>");
     } else if let Some(h) = harness {
-        println!(
-            "\nNo processes match harness '{h}'. Try: sharecli start <project> {h}"
-        );
+        println!("\nNo processes match harness '{h}'. Try: sharecli start <project> {h}");
     } else {
         println!("\nNo managed processes yet. Get started: sharecli start <project> <harness>");
         println!("Or open the dashboard: sharecli serve");
@@ -197,10 +195,7 @@ pub async fn stop(
             force_kill_preview("all managed processes", count);
             return Ok(());
         }
-        println!(
-            "Stopping all managed processes{}...",
-            if force { " (force)" } else { "" }
-        );
+        println!("Stopping all managed processes{}...", if force { " (force)" } else { "" });
         pool.kill_all().await?;
         println!("All processes stopped.");
         return Ok(());

@@ -21,11 +21,7 @@ pub struct ServeRateLimit {
 
 impl ServeRateLimit {
     pub fn new(max_per_window: usize, window: Duration) -> Self {
-        Self {
-            limiter: RateLimiter::new(max_per_window, window),
-            window,
-            max_per_window,
-        }
+        Self { limiter: RateLimiter::new(max_per_window, window), window, max_per_window }
     }
 
     /// Build from `[serve]` config with optional env overrides.

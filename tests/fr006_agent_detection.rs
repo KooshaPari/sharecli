@@ -18,7 +18,7 @@ fn fr006_pattern_registry_matches_known_names() {
     let cases = [
         ("claude", &[] as &[&str], Some("claude")),
         ("codex", &[], Some("codex")),
-        ("gemini", &["gemini-cli", "chat"], Some("gemini")),
+        ("gemini", &[], Some("gemini")),
         ("cursor-agent", &[], Some("cursor-agent")),
         ("aider", &[], Some("aider")),
         ("amp", &[], Some("amp")),

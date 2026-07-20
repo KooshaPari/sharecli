@@ -18,18 +18,9 @@ fn c10_l100_ps_idle_pool_prints_get_started_cta() {
     assert!(out.status.success(), "`ps` should exit 0; stderr: {:?}", out.stderr);
     let s = stdout(&out);
     assert!(s.contains("PID"), "ps MUST print table headers; got: {s}");
-    assert!(
-        s.contains("No managed processes yet"),
-        "idle ps MUST explain empty pool; got: {s}"
-    );
-    assert!(
-        s.contains("sharecli start"),
-        "idle ps MUST suggest start command; got: {s}"
-    );
-    assert!(
-        s.contains("sharecli serve"),
-        "idle ps MUST suggest dashboard command; got: {s}"
-    );
+    assert!(s.contains("No managed processes yet"), "idle ps MUST explain empty pool; got: {s}");
+    assert!(s.contains("sharecli start"), "idle ps MUST suggest start command; got: {s}");
+    assert!(s.contains("sharecli serve"), "idle ps MUST suggest dashboard command; got: {s}");
 }
 
 /// FR-003 / C10 L100 — filtered-empty copy differs from first-run idle pool.
@@ -64,8 +55,5 @@ fn c10_l100_dashboard_empty_state_markup() {
     assert!(html.contains("data-empty-kind"), "dashboard MUST distinguish empty kinds");
     assert!(html.contains("'first-run'"), "dashboard MUST include first-run branch");
     assert!(html.contains("'cleared'"), "dashboard MUST include cleared branch");
-    assert!(
-        html.contains("sharecli start"),
-        "dashboard first-run CTA MUST mention start command"
-    );
+    assert!(html.contains("sharecli start"), "dashboard first-run CTA MUST mention start command");
 }
