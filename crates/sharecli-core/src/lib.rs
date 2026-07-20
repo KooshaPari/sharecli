@@ -472,6 +472,11 @@ pub struct SpawnOutcome {
     pub resource_watch: ResourceWatchSample,
     /// Nearest known-agent ancestor for the hypervisor process at spawn time (FR-006).
     pub detected_agent: Option<DetectedAgent>,
+    /// FUSE write-provenance session id when intercept was active for this run (AC-009.13).
+    ///
+    /// `None` for cache hits, nocache queue routing, or cache-miss spawns where FUSE
+    /// mount did not become ready.
+    pub fuse_session_id: Option<String>,
 }
 
 impl SpawnOutcome {
@@ -489,6 +494,11 @@ impl SpawnOutcome {
     pub fn agent_family(&self) -> Option<&'static str> {
         self.detected_agent.as_ref().map(|a| a.family)
     }
+
+    /// `true` when a FUSE intercept session was active for this spawn outcome (AC-009.13).
+    pub fn fuse_intercept_active(&self) -> bool {
+        self.fuse_session_id.is_some()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -504,6 +514,7 @@ impl From<CachedResult> for SpawnOutcome {
             from_cache: true,
             resource_watch: ResourceWatchSample::default(),
             detected_agent: None,
+            fuse_session_id: None,
         }
     }
 }
@@ -695,6 +706,7 @@ impl Hypervisor {
                 from_cache: false,
                 resource_watch: ResourceWatchSample::default(),
                 detected_agent: None,
+                fuse_session_id: None,
             }
             .with_resource_watch(watch)
             .with_detected_agent(detected_agent.clone()));
@@ -718,6 +730,7 @@ impl Hypervisor {
                 from_cache: true,
                 resource_watch: ResourceWatchSample::default(),
                 detected_agent: None,
+                fuse_session_id: None,
             }
             .with_resource_watch(watch)
             .with_detected_agent(detected_agent.clone()));
@@ -730,6 +743,8 @@ impl Hypervisor {
         // guard is returned so the spawn proceeds without interception.
         let fuse_session = fuse_session_id_for_command_key(&key);
         let fuse_guard = FuseGuard::try_mount(&req.cwd, &fuse_session);
+        let fuse_session_id =
+            fuse_guard.mountpoint().map(|_| fuse_session.clone());
 
         // Build an effective SpawnRequest whose cwd points at the FUSE
         // mountpoint (or the original cwd when FUSE is inactive).
@@ -760,6 +775,7 @@ impl Hypervisor {
             from_cache: hit_kind.shared_from_cache(),
             resource_watch: ResourceWatchSample::default(),
             detected_agent: None,
+            fuse_session_id,
         }
         .with_resource_watch(watch)
         .with_detected_agent(detected_agent))
@@ -855,6 +871,7 @@ fn spawn_process_sync(req: &SpawnRequest) -> Result<SpawnOutcome> {
         from_cache: false,
         resource_watch: ResourceWatchSample::default(),
         detected_agent: None,
+        fuse_session_id: None,
     })
 }
 
