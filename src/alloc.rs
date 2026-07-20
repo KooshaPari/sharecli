@@ -29,7 +29,14 @@ mod tests {
     use super::active_allocator_label;
 
     #[test]
-    fn default_allocator_is_system() {
-        assert_eq!(active_allocator_label(), "system");
+    fn active_allocator_label_matches_cfg() {
+        let expected = if cfg!(feature = "dhat-heap") {
+            "dhat"
+        } else if cfg!(all(feature = "jemalloc", not(target_env = "msvc"))) {
+            "jemalloc"
+        } else {
+            "system"
+        };
+        assert_eq!(active_allocator_label(), expected);
     }
 }
