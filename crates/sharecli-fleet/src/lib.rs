@@ -4,6 +4,7 @@
 //! primitives for sharecli's fleet runtime.
 
 pub mod agent_contention;
+pub mod coalesce_meters;
 pub mod detect;
 pub mod proc_scan;
 pub mod registry;
@@ -15,6 +16,10 @@ pub use agent_contention::{
     agent_contention_tier, count_host_agents, effective_gate_decision,
     format_gate_status_section, gate_status_snapshot, AgentContentionThresholds,
     AgentContentionTier, GateStatusSnapshot,
+};
+pub use coalesce_meters::{
+    global_coalesce_meters, record_coalesce_hit_kind, record_coalesce_lookup_hit, record_nocache_run,
+    CoalesceHitKind, CoalesceMeters,
 };
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{

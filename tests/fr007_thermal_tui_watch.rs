@@ -3,6 +3,7 @@
 //!
 //! AC-007.9 FUSE read-coalesce meters in `sharecli thermal` TUI
 //! AC-007.10 host resource watch in `sharecli thermal` TUI
+//! AC-008.11 Hypervisor coalesce meters in `sharecli thermal` TUI
 //! AC-006.9 host agent inventory in `sharecli thermal` TUI (FR-006 proc scan)
 
 use ratatui::backend::TestBackend;
@@ -10,8 +11,10 @@ use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch, ResourceWatchSample};
 use sharecli_fuse::{NegDentryMeters, ReadCacheMeters};
+use sharecli_fleet::CoalesceMeters;
 use sharecli_thermal_tui::{
-    fuse_coalesce_lines, fuse_neg_dentry_lines, host_agent_lines, render, resource_watch_lines, App,
+    fuse_coalesce_lines, fuse_neg_dentry_lines, host_agent_lines, hypervisor_coalesce_lines,
+    render, resource_watch_lines, App,
 };
 
 const SAMPLE: ResourceWatchSample = ResourceWatchSample {
@@ -24,6 +27,11 @@ const SAMPLE: ResourceWatchSample = ResourceWatchSample {
 
 const FUSE_METERS: ReadCacheMeters = ReadCacheMeters { hits: 5, misses: 2 };
 const NEG_METERS: NegDentryMeters = NegDentryMeters { hits: 3, misses: 1 };
+const COALESCE_METERS: CoalesceMeters = CoalesceMeters {
+    hits: 9,
+    misses: 3,
+    nocache_runs: 2,
+};
 
 /// FR-007 / AC-007.10 — thermal TUI renders host resource watch lines.
 #[test]
@@ -55,6 +63,17 @@ fn fr009_thermal_tui_neg_dentry_lines() {
     assert!(text.contains("Hit rate:") && text.contains("75"));
 }
 
+/// FR-008 / AC-008.11 — thermal TUI renders Hypervisor coalesce cache meters.
+#[test]
+fn fr008_thermal_tui_hypervisor_coalesce_lines() {
+    let lines = hypervisor_coalesce_lines(COALESCE_METERS, false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(text.contains("Coalesce hits:") && text.contains('9'));
+    assert!(text.contains("Coalesce misses:") && text.contains('3'));
+    assert!(text.contains("Nocache runs:") && text.contains('2'));
+    assert!(text.contains("Hit rate:") && text.contains("75"));
+}
+
 /// FR-006 / AC-006.9 — thermal TUI renders host agent inventory lines.
 #[test]
 fn fr006_thermal_tui_host_agent_lines() {
@@ -79,7 +98,7 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
     let backend = TestBackend::new(120, 40);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
-        .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS)
+        .with_operator_meters(Some(SAMPLE), FUSE_METERS, NEG_METERS, COALESCE_METERS)
         .with_detected_agents(vec![DetectedAgentWatch {
             agent: DetectedAgent {
                 pid: 100,
@@ -111,7 +130,11 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
         "thermal TUI MUST surface host agent inventory"
     );
     assert!(
-        rendered.contains("FUSE IO Meters") && rendered.contains("Cache hits:"),
+        rendered.contains("Hypervisor IO Meters") && rendered.contains("Coalesce hits:"),
+        "thermal TUI MUST surface Hypervisor coalesce meters"
+    );
+    assert!(
+        rendered.contains("Cache hits:"),
         "thermal TUI MUST surface FUSE read-coalesce meters"
     );
     assert!(

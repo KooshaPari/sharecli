@@ -24,8 +24,8 @@ use ratatui::{
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
-    effective_gate_decision, format_rss_bytes, watch_host_agents, DetectedAgentWatch,
-    ResourceWatchSample,
+    effective_gate_decision, format_rss_bytes, global_coalesce_meters, watch_host_agents,
+    CoalesceMeters, DetectedAgentWatch, ResourceWatchSample,
 };
 use sharecli_fuse::{global_neg_dentry_meters, global_read_cache_meters, NegDentryMeters, ReadCacheMeters};
 
@@ -200,6 +200,26 @@ pub fn fuse_neg_dentry_lines(meters: NegDentryMeters, compact: bool) -> Vec<Line
     ]
 }
 
+/// Lines for the Hypervisor coalesce cache panel (FR-008 / AC-008.11 TUI slice).
+pub fn hypervisor_coalesce_lines(meters: CoalesceMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " coalesce:{} miss:{} nocache:{} {}%",
+            meters.hits,
+            meters.misses,
+            meters.nocache_runs,
+            meters.hit_rate_pct()
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Coalesce hits:   {}", meters.hits)),
+        Line::from(format!("  Coalesce misses: {}", meters.misses)),
+        Line::from(format!("  Nocache runs:    {}", meters.nocache_runs)),
+        Line::from(format!("  Hit rate:        {}%", meters.hit_rate_pct())),
+    ]
+}
+
 /// Lines for the FUSE read-coalesce panel (FR-007 / AC-007.9 TUI slice).
 pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'static>> {
     if compact {
@@ -327,6 +347,8 @@ pub struct App {
     pub fuse_meters: ReadCacheMeters,
     /// Process-wide FUSE negative-dentry meters.
     pub neg_dentry_meters: NegDentryMeters,
+    /// Process-wide Hypervisor coalesce cache meters.
+    pub coalesce_meters: CoalesceMeters,
     /// Host agent inventory with per-PID resource watch (FR-006 × FR-007).
     pub detected_agents: Vec<DetectedAgentWatch>,
 }
@@ -343,6 +365,7 @@ impl App {
             resource_watch: None,
             fuse_meters: ReadCacheMeters::default(),
             neg_dentry_meters: NegDentryMeters::default(),
+            coalesce_meters: CoalesceMeters::default(),
             detected_agents: Vec::new(),
         }
     }
@@ -360,6 +383,7 @@ impl App {
         self.resource_watch = ResourceWatchSample::capture().ok();
         self.fuse_meters = global_read_cache_meters();
         self.neg_dentry_meters = global_neg_dentry_meters();
+        self.coalesce_meters = global_coalesce_meters();
         self.detected_agents = watch_host_agents();
     }
 
@@ -369,10 +393,12 @@ impl App {
         watch: Option<ResourceWatchSample>,
         fuse: ReadCacheMeters,
         neg: NegDentryMeters,
+        coalesce: CoalesceMeters,
     ) -> Self {
         self.resource_watch = watch;
         self.fuse_meters = fuse;
         self.neg_dentry_meters = neg;
+        self.coalesce_meters = coalesce;
         self
     }
 
@@ -416,7 +442,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let thermal_h = if compact { 4 } else { 5 };
     let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 6 };
-    let fuse_h = if compact { 5 } else { 8 };
+    let fuse_h = if compact { 6 } else { 12 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -550,8 +576,9 @@ fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool
 }
 
 fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
-    let title = if compact { " FUSE " } else { " FUSE IO Meters " };
-    let mut lines = fuse_coalesce_lines(app.fuse_meters, compact);
+    let title = if compact { " IO " } else { " Hypervisor IO Meters " };
+    let mut lines = hypervisor_coalesce_lines(app.coalesce_meters, compact);
+    lines.extend(fuse_coalesce_lines(app.fuse_meters, compact));
     lines.extend(fuse_neg_dentry_lines(app.neg_dentry_meters, compact));
     let block = Block::default().borders(Borders::ALL).title(title);
     frame.render_widget(Paragraph::new(lines).block(block), area);
@@ -975,6 +1002,7 @@ mod tests {
                 Some(sample),
                 ReadCacheMeters { hits: 2, misses: 1 },
                 NegDentryMeters { hits: 1, misses: 0 },
+                CoalesceMeters { hits: 4, misses: 1, nocache_runs: 2 },
             )
             .with_detected_agents(vec![agent_watch(
                 4242,
@@ -995,8 +1023,9 @@ mod tests {
         assert!(rendered.contains("Detected Agents"), "expected agent panel");
         assert!(rendered.contains("PID 4242"), "expected agent row");
         assert!(rendered.contains("RSS"), "expected per-agent RSS in agent panel");
-        assert!(rendered.contains("FUSE IO Meters"), "expected fuse panel");
+        assert!(rendered.contains("Hypervisor IO Meters"), "expected io panel");
         assert!(rendered.contains("Open FDs:"), "expected FD watch line");
+        assert!(rendered.contains("Coalesce hits:"), "expected coalesce meters");
         assert!(rendered.contains("Cache hits:"), "expected fuse meters");
         assert!(rendered.contains("Neg hits:"), "expected neg dentry meters");
     }
@@ -1016,6 +1045,7 @@ mod tests {
             }),
             ReadCacheMeters { hits: 0, misses: 0 },
             NegDentryMeters { hits: 0, misses: 0 },
+            CoalesceMeters::default(),
         );
         app.update(ThermalLevel::Red, 4);
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -1040,6 +1070,7 @@ mod tests {
             }),
             ReadCacheMeters { hits: 1, misses: 1 },
             NegDentryMeters { hits: 0, misses: 1 },
+            CoalesceMeters::default(),
         );
         app.update(ThermalLevel::Yellow, 2);
         terminal.draw(|f| render(f, &app)).unwrap();

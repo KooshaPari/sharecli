@@ -39,6 +39,10 @@ pub use nocache::{
     has_nocache_arg, parse_nocache_args_csv, should_bypass_coalesce, DEFAULT_NOCACHE_ARGS,
 };
 pub use queue::{PriorityQueue, QueuePriority, SlotQueue};
+pub use sharecli_fleet::{
+    global_coalesce_meters, record_coalesce_hit_kind, record_coalesce_lookup_hit, record_nocache_run,
+    CoalesceHitKind, CoalesceMeters,
+};
 
 use std::fs;
 use std::io::{self, Write};
@@ -99,24 +103,6 @@ pub fn command_key(argv: &[String], cwd: &Path, env_subset: &[(String, String)])
 // ---------------------------------------------------------------------------
 // CachedResult
 // ---------------------------------------------------------------------------
-
-/// How a [`CoalesceCache::with_lock_detailed`] result was obtained.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CoalesceHitKind {
-    /// The miss closure ran and stored a fresh entry.
-    Miss,
-    /// A sibling stored while this caller waited on the advisory flock.
-    LockRecheck,
-    /// A sibling stored during the debounce sleep before the miss closure ran.
-    DebounceRecheck,
-}
-
-impl CoalesceHitKind {
-    /// `true` when the result was served from cache without running the miss closure.
-    pub fn shared_from_cache(self) -> bool {
-        !matches!(self, Self::Miss)
-    }
-}
 
 /// The outcome of a command execution — what the hypervisor stores and returns
 /// to the waiting sibling agents.
@@ -349,6 +335,7 @@ impl CoalesceCache {
 
         // Re-check: a sibling may have stored the result while we were waiting.
         if let Some(cached) = self.lookup(key)? {
+            record_coalesce_hit_kind(CoalesceHitKind::LockRecheck);
             return Ok((T::from(cached), CoalesceHitKind::LockRecheck));
         }
 
@@ -357,6 +344,7 @@ impl CoalesceCache {
         if !self.debounce.is_zero() {
             thread::sleep(self.debounce);
             if let Some(cached) = self.lookup(key)? {
+                record_coalesce_hit_kind(CoalesceHitKind::DebounceRecheck);
                 return Ok((T::from(cached), CoalesceHitKind::DebounceRecheck));
             }
         }
@@ -365,6 +353,7 @@ impl CoalesceCache {
         let value = f()?;
         let cached: CachedResult = value.into();
         self.store(key, &cached)?;
+        record_coalesce_hit_kind(CoalesceHitKind::Miss);
 
         // Lock releases on drop.
         Ok((T::from(cached), CoalesceHitKind::Miss))
@@ -583,5 +572,21 @@ mod tests {
         assert!(!ran, "debounce MUST share bg store without miss path");
         assert_eq!(got.stdout, b"from-bg");
         assert_eq!(kind, CoalesceHitKind::DebounceRecheck);
+    }
+
+    #[test]
+    fn global_coalesce_meters_record_hit_miss_and_nocache() {
+        let before = global_coalesce_meters();
+        record_coalesce_lookup_hit();
+        record_coalesce_hit_kind(CoalesceHitKind::Miss);
+        record_coalesce_hit_kind(CoalesceHitKind::LockRecheck);
+        record_nocache_run();
+        let after = global_coalesce_meters();
+        assert_eq!(after.hits, before.hits + 2);
+        assert_eq!(after.misses, before.misses + 1);
+        assert_eq!(after.nocache_runs, before.nocache_runs + 1);
+        let section = after.format_status_section();
+        assert!(section.contains("=== Hypervisor Coalesce ==="));
+        assert!(section.contains("Nocache runs:"));
     }
 }

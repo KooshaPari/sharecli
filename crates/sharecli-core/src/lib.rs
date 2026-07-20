@@ -67,8 +67,8 @@ use sharecli_fleet::agent_contention::{
 };
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{
-    command_key, has_nocache_arg, CachedResult, CoalesceCache, CoalesceHitKind, QueuePriority,
-    SlotQueue, DEFAULT_NOCACHE_ARGS,
+    command_key, has_nocache_arg, record_coalesce_lookup_hit, record_nocache_run, CachedResult,
+    CoalesceCache, CoalesceHitKind, QueuePriority, SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
 use tracing::{debug, error, warn};
 
@@ -670,6 +670,7 @@ impl Hypervisor {
                 .next()
                 .unwrap_or("unknown");
             debug!(lane, argv = ?req.argv, "hypervisor::run — nocache → queue");
+            record_nocache_run();
             let outcome = self.queue.with_slot(lane, QueuePriority::Normal, || {
                 spawn_process_sync(&req)
             })?;
@@ -695,6 +696,7 @@ impl Hypervisor {
         // accurately report `from_cache` for the caller.
         if let Some(cached) = self.cache.lookup(&key)? {
             debug!(key = %key.0, "hypervisor::run — cache hit");
+            record_coalesce_lookup_hit();
             return Ok(SpawnOutcome {
                 exit_code: cached.exit_code,
                 stdout: cached.stdout,
