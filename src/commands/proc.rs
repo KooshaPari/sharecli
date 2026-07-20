@@ -543,6 +543,8 @@ pub struct ProcDetailSnapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_comm: Option<String>,
     pub comm: String,
+    /// Linux `/proc` state letter (R|S|D|Z|T|t|…); AC-006.33.
+    pub state: String,
     pub cmdline: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub family: Option<String>,
@@ -608,6 +610,23 @@ fn state_letter_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
     state_by_pid.get(&pid).map(|ch| ch.to_string()).unwrap_or_default()
 }
 
+fn state_json_from_char(state: char) -> String {
+    if state == '?' { String::new() } else { state.to_string() }
+}
+
+/// STATE column for flat text inventory; missing/unknown → `-` (AC-006.33).
+pub fn state_text_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
+    state_by_pid
+        .get(&pid)
+        .filter(|ch| **ch != '?')
+        .map(|ch| ch.to_string())
+        .unwrap_or_else(|| "-".into())
+}
+
+fn state_text_from_detail_state(state: &str) -> String {
+    if state.is_empty() { "-".into() } else { state.to_string() }
+}
+
 /// Build one JSON/CSV agent row including process state (AC-006.32).
 pub fn agent_row_from_watch(
     row: &DetectedAgentWatch,
@@ -655,6 +674,7 @@ pub fn build_proc_detail(source: &dyn ProcSource, pid: u32) -> Result<ProcDetail
         ppid: proc.ppid,
         parent_comm,
         comm: proc.comm,
+        state: state_json_from_char(proc.state),
         cmdline: proc.cmdline,
         family: direct_family,
         agent_ancestor,
@@ -686,6 +706,7 @@ pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()>
     };
     println!("Parent:    {parent}");
     println!("COMM:      {}", detail.comm);
+    println!("State:     {}", state_text_from_detail_state(&detail.state));
     println!("CMDLINE:   {}", format_cmdline(&detail.cmdline));
     if let Some(ref family) = detail.family {
         println!("Family:    {family}");
@@ -792,8 +813,12 @@ pub fn render_agent_inventory_csv(
     out
 }
 
-/// Render host agent inventory (text mode).
-pub fn render_agent_inventory(watched: &[DetectedAgentWatch], scanned: usize) {
+/// Render host agent inventory (text mode, AC-006.33).
+pub fn render_agent_inventory(
+    watched: &[DetectedAgentWatch],
+    scanned: usize,
+    state_by_pid: &HashMap<u32, char>,
+) {
     println!("=== Host agents (proc scan) ===\n");
     if watched.is_empty() {
         println!("No known agent processes detected on this host.");
@@ -802,14 +827,16 @@ pub fn render_agent_inventory(watched: &[DetectedAgentWatch], scanned: usize) {
         }
         return;
     }
-    println!("{:<8} {:<16} {:<10} {:<8} COMM", "PID", "FAMILY", "RSS", "FD");
-    println!("{}", "-".repeat(56));
+    println!("{:<8} {:<16} {:<6} {:<10} {:<8} COMM", "PID", "FAMILY", "STATE", "RSS", "FD");
+    println!("{}", "-".repeat(64));
     for row in watched {
         let fd = row.resource.fd_count.map(|n| n.to_string()).unwrap_or_else(|| "-".into());
+        let state = state_text_for_pid(state_by_pid, row.agent.pid);
         println!(
-            "{:<8} {:<16} {:<10} {:<8} {}",
+            "{:<8} {:<16} {:<6} {:<10} {:<8} {}",
             row.agent.pid,
             row.agent.family,
+            state,
             format_rss_bytes(row.resource.mem_rss_bytes),
             fd,
             row.agent.comm
@@ -943,7 +970,7 @@ pub fn render_once(
         println!("{}", serde_json::to_string_pretty(&snap)?);
         return Ok(());
     }
-    render_agent_inventory(&watched, scanned_agents.len());
+    render_agent_inventory(&watched, scanned_agents.len(), &state_by_pid);
     print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
     Ok(())
 }
