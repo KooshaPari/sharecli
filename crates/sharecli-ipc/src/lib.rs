@@ -100,6 +100,24 @@ pub fn command_key(argv: &[String], cwd: &Path, env_subset: &[(String, String)])
 // CachedResult
 // ---------------------------------------------------------------------------
 
+/// How a [`CoalesceCache::with_lock_detailed`] result was obtained.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CoalesceHitKind {
+    /// The miss closure ran and stored a fresh entry.
+    Miss,
+    /// A sibling stored while this caller waited on the advisory flock.
+    LockRecheck,
+    /// A sibling stored during the debounce sleep before the miss closure ran.
+    DebounceRecheck,
+}
+
+impl CoalesceHitKind {
+    /// `true` when the result was served from cache without running the miss closure.
+    pub fn shared_from_cache(self) -> bool {
+        !matches!(self, Self::Miss)
+    }
+}
+
 /// The outcome of a command execution — what the hypervisor stores and returns
 /// to the waiting sibling agents.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -301,6 +319,19 @@ impl CoalesceCache {
     where
         T: Into<CachedResult> + From<CachedResult>,
     {
+        self.with_lock_detailed(key, f).map(|(value, _)| value)
+    }
+
+    /// Like [`with_lock`][Self::with_lock] but reports whether the result came from
+    /// a lock/debounce re-check instead of the miss closure.
+    pub fn with_lock_detailed<T>(
+        &self,
+        key: &CommandKey,
+        f: impl FnOnce() -> Result<T>,
+    ) -> Result<(T, CoalesceHitKind)>
+    where
+        T: Into<CachedResult> + From<CachedResult>,
+    {
         self.ensure_root()?;
 
         let lock_path = self.lock_path(key);
@@ -318,7 +349,7 @@ impl CoalesceCache {
 
         // Re-check: a sibling may have stored the result while we were waiting.
         if let Some(cached) = self.lookup(key)? {
-            return Ok(T::from(cached));
+            return Ok((T::from(cached), CoalesceHitKind::LockRecheck));
         }
 
         // Debounce window (origin harness coalesce debounce_ms): wait, then share
@@ -326,7 +357,7 @@ impl CoalesceCache {
         if !self.debounce.is_zero() {
             thread::sleep(self.debounce);
             if let Some(cached) = self.lookup(key)? {
-                return Ok(T::from(cached));
+                return Ok((T::from(cached), CoalesceHitKind::DebounceRecheck));
             }
         }
 
@@ -336,7 +367,7 @@ impl CoalesceCache {
         self.store(key, &cached)?;
 
         // Lock releases on drop.
-        Ok(T::from(cached))
+        Ok((T::from(cached), CoalesceHitKind::Miss))
     }
 }
 
@@ -537,8 +568,8 @@ mod tests {
         });
 
         let mut ran = false;
-        let got: CachedResult = cache
-            .with_lock(&key, || {
+        let (got, kind) = cache
+            .with_lock_detailed(&key, || {
                 ran = true;
                 Ok(CachedResult {
                     exit_code: 7,
@@ -546,10 +577,11 @@ mod tests {
                     stderr: vec![],
                 })
             })
-            .expect("with_lock");
+            .expect("with_lock_detailed");
 
         producer.join().expect("join");
         assert!(!ran, "debounce MUST share bg store without miss path");
         assert_eq!(got.stdout, b"from-bg");
+        assert_eq!(kind, CoalesceHitKind::DebounceRecheck);
     }
 }

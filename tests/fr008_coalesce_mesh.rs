@@ -13,7 +13,8 @@
 //! (Mesh membership ACs live under FR-010.)
 
 use sharecli_core::{
-    FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision, THERMAL_MAX_RETRIES,
+    FakeThermalGate, Hypervisor, HypervisorConfig, SpawnRequest, ThermalDecision,
+    THERMAL_MAX_RETRIES,
 };
 use sharecli_ipc::{
     command_key, has_nocache_arg, should_bypass_coalesce, CachedResult, CoalesceCache,
@@ -226,6 +227,63 @@ fn fr008_debounce_waits_and_shares() {
         hits.load(Ordering::SeqCst),
         1,
         "miss path MUST NOT run when debounce shares a recent store (AC-008.6)"
+    );
+}
+
+/// FR-008 / AC-008.6 — Hypervisor::run coalesce path debounces before spawn.
+#[tokio::test]
+async fn fr008_hypervisor_debounce_waits_and_shares() {
+    let dir = TempDir::new().expect("tempdir");
+    let debounce = Duration::from_millis(120);
+    let cache_root = dir.path().join("cache");
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let hv = Hypervisor::with_options(
+        HypervisorConfig {
+            cache_root: cache_root.clone(),
+            queue_root: dir.path().join("queue"),
+            queue_max_concurrent: 1,
+            coalesce_debounce: debounce,
+        },
+        gate,
+        vec![],
+    );
+
+    let argv = vec!["debounce-hv-probe".to_string()];
+    let cwd = dir.path().to_path_buf();
+    let key = command_key(&argv, &cwd, &[]);
+
+    let cache_bg = CoalesceCache::with_options(&cache_root, Duration::from_secs(300), debounce);
+    let key_bg = key.clone();
+    let producer = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(40));
+        cache_bg
+            .store(
+                &key_bg,
+                &CachedResult {
+                    exit_code: 0,
+                    stdout: b"shared-hv".to_vec(),
+                    stderr: vec![],
+                },
+            )
+            .expect("bg store");
+    });
+
+    let outcome = hv
+        .run(SpawnRequest { argv, cwd, env: vec![] })
+        .await
+        .expect("debounced hypervisor run");
+
+    producer.join().expect("producer join");
+
+    assert_eq!(
+        outcome.stdout,
+        b"shared-hv",
+        "Hypervisor debounce MUST share in-window result (AC-008.6)"
+    );
+    assert_eq!(outcome.exit_code, 0);
+    assert!(
+        outcome.from_cache,
+        "debounce share MUST surface as from_cache on Hypervisor::run"
     );
 }
 
