@@ -171,6 +171,7 @@
 | AC-008.13 | `tests/fr008_coalesce_mesh.rs` (`fr008_command_key_cwd_env_dimensions`, `fr008_hypervisor_cache_respects_cwd_and_env`); `crates/sharecli-ipc/src/lib.rs` (`command_key`); `crates/sharecli-core/src/lib.rs` (`Hypervisor::run`) | command_key cwd/env dimensions + Hypervisor cache isolation |
 | AC-008.14 | `tests/fr008_coalesce_mesh.rs` (`fr008_slot_queue_critical_before_normal`, `fr008_hypervisor_nocache_critical_before_normal`); `crates/sharecli-ipc/src/queue.rs` (`critical_dequeues_before_normal_under_contention`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::queue_priority`, `Hypervisor::run`) | SlotQueue Critical-before-Normal priority + Hypervisor nocache wiring |
 | AC-008.15 | `tests/fr008_queue_priority_operator.rs`; `crates/sharecli-ipc/src/queue.rs` (`resolve_operator_queue_priority`, `QUEUE_PRIORITY_ENV`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::from_operator`, `SpawnRequest::new`); `crates/harness-native/tests/native_harness_contract.rs` (`operator_queue_priority_honors_rules_conf`) | operator env + rules.conf → SpawnRequest queue priority |
+| AC-008.16 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::run_queued`, `hypervisor_run_queued_skips_coalesce_cache`); `crates/harness-native/src/strategies/queue.rs` (`queue_strategy_executes_via_hypervisor`, `priority_queue_strategy_executes_via_hypervisor`) | harness queue/priority_queue → Hypervisor nocache lane via `from_operator` |
 
 ### FR-009 — FUSE
 
@@ -276,6 +277,9 @@
   coalesce-derived session id to `mount_with_session` (AC-009.12).
 - **2026-07-20 — FR-009 fuse provenance CLI:** `sharecli fuse provenance`
   reads backing write xattrs via `read_provenance` (AC-009.11).
+- **2026-07-20 — FR-008 harness queue Hypervisor:** harness-native `queue` /
+  `priority_queue` strategies route through `Hypervisor::run_queued` with
+  `SpawnRequest::from_operator` (AC-008.16); replaces raw `Command::spawn`.
 - **2026-07-20 — FR-008 operator queue priority:** `SHARECLI_QUEUE_PRIORITY` +
   rules.conf `priority=` resolve through `resolve_operator_queue_priority` into
   `SpawnRequest::queue_priority` (AC-008.15); harness-native re-exports resolver.
