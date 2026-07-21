@@ -182,6 +182,7 @@
 | AC-007.48   | `crates/sharecli-tray-linux/src/ipc.rs` (`health_snapshot`, `process_summaries`); `crates/sharecli-tray-linux/src/main.rs` (`refresh`); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift` (`refresh`); `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`asHealthSnapshot`, `asProcessSummaries`); `tests/fr007_tray_monitoring_report_consume.rs` | Tray refresh single monitoring.report snapshot drives gate/host_watch + process inventory; no split health + process.list polls |
 | AC-007.49   | `tests/fr007_ps_all_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`PsAllNdjsonLine`, `ps --all --watch --json`, `render_ps_once` watch NDJSON path); `src/commands/mod.rs` (`eprint_live_gate_host_watch_sections`) | ps --all --watch --json NDJSON gate → host_watch per refresh; stderr text companions; --watch --json requires --all |
 | AC-007.50   | `tests/fr007_ps_all_watch_text_stderr_silent.rs`; `src/commands/mod.rs` (`ps` watch loop text path, `print_host_agent_scan`, `render_ps_once` text path) | ps --all --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only |
+| AC-007.51   | `crates/sharecli-tray-windows/src/ipc.rs` (`health_snapshot`, `process_summaries`); `windows/ShareCLITray/MonitoringReportSnapshot.cs` (`AsHealthSnapshot`, `AsProcessSummaries`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`RefreshDataAsync`); `tests/fr007_tray_windows_monitoring_report_consume.rs` | Windows tray refresh single monitoring.report snapshot drives gate/host_watch + process inventory; no split health + process.list polls |
 
 ### FR-008 — Coalesce
 
@@ -251,6 +252,11 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 Windows tray refresh consumes monitoring.report snapshot:** WinUI
+  `TrayWindow.RefreshDataAsync` drives operator gate/host_watch + process inventory from one
+  `monitoring.report` IPC poll (AC-007.51); Rust + C# mapping helpers on
+  `MonitoringReportSnapshot`; no split `health.status` + `process.list` operator refresh;
+  parity with Linux/Swift AC-007.48.
 - **2026-07-21 — FR-007 ps --all watch text stderr silence:** `sharecli ps --all --watch` (text,
   no `--json`) MUST NOT print gate/host_watch text companions or `[watch]` footer on stderr
   during refresh cycles (AC-007.50); gate → `host_watch` and footer stay on stdout only; parity

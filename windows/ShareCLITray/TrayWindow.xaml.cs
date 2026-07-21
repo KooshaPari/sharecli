@@ -1,7 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ShareCLITray;
@@ -20,59 +19,34 @@ public sealed partial class TrayWindow : Window
 
     private async Task RefreshDataAsync()
     {
-        // Fetch health snapshot.
-        var healthJson = ShareCLIInterop.GetHealthJson();
-        if (healthJson != null)
+        // Single `monitoring.report` round-trip drives operator gate/host_watch + process
+        // inventory (AC-007.51); avoids split `health.status` + `process.list` polls.
+        var reportJson = ShareCLIInterop.SendRequest(
+            "{\"id\": 1, \"method\": \"monitoring.report\", \"params\": {}}");
+        var report = MonitoringReportSnapshot.TryParseIpcResponse(reportJson);
+        if (report == null)
         {
-            try
+            DispatcherQueue?.TryEnqueue(() =>
             {
-                var doc = JsonDocument.Parse(healthJson);
-                var root = doc.RootElement;
-                int managedCount = root.GetProperty("managed_processes").GetInt32();
-                ulong usedMem = root.GetProperty("used_memory_mb").GetUInt64();
-                bool healthy = root.GetProperty("healthy").GetBoolean();
-
-                DispatcherQueue?.TryEnqueue(() =>
-                {
-                    HealthStatusText.Text =
-                        $"Health: {(healthy ? "✓ OK" : "✗ Unhealthy")} | " +
-                        $"Managed: {managedCount} | " +
-                        $"Memory: {usedMem} MB";
-                });
-            }
-            catch { }
+                HealthStatusText.Text = "Daemon offline or monitoring.report failed";
+                ProcessGrid.ItemsSource = null;
+            });
+            return;
         }
 
-        // Fetch process list.
-        var listJson = ShareCLIInterop.SendRequest("{\"id\": 1, \"method\": \"process.list\", \"params\": {}}");
-        if (listJson != null)
-        {
-            try
-            {
-                var doc = JsonDocument.Parse(listJson);
-                var root = doc.RootElement;
-                if (root.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Array)
-                {
-                    m_processes.Clear();
-                    foreach (var proc in result.EnumerateArray())
-                    {
-                        m_processes.Add(new ProcessInfo
-                        {
-                            pid = proc.GetProperty("pid").GetUInt32(),
-                            name = proc.GetProperty("name").GetString() ?? "?",
-                            memory_mb = proc.GetProperty("memory_mb").GetUInt64(),
-                            project = proc.TryGetProperty("project", out var p) ? p.GetString() : null,
-                        });
-                    }
+        var health = report.AsHealthSnapshot();
+        m_processes = report.AsProcessSummaries();
 
-                    DispatcherQueue?.TryEnqueue(() =>
-                    {
-                        ProcessGrid.ItemsSource = m_processes;
-                    });
-                }
-            }
-            catch { }
-        }
+        DispatcherQueue?.TryEnqueue(() =>
+        {
+            HealthStatusText.Text =
+                $"Health: {(health.Healthy ? "✓ OK" : "✗ Unhealthy")} | " +
+                $"Managed: {health.ManagedProcesses} | " +
+                $"Memory: {health.UsedMemoryMb} / {health.TotalMemoryMb} MB | " +
+                $"Gate: {health.Gate.GateDecision} | " +
+                $"Load: {health.HostWatch.Load1m:F2}";
+            ProcessGrid.ItemsSource = m_processes;
+        });
     }
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e)
