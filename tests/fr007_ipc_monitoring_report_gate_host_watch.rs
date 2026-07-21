@@ -118,9 +118,10 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
     assert_json_gate_before_host_watch(&json, "MonitoringReportSnapshot");
 }
 
-/// FR-007 / AC-007.46 — tray wire shape decodes gate + host_watch from monitoring.report JSON.
+/// FR-007 / AC-007.47 — tray wire shape decodes gate + host_watch from monitoring.report JSON.
 #[test]
-fn fr007_ipc_monitoring_report_snapshot_wire_roundtrip() {
+fn fr007_ipc_monitoring_report_tray_wire_roundtrip() {
+    // Mirrors sharecli-tray-linux `monitoring_report_snapshot_matches_server_wire_shape`.
     use sharecli_ipc::handler::MonitoringReportSnapshot;
 
     let raw = r#"{"timestamp":1700000000,"total_processes":1,"used_memory_mb":256,

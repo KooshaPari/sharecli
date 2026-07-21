@@ -74,6 +74,26 @@ pub struct HealthSnapshot {
     pub host_watch: HostResourceWatchJson,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct MonitoringProcessEntry {
+    pub pid: u32,
+    pub name: String,
+    pub memory_mb: u64,
+    pub project: Option<String>,
+    pub harness: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MonitoringReportSnapshot {
+    pub timestamp: u64,
+    pub total_processes: usize,
+    pub used_memory_mb: u64,
+    pub total_memory_mb: u64,
+    pub processes: Vec<MonitoringProcessEntry>,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
 /// Resolve the IPC socket path, honoring `SHARECLI_IPC_SOCK` and falling back to
 /// `$XDG_DATA_HOME/sharecli/ipc.sock` (matching `sharecli-ipc::socket_path`).
 pub fn socket_path() -> PathBuf {
@@ -121,6 +141,10 @@ pub fn list_processes() -> Result<Vec<ProcessSummary>> {
 
 pub fn health() -> Result<HealthSnapshot> {
     call("health.status", serde_json::json!({}))
+}
+
+pub fn monitoring_report() -> Result<MonitoringReportSnapshot> {
+    call("monitoring.report", serde_json::json!({}))
 }
 
 pub fn kill(pid: u32) -> Result<bool> {
@@ -186,6 +210,27 @@ mod tests {
         assert!(h.healthy);
         assert_eq!(h.gate.gate_decision, "ADMIT");
         assert_eq!(h.host_watch.load_1m, 0.5);
+    }
+
+    #[test]
+    fn monitoring_report_snapshot_matches_server_wire_shape() {
+        // Byte-for-byte the JSON emitted by sharecli-ipc::handler::MonitoringReportSnapshot.
+        let raw = r#"{"timestamp":1700000000,"total_processes":1,"used_memory_mb":256,
+            "total_memory_mb":16384,"processes":[{"pid":99,"name":"worker","memory_mb":64,
+            "project":null,"harness":"native"}],
+            "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+            "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}}"#;
+        let snap: MonitoringReportSnapshot = serde_json::from_str(raw).unwrap();
+        assert_eq!(snap.timestamp, 1_700_000_000);
+        assert_eq!(snap.total_processes, 1);
+        assert_eq!(snap.used_memory_mb, 256);
+        assert_eq!(snap.processes.len(), 1);
+        assert_eq!(snap.processes[0].pid, 99);
+        assert_eq!(snap.processes[0].name, "worker");
+        assert_eq!(snap.gate.gate_decision, "ADMIT");
+        assert_eq!(snap.host_watch.load_1m, 0.5);
     }
 
     #[test]

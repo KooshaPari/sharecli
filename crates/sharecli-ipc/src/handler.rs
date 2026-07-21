@@ -7,7 +7,7 @@
 //!   health.status       → HealthSnapshot
 //!   config.get          → Config
 //!   config.set          → { key, value }  (dot-path into TOML)
-//!   monitoring.report   → MonitoringReport
+//!   monitoring.report   → MonitoringReportSnapshot
 
 use std::sync::Arc;
 
