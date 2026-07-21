@@ -12,7 +12,7 @@ use sharecli_fleet::{
     format_rss_bytes, gate_status_snapshot,
     lookup_proc, match_known_agent, parse_rss_bytes, scan_host_agents, walk_agent_ancestors,
     watch_detected_agents, AgentResourceSample, AgentTreeNode, DetectedAgentWatch, HostProcSource,
-    ProcSource,
+    ProcSource, ThermalLevel,
 };
 
 pub use sharecli_fleet::{
@@ -642,6 +642,17 @@ fn print_host_watch_text_footer() -> Result<()> {
     Ok(())
 }
 
+/// Gate + host watch text companions on stderr for NDJSON watch (AC-007.28).
+fn eprint_gate_host_watch_stderr_companions(
+    thermal: ThermalLevel,
+    agent_count: usize,
+) -> Result<()> {
+    eprint!("{}", format_gate_status_section(thermal, agent_count));
+    eprint!("{}", HostResourceWatchJson::capture()?.format_text_section());
+    let _ = std::io::stderr().flush();
+    Ok(())
+}
+
 fn append_gate_csv_companion(csv: String, gate: &sharecli_fleet::GateStatusSnapshot) -> String {
     let mut out = csv;
     out.push_str(&gate.format_csv_companion());
@@ -1045,6 +1056,7 @@ pub fn render_once(
             if ndjson {
                 let line = AgentTreeNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
                 emit_ndjson_line(&line)?;
+                eprint_gate_host_watch_stderr_companions(thermal, scanned_agents.len())?;
                 return Ok(());
             }
             println!("{}", serde_json::to_string_pretty(&snap)?);
@@ -1088,6 +1100,7 @@ pub fn render_once(
         if ndjson {
             let line = AgentProcNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
             emit_ndjson_line(&line)?;
+            eprint_gate_host_watch_stderr_companions(thermal, scanned_agents.len())?;
             return Ok(());
         }
         println!("{}", serde_json::to_string_pretty(&snap)?);
