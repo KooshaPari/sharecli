@@ -1,5 +1,7 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -8,13 +10,23 @@ namespace ShareCLITray;
 public sealed partial class TrayWindow : Window
 {
     private List<ProcessInfo> m_processes = [];
+    private DispatcherQueueTimer? _pollTimer;
 
     public TrayWindow()
     {
         InitializeComponent();
 
-        // Set up event handlers and load initial data.
+        StartPeriodicPolling();
         _ = RefreshDataAsync();
+    }
+
+    private void StartPeriodicPolling()
+    {
+        var queue = DispatcherQueue.GetForCurrentThread();
+        _pollTimer = queue.CreateTimer();
+        _pollTimer.Interval = TimeSpan.FromSeconds(TrayPoll.IntervalSeconds);
+        _pollTimer.Tick += async (_, _) => await RefreshDataAsync();
+        _pollTimer.Start();
     }
 
     private async Task RefreshDataAsync()
@@ -56,6 +68,7 @@ public sealed partial class TrayWindow : Window
 
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {
+        _pollTimer?.Stop();
         Close();
     }
 }
