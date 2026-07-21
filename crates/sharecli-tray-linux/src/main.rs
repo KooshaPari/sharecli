@@ -25,6 +25,7 @@ mod linux {
     use ksni::blocking::{Handle, TrayMethods};
 
     use sharecli_tray_linux::ipc;
+    use sharecli_tray_linux::operator_display;
     use sharecli_tray_linux::poll::tray_poll_interval;
 
     /// Snapshot of daemon state rendered into the tray. Refreshed by the poll
@@ -57,13 +58,18 @@ mod linux {
 
         fn tool_tip(&self) -> ksni::ToolTip {
             let description = match (&self.health, self.connected) {
-                (Some(h), true) => format!(
-                    "{} managed · {} / {} MB{}",
-                    h.managed_processes,
-                    h.used_memory_mb,
-                    h.total_memory_mb,
-                    if h.healthy { "" } else { " · UNHEALTHY" },
-                ),
+                (Some(h), true) => {
+                    let base = format!(
+                        "{} managed · {} / {} MB{}",
+                        h.managed_processes,
+                        h.used_memory_mb,
+                        h.total_memory_mb,
+                        if h.healthy { "" } else { " · UNHEALTHY" },
+                    );
+                    let op = operator_display::format_operator_status_summary(&h.gate, &h.host_watch);
+                    let net = operator_display::format_host_net_tray_line(&h.host_watch);
+                    format!("{base}\n{op}\n{net}")
+                }
                 _ => "sharecli daemon not reachable".into(),
             };
             ksni::ToolTip {
@@ -88,6 +94,17 @@ mod linux {
             };
             items.push(StandardItem { label: header, enabled: false, ..Default::default() }.into());
             items.push(MenuItem::Separator);
+
+            if let Some(h) = &self.health {
+                if self.connected {
+                    for line in operator_display::format_operator_tray_lines(&h.gate, &h.host_watch) {
+                        items.push(
+                            StandardItem { label: line, enabled: false, ..Default::default() }.into(),
+                        );
+                    }
+                    items.push(MenuItem::Separator);
+                }
+            }
 
             if self.processes.is_empty() {
                 let label = if self.connected {
