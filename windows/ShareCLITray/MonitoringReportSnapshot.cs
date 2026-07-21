@@ -53,6 +53,7 @@ public sealed class MonitoringReportSnapshot
                 name = entry.Name,
                 memory_mb = entry.MemoryMb,
                 project = entry.Project,
+                harness = entry.Harness,
             });
         }
         return rows;

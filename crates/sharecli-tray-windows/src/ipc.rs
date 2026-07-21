@@ -171,5 +171,7 @@ mod tests {
         assert_eq!(procs.len(), 2);
         assert_eq!(procs[0].pid, 99);
         assert_eq!(procs[0].project.as_deref(), Some("demo"));
+        assert_eq!(procs[0].harness.as_deref(), Some("native"));
+        assert!(procs[1].harness.is_none());
     }
 }

@@ -94,4 +94,5 @@ public record ProcessInfo
     public string name { get; set; } = "";
     public ulong memory_mb { get; set; }
     public string? project { get; set; }
+    public string? harness { get; set; }
 }

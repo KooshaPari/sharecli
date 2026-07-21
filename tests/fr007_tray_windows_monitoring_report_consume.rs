@@ -53,4 +53,9 @@ fn fr007_tray_windows_monitoring_report_maps_gate_host_watch_order() {
     assert_eq!(health.gate.gate_decision, "THROTTLE");
     assert_eq!(health.host_watch.load_1m, 1.25);
     assert_eq!(snap.process_summaries()[0].pid, 42);
+    assert_eq!(
+        snap.process_summaries()[0].harness.as_deref(),
+        Some("native"),
+        "process_summaries MUST map harness from monitoring.report (AC-007.55)"
+    );
 }
