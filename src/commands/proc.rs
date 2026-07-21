@@ -685,11 +685,18 @@ fn append_host_watch_csv_companion(csv: String) -> Result<String> {
     Ok(out)
 }
 
-fn append_proc_csv_companions(
+async fn append_proc_csv_companions(
     csv: String,
     gate: &sharecli_fleet::GateStatusSnapshot,
 ) -> Result<String> {
-    append_host_watch_csv_companion(append_gate_csv_companion(csv, gate))
+    let csv = append_host_watch_csv_companion(append_gate_csv_companion(csv, gate))?;
+    let (pool_json, status_json) = super::fetch_operator_pool_status_siblings().await?;
+    let pool: sharecli_fleet::PoolOperatorPanel = pool_json.into();
+    let status: sharecli_fleet::StatusOperatorPanel = status_json.into();
+    let mut out = csv;
+    out.push_str(&pool.format_csv_companion());
+    out.push_str(&status.format_csv_companion());
+    Ok(out)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1065,7 +1072,8 @@ pub async fn render_once(
                         &tree_state_by_pid,
                     ),
                     &gate,
-                )?
+                )
+                .await?
             );
             return Ok(());
         }
@@ -1120,7 +1128,8 @@ pub async fn render_once(
             append_proc_csv_companions(
                 render_agent_inventory_csv(&watched, &state_by_pid),
                 &gate,
-            )?
+            )
+            .await?
         );
         return Ok(());
     }
