@@ -127,6 +127,7 @@
 | AC-006.37   | `tests/fr006_proc_ndjson.rs`; `src/commands/proc.rs` (`emit_ndjson_line`, `AgentProcNdjsonLine`, `agent_row_from_watch`) | NDJSON watch agent rows include `state` (AC-006.32 parity); flushed stdout + stderr footer |
 | AC-006.38   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs` | `sharecli proc --exclude-family` negates `--family` |
 | AC-006.39   | `tests/fr006_thermal_tui_agent_tree.rs`; `crates/sharecli-thermal-tui/src/lib.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`build_host_forest_state_map`, `state_text_for_pid`) | thermal TUI agent-tree process state letters |
+| AC-006.40   | `tests/fr006_thermal_tui_agents.rs`; `crates/sharecli-thermal-tui/src/lib.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`build_host_agent_state_map`, `state_text_for_pid`) | thermal TUI flat agent-lines process state letters |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -205,6 +206,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-006 thermal TUI flat agent state:** flat Detected Agents lines
+  (full, compact, empty-forest fallback) show process state letters via
+  `build_host_agent_state_map` / `state_text_for_pid` (AC-006.40).
 - **2026-07-20 — FR-006 thermal TUI agent-tree state:** full-layout Detected Agents
   tree nodes show process state letters via `build_host_forest_state_map` (AC-006.39);
   forest helpers lifted to `sharecli-fleet` for proc/TUI parity.

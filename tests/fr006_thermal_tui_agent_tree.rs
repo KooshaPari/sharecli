@@ -92,7 +92,7 @@ fn fr006_thermal_tui_agent_forest_lines_compact_flat() {
     );
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(!text.contains("└──"), "compact MUST NOT render tree connectors; got: {text}");
-    assert!(text.contains("claude:100@"), "compact MUST keep flat summary; got: {text}");
+    assert!(text.contains("claude:100:S@"), "compact MUST keep flat summary with state; got: {text}");
 }
 
 /// FR-006 / AC-006.22 — headless thermal render includes agent process tree.

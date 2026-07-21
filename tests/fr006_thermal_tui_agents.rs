@@ -3,6 +3,9 @@
 //!
 //! AC-006.9 `sharecli thermal` polls agent inventory each redraw.
 //! AC-006.10 rows include per-PID RSS (and FD on Linux).
+//! AC-006.40 flat Detected Agents lines show process state after PID (parity with proc text).
+
+use std::collections::HashMap;
 
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
@@ -35,15 +38,55 @@ fn fixture_agents() -> Vec<DetectedAgentWatch> {
     ]
 }
 
+fn fixture_state_by_pid() -> HashMap<u32, char> {
+    let mut map = HashMap::new();
+    map.insert(100, 'S');
+    map.insert(250, 'R');
+    map
+}
+
 /// FR-006 / AC-006.9 + AC-006.10 — agent_lines renders inventory + RSS rows.
 #[test]
 fn fr006_thermal_tui_agent_lines() {
-    let lines = agent_lines(&fixture_agents(), false);
+    let lines = agent_lines(&fixture_agents(), &fixture_state_by_pid(), false);
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(text.contains("Agents: 2"));
-    assert!(text.contains("PID 100") && text.contains("claude"));
+    assert!(text.contains("PID 100  S  claude"));
     assert!(text.contains("RSS 50M"));
-    assert!(text.contains("PID 250") && text.contains("cursor"));
+    assert!(text.contains("PID 250  R  cursor"));
+}
+
+/// FR-006 / AC-006.40 — flat agent_lines show state letter after PID.
+#[test]
+fn fr006_thermal_tui_agent_lines_show_state() {
+    let lines = agent_lines(&fixture_agents(), &fixture_state_by_pid(), false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(
+        text.contains("PID 100  S  claude") && text.contains("PID 250  R  cursor"),
+        "flat lines MUST show state after PID; got: {text}"
+    );
+}
+
+/// FR-006 / AC-006.40 — missing state shows `-` on flat lines.
+#[test]
+fn fr006_thermal_tui_agent_lines_missing_state_dash() {
+    let lines = agent_lines(&fixture_agents(), &HashMap::new(), false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(
+        text.contains("PID 100  -  claude") && text.contains("PID 250  -  cursor"),
+        "missing state MUST render `-`; got: {text}"
+    );
+}
+
+/// FR-006 / AC-006.40 — compact flat summary includes state after PID.
+#[test]
+fn fr006_thermal_tui_agent_lines_compact_show_state() {
+    let lines = agent_lines(&fixture_agents(), &fixture_state_by_pid(), true);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(
+        text.contains("claude:100:S@") && text.contains("cursor:250:R@"),
+        "compact flat MUST show state after PID; got: {text}"
+    );
 }
 
 /// FR-006 / AC-006.9 — headless thermal render includes DetectedAgent panel.
@@ -60,7 +103,8 @@ fn fr006_thermal_tui_render_includes_agent_panel() {
             SlotQueueMeters::default(),
             WriteSerializeMeters::default(),
         )
-        .with_detected_agents(fixture_agents());
+        .with_detected_agents(fixture_agents())
+        .with_agent_forest_state(fixture_state_by_pid());
     app.update(ThermalLevel::Green, 0);
 
     terminal.draw(|f| render(f, &app)).expect("draw");
@@ -72,4 +116,9 @@ fn fr006_thermal_tui_render_includes_agent_panel() {
         "thermal TUI MUST surface proc-scan agent inventory"
     );
     assert!(rendered.contains("RSS"), "thermal TUI MUST surface per-agent RSS watch");
+    assert!(
+        rendered.contains("PID 100  S  claude"),
+        "flat thermal render MUST show process state after PID (AC-006.40); got excerpt: {}",
+        &rendered.chars().take(500).collect::<String>()
+    );
 }
