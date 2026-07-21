@@ -567,10 +567,12 @@ pub struct AgentProcSnapshot {
 }
 
 /// JSON payload for `sharecli proc --tree --json` (AC-006.16).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AgentTreeSnapshot {
     pub forests: Vec<AgentTreeNodeJson>,
     pub roots: usize,
+    /// Live host FD/RSS/load/net watch (FR-007 / AC-007.15).
+    pub host_watch: HostResourceWatchJson,
 }
 
 /// Nearest ancestor agent reference for proc detail (AC-006.23).
@@ -610,7 +612,7 @@ pub struct AgentProcNdjsonLine {
 }
 
 /// One NDJSON watch line for tree inventory (`proc --tree --watch --json`, AC-006.18).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AgentTreeNdjsonLine {
     pub ts: u64,
     #[serde(flatten)]
@@ -994,6 +996,7 @@ pub fn render_once(
                 .map(|root| agent_tree_node_to_json(root, &tree_state_by_pid))
                 .collect(),
             roots: forests.len(),
+            host_watch: HostResourceWatchJson::capture()?,
         };
         if json {
             if ndjson {
@@ -1318,6 +1321,7 @@ mod tests {
                 .map(|root| agent_tree_node_to_json(root, &state_by_pid))
                 .collect(),
             roots: forests.len(),
+            host_watch: HostResourceWatchJson::default(),
         };
         assert_eq!(snap.roots, 1);
         assert_eq!(snap.forests[0].state, "R");

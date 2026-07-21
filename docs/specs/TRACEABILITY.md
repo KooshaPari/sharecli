@@ -146,6 +146,7 @@
 | AC-007.12   | `tests/fr007_thermal_tui_watch.rs` (`fr007_thermal_tui_resource_watch_net_lines`); `crates/sharecli-thermal-tui/src/lib.rs` (`resource_watch_lines`) | thermal TUI host net RX/TX parity with status |
 | AC-007.13   | `tests/fr007_proc_json_host_watch.rs`; `src/commands/proc.rs` (`AgentProcSnapshot::host_watch`); `src/monitoring.rs` (`HostResourceWatchJson`) | proc JSON host ResourceWatchSample parity |
 | AC-007.14   | `tests/fr007_proc_text_csv_host_watch.rs`; `src/commands/proc.rs` (`print_host_watch_text_footer`, `append_host_watch_csv_companion`); `src/monitoring.rs` (`HostResourceWatchJson::format_text_section`, `format_csv_companion`) | proc text/CSV host ResourceWatchSample parity |
+| AC-007.15   | `tests/fr007_proc_tree_json_host_watch.rs`; `src/commands/proc.rs` (`AgentTreeSnapshot::host_watch`) | proc tree JSON/NDJSON host ResourceWatchSample parity |
 
 ### FR-008 — Coalesce
 
@@ -209,6 +210,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc tree JSON host watch:** `sharecli proc --tree --json` and
+  `--tree --watch --json` emit `host_watch` on every snapshot via
+  `AgentTreeSnapshot` (AC-007.15); parity with flat JSON from AC-007.13.
 - **2026-07-20 — FR-007 proc text/CSV host watch:** `sharecli proc` text footer and
   `--csv` companion `host` record surface live FD/RSS/load/net via
   `HostResourceWatchJson` (AC-007.14); flat + `--tree` parity with JSON `host_watch`.
