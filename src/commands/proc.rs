@@ -583,7 +583,7 @@ pub struct AgentAncestorRef {
 }
 
 /// JSON payload for `sharecli proc --pid N --json` (AC-006.23).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ProcDetailSnapshot {
     pub pid: u32,
     pub ppid: u32,
@@ -601,6 +601,8 @@ pub struct ProcDetailSnapshot {
     pub mem_rss: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fd_count: Option<u64>,
+    /// Live host FD/RSS/load/net watch (FR-007 / AC-007.16).
+    pub host_watch: HostResourceWatchJson,
 }
 
 /// One NDJSON watch line for flat inventory (`proc --watch --json`, AC-006.18 / AC-006.37).
@@ -746,6 +748,7 @@ pub fn build_proc_detail(source: &dyn ProcSource, pid: u32) -> Result<ProcDetail
         mem_rss_bytes: resource.mem_rss_bytes,
         mem_rss: format_rss_bytes(resource.mem_rss_bytes),
         fd_count: resource.fd_count,
+        host_watch: HostResourceWatchJson::capture()?,
     })
 }
 
@@ -781,6 +784,7 @@ pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()>
     println!("RSS:       {} ({} bytes)", detail.mem_rss, detail.mem_rss_bytes);
     let fd = detail.fd_count.map(|n| n.to_string()).unwrap_or_else(|| "-".into());
     println!("FD:        {fd}");
+    print!("{}", detail.host_watch.format_text_section());
     Ok(())
 }
 
