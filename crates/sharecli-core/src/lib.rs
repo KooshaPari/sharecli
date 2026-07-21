@@ -683,6 +683,34 @@ impl Hypervisor {
         self.nocache_args = flags;
     }
 
+    /// Run exclusively through the SlotQueue lane (harness `queue` / `priority_queue`).
+    ///
+    /// Skips coalesce cache lookup regardless of argv. Used by harness-native
+    /// strategies that must serialize on the nocache lane (FR-008 AC-008.16).
+    pub async fn run_queued(&self, req: SpawnRequest, lane: &str) -> Result<SpawnOutcome> {
+        self.thermal_gate_check().await?;
+
+        let watch = ResourceWatchSample::capture()?;
+        let detected_agent = detect_caller_agent();
+        debug!(lane, argv = ?req.argv, "hypervisor::run_queued — queue lane");
+        record_nocache_run();
+        let outcome =
+            self.queue.with_slot(lane, req.queue_priority, || spawn_process_sync(&req))?;
+        Ok(SpawnOutcome {
+            exit_code: outcome.exit_code,
+            stdout: outcome.stdout,
+            stderr: outcome.stderr,
+            from_cache: false,
+            resource_watch: ResourceWatchSample::default(),
+            detected_agent: None,
+            fuse_session_id: None,
+            fuse_backing: None,
+            fuse_mountpoint: None,
+        }
+        .with_resource_watch(watch)
+        .with_detected_agent(detected_agent))
+    }
+
     /// Run a managed spawn with Lock-Wait-Cache coalescing.
     ///
     /// # Thermal gating
@@ -742,32 +770,9 @@ impl Hypervisor {
         // ── nocache_args → queue (never coalesce) ────────────────────────────
         // Feb harness: if argv contains a mutating flag, fall back to queue.
         if has_nocache_arg(&req.argv, &self.nocache_args) {
-            let lane = req
-                .argv
-                .first()
-                .map(|s| s.as_str())
-                .unwrap_or("unknown")
-                .rsplit('/')
-                .next()
-                .unwrap_or("unknown");
-            debug!(lane, argv = ?req.argv, "hypervisor::run — nocache → queue");
-            record_nocache_run();
-            let outcome = self
-                .queue
-                .with_slot(lane, req.queue_priority, || spawn_process_sync(&req))?;
-            return Ok(SpawnOutcome {
-                exit_code: outcome.exit_code,
-                stdout: outcome.stdout,
-                stderr: outcome.stderr,
-                from_cache: false,
-                resource_watch: ResourceWatchSample::default(),
-                detected_agent: None,
-                fuse_session_id: None,
-                fuse_backing: None,
-                fuse_mountpoint: None,
-            }
-            .with_resource_watch(watch)
-            .with_detected_agent(detected_agent.clone()));
+            let lane = queue_lane_from_argv(&req.argv).to_string();
+            debug!(lane = %lane, argv = ?req.argv, "hypervisor::run — nocache → queue");
+            return self.run_queued(req, &lane).await;
         }
 
         // ── Cache lookup ─────────────────────────────────────────────────────
@@ -911,6 +916,16 @@ impl Hypervisor {
 // ---------------------------------------------------------------------------
 // Process execution
 // ---------------------------------------------------------------------------
+
+/// Lane key for SlotQueue routing from argv (basename of argv[0]).
+fn queue_lane_from_argv(argv: &[String]) -> &str {
+    argv.first()
+        .map(|s| s.as_str())
+        .unwrap_or("unknown")
+        .rsplit('/')
+        .next()
+        .unwrap_or("unknown")
+}
 
 /// Spawn `req.argv` synchronously (blocking) and capture its output.
 ///
@@ -1292,6 +1307,26 @@ mod tests {
         let dir = TempDir::new().expect("tempdir");
         let hv = Hypervisor::new(dir.path());
         assert_eq!(hv.coalesce_debounce(), Duration::ZERO);
+    }
+
+    /// FR-008 / AC-008.16 — `run_queued` never serves coalesce cache.
+    #[tokio::test]
+    async fn hypervisor_run_queued_skips_coalesce_cache() {
+        let dir = TempDir::new().expect("tempdir");
+        let hv = allow_hypervisor(dir.path());
+        let req = SpawnRequest::from_operator(
+            echo_argv("queued-twice"),
+            dir.path().to_path_buf(),
+            vec![],
+            None,
+        );
+
+        let first = hv.run_queued(req.clone(), "echo").await.expect("first run_queued");
+        assert!(!first.from_cache, "AC-008.16: run_queued MUST NOT use cache on first run");
+
+        let second = hv.run_queued(req, "echo").await.expect("second run_queued");
+        assert!(!second.from_cache, "AC-008.16: run_queued MUST NOT use cache on replay");
+        assert_eq!(second.exit_code, 0);
     }
 
     /// With FUSE wired into the run() path, a spawn must still succeed

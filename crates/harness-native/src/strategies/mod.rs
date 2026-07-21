@@ -60,7 +60,9 @@ pub fn execute(req: ExecRequest<'_>) -> Result<i32, String> {
     match req.strategy {
         "passthrough" => coalesce::run(req.real_cmd, &full_args),
         "coalesce" | "cache" => coalesce::run(req.real_cmd, &full_args),
-        "queue" | "priority_queue" => queue::run(req.real_cmd, &full_args),
+        "queue" | "priority_queue" => {
+            queue::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
+        }
         "debounce" => debounce::run(req.real_cmd, req.opts.debounce_ms, &full_args),
         "retry" => retry::run(
             req.real_cmd,
