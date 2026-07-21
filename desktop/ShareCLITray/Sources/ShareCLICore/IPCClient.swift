@@ -114,6 +114,39 @@ public struct MonitoringReportSnapshot: Decodable {
     }
 }
 
+public struct AgentProcRow: Decodable, Hashable {
+    public let pid: UInt32
+    public let family: String
+    public let comm: String
+    public let state: String
+    public let mem_rss_bytes: UInt64
+    public let mem_rss: String
+    public let fd_count: UInt64?
+}
+
+/// IPC `pool.status` envelope (FR-007 / AC-007.67, tray wire AC-007.68).
+public struct PoolSnapshot: Decodable {
+    public let node_total: Int
+    public let node_idle: Int
+    public let bun_total: Int
+    public let bun_idle: Int
+    public let max_per_type: Int
+    public let healthy: Bool
+    public let issues: [String]
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
+}
+
+/// IPC `status.snapshot` envelope (FR-007 / AC-007.67, tray wire AC-007.68).
+public struct StatusSnapshot: Decodable {
+    public let total_processes: Int
+    public let agents: [AgentProcRow]
+    public let scanned: Int
+    public let watched: Int
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -176,6 +209,26 @@ public actor IPCClient {
         )
         guard let snap = resp.result else {
             throw IPCError.nilResult("monitoring.report")
+        }
+        return snap
+    }
+
+    public func poolStatus() async throws -> PoolSnapshot {
+        let resp: IPCResponse<PoolSnapshot> = try await call(
+            method: "pool.status", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("pool.status")
+        }
+        return snap
+    }
+
+    public func statusSnapshot() async throws -> StatusSnapshot {
+        let resp: IPCResponse<StatusSnapshot> = try await call(
+            method: "status.snapshot", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("status.snapshot")
         }
         return snap
     }
