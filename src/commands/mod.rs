@@ -324,6 +324,7 @@ pub async fn ps(
                     eprint!("{footer}");
                     let _ = std::io::stderr().flush();
                 } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.50).
                     println!("{footer}");
                 }
                 let idle = cycle_start.elapsed();
