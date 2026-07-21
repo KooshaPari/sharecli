@@ -41,6 +41,9 @@ public sealed partial class TrayWindow : Window
             DispatcherQueue?.TryEnqueue(() =>
             {
                 HealthStatusText.Text = "Daemon offline or monitoring.report failed";
+                ThermalBadgeText.Text = "Offline";
+                ThermalBadgeText.Foreground = OperatorDisplay.SeverityBrush(
+                    OperatorDisplay.TrayGateSeverity.Offline);
                 GateStatusText.Text = "";
                 HostWatchStatusText.Text = "";
                 ProcessGrid.ItemsSource = null;
@@ -50,6 +53,7 @@ public sealed partial class TrayWindow : Window
 
         var health = report.AsHealthSnapshot();
         m_processes = report.AsProcessSummaries();
+        var visual = OperatorDisplay.ResolveTrayGateVisual(health.Gate, connected: true);
 
         DispatcherQueue?.TryEnqueue(() =>
         {
@@ -57,9 +61,13 @@ public sealed partial class TrayWindow : Window
                 $"Health: {(health.Healthy ? "✓ OK" : "✗ Unhealthy")} | " +
                 $"Managed: {health.ManagedProcesses} | " +
                 $"Memory: {health.UsedMemoryMb} / {health.TotalMemoryMb} MB";
+            ThermalBadgeText.Text =
+                $"{visual.BadgeLabel} · {health.Gate.ThermalPressure} · {health.Gate.GateDecision}";
+            ThermalBadgeText.Foreground = OperatorDisplay.SeverityBrush(visual.Severity);
             GateStatusText.Text =
                 $"{OperatorDisplay.FormatGateTrayLine(health.Gate)} | " +
                 OperatorDisplay.FormatGateRssTrayLine(health.Gate);
+            GateStatusText.Foreground = OperatorDisplay.SeverityBrush(visual.Severity);
             HostWatchStatusText.Text =
                 $"{OperatorDisplay.FormatHostWatchTrayLine(health.HostWatch)} | " +
                 OperatorDisplay.FormatHostNetTrayLine(health.HostWatch);

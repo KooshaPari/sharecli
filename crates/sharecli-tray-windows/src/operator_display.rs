@@ -1,9 +1,109 @@
-//! Compact gate / host_watch strings for Windows tray operator UI (FR-007 / AC-007.56).
+//! Compact gate / host_watch strings + thermal gate visuals for Windows tray operator UI
+//! (FR-007 / AC-007.56 text, AC-007.57 icon/badge/color).
 //!
 //! Parity with `sharecli-tray-linux/src/operator_display.rs`; integration tests MUST keep
-//! Linux/Windows format strings identical.
+//! Linux/Windows format strings and visual tokens identical.
 
 use crate::ipc::{GateStatusSnapshot, HostResourceWatchJson};
+
+/// Tray thermal/gate severity bucket (dashboard `#thermal-status` + gate decision).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrayGateSeverity {
+    Normal,
+    Warning,
+    Critical,
+    Offline,
+}
+
+/// Visual tokens for tray icon / badge / color (parity with `src/dashboard.html`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrayGateVisual {
+    pub severity: TrayGateSeverity,
+    pub decision_class: &'static str,
+    pub thermal_class: &'static str,
+    pub color_hex: &'static str,
+    pub badge_label: &'static str,
+    pub linux_icon_name: &'static str,
+    pub swift_symbol_name: &'static str,
+}
+
+pub fn resolve_gate_decision_class(gate_decision: &str) -> &'static str {
+    match gate_decision {
+        "ADMIT" => "gate-admit",
+        "DENY" => "gate-deny",
+        _ => "gate-unavailable",
+    }
+}
+
+pub fn resolve_thermal_class(thermal_pressure: &str) -> &'static str {
+    match thermal_pressure {
+        "GREEN" => "",
+        "YELLOW" => "warning",
+        "RED" => "critical",
+        _ => "warning",
+    }
+}
+
+pub fn resolve_tray_gate_visual(
+    thermal_pressure: &str,
+    gate_decision: &str,
+    connected: bool,
+) -> TrayGateVisual {
+    if !connected {
+        return TrayGateVisual {
+            severity: TrayGateSeverity::Offline,
+            decision_class: "gate-unavailable",
+            thermal_class: "warning",
+            color_hex: "#d29922",
+            badge_label: "Offline",
+            linux_icon_name: "network-offline",
+            swift_symbol_name: "wifi.slash",
+        };
+    }
+
+    let decision_class = resolve_gate_decision_class(gate_decision);
+    let thermal_class = resolve_thermal_class(thermal_pressure);
+
+    let severity = if gate_decision == "DENY" || thermal_pressure == "RED" {
+        TrayGateSeverity::Critical
+    } else if gate_decision == "THROTTLE"
+        || thermal_pressure == "YELLOW"
+        || thermal_pressure == "UNAVAILABLE"
+        || decision_class == "gate-unavailable"
+    {
+        TrayGateSeverity::Warning
+    } else {
+        TrayGateSeverity::Normal
+    };
+
+    let (color_hex, badge_label, linux_icon_name, swift_symbol_name) = match severity {
+        TrayGateSeverity::Critical => ("#f85149", "Critical", "dialog-error", "flame.fill"),
+        TrayGateSeverity::Warning => {
+            let label = if thermal_pressure == "UNAVAILABLE" {
+                "Unavailable"
+            } else {
+                "Warning"
+            };
+            ("#d29922", label, "dialog-warning", "exclamationmark.triangle.fill")
+        }
+        TrayGateSeverity::Normal => ("#3fb950", "Normal", "utilities-system-monitor", "cpu"),
+        TrayGateSeverity::Offline => unreachable!("handled above"),
+    };
+
+    TrayGateVisual {
+        severity,
+        decision_class,
+        thermal_class,
+        color_hex,
+        badge_label,
+        linux_icon_name,
+        swift_symbol_name,
+    }
+}
+
+pub fn resolve_tray_gate_visual_from_gate(gate: &GateStatusSnapshot, connected: bool) -> TrayGateVisual {
+    resolve_tray_gate_visual(&gate.thermal_pressure, &gate.gate_decision, connected)
+}
 
 /// Human-readable byte count for tray lines (parity with dashboard `formatBytes`).
 pub fn format_bytes_compact(n: u64) -> String {
@@ -105,5 +205,13 @@ mod tests {
         assert_eq!(lines.len(), 4);
         assert!(lines[0].starts_with("Gate ["));
         assert!(lines[2].starts_with("Host load"));
+    }
+
+    #[test]
+    fn resolve_tray_gate_visual_matches_linux_admit_green() {
+        let v = resolve_tray_gate_visual("GREEN", "ADMIT", true);
+        assert_eq!(v.severity, TrayGateSeverity::Normal);
+        assert_eq!(v.decision_class, "gate-admit");
+        assert_eq!(v.linux_icon_name, "utilities-system-monitor");
     }
 }

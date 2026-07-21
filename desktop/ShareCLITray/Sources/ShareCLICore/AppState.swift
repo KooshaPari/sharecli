@@ -40,9 +40,17 @@ public final class AppState: ObservableObject {
             health = report.asHealthSnapshot()
             isConnected = true
             lastError = nil
+            NotificationCenter.default.post(
+                name: .sharecliHealthChanged,
+                object: health
+            )
         } catch {
             isConnected = false
             lastError = error.localizedDescription
+            NotificationCenter.default.post(
+                name: .sharecliHealthChanged,
+                object: nil
+            )
         }
     }
 

@@ -28,11 +28,12 @@ struct TrayPopoverView: View {
 
     private var headerBar: some View {
         HStack {
-            Image(systemName: "cpu")
-                .foregroundStyle(.blue)
+            Image(systemName: gateVisual.swiftSymbolName)
+                .foregroundStyle(gateVisual.swiftColor)
             Text("ShareCLI")
                 .font(.headline)
             Spacer()
+            thermalBadge
             Circle()
                 .fill(state.isConnected ? Color.green : Color.red)
                 .frame(width: 8, height: 8)
@@ -42,6 +43,29 @@ struct TrayPopoverView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    private var gateVisual: TrayGateVisual {
+        if let h = state.health, state.isConnected {
+            return OperatorDisplay.resolveTrayGateVisual(gate: h.gate, connected: true)
+        }
+        return OperatorDisplay.resolveTrayGateVisual(
+            thermalPressure: "UNAVAILABLE",
+            gateDecision: "UNAVAILABLE",
+            connected: false
+        )
+    }
+
+    private var thermalBadge: some View {
+        Text(gateVisual.badgeLabel)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .foregroundStyle(gateVisual.swiftColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(gateVisual.swiftColor, lineWidth: 1)
+            )
     }
 
     // MARK: - Stats row

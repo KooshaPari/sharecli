@@ -22,6 +22,11 @@
                 Style="{ThemeResource TitleTextBlockStyle}" />
             <TextBlock x:Name="HealthStatusText" Text="Checking health..." />
             <TextBlock
+                x:Name="ThermalBadgeText"
+                Text=""
+                FontWeight="SemiBold"
+                FontFamily="Consolas" />
+            <TextBlock
                 x:Name="GateStatusText"
                 Text=""
                 FontFamily="Consolas"
