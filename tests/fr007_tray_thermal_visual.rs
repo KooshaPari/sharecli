@@ -268,6 +268,42 @@ fn fr007_tray_thermal_visual_linux_tooltip_wires_gate_visual() {
     );
 }
 
+/// FR-007 / AC-007.62 — Swift NSStatusItem title leads with gate visual badge_label.
+#[test]
+fn fr007_tray_thermal_visual_swift_menubar_title_wires_gate_visual() {
+    let op = include_str!("../desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift");
+    assert!(
+        op.contains("formatMenuBarTitleLine"),
+        "Swift OperatorDisplay MUST expose menu bar title formatter (AC-007.62)"
+    );
+    assert!(
+        op.contains("formatMenuBarTitleOfflineLine"),
+        "Swift OperatorDisplay MUST expose offline menu bar title formatter (AC-007.62)"
+    );
+
+    let app = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/AppEntry.swift");
+    assert!(
+        app.contains("formatMenuBarTitleLine"),
+        "AppEntry MUST bind status item title from gate visual (AC-007.62)"
+    );
+    assert!(
+        app.contains("formatMenuBarTitleOfflineLine"),
+        "AppEntry MUST bind offline status item title from gate visual (AC-007.62)"
+    );
+    assert!(
+        op.contains("visual.badgeLabel"),
+        "Swift menu bar title formatter MUST lead with gate visual badge (AC-007.62)"
+    );
+    assert!(
+        !app.contains("managed_processes) | \\(snap.used_memory_mb)M"),
+        "AppEntry MUST NOT use bare managed/memory title without badge (AC-007.62)"
+    );
+    assert!(
+        !app.contains("title = \" offline\""),
+        "AppEntry MUST NOT use generic offline title without badge (AC-007.62)"
+    );
+}
+
 /// FR-007 / AC-007.60 — Windows HealthStatusText uses gate visual tokens.
 #[test]
 fn fr007_tray_thermal_visual_windows_health_status_wires_gate_visual() {
