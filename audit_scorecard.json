@@ -3,7 +3,7 @@
   "schema": "audit-v38",
   "superseded_legacy_30pillar": true,
   "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "pending-c08-l76-na-rescore",
+  "commit": "0fa1fd0",
   "date": "2026-07-19",
   "overall_pct": 91,
   "grade": "A",
