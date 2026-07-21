@@ -213,6 +213,7 @@
 | AC-007.79   | `tests/fr007_proc_csv_pool_status.rs`; `tests/fr007_proc_csv_stderr_silent.rs`; `tests/fr007_proc_text_csv_gate.rs`; `tests/fr007_proc_text_csv_host_watch.rs`; `src/commands/proc.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` (`PoolOperatorPanel::format_csv_companion`, `StatusOperatorPanel::format_csv_companion`) | proc --csv / --tree --csv gate → host_watch → pool → status companion rows on stdout; stderr silent on success (extends AC-007.33) |
 | AC-007.80   | `tests/fr007_ws_client_health_update_pool_status.rs`; `crates/sharecli-ipc/src/ws_client.rs` (`ClientMessage`, `ClientMessage::from_json`, `HealthUpdate`); `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`) | WS `health_update` decodes expanded HealthSnapshot pool + status; IPC health.status wrap roundtrip; legacy missing siblings → Unknown |
 | AC-007.81   | `tests/fr007_report_csv_pool_status.rs`; `tests/fr007_report_csv_stderr_silent.rs`; `src/commands/report.rs` (`ReportFormat::Csv`, `render_report_csv_body`, `append_report_csv_companions`, `render_once` CSV path); `crates/sharecli-fleet/src/operator_pool_status.rs` | report --format csv fleet body → gate → host_watch → pool → status companion rows on stdout; rejects --watch; stderr silent on success (parity with proc CSV AC-007.79) |
+| AC-007.82   | `tests/fr007_health_pool_status_csv.rs`; `src/commands/mod.rs` (`render_health_csv_body`, `render_pool_csv_body`, `render_status_csv_body`, `append_operator_csv_companions`, `health --csv`, `pool --csv`, `status --csv`); `src/main.rs` (`Health.csv`, `Pool.csv`, `Status.csv`); `crates/sharecli-fleet/src/operator_pool_status.rs` | health/pool/status --csv command body → gate → host_watch → pool → status companion rows on stdout; rejects --json/--watch; stderr silent on success (parity with proc/report CSV AC-007.79/81) |
 
 ### FR-008 — Coalesce
 
@@ -282,6 +283,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 health/pool/status CSV operator companions (AC-007.82):** `sharecli health --csv`,
+  `pool --csv`, and `status --csv` emit command-specific CSV bodies then companion
+  `gate` → `host_watch` → `pool` → `status` records (parity with proc CSV AC-007.79 and report
+  CSV AC-007.81); reject `--json` / `--watch`; stderr silent on success.
 - **2026-07-21 — FR-007 report CSV pool/status companion rows (AC-007.81):** `sharecli report --format csv`
   emits fleet analytics CSV body then companion `gate` → `host_watch` → `pool` → `status` records
   (parity with proc CSV AC-007.79 and report text AC-007.74); rejects `--watch`; stderr silent on success.

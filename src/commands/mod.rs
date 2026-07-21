@@ -88,6 +88,24 @@ fn capture_live_gate_host_watch() -> Result<(sharecli_fleet::GateStatusSnapshot,
     Ok((gate, host_watch))
 }
 
+/// Append gate → host_watch → pool → status CSV companion blocks (FR-007 / AC-007.79 / AC-007.82).
+pub(crate) async fn append_operator_csv_companions(
+    csv: String,
+    gate: &sharecli_fleet::GateStatusSnapshot,
+) -> Result<String> {
+    use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
+
+    let mut out = csv;
+    out.push_str(&gate.format_csv_companion());
+    out.push_str(&HostResourceWatchJson::capture()?.format_csv_companion());
+    let (pool_json, status_json) = fetch_operator_pool_status_siblings().await?;
+    let pool: PoolOperatorPanel = pool_json.into();
+    let status: StatusOperatorPanel = status_json.into();
+    out.push_str(&pool.format_csv_companion());
+    out.push_str(&status.format_csv_companion());
+    Ok(out)
+}
+
 fn get_shared_runtime() -> &'static SharedRuntime {
     SHARED_RUNTIME.get_or_init(|| {
         let max = config::global().pool.max_per_type;
@@ -253,6 +271,85 @@ impl From<StatusJson> for sharecli_fleet::StatusOperatorPanel {
             agent_rows: s.agents.len(),
         }
     }
+}
+
+/// Primary CSV body for `sharecli health --csv` (FR-007 / AC-007.82).
+pub fn render_health_csv_body(health: &HealthJson) -> String {
+    use proc::csv_escape_field;
+
+    let issues = csv_escape_field(&health.issues.join(";"));
+    format!(
+        "record,healthy,node_total,node_idle,node_in_use,bun_total,bun_idle,bun_in_use,max_per_type,issues\n\
+         health,{},{},{},{},{},{},{},{},{}\n",
+        health.healthy,
+        health.node_total,
+        health.node_idle,
+        health.node_in_use,
+        health.bun_total,
+        health.bun_idle,
+        health.bun_in_use,
+        health.max_per_type,
+        issues,
+    )
+}
+
+/// Primary CSV body for `sharecli pool --csv` (FR-007 / AC-007.82).
+pub fn render_pool_csv_body(pool: &PoolJson) -> String {
+    use proc::csv_escape_field;
+
+    let issues = csv_escape_field(&pool.issues.join(";"));
+    format!(
+        "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy,issues\n\
+         pool,{},{},{},{},{},{},{}\n",
+        pool.node_total,
+        pool.node_idle,
+        pool.bun_total,
+        pool.bun_idle,
+        pool.max_per_type,
+        pool.healthy,
+        issues,
+    )
+}
+
+/// Primary CSV body for `sharecli status --csv` (FR-007 / AC-007.82).
+pub fn render_status_csv_body(
+    summary: &sharecli_fleet::StatusOperatorPanel,
+    harness_rows: &[(String, usize, u64)],
+    pool_status: &crate::runtime::PoolStatus,
+    used_mb: u64,
+    total_mb: u64,
+) -> String {
+    use proc::csv_escape_field;
+
+    let mut out = format!(
+        "record,total_processes,scanned,watched,agent_rows\n\
+         status,{},{},{},{}\n",
+        summary.total_processes,
+        summary.scanned,
+        summary.watched,
+        summary.agent_rows,
+    );
+    out.push_str("\nrecord,harness,count,memory_mb\n");
+    for (h, count, mem) in harness_rows {
+        out.push_str(&format!(
+            "harness,{},{},{mem}\n",
+            csv_escape_field(h),
+            count,
+        ));
+    }
+    out.push_str("\nrecord,type,total,idle,max_per_type\n");
+    out.push_str(&format!(
+        "runtime_pool,node,{},{},{}\n",
+        pool_status.node_total, pool_status.node_idle, pool_status.max_per_type,
+    ));
+    out.push_str(&format!(
+        "runtime_pool,bun,{},{},{}\n",
+        pool_status.bun_total, pool_status.bun_idle, pool_status.max_per_type,
+    ));
+    let pct = if total_mb > 0 { (used_mb * 100) / total_mb } else { 0 };
+    out.push_str("\nrecord,used_mb,total_mb,used_pct\n");
+    out.push_str(&format!("system_memory,{used_mb},{total_mb},{pct}\n"));
+    out
 }
 
 /// One NDJSON watch line for `status --watch --json` (FR-007 / AC-007.66).
@@ -620,7 +717,7 @@ pub(crate) async fn fetch_operator_pool_status_siblings() -> Result<(PoolJson, S
 /// One-shot `status --json` MUST NOT print gate/host_watch stderr companions (AC-007.32).
 /// One-shot `status` text MUST NOT print gate/host_watch stderr companions either (AC-007.36);
 /// gate/host_watch stay in text sections on stdout only (AC-007.27).
-async fn render_status_once(verbose: bool, json: bool, ndjson: bool) -> Result<()> {
+async fn render_status_once(verbose: bool, json: bool, csv: bool, ndjson: bool) -> Result<()> {
     if json {
         let mut payload = build_status_json().await?;
         payload.pool = Some(Box::new(build_pool_json().await?));
@@ -634,6 +731,34 @@ async fn render_status_once(verbose: bool, json: bool, ndjson: bool) -> Result<(
         } else {
             println!("{}", serde_json::to_string_pretty(&payload)?);
         }
+        return Ok(());
+    }
+
+    if csv {
+        let status_json = build_status_json().await?;
+        let summary: sharecli_fleet::StatusOperatorPanel = status_json.clone().into();
+        let pool = ProcessPool::new();
+        let processes: Vec<ProcessInfo> = pool.list().await;
+        let mut by_harness: std::collections::HashMap<String, (usize, u64)> =
+            std::collections::HashMap::new();
+        for proc in &processes {
+            let h = proc.harness.as_deref().unwrap_or("unknown").to_string();
+            let entry = by_harness.entry(h).or_insert((0, 0));
+            entry.0 += 1;
+            entry.1 += proc.memory_mb;
+        }
+        let mut harness_rows: Vec<(String, usize, u64)> = by_harness
+            .into_iter()
+            .map(|(h, (count, mem))| (h, count, mem))
+            .collect();
+        harness_rows.sort_by(|a, b| a.0.cmp(&b.0));
+        let runtime = get_shared_runtime();
+        let pool_status = runtime.status().await;
+        let (used, total) = pool.system_memory_usage().await;
+        let body = render_status_csv_body(&summary, &harness_rows, &pool_status, used, total);
+        let (gate, _) = capture_live_gate_host_watch()?;
+        let csv_out = append_operator_csv_companions(body, &gate).await?;
+        print!("{csv_out}");
         return Ok(());
     }
 
@@ -709,9 +834,17 @@ async fn render_status_once(verbose: bool, json: bool, ndjson: bool) -> Result<(
 }
 
 /// Check process status.
-pub async fn status(verbose: bool, json: bool, watch: Option<u64>) -> Result<()> {
+pub async fn status(verbose: bool, json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
+    }
     match watch {
-        None => render_status_once(verbose, json, false).await,
+        None => render_status_once(verbose, json, csv, false).await,
         Some(interval_secs) => {
             if interval_secs == 0 {
                 anyhow::bail!("--watch interval must be >= 1 second");
@@ -722,7 +855,7 @@ pub async fn status(verbose: bool, json: bool, watch: Option<u64>) -> Result<()>
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_status_once(verbose, json, ndjson).await?;
+                render_status_once(verbose, json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
@@ -1059,7 +1192,7 @@ pub(crate) async fn build_pool_json() -> Result<PoolJson> {
 /// Render one pool snapshot (one-shot or watch cycle).
 ///
 /// One-shot `pool --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
-async fn render_pool_once(json: bool, ndjson: bool) -> Result<()> {
+async fn render_pool_once(json: bool, csv: bool, ndjson: bool) -> Result<()> {
     if json {
         let mut payload = build_pool_json().await?;
         payload.status = Some(Box::new(build_status_json().await?));
@@ -1073,6 +1206,14 @@ async fn render_pool_once(json: bool, ndjson: bool) -> Result<()> {
         } else {
             println!("{}", serde_json::to_string_pretty(&payload)?);
         }
+        return Ok(());
+    }
+
+    if csv {
+        let payload = build_pool_json().await?;
+        let body = render_pool_csv_body(&payload);
+        let csv_out = append_operator_csv_companions(body, &payload.gate).await?;
+        print!("{csv_out}");
         return Ok(());
     }
 
@@ -1115,9 +1256,17 @@ async fn render_pool_once(json: bool, ndjson: bool) -> Result<()> {
 }
 
 /// Show pool status
-pub async fn pool_status(json: bool, watch: Option<u64>) -> Result<()> {
+pub async fn pool_status(json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
+    }
     match watch {
-        None => render_pool_once(json, false).await,
+        None => render_pool_once(json, csv, false).await,
         Some(interval_secs) => {
             if interval_secs == 0 {
                 anyhow::bail!("--watch interval must be >= 1 second");
@@ -1128,7 +1277,7 @@ pub async fn pool_status(json: bool, watch: Option<u64>) -> Result<()> {
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_pool_once(json, ndjson).await?;
+                render_pool_once(json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
@@ -1187,7 +1336,7 @@ async fn build_health_json() -> Result<HealthJson> {
 /// Render one health snapshot (one-shot or watch cycle).
 ///
 /// One-shot `health --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
-async fn render_health_once(harness: Option<&str>, json: bool, ndjson: bool) -> Result<()> {
+async fn render_health_once(harness: Option<&str>, json: bool, csv: bool, ndjson: bool) -> Result<()> {
     if json {
         let payload = build_health_json().await?;
         if ndjson {
@@ -1200,6 +1349,14 @@ async fn render_health_once(harness: Option<&str>, json: bool, ndjson: bool) -> 
         } else {
             println!("{}", serde_json::to_string_pretty(&payload)?);
         }
+        return Ok(());
+    }
+
+    if csv {
+        let payload = build_health_json().await?;
+        let body = render_health_csv_body(&payload);
+        let csv_out = append_operator_csv_companions(body, &payload.gate).await?;
+        print!("{csv_out}");
         return Ok(());
     }
 
@@ -1244,9 +1401,17 @@ async fn render_health_once(harness: Option<&str>, json: bool, ndjson: bool) -> 
 }
 
 /// Run health probe for shared runtime
-pub async fn health(harness: Option<&str>, json: bool, watch: Option<u64>) -> Result<()> {
+pub async fn health(harness: Option<&str>, json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
+    }
     match watch {
-        None => render_health_once(harness, json, false).await,
+        None => render_health_once(harness, json, csv, false).await,
         Some(interval_secs) => {
             if interval_secs == 0 {
                 anyhow::bail!("--watch interval must be >= 1 second");
@@ -1257,7 +1422,7 @@ pub async fn health(harness: Option<&str>, json: bool, watch: Option<u64>) -> Re
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_health_once(harness, json, ndjson).await?;
+                render_health_once(harness, json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
