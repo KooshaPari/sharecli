@@ -258,6 +258,17 @@ struct ConfigEditorView: View {
 struct HealthView: View {
     @ObservedObject var state: AppState
 
+    private var gateVisual: TrayGateVisual {
+        if let h = state.health, state.isConnected {
+            return OperatorDisplay.resolveTrayGateVisual(gate: h.gate, connected: true)
+        }
+        return OperatorDisplay.resolveTrayGateVisual(
+            thermalPressure: "UNAVAILABLE",
+            gateDecision: "UNAVAILABLE",
+            connected: false
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -286,10 +297,10 @@ struct HealthView: View {
                             color: .gray
                         )
                         metricCard(
-                            title: "Status",
-                            value: h.healthy ? "Healthy" : "Warning",
-                            icon: h.healthy ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
-                            color: h.healthy ? .green : .orange
+                            title: "Thermal Gate",
+                            value: gateVisual.badgeLabel,
+                            icon: gateVisual.swiftSymbolName,
+                            color: gateVisual.swiftColor
                         )
                     }
 
@@ -315,13 +326,17 @@ struct HealthView: View {
 
                     if state.isConnected {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Thermal Gate")
-                                .font(.headline)
+                            HStack(spacing: 8) {
+                                Text("Thermal Gate")
+                                    .font(.headline)
+                                thermalGateBadge
+                            }
                             Text(OperatorDisplay.formatGateTrayLine(h.gate))
                                 .font(.system(.body, design: .monospaced))
+                                .foregroundStyle(gateVisual.swiftColor)
                             Text(OperatorDisplay.formatGateRssTrayLine(h.gate))
                                 .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(gateVisual.swiftColor.opacity(0.85))
 
                             Text("Host Resource Watch")
                                 .font(.headline)
@@ -341,6 +356,18 @@ struct HealthView: View {
             }
             .padding(24)
         }
+    }
+
+    private var thermalGateBadge: some View {
+        Text(gateVisual.badgeLabel)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .foregroundStyle(gateVisual.swiftColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(gateVisual.swiftColor, lineWidth: 1)
+            )
     }
 
     private func metricCard(title: String, value: String, icon: String, color: Color) -> some View {
