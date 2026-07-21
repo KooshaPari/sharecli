@@ -2,7 +2,8 @@
 //!
 //! The WinUI binary lives under `windows/ShareCLITray/`; this crate compiles
 //! cross-platform so integration tests can prove AC-007.51 mapping parity with
-//! Linux/Swift tray refresh via `monitoring.report`, and AC-007.52 poll cadence.
+//! Linux/Swift tray refresh via `monitoring.report`, AC-007.52 poll cadence, and
+//! AC-007.54 kill / kill_all operator actions.
 
 pub mod ipc;
 pub mod poll;

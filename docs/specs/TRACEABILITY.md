@@ -185,6 +185,7 @@
 | AC-007.51   | `crates/sharecli-tray-windows/src/ipc.rs` (`health_snapshot`, `process_summaries`); `windows/ShareCLITray/MonitoringReportSnapshot.cs` (`AsHealthSnapshot`, `AsProcessSummaries`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`RefreshDataAsync`); `tests/fr007_tray_windows_monitoring_report_consume.rs` | Windows tray refresh single monitoring.report snapshot drives gate/host_watch + process inventory; no split health + process.list polls |
 | AC-007.52   | `crates/sharecli-tray-windows/src/poll.rs` (`TRAY_POLL_INTERVAL_SECS`, `tray_poll_interval`); `windows/ShareCLITray/TrayPoll.cs` (`IntervalSeconds`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`DispatcherQueueTimer`, `StartPeriodicPolling`); `tests/fr007_tray_windows_poll_interval.rs` | Windows tray ~3 s periodic poll via DispatcherQueueTimer; same monitoring.report refresh path as AC-007.51; parity with Linux/Swift tray cadence |
 | AC-007.53   | `crates/sharecli-tray-linux/src/poll.rs` (`TRAY_POLL_INTERVAL_SECS`, `tray_poll_interval`); `crates/sharecli-tray-linux/src/main.rs` (`tray_poll_interval`, poll loop); `desktop/ShareCLITray/Sources/ShareCLICore/TrayPoll.swift` (`intervalSeconds`, `intervalNanoseconds`); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift` (`startPolling`, `TrayPoll.intervalNanoseconds`); `tests/fr007_tray_linux_poll_interval.rs`; `tests/fr007_tray_swift_poll_interval.rs` | Linux/Swift tray ~3 s periodic poll via shared TRAY_POLL_INTERVAL_SECS; same monitoring.report refresh path as AC-007.48; parity with Windows AC-007.52 |
+| AC-007.54   | `crates/sharecli-tray-windows/src/ipc.rs` (`IPC_METHOD_KILL`, `kill_request_json`, `kill_all_request_json`); `windows/ShareCLITray/IpcKill.cs` (`TryKill`, `TryKillAll`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`OnKillProcessClick`, `OnKillAllClick`, `RefreshDataAsync`); `crates/sharecli-tray-linux/src/ipc.rs` (`kill`, `kill_all`); `crates/sharecli-tray-linux/src/main.rs` (Kill submenu + Kill All Managed); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift` (`kill`, `killAll`); `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift`; `tests/fr007_tray_windows_kill.rs`; `tests/fr007_tray_linux_kill.rs`; `tests/fr007_tray_swift_kill.rs` | Windows tray Kill + Kill All Managed → IPC process.kill/kill_all + post-kill monitoring.report refresh; parity with Linux/Swift tray operator kill paths |
 
 ### FR-008 — Coalesce
 
@@ -254,6 +255,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 Windows tray kill operator parity:** WinUI `TrayWindow` wires per-process
+  Kill + Kill All Managed to IPC `process.kill` / `process.kill_all` (AC-007.54); `IpcKill.cs`
+  helpers + post-kill `RefreshDataAsync` / `monitoring.report` refresh; parity with Linux tray
+  submenu kill + Swift `AppState.kill`/`killAll`; extends AC-007.51 consume path.
 - **2026-07-21 — FR-007 Linux/Swift tray poll constant parity:** Linux tray loop and Swift
   `AppState.startPolling` wire shared `TRAY_POLL_INTERVAL_SECS` / `TrayPoll.intervalSeconds`
   on ~3 s cadence (AC-007.53); same `monitoring.report` refresh path as AC-007.48; parity with

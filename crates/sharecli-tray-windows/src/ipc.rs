@@ -1,9 +1,26 @@
-//! Wire types and mapping helpers for Windows tray `monitoring.report` consume (AC-007.51).
+//! Wire types and mapping helpers for Windows tray IPC (AC-007.51 / AC-007.54).
 //!
-//! Mirrors `sharecli-tray-linux/src/ipc.rs` mapping contract; the WinUI tray uses
-//! equivalent C# helpers in `windows/ShareCLITray/MonitoringReportSnapshot.cs`.
+//! Mirrors `sharecli-tray-linux/src/ipc.rs` mapping + kill contract; the WinUI tray uses
+//! equivalent C# helpers in `windows/ShareCLITray/`.
 
 use serde::Deserialize;
+
+/// IPC method for terminating one managed process (parity with Linux/Swift tray kill).
+pub const IPC_METHOD_KILL: &str = "process.kill";
+
+/// IPC method for terminating all managed processes (parity with Linux/Swift tray kill_all).
+pub const IPC_METHOD_KILL_ALL: &str = "process.kill_all";
+
+/// Build NDJSON-RPC request body for `process.kill` (WinUI + integration tests).
+pub fn kill_request_json(id: u64, pid: u32) -> String {
+    serde_json::json!({ "id": id, "method": IPC_METHOD_KILL, "params": { "pid": pid } })
+        .to_string()
+}
+
+/// Build NDJSON-RPC request body for `process.kill_all` (WinUI + integration tests).
+pub fn kill_all_request_json(id: u64) -> String {
+    serde_json::json!({ "id": id, "method": IPC_METHOD_KILL_ALL, "params": {} }).to_string()
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ProcessSummary {
@@ -114,6 +131,24 @@ mod tests {
         assert_eq!(snap.total_processes, 1);
         assert_eq!(snap.gate.gate_decision, "ADMIT");
         assert_eq!(snap.host_watch.load_1m, 0.5);
+    }
+
+    #[test]
+    fn kill_request_json_matches_linux_wire_shape() {
+        let raw = kill_request_json(7, 4242);
+        let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["id"], 7);
+        assert_eq!(v["method"], "process.kill");
+        assert_eq!(v["params"]["pid"], 4242);
+    }
+
+    #[test]
+    fn kill_all_request_json_matches_linux_wire_shape() {
+        let raw = kill_all_request_json(8);
+        let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["id"], 8);
+        assert_eq!(v["method"], "process.kill_all");
+        assert_eq!(v["params"], serde_json::json!({}));
     }
 
     #[test]

@@ -2,7 +2,7 @@
 name = "sharecli-tray-windows"
 version = "0.1.0"
 edition = "2021"
-description = "Windows WinUI tray wire types + mapping helpers for sharecli (FR-007 AC-007.51/AC-007.52)"
+description = "Windows WinUI tray wire types + mapping helpers for sharecli (FR-007 AC-007.51/AC-007.52/AC-007.54)"
 license = "MIT"
 authors = ["Phenotype"]
 repository = "https://github.com/KooshaPari/sharecli"

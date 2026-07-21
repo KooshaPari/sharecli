@@ -47,6 +47,16 @@
                         Header="Project"
                         Binding="{Binding project}"
                         Width="150" />
+                    <controls:DataGridTemplateColumn Header="Actions" Width="80">
+                        <controls:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button
+                                    Content="Kill"
+                                    Click="OnKillProcessClick"
+                                    Tag="{Binding pid}" />
+                            </DataTemplate>
+                        </controls:DataGridTemplateColumn.CellTemplate>
+                    </controls:DataGridTemplateColumn>
                 </controls:DataGrid.Columns>
             </controls:DataGrid>
         </ScrollView>
@@ -58,6 +68,10 @@
             Spacing="8"
             HorizontalAlignment="Right">
             <Button Content="Refresh" Click="OnRefreshClick" />
+            <Button
+                Content="Kill All Managed"
+                Click="OnKillAllClick"
+                Foreground="Red" />
             <Button Content="Close" Click="OnCloseClick" />
         </StackPanel>
     </Grid>
