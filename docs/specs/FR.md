@@ -482,8 +482,12 @@ coalesce. Thermal watch signals MAY surface via FR-011.
 - **AC-007.27:** `sharecli status` text MUST print the thermal gate section before the host
   resource watch section (parity with `sharecli proc` flat text from AC-007.21 and
   `sharecli status --json` gate → `host_watch` ordering from AC-007.25).
+- **AC-007.28:** `sharecli proc --watch --json` (NDJSON) MUST print gate and host watch
+  text companion sections on **stderr** in gate → `host_watch` order on every refresh;
+  stdout MUST remain pipe-clean (valid NDJSON lines only — no gate/host_watch text
+  companions, no `[watch]` footer, no ANSI clear sequences; parity with AC-006.18).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`, `tests/fr007_proc_watch_stderr_footer.rs`
 
 ---
 
