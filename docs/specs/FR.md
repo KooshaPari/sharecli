@@ -473,8 +473,14 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   `scanned`, `watched`, and `total_processes`; MUST NOT nest the full
   [`AgentProcSnapshot`](src/commands/proc.rs) under `agents`; raw JSON MUST serialize
   `"gate"` before `"host_watch"` (parity with AC-007.24).
+- **AC-007.26:** `sharecli thermal` gate decision panel MUST derive ADMIT/DENY from
+  [`gate_status_snapshot_with_rss`](crates/sharecli-fleet/src/agent_contention.rs) using live
+  `detected_agents` inventory (count + summed RSS from watched agents), surfacing
+  `agent_total_rss_bytes` and `agent_contention` in full and compact layouts — parity with
+  `sharecli proc` / `status --json` gate (AC-006.13 / AC-007.25); MUST NOT use count-only
+  [`effective_gate_decision`](crates/sharecli-fleet/src/agent_contention.rs).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`
 
 ---
 

@@ -41,6 +41,11 @@ pub struct DetectedAgentWatch {
     pub resource: AgentResourceSample,
 }
 
+/// Sum RSS across a watched-agent inventory slice (thermal TUI / gate snapshot).
+pub fn sum_detected_agent_rss_bytes(agents: &[DetectedAgentWatch]) -> u64 {
+    agents.iter().map(|row| row.resource.mem_rss_bytes).sum()
+}
+
 /// Sample every detected agent that is still alive on the host.
 pub fn watch_detected_agents(agents: &[DetectedAgent]) -> Vec<DetectedAgentWatch> {
     agents
@@ -354,6 +359,7 @@ fn sample_pid_fds_impl(_pid: u32) -> Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proc_scan::DetectedAgent;
 
     #[test]
     fn resource_watch_sample_capture() {
@@ -406,6 +412,30 @@ mod tests {
         assert!(sample.mem_rss_bytes > 0, "live process MUST have non-zero RSS");
         #[cfg(target_os = "linux")]
         assert!(sample.fd_count.unwrap_or(0) >= 3, "live process MUST have stdio FDs on Linux");
+    }
+
+    #[test]
+    fn test_sum_detected_agent_rss_bytes() {
+        let agents = vec![
+            DetectedAgentWatch {
+                agent: DetectedAgent {
+                    pid: 1,
+                    family: "claude",
+                    comm: "claude".into(),
+                },
+                resource: AgentResourceSample { mem_rss_bytes: 1_000, fd_count: None },
+            },
+            DetectedAgentWatch {
+                agent: DetectedAgent {
+                    pid: 2,
+                    family: "forge",
+                    comm: "forge".into(),
+                },
+                resource: AgentResourceSample { mem_rss_bytes: 2_500, fd_count: None },
+            },
+        ];
+        assert_eq!(super::sum_detected_agent_rss_bytes(&agents), 3_500);
+        assert_eq!(super::sum_detected_agent_rss_bytes(&[]), 0);
     }
 
     #[test]
