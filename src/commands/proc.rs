@@ -628,6 +628,17 @@ fn emit_ndjson_line<T: Serialize>(value: &T) -> Result<()> {
     Ok(())
 }
 
+fn print_host_watch_text_footer() -> Result<()> {
+    print!("{}", HostResourceWatchJson::capture()?.format_text_section());
+    Ok(())
+}
+
+fn append_host_watch_csv_companion(csv: String) -> Result<String> {
+    let mut out = csv;
+    out.push_str(&HostResourceWatchJson::capture()?.format_csv_companion());
+    Ok(out)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentTreeNodeJson {
     pub pid: u32,
@@ -994,11 +1005,20 @@ pub fn render_once(
             return Ok(());
         }
         if csv {
-            print!("{}", render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid, &tree_state_by_pid));
+            print!(
+                "{}",
+                append_host_watch_csv_companion(render_agent_tree_csv(
+                    &forests,
+                    &rss_by_pid,
+                    &fd_by_pid,
+                    &tree_state_by_pid
+                ))?
+            );
             return Ok(());
         }
         render_agent_tree(&forests, &tree_state_by_pid);
         print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
+        print_host_watch_text_footer()?;
         return Ok(());
     }
 
@@ -1011,7 +1031,10 @@ pub fn render_once(
         limit,
     );
     if csv {
-        print!("{}", render_agent_inventory_csv(&watched, &state_by_pid));
+        print!(
+            "{}",
+            append_host_watch_csv_companion(render_agent_inventory_csv(&watched, &state_by_pid))?
+        );
         return Ok(());
     }
     if json {
@@ -1035,6 +1058,7 @@ pub fn render_once(
     }
     render_agent_inventory(&watched, scanned_agents.len(), &state_by_pid);
     print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
+    print_host_watch_text_footer()?;
     Ok(())
 }
 

@@ -33,6 +33,30 @@ impl HostResourceWatchJson {
     pub fn capture() -> Result<Self> {
         Ok(ResourceWatchSample::capture()?.into())
     }
+
+    /// Operator-facing text block for `sharecli proc` (FR-007 / AC-007.14).
+    pub fn format_text_section(self) -> String {
+        ResourceWatchSample {
+            fd_count: self.fd_count,
+            net_rx_bytes: self.net_rx_bytes,
+            net_tx_bytes: self.net_tx_bytes,
+            mem_rss_bytes: self.mem_rss_bytes,
+            load_1m: self.load_1m,
+        }
+        .format_status_section()
+    }
+
+    /// Companion CSV block appended after agent inventory rows (FR-007 / AC-007.14).
+    pub fn format_csv_companion(self) -> String {
+        format!(
+            "\nrecord,fd_count,net_rx_bytes,net_tx_bytes,mem_rss_bytes,load_1m\nhost,{},{},{},{},{:.2}\n",
+            self.fd_count,
+            self.net_rx_bytes,
+            self.net_tx_bytes,
+            self.mem_rss_bytes,
+            self.load_1m,
+        )
+    }
 }
 
 impl From<ResourceWatchSample> for HostResourceWatchJson {

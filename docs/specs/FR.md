@@ -407,8 +407,16 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   (`fd_count`, `mem_rss_bytes`, `load_1m`, `net_rx_bytes`, `net_tx_bytes`) via
   [`HostResourceWatchJson`](src/monitoring.rs); MUST fail loudly via `?` when
   sampling is unsupported or errors (parity with `status` text + thermal TUI).
+- **AC-007.14:** `sharecli proc` text mode and `sharecli proc --csv` (flat and
+  `--tree`) MUST surface live host
+  [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs) fields
+  via [`HostResourceWatchJson::format_text_section`](src/monitoring.rs) (footer
+  after gate section, matching `status` text) and
+  [`HostResourceWatchJson::format_csv_companion`](src/monitoring.rs) (companion
+  `host` CSV record after agent rows); MUST fail loudly via `?` when sampling
+  is unsupported or errors (parity with JSON `host_watch` from AC-007.13).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`
 
 ---
 
