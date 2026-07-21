@@ -165,6 +165,10 @@ enum Commands {
         /// Emit machine-readable JSON (includes detected agent inventory)
         #[arg(long)]
         json: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.66 with --json)
+        #[arg(short, long)]
+        watch: Option<u64>,
     },
 
     /// List host-detected coding agents (proc scan + RSS/FD samples)
@@ -629,7 +633,7 @@ async fn run() -> Result<()> {
         Commands::Stop { pid, project, harness, all, force, yes } => {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
-        Commands::Status { verbose, json } => status(*verbose, *json).await?,
+        Commands::Status { verbose, json, watch } => status(*verbose, *json, *watch).await?,
         Commands::Proc { json, csv, tree, watch, family, exclude_family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
             commands::proc::run(
                 *json,
