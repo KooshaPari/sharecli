@@ -24,6 +24,8 @@ Read-only status cockpit served by `sharecli serve`. No ad-hoc controls — reus
 | Live status | `#status-label` | `aria-live="polite"` connection string |
 | Thermal badge | `#thermal-status` | `aria-live="polite"` governor level (text + emoji) |
 | Process table | `table[aria-label="Managed processes"]` | `scope="col"` headers; no row actions |
+| Operator panels | `#operator-panels[data-operator-panels]` | Gate, host watch, agents summary; skeleton `dd` placeholders while WS pending |
+| Loading skeleton | `.skeleton-row` + `.skeleton-bar` | Content-shaped placeholders while WebSocket snapshot pending; `aria-busy` on `#proc-body` and `#operator-panels` |
 | Last update | `#last-update` | `aria-live="polite"` refresh timestamp |
 
 Focus management: skip link uses `:focus` outline (`2px solid`); `#main-content` has `tabindex="-1"` for skip-target focus.

@@ -31,7 +31,16 @@ Contract: [empty-states.md](empty-states.md). Tests: `tests/c10_l100_empty_state
 
 ## 4. Loading
 
-Prefer content-shaped placeholders or pulse-green activity indicators; avoid generic browser spinners on branded surfaces.
+Content-shaped skeleton placeholders reserve the operator-panel and process-table layout while the WebSocket connects and the first snapshot arrives. Sync-violet shimmer on placeholder bars; connecting dot pulses until `connected`.
+
+| Phase | Markup / copy |
+|-------|----------------|
+| Connecting | `#status-dot.connecting` + `connecting…` |
+| Awaiting snapshot | `connected — loading processes…` + `#operator-panels[aria-busy="true"]` + `#proc-body[aria-busy="true"]` |
+| Operator panels | `dd` placeholders with `data-loading-kind="panel-value"` |
+| Table rows | `.skeleton-row` with `data-loading-kind="table-row"` per column |
+
+Contract: [loading-states.md](loading-states.md). Tests: `tests/c10_l99_skeleton_states.rs`.
 
 ## 5. Error / failure
 

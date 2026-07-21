@@ -39,6 +39,10 @@
     transition: background var(--motion-duration, 0.3s) var(--motion-ease, ease);
   }
   #status-dot.connected { background: #22c55e; }
+  #status-dot.connecting {
+    background: #a371f7;
+    animation: pulse 1.2s var(--motion-ease, ease) infinite;
+  }
   #status-label { font-size: 11px; color: var(--bb2-muted); }
   #operator-panels {
     display: grid;
@@ -68,6 +72,7 @@
   }
   .operator-panel dt { color: var(--bb2-muted); }
   .operator-panel dd { color: #e2e8f0; text-align: right; margin: 0; }
+  .operator-panel dd .skeleton-bar { float: right; }
   .gate-admit { color: var(--bb2-pulse-green); }
   .gate-deny { color: #f85149; }
   .gate-unavailable { color: var(--bb2-warm-amber); }
@@ -78,6 +83,7 @@
     line-height: 1.4;
     word-break: break-word;
   }
+  .families-list .skeleton-bar { width: 100%; max-width: 12rem; }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -105,11 +111,28 @@
   td.pid { color: #94a3b8; }
   td.mem { color: #f59e0b; }
   td.status { color: #22c55e; }
-  #loading-row td {
-    color: #94a3b8;
-    text-align: center;
-    padding: 24px;
-    font-style: italic;
+  .skeleton-row:hover { background: transparent; }
+  .skeleton-bar {
+    display: inline-block;
+    height: 0.85em;
+    border-radius: 4px;
+    background: linear-gradient(
+      90deg,
+      #161b22 0%,
+      rgba(163, 113, 247, 0.35) 50%,
+      #161b22 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s var(--motion-ease, ease) infinite;
+    vertical-align: middle;
+  }
+  .skeleton-bar--sm { width: 3rem; max-width: 40%; }
+  .skeleton-bar--md { width: 4.5rem; max-width: 55%; }
+  .skeleton-bar--lg { width: 6.5rem; max-width: 72%; }
+  .skeleton-bar--xl { width: 5rem; max-width: 65%; }
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
   .empty-state {
     text-align: center;
@@ -252,6 +275,8 @@
       scroll-behavior: auto !important;
     }
     #thermal-status.critical { animation: none; }
+    #status-dot.connecting { animation: none; }
+    .skeleton-bar { animation: none; background: #161b22; }
   }
   .skip-link {
     position: absolute;
@@ -291,7 +316,7 @@
 
 <nav aria-label="Dashboard status">
   <header>
-    <div id="status-dot" role="status" aria-hidden="true"></div>
+    <div id="status-dot" class="connecting" role="status" aria-hidden="true"></div>
     <h1 id="dashboard-title">sharecli</h1>
     <span id="status-label" aria-live="polite">connecting...</span>
     <span id="thermal-status" role="status" aria-live="polite">&#x1F321; Normal</span>
@@ -338,8 +363,7 @@
       <th scope="col">Status</th>
     </tr>
   </thead>
-  <tbody id="proc-body">
-    <tr id="loading-row"><td colspan="5">waiting for data...</td></tr>
+  <tbody id="proc-body" aria-busy="true" aria-live="polite">
   </tbody>
 </table>
 <div id="last-update" aria-live="polite"></div>
@@ -349,6 +373,7 @@
   const dot = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
   const body = document.getElementById('proc-body');
+  const operatorPanels = document.getElementById('operator-panels');
   const lastUpdate = document.getElementById('last-update');
   let reconnectTimer = null;
   let hadProcesses = false;
@@ -385,12 +410,81 @@
     } catch (_) {}
   }
 
+  const SKELETON_ROWS = 3;
+  const SKELETON_LAYOUT = [
+    ['lg', 'sm', 'md', 'lg', 'sm'],
+    ['xl', 'sm', 'md', 'md', 'sm'],
+    ['lg', 'sm', 'md', 'xl', 'sm'],
+  ];
+  const OPERATOR_SKELETON_LAYOUT = {
+    gate: ['md', 'sm', 'sm', 'lg'],
+    host: ['sm', 'md', 'sm', 'xl'],
+    agents: ['sm', 'sm', 'md'],
+  };
+
+  function skeletonCell(size) {
+    return `<span class="skeleton-bar skeleton-bar--${size}"></span>`;
+  }
+
+  function renderOperatorPanelSkeletons() {
+    operatorPanels.setAttribute('aria-busy', 'true');
+    const gateDds = ['gate-pressure', 'gate-decision', 'gate-agents', 'gate-contention'];
+    gateDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = '';
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.gate[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const hostDds = ['host-fds', 'host-rss', 'host-load', 'host-net'];
+    hostDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.host[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const agentDds = ['agents-scanned', 'agents-watched', 'agents-rss'];
+    agentDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.agents[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const families = document.getElementById('agents-families');
+    families.innerHTML = skeletonCell('lg');
+    families.setAttribute('data-loading-kind', 'panel-value');
+  }
+
+  function clearOperatorPanelSkeletons() {
+    operatorPanels.removeAttribute('aria-busy');
+    document.querySelectorAll('[data-loading-kind="panel-value"]').forEach((el) => {
+      el.removeAttribute('data-loading-kind');
+    });
+  }
+
+  function renderSkeletonRows() {
+    body.setAttribute('aria-busy', 'true');
+    body.innerHTML = SKELETON_LAYOUT.map((cols, rowIdx) => `<tr class="skeleton-row" data-loading-kind="table-row">
+      <td>${skeletonCell(cols[0])}</td>
+      <td class="pid">${skeletonCell(cols[1])}</td>
+      <td class="mem">${skeletonCell(cols[2])}</td>
+      <td>${skeletonCell(cols[3])}</td>
+      <td class="status">${skeletonCell(cols[4])}</td>
+    </tr>`).join('');
+  }
+
+  function setConnecting(active) {
+    dot.classList.toggle('connecting', active);
+  }
+
   function connect() {
+    setConnecting(true);
+    label.textContent = 'connecting…';
+    renderOperatorPanelSkeletons();
+    renderSkeletonRows();
     const ws = new WebSocket('ws://localhost:9000/ws');
 
     ws.onopen = () => {
+      dot.classList.remove('connecting');
       dot.classList.add('connected');
-      label.textContent = 'connected';
+      label.textContent = 'connected — loading processes…';
       disconnectShown = false;
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     };
@@ -427,6 +521,8 @@
   function renderDisconnectError() {
     if (disconnectShown) return;
     disconnectShown = true;
+    clearOperatorPanelSkeletons();
+    body.removeAttribute('aria-busy');
     body.innerHTML = `<tr><td colspan="5">
       <div class="error-state" role="alert" data-error-kind="disconnect" aria-live="assertive">
         <div class="error-state-icon" aria-hidden="true">&#x26A0;</div>
@@ -451,6 +547,8 @@
   }
 
   function renderEmptyState(kind) {
+    body.removeAttribute('aria-busy');
+    label.textContent = 'connected';
     const spec = EMPTY_STATES[kind] || EMPTY_STATES['first-run'];
     body.innerHTML = `<tr><td colspan="5">
       <div class="empty-state" role="status" data-empty-kind="${kind}" aria-live="polite">
@@ -463,6 +561,8 @@
   }
 
   function renderTable(procs) {
+    body.removeAttribute('aria-busy');
+    label.textContent = 'connected';
     if (procs.length === 0) {
       const kind = hadProcesses ? 'cleared' : 'first-run';
       renderEmptyState(kind);
@@ -497,6 +597,7 @@
   }
 
   function renderOperatorPanels(data) {
+    clearOperatorPanelSkeletons();
     const gate = data.gate || {};
     const host = data.host_watch || {};
     const agents = data.agents || {};
