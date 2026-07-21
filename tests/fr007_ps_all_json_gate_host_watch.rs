@@ -199,6 +199,51 @@ fn fr007_ps_all_json_gate_order_serializes_fields() {
             mem_rss_bytes: 4096,
             load_1m: 1.25,
         },
+        pool: sharecli::commands::PoolJson {
+            node_total: 1,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 1,
+            max_per_type: 4,
+            healthy: true,
+            issues: vec![],
+            gate: GateStatusSnapshot {
+                thermal_pressure: "GREEN".into(),
+                detected_agents: 0,
+                agent_total_rss_bytes: 0,
+                agent_contention: "OK".into(),
+                gate_decision: "ADMIT".into(),
+            },
+            host_watch: HostResourceWatchJson {
+                fd_count: 1,
+                net_rx_bytes: 1,
+                net_tx_bytes: 2,
+                mem_rss_bytes: 3,
+                load_1m: 0.5,
+            },
+            status: None,
+        },
+        status: sharecli::commands::StatusJson {
+            total_processes: 0,
+            agents: vec![],
+            scanned: 0,
+            watched: 0,
+            gate: GateStatusSnapshot {
+                thermal_pressure: "GREEN".into(),
+                detected_agents: 0,
+                agent_total_rss_bytes: 0,
+                agent_contention: "OK".into(),
+                gate_decision: "ADMIT".into(),
+            },
+            host_watch: HostResourceWatchJson {
+                fd_count: 1,
+                net_rx_bytes: 1,
+                net_tx_bytes: 2,
+                mem_rss_bytes: 3,
+                load_1m: 0.5,
+            },
+            pool: None,
+        },
     };
     let json = serde_json::to_string(&envelope).expect("serialize ps --all JSON envelope");
     assert_json_gate_before_host_watch(&json, "PsAllJson");

@@ -142,6 +142,8 @@ fn fr006_proc_watch_ndjson_line_serializes_agent_state() {
                 gate_decision: "ADMIT".into(),
             },
             host_watch: sharecli::monitoring::HostResourceWatchJson::default(),
+            pool: None,
+            status: None,
         },
     };
     let json = serde_json::to_string(&line).expect("serialize NDJSON line");

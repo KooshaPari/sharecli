@@ -115,10 +115,10 @@ pub struct PsManagedProcessRow {
     pub agent: String,
 }
 
-/// JSON envelope for `sharecli ps --all --json` (FR-007 / AC-007.43).
+/// JSON envelope for `sharecli ps --all --json` (FR-007 / AC-007.43, pool/status AC-007.77).
 ///
-/// Managed pool fields precede host agent inventory; live `gate` and `host_watch`
-/// siblings follow (parity with `status --json` AC-007.25 / proc JSON AC-007.24).
+/// Managed pool fields precede host agent inventory; live `gate`, `host_watch`, `pool`, and
+/// `status` siblings follow (parity with `report --format json` AC-007.73 key order).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PsAllJson {
     pub processes: Vec<PsManagedProcessRow>,
@@ -128,6 +128,10 @@ pub struct PsAllJson {
     pub watched: usize,
     pub gate: sharecli_fleet::GateStatusSnapshot,
     pub host_watch: HostResourceWatchJson,
+    /// Runtime pool operator panel (FR-007 / AC-007.77).
+    pub pool: PoolJson,
+    /// Proc-scan status operator panel (FR-007 / AC-007.77).
+    pub status: StatusJson,
 }
 
 /// One NDJSON watch line for `ps --all --watch --json` (FR-007 / AC-007.49).
@@ -149,10 +153,11 @@ fn emit_ps_ndjson_line<T: Serialize>(value: &T) -> Result<()> {
     Ok(())
 }
 
-/// JSON envelope for `sharecli pool --json` (FR-007 / AC-007.44).
+/// JSON envelope for `sharecli pool --json` (FR-007 / AC-007.44, status sibling AC-007.77).
 ///
-/// Pool status fields precede live `gate` and `host_watch` siblings
-/// (parity with `status --json` AC-007.25 / `ps --all --json` AC-007.43).
+/// Pool status fields precede live `gate` and `host_watch` siblings; `pool --json` adds a
+/// nested `status` sibling after `host_watch` (no redundant nested `pool` — top-level fields
+/// already are the pool panel).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PoolJson {
     pub node_total: usize,
@@ -164,12 +169,15 @@ pub struct PoolJson {
     pub issues: Vec<String>,
     pub gate: sharecli_fleet::GateStatusSnapshot,
     pub host_watch: HostResourceWatchJson,
+    /// Proc-scan status sibling; only emitted by `pool --json` (AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<Box<StatusJson>>,
 }
 
-/// JSON envelope for `sharecli health --json` (FR-007 / AC-007.44).
+/// JSON envelope for `sharecli health --json` (FR-007 / AC-007.44, pool/status AC-007.77).
 ///
-/// Runtime health fields precede live `gate` and `host_watch` siblings
-/// (parity with `status --json` AC-007.25 / `ps --all --json` AC-007.43).
+/// Runtime health fields precede live `gate`, `host_watch`, `pool`, and `status` siblings
+/// (parity with `report --format json` AC-007.73 key order).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct HealthJson {
     pub healthy: bool,
@@ -183,6 +191,10 @@ pub struct HealthJson {
     pub max_per_type: usize,
     pub gate: sharecli_fleet::GateStatusSnapshot,
     pub host_watch: HostResourceWatchJson,
+    /// Runtime pool operator panel (FR-007 / AC-007.77).
+    pub pool: PoolJson,
+    /// Proc-scan status operator panel (FR-007 / AC-007.77).
+    pub status: StatusJson,
 }
 
 /// One NDJSON watch line for `health --watch --json` (FR-007 / AC-007.64).
@@ -201,7 +213,11 @@ pub struct PoolNdjsonLine {
     pub snapshot: PoolJson,
 }
 
-/// JSON envelope for `sharecli status --json` (FR-007 / AC-007.25).
+/// JSON envelope for `sharecli status --json` (FR-007 / AC-007.25, pool sibling AC-007.77).
+///
+/// Proc-scan fields precede live `gate` and `host_watch`; `status --json` adds a nested `pool`
+/// sibling after `host_watch` (no redundant nested `status` — top-level fields already are the
+/// proc-scan panel).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct StatusJson {
     pub total_processes: usize,
@@ -210,6 +226,9 @@ pub struct StatusJson {
     pub watched: usize,
     pub gate: sharecli_fleet::GateStatusSnapshot,
     pub host_watch: HostResourceWatchJson,
+    /// Runtime pool sibling; only emitted by `status --json` (AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool: Option<Box<PoolJson>>,
 }
 
 impl From<PoolJson> for sharecli_fleet::PoolOperatorPanel {
@@ -272,6 +291,7 @@ async fn build_ps_all_json(
         })
         .collect();
     let snapshot = proc::AgentProcSnapshot::capture()?;
+    let (pool_panel, status_panel) = fetch_operator_pool_status_siblings().await?;
     Ok(PsAllJson {
         processes: managed,
         total_memory_mb: total_mem,
@@ -280,6 +300,8 @@ async fn build_ps_all_json(
         watched: snapshot.watched,
         gate: snapshot.gate,
         host_watch: snapshot.host_watch,
+        pool: pool_panel,
+        status: status_panel,
     })
 }
 
@@ -583,7 +605,14 @@ pub(crate) async fn build_status_json() -> Result<StatusJson> {
         watched: snapshot.watched,
         gate: snapshot.gate,
         host_watch: snapshot.host_watch,
+        pool: None,
     })
+}
+
+/// Fetch independent pool + status JSON panels for operator sibling embedding (AC-007.77).
+pub(crate) async fn fetch_operator_pool_status_siblings() -> Result<(PoolJson, StatusJson)> {
+    let (pool, status) = tokio::join!(build_pool_json(), build_status_json());
+    Ok((pool?, status?))
 }
 
 /// Render one status snapshot (one-shot or watch cycle).
@@ -593,7 +622,8 @@ pub(crate) async fn build_status_json() -> Result<StatusJson> {
 /// gate/host_watch stay in text sections on stdout only (AC-007.27).
 async fn render_status_once(verbose: bool, json: bool, ndjson: bool) -> Result<()> {
     if json {
-        let payload = build_status_json().await?;
+        let mut payload = build_status_json().await?;
+        payload.pool = Some(Box::new(build_pool_json().await?));
         if ndjson {
             let line = StatusNdjsonLine {
                 ts: ps_unix_ts_secs(),
@@ -1022,6 +1052,7 @@ pub(crate) async fn build_pool_json() -> Result<PoolJson> {
         issues: health.issues,
         gate,
         host_watch,
+        status: None,
     })
 }
 
@@ -1030,7 +1061,8 @@ pub(crate) async fn build_pool_json() -> Result<PoolJson> {
 /// One-shot `pool --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
 async fn render_pool_once(json: bool, ndjson: bool) -> Result<()> {
     if json {
-        let payload = build_pool_json().await?;
+        let mut payload = build_pool_json().await?;
+        payload.status = Some(Box::new(build_status_json().await?));
         if ndjson {
             let line = PoolNdjsonLine {
                 ts: ps_unix_ts_secs(),
@@ -1134,6 +1166,7 @@ async fn build_health_json() -> Result<HealthJson> {
     let pool_status = runtime.status().await;
     let health = runtime.health_check().await;
     let (gate, host_watch) = capture_live_gate_host_watch()?;
+    let (pool_panel, status_panel) = fetch_operator_pool_status_siblings().await?;
     Ok(HealthJson {
         healthy: health.healthy,
         issues: health.issues,
@@ -1146,6 +1179,8 @@ async fn build_health_json() -> Result<HealthJson> {
         max_per_type: pool_status.max_per_type,
         gate,
         host_watch,
+        pool: pool_panel,
+        status: status_panel,
     })
 }
 
