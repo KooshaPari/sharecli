@@ -1,9 +1,10 @@
-//! FR-007 — operator envelope matrix parity regression suite (AC-007.84)
+//! FR-007 — operator envelope matrix parity regression suite (AC-007.84, proc --tree AC-007.85)
 //! FR: FR-007
 //!
 //! Locks the full FR-007 operator envelope across proc/report/health/pool/status/ps --all
-//! (text/JSON/CSV one-shot), IPC, WS decode, dashboard, tray, and thermal TUI companion
-//! markers. No long `--watch` dwell cycles — those stay in per-AC integration files.
+//! (text/JSON/CSV one-shot, including `proc --tree`), IPC, WS decode, dashboard, tray, and
+//! thermal TUI companion markers. No long `--watch` dwell cycles — those stay in per-AC
+//! integration files.
 
 use std::fs;
 use std::path::PathBuf;
@@ -291,6 +292,11 @@ fn fr007_operator_matrix_cli_text_one_shot() {
             body_header: "=== Host agents (proc scan) ===",
         },
         TextCase {
+            label: "proc --tree",
+            args: &["proc", "--tree"],
+            body_header: "=== Agent process tree (proc scan) ===",
+        },
+        TextCase {
             label: "health",
             args: &["health"],
             body_header: "Shared runtime health:",
@@ -352,6 +358,11 @@ fn fr007_operator_matrix_cli_json_one_shot() {
             mode: JsonEnvelopeMode::FullPoolStatus,
         },
         JsonCase {
+            label: "proc --tree --json",
+            args: &["proc", "--tree", "--json"],
+            mode: JsonEnvelopeMode::FullPoolStatus,
+        },
+        JsonCase {
             label: "report --format json",
             args: &["report", "--format", "json"],
             mode: JsonEnvelopeMode::FullPoolStatus,
@@ -376,6 +387,11 @@ fn fr007_operator_matrix_cli_csv_one_shot() {
             label: "proc --csv",
             args: &["proc", "--csv"],
             body_header: "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+        },
+        CsvCase {
+            label: "proc --tree --csv",
+            args: &["proc", "--tree", "--csv"],
+            body_header: "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         },
         CsvCase {
             label: "report --format csv",
