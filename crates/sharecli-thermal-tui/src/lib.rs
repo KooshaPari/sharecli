@@ -49,6 +49,86 @@ pub fn is_quit_key(key: &KeyEvent) -> bool {
     }
 }
 
+/// Keyboard-focusable operator panels (C09 L81.3): gate → host watch → agents.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PanelFocus {
+    #[default]
+    Gate,
+    HostWatch,
+    Agents,
+}
+
+impl PanelFocus {
+    const ORDER: [PanelFocus; 3] =
+        [PanelFocus::Gate, PanelFocus::HostWatch, PanelFocus::Agents];
+
+    /// Advance focus: gate → host watch → agents → gate.
+    pub fn next(self) -> Self {
+        let idx = Self::ORDER.iter().position(|&p| p == self).unwrap_or(0);
+        Self::ORDER[(idx + 1) % Self::ORDER.len()]
+    }
+
+    /// Retreat focus: agents → host watch → gate → agents.
+    pub fn prev(self) -> Self {
+        let idx = Self::ORDER.iter().position(|&p| p == self).unwrap_or(0);
+        Self::ORDER[(idx + Self::ORDER.len() - 1) % Self::ORDER.len()]
+    }
+
+    /// Map digit keys `1` / `2` / `3` to panels.
+    pub fn from_digit(ch: char) -> Option<Self> {
+        match ch {
+            '1' => Some(PanelFocus::Gate),
+            '2' => Some(PanelFocus::HostWatch),
+            '3' => Some(PanelFocus::Agents),
+            _ => None,
+        }
+    }
+}
+
+/// Semantic action from a keyboard event in the thermal TUI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyAction {
+    Quit,
+    FocusNext,
+    FocusPrev,
+    FocusPanel(PanelFocus),
+    ForcePoll,
+    ToggleHelp,
+    Noop,
+}
+
+/// Pure keybinding matrix for the thermal TUI (C09 L81.3).
+pub fn handle_key(key: &KeyEvent) -> KeyAction {
+    if is_quit_key(key) {
+        return KeyAction::Quit;
+    }
+    match key.code {
+        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => KeyAction::FocusPrev,
+        KeyCode::Tab => KeyAction::FocusNext,
+        KeyCode::Char('1') => KeyAction::FocusPanel(PanelFocus::Gate),
+        KeyCode::Char('2') => KeyAction::FocusPanel(PanelFocus::HostWatch),
+        KeyCode::Char('3') => KeyAction::FocusPanel(PanelFocus::Agents),
+        KeyCode::Char('r') => KeyAction::ForcePoll,
+        KeyCode::Char('?') => KeyAction::ToggleHelp,
+        _ => KeyAction::Noop,
+    }
+}
+
+/// Apply a non-quit [`KeyAction`] to live application state.
+pub fn apply_key_action(app: &mut App, action: KeyAction) {
+    match action {
+        KeyAction::FocusNext => app.focus = app.focus.next(),
+        KeyAction::FocusPrev => app.focus = app.focus.prev(),
+        KeyAction::FocusPanel(panel) => app.focus = panel,
+        KeyAction::ToggleHelp => app.show_help_overlay = !app.show_help_overlay,
+        KeyAction::Quit | KeyAction::ForcePoll | KeyAction::Noop => {}
+    }
+}
+
+/// Footer help overlay copy (shown when `?` toggles help).
+pub const HELP_OVERLAY_HINT: &str =
+    " Tab/Shift-Tab cycle  1 gate  2 watch  3 agents  r poll  ? hide";
+
 /// Map a [`ThermalLevel`] to a human-readable label.
 pub fn level_label(level: ThermalLevel) -> &'static str {
     match level {
@@ -553,6 +633,10 @@ pub struct App {
     pub agent_forests: Vec<AgentTreeNode>,
     /// Pinned forest-wide process state for tests; live render resolves via proc scan when unset.
     forest_state_by_pid: Option<HashMap<u32, char>>,
+    /// Focused operator panel for keyboard navigation (C09 L81.3).
+    pub focus: PanelFocus,
+    /// When true, footer shows extended keybinding help.
+    pub show_help_overlay: bool,
 }
 
 impl App {
@@ -574,6 +658,8 @@ impl App {
             detected_agents: Vec::new(),
             agent_forests: Vec::new(),
             forest_state_by_pid: None,
+            focus: PanelFocus::default(),
+            show_help_overlay: false,
         }
     }
 
@@ -752,6 +838,15 @@ fn render_thermal(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     frame.render_widget(para, area);
 }
 
+fn focused_block(title: &str, focused: bool) -> Block<'_> {
+    let block = Block::default().borders(Borders::ALL).title(title);
+    if focused {
+        block.border_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+    } else {
+        block
+    }
+}
+
 fn render_decision(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let level = app.thermal_level;
     let agent_count = app.detected_agents.len();
@@ -760,7 +855,7 @@ fn render_decision(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let lines = gate_panel_lines(&snap, level, compact);
 
     let title = if compact { " Gate " } else { " Gate Decision " };
-    let block = Block::default().borders(Borders::ALL).title(title);
+    let block = focused_block(title, app.focus == PanelFocus::Gate);
     let para = Paragraph::new(lines).block(block);
     frame.render_widget(para, area);
 }
@@ -787,14 +882,14 @@ fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " Agents " } else { " Detected Agents " };
     let state_by_pid = app.agent_panel_state_by_pid();
     let lines = agent_forest_lines(&app.agent_forests, &app.detected_agents, &state_by_pid, compact);
-    let block = Block::default().borders(Borders::ALL).title(title);
+    let block = focused_block(title, app.focus == PanelFocus::Agents);
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
 fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " Watch " } else { " Host Resource Watch " };
     let lines = resource_watch_lines(app.resource_watch, compact);
-    let block = Block::default().borders(Borders::ALL).title(title);
+    let block = focused_block(title, app.focus == PanelFocus::HostWatch);
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
@@ -811,6 +906,15 @@ fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool)
 }
 
 fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    if app.show_help_overlay {
+        let help = Paragraph::new(Line::from(vec![
+            Span::styled(HELP_OVERLAY_HINT, Style::default().fg(Color::Yellow)),
+        ]))
+        .block(Block::default().borders(Borders::ALL).title(" help "));
+        frame.render_widget(help, area);
+        return;
+    }
+
     let elapsed = app.last_poll.elapsed().as_secs();
     let meta = if compact {
         format!(" polls:{} last:{}s", app.poll_count, elapsed)
@@ -827,6 +931,8 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
         Span::raw(" quit  "),
         Span::styled(" Ctrl-C", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" quit  "),
+        Span::styled(" ?", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(" help  "),
         Span::raw(meta),
     ]))
     .block(Block::default().borders(Borders::ALL));
@@ -887,7 +993,16 @@ fn event_loop(
         // Also accept Resize so layout reflows when COLUMNS / terminal size changes.
         if event::poll(POLL_INTERVAL)? {
             match event::read()? {
-                Event::Key(key) if is_quit_key(&key) => break,
+                Event::Key(key) => match handle_key(&key) {
+                    KeyAction::Quit => break,
+                    KeyAction::ForcePoll => {
+                        let level = governor.poll().unwrap_or(ThermalLevel::Green);
+                        let slots = count_cargo_builds();
+                        app.update(level, slots);
+                        app.poll_operator_meters();
+                    }
+                    action => apply_key_action(app, action),
+                },
                 Event::Resize(_, _) => {
                     // Next draw uses the new frame.area().width (compact vs full).
                 }
@@ -948,6 +1063,105 @@ mod tests {
     fn test_is_quit_key_other_ignored() {
         assert!(!is_quit_key(&key_event(KeyCode::Char('a'), KeyModifiers::NONE)));
         assert!(!is_quit_key(&key_event(KeyCode::Char('c'), KeyModifiers::NONE)));
+    }
+
+    // --- handle_key matrix (C09 L81.3) ---
+    #[test]
+    fn test_handle_key_tab_cycles_focus_forward() {
+        assert_eq!(handle_key(&key_event(KeyCode::Tab, KeyModifiers::NONE)), KeyAction::FocusNext);
+    }
+
+    #[test]
+    fn test_handle_key_shift_tab_cycles_focus_backward() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Tab, KeyModifiers::SHIFT)),
+            KeyAction::FocusPrev
+        );
+    }
+
+    #[test]
+    fn test_handle_key_digit_jumps_to_panel() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('1'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::Gate)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('2'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::HostWatch)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('3'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::Agents)
+        );
+    }
+
+    #[test]
+    fn test_handle_key_r_force_poll() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('r'), KeyModifiers::NONE)),
+            KeyAction::ForcePoll
+        );
+    }
+
+    #[test]
+    fn test_handle_key_question_toggle_help() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('?'), KeyModifiers::NONE)),
+            KeyAction::ToggleHelp
+        );
+    }
+
+    #[test]
+    fn test_panel_focus_tab_cycle_order() {
+        let mut focus = PanelFocus::Gate;
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::HostWatch);
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::Agents);
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::Gate);
+
+        focus = focus.prev();
+        assert_eq!(focus, PanelFocus::Agents);
+    }
+
+    #[test]
+    fn test_apply_key_action_toggles_help_overlay() {
+        let mut app = App::new(4);
+        assert!(!app.show_help_overlay);
+        apply_key_action(&mut app, KeyAction::ToggleHelp);
+        assert!(app.show_help_overlay);
+        apply_key_action(&mut app, KeyAction::ToggleHelp);
+        assert!(!app.show_help_overlay);
+    }
+
+    #[test]
+    fn test_render_footer_shows_help_hint() {
+        use ratatui::{backend::TestBackend, Terminal};
+        let backend = TestBackend::new(120, 52);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let app = App::new(4);
+        terminal.draw(|f| render(f, &app)).unwrap();
+        let buf = terminal.backend().buffer().clone();
+        let rendered: String = buf.content.iter().map(|c| c.symbol().to_string()).collect();
+        assert!(rendered.contains("help"), "footer must document ? help; got: {rendered}");
+    }
+
+    #[test]
+    fn test_render_help_overlay_when_enabled() {
+        use ratatui::{backend::TestBackend, Terminal};
+        let backend = TestBackend::new(120, 52);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(4);
+        app.show_help_overlay = true;
+        terminal.draw(|f| render(f, &app)).unwrap();
+        let buf = terminal.backend().buffer().clone();
+        let rendered: String = buf.content.iter().map(|c| c.symbol().to_string()).collect();
+        assert!(
+            rendered.contains("Tab"),
+            "help overlay must list Tab cycle; got: {rendered}"
+        );
+        assert!(rendered.contains("agents"), "help overlay must list agents panel");
     }
 
     // --- level_label ---

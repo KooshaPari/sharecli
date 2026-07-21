@@ -45,6 +45,9 @@ Tray does not embed dashboard HTML; it delegates to CLI subprocesses.
 |---------|------------|------|
 | Thermal level | `GREEN` / `YELLOW` / `RED` text labels (not color alone) | — |
 | Quit | Documented in footer | `q`, `Ctrl-C` via `is_quit_key` |
+| Panel focus | gate → host watch → agents (cyan border) | `Tab`, `Shift-Tab`, `1`/`2`/`3` via `handle_key` |
+| Force poll | Immediate refresh | `r` |
+| Help overlay | Footer keybinding matrix | `?` |
 | Compact layout | `COMPACT_WIDTH = 80` columns | Resize reflow |
 
 Keybinding matrix: [`keyboard.md`](./keyboard.md).
