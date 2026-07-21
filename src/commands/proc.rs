@@ -572,6 +572,8 @@ pub struct AgentProcSnapshot {
 pub struct AgentTreeSnapshot {
     pub forests: Vec<AgentTreeNodeJson>,
     pub roots: usize,
+    /// Live thermal + agent gate snapshot (FR-007 / AC-007.18).
+    pub gate: sharecli_fleet::GateStatusSnapshot,
     /// Live host FD/RSS/load/net watch (FR-007 / AC-007.15).
     pub host_watch: HostResourceWatchJson,
 }
@@ -1008,6 +1010,7 @@ pub fn render_once(
                 .map(|root| agent_tree_node_to_json(root, &tree_state_by_pid))
                 .collect(),
             roots: forests.len(),
+            gate,
             host_watch: HostResourceWatchJson::capture()?,
         };
         if json {
@@ -1333,6 +1336,13 @@ mod tests {
                 .map(|root| agent_tree_node_to_json(root, &state_by_pid))
                 .collect(),
             roots: forests.len(),
+            gate: sharecli_fleet::GateStatusSnapshot {
+                thermal_pressure: "GREEN".into(),
+                detected_agents: 0,
+                agent_total_rss_bytes: 0,
+                agent_contention: "OK".into(),
+                gate_decision: "ADMIT".into(),
+            },
             host_watch: HostResourceWatchJson::default(),
         };
         assert_eq!(snap.roots, 1);

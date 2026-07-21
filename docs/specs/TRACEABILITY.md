@@ -149,6 +149,7 @@
 | AC-007.15   | `tests/fr007_proc_tree_json_host_watch.rs`; `src/commands/proc.rs` (`AgentTreeSnapshot::host_watch`) | proc tree JSON/NDJSON host ResourceWatchSample parity |
 | AC-007.16   | `tests/fr007_proc_pid_json_host_watch.rs`; `src/commands/proc.rs` (`ProcDetailSnapshot::host_watch`, `render_proc_detail`) | proc pid JSON/text host ResourceWatchSample parity |
 | AC-007.17   | `tests/fr007_proc_pid_gate.rs`; `src/commands/proc.rs` (`ProcDetailSnapshot::gate`, `render_proc_detail`); `crates/sharecli-fleet/src/agent_contention.rs` (`format_gate_status_from_snapshot`) | proc pid JSON/text thermal gate parity |
+| AC-007.18   | `tests/fr007_proc_tree_json_gate.rs`; `src/commands/proc.rs` (`AgentTreeSnapshot::gate`) | proc tree JSON/NDJSON thermal gate parity |
 
 ### FR-008 — Coalesce
 
@@ -212,6 +213,10 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc tree gate parity:** `sharecli proc --tree --json` and
+  `--tree --watch --json` emit `gate` on every snapshot via
+  [`AgentTreeSnapshot`](src/commands/proc.rs) (AC-007.18); completes proc JSON gate
+  coverage across flat/tree/pid surfaces.
 - **2026-07-20 — FR-007 proc pid gate parity:** `sharecli proc --pid N --json` emits
   `gate` on [`ProcDetailSnapshot`](src/commands/proc.rs) and text detail prints thermal
   gate section before host watch footer (AC-007.17); completes proc detail gate coverage.
