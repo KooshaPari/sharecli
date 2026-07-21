@@ -171,6 +171,7 @@
 | AC-007.37   | `tests/fr007_health_pool_text_stderr_silent.rs`; `src/commands/mod.rs` (`health`, `pool`) | health/pool one-shot text gate → host_watch on stdout; stderr silent on success |
 | AC-007.38   | `tests/fr007_ps_all_text_stderr_silent.rs`; `src/commands/mod.rs` (`print_host_agent_scan`, `ps --all`) | ps --all one-shot text gate → host_watch on stdout after inventory; stderr silent on success |
 | AC-007.39   | `tests/fr007_report_text_stderr_silent.rs`; `src/commands/report.rs` (`render_once` text path) | report text one-shot + --watch gate → host_watch on stdout after report body; stderr silent on success |
+| AC-007.40   | `tests/fr007_report_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportJson`, `render_once` JSON path) | report --format json gate → host_watch top-level siblings; stderr silent on success |
 
 ### FR-008 — Coalesce
 
@@ -240,6 +241,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 report JSON gate/host_watch parity:** `sharecli report --format json`
+  emits top-level `gate` + `host_watch` JSON siblings after fleet analytics fields
+  (AC-007.40); gate → host_watch key order; stderr silent on success (parity with AC-007.25
+  status --json and AC-007.24 proc JSON).
 - **2026-07-20 — FR-007 report text host watch parity:** `sharecli report` (text, one-shot and
   `--watch`) prints gate → `host_watch` text sections on stdout after report body (AC-007.39);
   stderr silent on success (parity with AC-007.38 ps --all and AC-011.6 gate).
