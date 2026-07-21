@@ -172,6 +172,7 @@
 | AC-008.14 | `tests/fr008_coalesce_mesh.rs` (`fr008_slot_queue_critical_before_normal`, `fr008_hypervisor_nocache_critical_before_normal`); `crates/sharecli-ipc/src/queue.rs` (`critical_dequeues_before_normal_under_contention`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::queue_priority`, `Hypervisor::run`) | SlotQueue Critical-before-Normal priority + Hypervisor nocache wiring |
 | AC-008.15 | `tests/fr008_queue_priority_operator.rs`; `crates/sharecli-ipc/src/queue.rs` (`resolve_operator_queue_priority`, `QUEUE_PRIORITY_ENV`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::from_operator`, `SpawnRequest::new`); `crates/harness-native/tests/native_harness_contract.rs` (`operator_queue_priority_honors_rules_conf`) | operator env + rules.conf → SpawnRequest queue priority |
 | AC-008.16 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::run_queued`, `hypervisor_run_queued_skips_coalesce_cache`); `crates/harness-native/src/strategies/queue.rs` (`queue_strategy_executes_via_hypervisor`, `priority_queue_strategy_executes_via_hypervisor`) | harness queue/priority_queue → Hypervisor nocache lane via `from_operator` |
+| AC-008.17 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::from_config`, `HypervisorConfig::coalesce_ttl`, `coalesce_ttl`); `crates/harness-native/src/strategies/coalesce.rs` (`coalesce_strategy_executes_via_hypervisor`, `coalesce_strategy_serves_cache_on_replay`, `cache_strategy_executes_via_hypervisor`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_hypervisor_config`, `config_from_rule_opts`) | harness coalesce/cache → Hypervisor::run via from_operator + RuleOpts ttl/debounce/max_concurrent |
 
 ### FR-009 — FUSE
 
@@ -277,6 +278,10 @@
   coalesce-derived session id to `mount_with_session` (AC-009.12).
 - **2026-07-20 — FR-009 fuse provenance CLI:** `sharecli fuse provenance`
   reads backing write xattrs via `read_provenance` (AC-009.11).
+- **2026-07-20 — FR-008 harness coalesce Hypervisor:** harness-native `coalesce` /
+  `cache` strategies route through `Hypervisor::run` with `SpawnRequest::from_operator`
+  and `{harness_home}/var/sharecli-hypervisor` cache root; `RuleOpts` ttl/debounce/
+  max_concurrent map into `HypervisorConfig` (AC-008.17).
 - **2026-07-20 — FR-008 harness queue Hypervisor:** harness-native `queue` /
   `priority_queue` strategies route through `Hypervisor::run_queued` with
   `SpawnRequest::from_operator` (AC-008.16); replaces raw `Command::spawn`.

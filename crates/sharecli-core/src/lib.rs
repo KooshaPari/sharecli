@@ -449,6 +449,8 @@ pub struct HypervisorConfig {
     pub queue_root: PathBuf,
     /// Max parallel slots for queued (mutating) commands.
     pub queue_max_concurrent: usize,
+    /// TTL for coalesce cache entries (origin harness rules.conf `ttl=`).
+    pub coalesce_ttl: Duration,
     /// Debounce window for the coalesce miss path (origin harness `debounce_ms`).
     ///
     /// When non-zero, [`CoalesceCache::with_lock`] waits then re-checks so an
@@ -637,11 +639,29 @@ impl Hypervisor {
                 cache_root,
                 queue_root,
                 queue_max_concurrent: 1,
+                coalesce_ttl: CoalesceCache::DEFAULT_TTL,
                 coalesce_debounce: Duration::ZERO,
             },
             gate,
             DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect(),
         )
+    }
+
+    /// Production hypervisor from a full [`HypervisorConfig`] (harness rules.conf wiring).
+    pub fn from_config(config: HypervisorConfig) -> Self {
+        let inner = Arc::new(SystemThermalGate::new());
+        let gate =
+            Arc::new(AgentAwareThermalGate::new(inner, AgentContentionThresholds::default()));
+        Self::with_options(
+            config,
+            gate,
+            DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect(),
+        )
+    }
+
+    /// Test / injection constructor with explicit config and thermal gate.
+    pub fn from_config_with_gate(config: HypervisorConfig, gate: Arc<dyn ThermalGate>) -> Self {
+        Self::with_options(config, gate, vec![])
     }
 
     /// Full constructor: coalesce cache + slot queue + nocache flag list + thermal gate.
@@ -655,7 +675,7 @@ impl Hypervisor {
     ) -> Self {
         let cache = CoalesceCache::with_options(
             config.cache_root.clone(),
-            CoalesceCache::DEFAULT_TTL,
+            config.coalesce_ttl,
             config.coalesce_debounce,
         );
         let queue = SlotQueue::new(config.queue_root.clone(), config.queue_max_concurrent);
@@ -667,10 +687,20 @@ impl Hypervisor {
         &self.queue
     }
 
+    /// Configured coalesce TTL. Wired into every [`Hypervisor::run`] coalesce path.
+    pub fn coalesce_ttl(&self) -> Duration {
+        self.cache.ttl()
+    }
+
     /// Configured coalesce debounce window (zero = disabled). Wired into every
     /// [`Hypervisor::run`] coalesce path via [`CoalesceCache::with_lock`].
     pub fn coalesce_debounce(&self) -> Duration {
         self.cache.debounce()
+    }
+
+    /// Configured SlotQueue parallelism (harness `max_concurrent=`).
+    pub fn queue_max_concurrent(&self) -> usize {
+        self.config.queue_max_concurrent
     }
 
     /// Configured nocache / mutating flags (Feb `nocache_args`).
@@ -1289,6 +1319,7 @@ mod tests {
                 cache_root: dir.path().join("cache"),
                 queue_root: dir.path().join("queue"),
                 queue_max_concurrent: 1,
+                coalesce_ttl: CoalesceCache::DEFAULT_TTL,
                 coalesce_debounce: debounce,
             },
             Arc::new(FakeThermalGate::new(ThermalDecision::Allow)),

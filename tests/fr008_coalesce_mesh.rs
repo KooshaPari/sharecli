@@ -275,6 +275,7 @@ async fn fr008_hypervisor_debounce_waits_and_shares() {
             cache_root: cache_root.clone(),
             queue_root: dir.path().join("queue"),
             queue_max_concurrent: 1,
+            coalesce_ttl: Duration::from_secs(300),
             coalesce_debounce: debounce,
         },
         gate,

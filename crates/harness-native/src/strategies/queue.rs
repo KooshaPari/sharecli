@@ -1,30 +1,9 @@
-use std::env;
 use std::path::Path;
 
-use sharecli_core::{Hypervisor, SpawnRequest};
+use sharecli_core::Hypervisor;
 
+use super::hypervisor_lane::{build_hypervisor, spawn_request};
 use super::RuleOpts;
-
-/// Harness cache root for Hypervisor coalesce / queue state.
-fn hypervisor_cache_root(harness_home: &Path) -> std::path::PathBuf {
-    harness_home.join("var").join("sharecli-hypervisor")
-}
-
-fn build_hypervisor(harness_home: &Path) -> Hypervisor {
-    let cache_root = hypervisor_cache_root(harness_home);
-    Hypervisor::new(cache_root)
-}
-
-fn spawn_request(
-    real_cmd: &Path,
-    args: &[&str],
-    opts: &RuleOpts,
-) -> Result<SpawnRequest, String> {
-    let cwd = env::current_dir().map_err(|e| format!("harness queue: cwd: {e}"))?;
-    let mut argv: Vec<String> = vec![real_cmd.to_string_lossy().into_owned()];
-    argv.extend(args.iter().map(|s| (*s).to_string()));
-    Ok(SpawnRequest::from_operator(argv, cwd, vec![], Some(&opts.priority)))
-}
 
 fn run_with_hypervisor(
     hv: &Hypervisor,
@@ -54,7 +33,7 @@ pub fn run(
     args: &[&str],
     opts: &RuleOpts,
 ) -> Result<i32, String> {
-    let hv = build_hypervisor(harness_home);
+    let hv = build_hypervisor(harness_home, opts);
     run_with_hypervisor(&hv, real_cmd, cmd_name, args, opts)
 }
 
@@ -63,12 +42,14 @@ mod tests {
     use super::*;
     use std::path::Path;
     use std::sync::Arc;
-    use sharecli_core::{FakeThermalGate, ThermalDecision};
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use tempfile::TempDir;
 
-    fn allow_hypervisor(dir: &Path) -> Hypervisor {
-        Hypervisor::with_thermal_gate(
-            hypervisor_cache_root(dir),
+    use super::super::hypervisor_lane::{config_from_rule_opts, hypervisor_cache_root};
+
+    fn allow_hypervisor(dir: &Path, opts: &RuleOpts) -> Hypervisor {
+        Hypervisor::from_config_with_gate(
+            config_from_rule_opts(dir, opts),
             Arc::new(FakeThermalGate::new(ThermalDecision::Allow)),
         )
     }
@@ -81,7 +62,7 @@ mod tests {
             priority: "normal".to_string(),
             ..RuleOpts::default()
         };
-        let hv = allow_hypervisor(tmp.path());
+        let hv = allow_hypervisor(tmp.path(), &opts);
         let code = run_with_hypervisor(
             &hv,
             Path::new("/bin/echo"),
@@ -101,7 +82,7 @@ mod tests {
             priority: "high".to_string(),
             ..RuleOpts::default()
         };
-        let hv = allow_hypervisor(tmp.path());
+        let hv = allow_hypervisor(tmp.path(), &opts);
         let code = run_with_hypervisor(
             &hv,
             Path::new("/bin/echo"),
@@ -114,5 +95,6 @@ mod tests {
             code, 0,
             "AC-008.16: harness priority_queue MUST run via Hypervisor::run_queued"
         );
+        let _ = hypervisor_cache_root(tmp.path());
     }
 }
