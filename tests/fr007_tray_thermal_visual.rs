@@ -213,3 +213,25 @@ fn fr007_tray_thermal_visual_swift_health_view_wires_gate_visual() {
         "HealthView MUST NOT use generic healthy/warning Status card (AC-007.58)"
     );
 }
+
+/// FR-007 / AC-007.59 — Swift TrayPopoverView stats row Status cell uses gate visual.
+#[test]
+fn fr007_tray_thermal_visual_swift_popover_stats_row_wires_gate_visual() {
+    let popover = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
+    assert!(
+        popover.contains("gateVisual.swiftSymbolName"),
+        "Tray popover stats row MUST use gate visual icon (AC-007.59)"
+    );
+    assert!(
+        popover.contains("gateVisual.badgeLabel"),
+        "Tray popover stats row MUST use gate visual badge label (AC-007.59)"
+    );
+    assert!(
+        popover.contains("gateVisual.swiftColor"),
+        "Tray popover stats row MUST use gate visual severity color (AC-007.59)"
+    );
+    assert!(
+        !popover.contains("state.health?.healthy == true ? \"Healthy\""),
+        "Tray popover stats row MUST NOT use generic healthy/warning Status cell (AC-007.59)"
+    );
+}

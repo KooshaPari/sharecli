@@ -85,10 +85,10 @@ struct TrayPopoverView: View {
             )
             Divider().frame(height: 36)
             statCell(
-                icon: state.health?.healthy == true ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
-                value: state.health?.healthy == true ? "Healthy" : "Warning",
+                icon: gateVisual.swiftSymbolName,
+                value: gateVisual.badgeLabel,
                 label: "Status",
-                iconColor: state.health?.healthy == true ? .green : .orange
+                iconColor: gateVisual.swiftColor
             )
         }
         .padding(.vertical, 8)
