@@ -181,6 +181,7 @@
 | AC-007.47   | `crates/sharecli-tray-linux/src/ipc.rs` (`MonitoringReportSnapshot`, `monitoring_report`); `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`monitoringReport`); `tests/fr007_ipc_monitoring_report_gate_host_watch.rs` | Tray/desktop wire parity for monitoring.report; decode gate + host_watch via IPC RPC without report --json shell-out |
 | AC-007.48   | `crates/sharecli-tray-linux/src/ipc.rs` (`health_snapshot`, `process_summaries`); `crates/sharecli-tray-linux/src/main.rs` (`refresh`); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift` (`refresh`); `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`asHealthSnapshot`, `asProcessSummaries`); `tests/fr007_tray_monitoring_report_consume.rs` | Tray refresh single monitoring.report snapshot drives gate/host_watch + process inventory; no split health + process.list polls |
 | AC-007.49   | `tests/fr007_ps_all_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`PsAllNdjsonLine`, `ps --all --watch --json`, `render_ps_once` watch NDJSON path); `src/commands/mod.rs` (`eprint_live_gate_host_watch_sections`) | ps --all --watch --json NDJSON gate → host_watch per refresh; stderr text companions; --watch --json requires --all |
+| AC-007.50   | `tests/fr007_ps_all_watch_text_stderr_silent.rs`; `src/commands/mod.rs` (`ps` watch loop text path, `print_host_agent_scan`, `render_ps_once` text path) | ps --all --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only |
 
 ### FR-008 — Coalesce
 
@@ -250,6 +251,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 ps --all watch text stderr silence:** `sharecli ps --all --watch` (text,
+  no `--json`) MUST NOT print gate/host_watch text companions or `[watch]` footer on stderr
+  during refresh cycles (AC-007.50); gate → `host_watch` and footer stay on stdout only; parity
+  with proc text watch AC-007.35; inverse of NDJSON stderr companions AC-007.49.
 - **2026-07-21 — FR-007 ps --all watch NDJSON gate/host_watch parity:** `sharecli ps --all --watch --json`
   streams NDJSON with `ts` + managed pool + agent inventory + gate → `host_watch` per refresh
   (AC-007.49); stderr text companions + `[watch]` footer; stdout pipe-clean; parity with
