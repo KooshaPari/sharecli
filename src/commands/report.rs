@@ -1,6 +1,6 @@
 //! Fleet analytics report command.
 //!
-//! `sharecli report [--format text|json] [--watch <secs>] [--sort memory|name]`
+//! `sharecli report [--format text|json|csv] [--watch <secs>] [--sort memory|name]`
 //! prints a fleet analytics snapshot to stdout.  With `--watch N` it clears the
 //! terminal and re-renders every N seconds until Ctrl-C.
 
@@ -27,6 +27,7 @@ pub enum ReportFormat {
     #[default]
     Text,
     Json,
+    Csv,
 }
 
 /// Sort key for top-consumers list.
@@ -58,7 +59,8 @@ impl std::str::FromStr for ReportFormat {
         match s.to_ascii_lowercase().as_str() {
             "text" => Ok(Self::Text),
             "json" => Ok(Self::Json),
-            other => anyhow::bail!("unknown format '{}'; expected 'text' or 'json'", other),
+            "csv" => Ok(Self::Csv),
+            other => anyhow::bail!("unknown format '{}'; expected 'text', 'json', or 'csv'", other),
         }
     }
 }
@@ -302,6 +304,75 @@ fn render_json(
     Ok(())
 }
 
+/// RFC 4180-style fleet analytics CSV body (summary + project + consumer sections).
+pub fn render_report_csv_body(report: &FleetReport) -> String {
+    use crate::commands::proc::csv_escape_field;
+
+    let mut out = String::new();
+    out.push_str(
+        "record,timestamp,uptime_seconds,total_processes,total_memory_mb,thermal_pressure,detected_agents,agent_contention,gate_decision\n",
+    );
+    out.push_str(&format!(
+        "summary,{},{},{},{},{},{},{},{}\n",
+        report.timestamp,
+        report.uptime_seconds,
+        report.total_processes,
+        report.total_memory_mb,
+        csv_escape_field(&report.thermal_pressure),
+        report.detected_agents,
+        csv_escape_field(&report.agent_contention),
+        csv_escape_field(&report.gate_decision),
+    ));
+
+    out.push_str("\nrecord,project,count,memory_mb\n");
+    let mut projects: Vec<_> = report.by_project.iter().collect();
+    projects.sort_by(|a, b| a.0.cmp(b.0));
+    for (name, bd) in projects {
+        out.push_str(&format!(
+            "project,{},{},{}\n",
+            csv_escape_field(name),
+            bd.count,
+            bd.memory_mb,
+        ));
+    }
+
+    out.push_str("\nrecord,pid,name,project,memory_mb\n");
+    for tc in &report.top_consumers {
+        out.push_str(&format!(
+            "consumer,{},{},{},{}\n",
+            tc.pid,
+            csv_escape_field(&tc.name),
+            csv_escape_field(tc.project.as_deref().unwrap_or("-")),
+            tc.memory_mb,
+        ));
+    }
+    out
+}
+
+async fn append_report_csv_companions(
+    csv: String,
+    gate: &GateStatusSnapshot,
+) -> Result<String> {
+    use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
+
+    let mut out = csv;
+    out.push_str(&gate.format_csv_companion());
+    out.push_str(&HostResourceWatchJson::capture()?.format_csv_companion());
+    let (pool_json, status_json) = super::fetch_operator_pool_status_siblings().await?;
+    let pool: PoolOperatorPanel = pool_json.into();
+    let status: StatusOperatorPanel = status_json.into();
+    out.push_str(&pool.format_csv_companion());
+    out.push_str(&status.format_csv_companion());
+    Ok(out)
+}
+
+async fn render_csv(report: &FleetReport, gate: &GateStatusSnapshot) -> Result<()> {
+    let body = render_report_csv_body(report);
+    let csv = append_report_csv_companions(body, gate).await?;
+    print!("{csv}");
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
@@ -363,6 +434,10 @@ async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Resu
                 render_json(&report, &gate, &host_watch, &pool, &status)?;
             }
         }
+        ReportFormat::Csv => {
+            // AC-007.81 one-shot: fleet CSV body → gate → host_watch → pool → status companions.
+            render_csv(&report, &gate).await?;
+        }
     }
 
     Ok(())
@@ -374,6 +449,9 @@ async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Resu
 ///   until Ctrl-C; if `None`, run once and exit.
 /// - `sort`: controls ordering of the top-consumers section.
 pub async fn run(format: ReportFormat, watch: Option<u64>, sort: SortBy) -> Result<()> {
+    if format == ReportFormat::Csv && watch.is_some() {
+        bail!("--format csv cannot be combined with --watch");
+    }
     match watch {
         None => render_once(&format, &sort, false).await,
         Some(interval_secs) => {
@@ -587,6 +665,58 @@ mod tests {
         assert_eq!(ReportFormat::from_str("TEXT").unwrap(), ReportFormat::Text);
         assert_eq!(ReportFormat::from_str("json").unwrap(), ReportFormat::Json);
         assert_eq!(ReportFormat::from_str("JSON").unwrap(), ReportFormat::Json);
+        assert_eq!(ReportFormat::from_str("csv").unwrap(), ReportFormat::Csv);
+        assert_eq!(ReportFormat::from_str("CSV").unwrap(), ReportFormat::Csv);
         assert!(ReportFormat::from_str("xml").is_err());
+    }
+
+    #[test]
+    fn test_render_report_csv_body() {
+        let mut by_project = HashMap::new();
+        by_project.insert("alpha".into(), ProjectBreakdown { count: 2, memory_mb: 400 });
+        let report = FleetReport {
+            timestamp: 1_700_000_000,
+            uptime_seconds: 3600,
+            total_processes: 2,
+            total_memory_mb: 400,
+            by_project,
+            top_consumers: vec![TopConsumer {
+                pid: 42,
+                name: "cargo".into(),
+                project: Some("alpha".into()),
+                memory_mb: 300,
+            }],
+            thermal_pressure: "GREEN".into(),
+            detected_agents: 1,
+            agent_contention: "OK".into(),
+            gate_decision: "ADMIT".into(),
+        };
+        let csv = render_report_csv_body(&report);
+        assert!(
+            csv.contains(
+                "record,timestamp,uptime_seconds,total_processes,total_memory_mb,thermal_pressure,detected_agents,agent_contention,gate_decision"
+            ),
+            "CSV body MUST include summary header; got: {csv}"
+        );
+        assert!(
+            csv.contains("summary,1700000000,3600,2,400,GREEN,1,OK,ADMIT"),
+            "CSV body MUST include summary row; got: {csv}"
+        );
+        assert!(
+            csv.contains("record,project,count,memory_mb"),
+            "CSV body MUST include project header; got: {csv}"
+        );
+        assert!(
+            csv.contains("project,alpha,2,400"),
+            "CSV body MUST include project row; got: {csv}"
+        );
+        assert!(
+            csv.contains("record,pid,name,project,memory_mb"),
+            "CSV body MUST include consumer header; got: {csv}"
+        );
+        assert!(
+            csv.contains("consumer,42,cargo,alpha,300"),
+            "CSV body MUST include consumer row; got: {csv}"
+        );
     }
 }

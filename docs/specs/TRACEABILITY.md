@@ -212,6 +212,7 @@
 | AC-007.78   | `tests/fr007_ipc_health_pool_status.rs`; `tests/fr007_ipc_health_status_gate_host_watch.rs`; `tests/fr007_ipc_pool_status_snapshot.rs`; `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`, `PoolSnapshot`, `StatusSnapshot`, `health.status`, `pool.status`, `status.snapshot`, `capture_pool_snapshot`, `capture_status_snapshot`) | IPC health.status embeds pool + status; pool.status nested status only; status.snapshot nested pool only; gate → host_watch → siblings key order; no cross-sibling recursion |
 | AC-007.79   | `tests/fr007_proc_csv_pool_status.rs`; `tests/fr007_proc_csv_stderr_silent.rs`; `tests/fr007_proc_text_csv_gate.rs`; `tests/fr007_proc_text_csv_host_watch.rs`; `src/commands/proc.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` (`PoolOperatorPanel::format_csv_companion`, `StatusOperatorPanel::format_csv_companion`) | proc --csv / --tree --csv gate → host_watch → pool → status companion rows on stdout; stderr silent on success (extends AC-007.33) |
 | AC-007.80   | `tests/fr007_ws_client_health_update_pool_status.rs`; `crates/sharecli-ipc/src/ws_client.rs` (`ClientMessage`, `ClientMessage::from_json`, `HealthUpdate`); `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`) | WS `health_update` decodes expanded HealthSnapshot pool + status; IPC health.status wrap roundtrip; legacy missing siblings → Unknown |
+| AC-007.81   | `tests/fr007_report_csv_pool_status.rs`; `tests/fr007_report_csv_stderr_silent.rs`; `src/commands/report.rs` (`ReportFormat::Csv`, `render_report_csv_body`, `append_report_csv_companions`, `render_once` CSV path); `crates/sharecli-fleet/src/operator_pool_status.rs` | report --format csv fleet body → gate → host_watch → pool → status companion rows on stdout; rejects --watch; stderr silent on success (parity with proc CSV AC-007.79) |
 
 ### FR-008 — Coalesce
 
@@ -281,6 +282,9 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 report CSV pool/status companion rows (AC-007.81):** `sharecli report --format csv`
+  emits fleet analytics CSV body then companion `gate` → `host_watch` → `pool` → `status` records
+  (parity with proc CSV AC-007.79 and report text AC-007.74); rejects `--watch`; stderr silent on success.
 - **2026-07-21 — FR-007 WS `health_update` expanded HealthSnapshot pool/status (AC-007.80):**
   `ClientMessage::from_json` decodes typed `health_update` frames with gate → host_watch → pool →
   status siblings (parity with IPC AC-007.78); live `health.status` IPC wrap roundtrip; legacy
