@@ -3,6 +3,7 @@
 //!
 //! AC-007.9 FUSE read-coalesce meters in `sharecli thermal` TUI
 //! AC-007.10 host resource watch in `sharecli thermal` TUI
+//! AC-007.12 thermal TUI host resource watch net RX/TX parity with status
 //! AC-008.11 Hypervisor coalesce meters in `sharecli thermal` TUI
 //! AC-006.9 host agent inventory in `sharecli thermal` TUI (FR-006 proc scan)
 
@@ -52,6 +53,28 @@ fn fr007_thermal_tui_resource_watch_lines() {
     assert!(text.contains("Open FDs:") && text.contains("24"));
     assert!(text.contains("RSS:") && text.contains("2097152"));
     assert!(text.contains("Load (1m):") && text.contains("0.75"));
+}
+
+/// FR-007 / AC-007.12 — thermal TUI host resource watch surfaces net RX/TX byte counters.
+#[test]
+fn fr007_thermal_tui_resource_watch_net_lines() {
+    let lines = resource_watch_lines(Some(SAMPLE), false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(
+        text.contains("Net RX:") && text.contains("4096"),
+        "thermal TUI watch MUST surface net RX bytes (AC-007.12); got: {text}"
+    );
+    assert!(
+        text.contains("Net TX:") && text.contains("2048"),
+        "thermal TUI watch MUST surface net TX bytes (AC-007.12); got: {text}"
+    );
+
+    let compact = resource_watch_lines(Some(SAMPLE), true);
+    let compact_text: String = compact.iter().map(|l| l.to_string()).collect();
+    assert!(
+        compact_text.contains("RX:4096") && compact_text.contains("TX:2048"),
+        "compact thermal watch MUST include net counters (AC-007.12); got: {compact_text}"
+    );
 }
 
 /// FR-007 / AC-007.9 — thermal TUI renders FUSE read-coalesce meters.
@@ -158,6 +181,10 @@ fn fr007_thermal_tui_render_includes_operator_panels() {
     assert!(
         rendered.contains("Host Resource Watch") && rendered.contains("Open FDs:"),
         "thermal TUI MUST surface host resource watch; got excerpt missing panels"
+    );
+    assert!(
+        rendered.contains("Net RX:") && rendered.contains("Net TX:"),
+        "thermal TUI MUST surface host net RX/TX counters (AC-007.12)"
     );
     assert!(
         rendered.contains("Detected Agents") && rendered.contains("forge"),

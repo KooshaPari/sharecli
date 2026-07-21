@@ -128,7 +128,7 @@ pub fn is_compact(width: u16) -> bool {
     width < COMPACT_WIDTH
 }
 
-/// Lines for the host resource watch panel (FR-007 / AC-007.10 TUI slice).
+/// Lines for the host resource watch panel (FR-007 / AC-007.10, AC-007.12 TUI slice).
 pub fn resource_watch_lines(
     sample: Option<ResourceWatchSample>,
     compact: bool,
@@ -144,8 +144,12 @@ pub fn resource_watch_lines(
 
     if compact {
         return vec![Line::from(format!(
-            " FD:{} RSS:{} L:{:.1}",
-            sample.fd_count, sample.mem_rss_bytes, sample.load_1m
+            " FD:{} RSS:{} L:{:.1} RX:{} TX:{}",
+            sample.fd_count,
+            sample.mem_rss_bytes,
+            sample.load_1m,
+            sample.net_rx_bytes,
+            sample.net_tx_bytes,
         ))];
     }
 
@@ -153,6 +157,8 @@ pub fn resource_watch_lines(
         Line::from(format!("  Open FDs:  {}", sample.fd_count)),
         Line::from(format!("  RSS:       {} bytes", sample.mem_rss_bytes)),
         Line::from(format!("  Load (1m): {:.2}", sample.load_1m)),
+        Line::from(format!("  Net RX:    {} bytes", sample.net_rx_bytes)),
+        Line::from(format!("  Net TX:    {} bytes", sample.net_tx_bytes)),
     ]
 }
 
@@ -627,7 +633,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let margin = if compact || area.height < 33 { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
     let agents_h = if compact { 3 } else { 6 };
-    let watch_h = if compact { 3 } else { 6 };
+    let watch_h = if compact { 3 } else { 7 };
     let fuse_h = if compact { 8 } else { 21 };
 
     let chunks = Layout::default()
@@ -1143,8 +1149,8 @@ mod tests {
     fn test_resource_watch_lines_full() {
         let sample = ResourceWatchSample {
             fd_count: 42,
-            net_rx_bytes: 0,
-            net_tx_bytes: 0,
+            net_rx_bytes: 8192,
+            net_tx_bytes: 4096,
             mem_rss_bytes: 1_048_576,
             load_1m: 1.25,
         };
@@ -1153,6 +1159,8 @@ mod tests {
         assert!(rendered.contains("Open FDs:") && rendered.contains("42"));
         assert!(rendered.contains("RSS:") && rendered.contains("1048576"));
         assert!(rendered.contains("Load (1m):"));
+        assert!(rendered.contains("Net RX:") && rendered.contains("8192"));
+        assert!(rendered.contains("Net TX:") && rendered.contains("4096"));
     }
 
     #[test]

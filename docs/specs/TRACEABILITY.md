@@ -143,6 +143,7 @@
 | AC-007.9    | `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs` (`fr007_thermal_tui_fuse_coalesce_lines`); `crates/sharecli-fuse/src/read_cache.rs` | FUSE read-coalesce in status + thermal TUI |
 | AC-007.10   | `tests/fr007_resource_thermal_watch.rs` (`fr007_format_status_section`); `tests/fr004_status_health.rs` (`fr004_status_prints_harness_table`); `src/commands/mod.rs` (`status`) | Host resource watch in status |
 | AC-007.11   | `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-thermal-tui` | Host watch + FUSE meters in thermal TUI |
+| AC-007.12   | `tests/fr007_thermal_tui_watch.rs` (`fr007_thermal_tui_resource_watch_net_lines`); `crates/sharecli-thermal-tui/src/lib.rs` (`resource_watch_lines`) | thermal TUI host net RX/TX parity with status |
 
 ### FR-008 — Coalesce
 
