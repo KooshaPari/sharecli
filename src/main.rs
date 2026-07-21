@@ -524,6 +524,8 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
+    use std::io::IsTerminal;
+
     #[cfg(feature = "dhat-heap")]
     let _dhat_profiler = dhat::Profiler::new_heap();
 
@@ -536,7 +538,9 @@ async fn run() -> Result<()> {
             ))
         })
         .map_err(|e| anyhow::Error::new(e))?;
-    eprintln!("{}", tokens.panel.ansi_fg());
+    if std::io::stderr().is_terminal() && !is_no_color() {
+        eprintln!("{}", tokens.panel.ansi_fg());
+    }
 
     // Initialise global config (must happen before any command handler)
     let cfg = config::init_global();
@@ -549,7 +553,7 @@ async fn run() -> Result<()> {
         }
     }
 
-    if !cli.quiet {
+    if !cli.quiet && (cli.verbose || std::io::stderr().is_terminal()) {
         use tracing_subscriber::prelude::*;
 
         crate::otel::ensure_trace_context_propagator();

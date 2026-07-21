@@ -1124,11 +1124,16 @@ pub async fn run(
                 bail!("--watch interval must be >= 1 second");
             }
             let ndjson = json;
+            let period = Duration::from_secs(interval_secs);
             loop {
+                let cycle_start = std::time::Instant::now();
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
                 render_once(json, csv, tree, &filter, ndjson, sort_key, row_limit)?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
                 let footer =
                     format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {
@@ -1137,8 +1142,9 @@ pub async fn run(
                 } else {
                     println!("{footer}");
                 }
+                let idle = period.saturating_sub(cycle_start.elapsed());
                 tokio::select! {
-                    _ = sleep(Duration::from_secs(interval_secs)) => {},
+                    _ = sleep(idle) => {},
                     _ = tokio::signal::ctrl_c() => {
                         if ndjson {
                             eprintln!("\nExiting watch mode.");
