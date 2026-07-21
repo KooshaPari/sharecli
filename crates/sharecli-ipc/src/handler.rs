@@ -89,6 +89,30 @@ pub struct HealthSnapshot {
     pub host_watch: HostResourceWatchJson,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MonitoringProcessEntry {
+    pub pid: u32,
+    pub name: String,
+    pub memory_mb: u64,
+    pub project: Option<String>,
+    pub harness: Option<String>,
+}
+
+/// IPC `monitoring.report` envelope (FR-007 / AC-007.46).
+///
+/// Fleet monitoring fields precede live `gate` and `host_watch` siblings
+/// (parity with `report --format json` AC-007.40 and `health.status` AC-007.45).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MonitoringReportSnapshot {
+    pub timestamp: u64,
+    pub total_processes: usize,
+    pub used_memory_mb: u64,
+    pub total_memory_mb: u64,
+    pub processes: Vec<MonitoringProcessEntry>,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
 /// Live thermal gate + host resource watch for IPC envelopes (FR-007 / AC-007.45).
 fn capture_gate_host_watch() -> Result<(GateStatusSnapshot, HostResourceWatchJson)> {
     let gate = match ThermalGovernor::new().poll() {
@@ -188,23 +212,29 @@ impl Handler {
                 self.pool.refresh().await;
                 let procs = self.pool.list().await;
                 let (used, total) = self.pool.system_memory_usage().await;
-                let report = serde_json::json!({
-                    "timestamp": std::time::SystemTime::now()
+                let (gate, host_watch) = capture_gate_host_watch()?;
+                let snap = MonitoringReportSnapshot {
+                    timestamp: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap()
                         .as_secs(),
-                    "total_processes": procs.len(),
-                    "used_memory_mb": used,
-                    "total_memory_mb": total,
-                    "processes": procs.iter().map(|p| serde_json::json!({
-                        "pid": p.pid,
-                        "name": p.name.clone(),
-                        "memory_mb": p.memory_mb,
-                        "project": p.project.clone(),
-                        "harness": p.harness.clone(),
-                    })).collect::<Vec<_>>(),
-                });
-                Ok(report)
+                    total_processes: procs.len(),
+                    used_memory_mb: used,
+                    total_memory_mb: total,
+                    processes: procs
+                        .iter()
+                        .map(|p| MonitoringProcessEntry {
+                            pid: p.pid,
+                            name: p.name.clone(),
+                            memory_mb: p.memory_mb,
+                            project: p.project.clone(),
+                            harness: p.harness.clone(),
+                        })
+                        .collect(),
+                    gate,
+                    host_watch,
+                };
+                Ok(serde_json::to_value(snap)?)
             }
 
             other => Err(anyhow::anyhow!("unknown method: {other}")),
