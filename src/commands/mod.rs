@@ -530,7 +530,7 @@ pub async fn stop(
     Ok(())
 }
 
-async fn build_status_json() -> Result<StatusJson> {
+pub(crate) async fn build_status_json() -> Result<StatusJson> {
     let pool = ProcessPool::new();
     let processes: Vec<ProcessInfo> = pool.list().await;
     let snapshot = proc::AgentProcSnapshot::capture()?;
@@ -964,7 +964,7 @@ pub async fn run_pool(harness_type: &str, project: &str) -> Result<()> {
     Ok(())
 }
 
-async fn build_pool_json() -> Result<PoolJson> {
+pub(crate) async fn build_pool_json() -> Result<PoolJson> {
     let runtime = get_shared_runtime();
     let status = runtime.status().await;
     let health = runtime.health_check().await;

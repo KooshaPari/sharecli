@@ -1,7 +1,8 @@
-//! FR-007 — dashboard WebSocket operator envelope (gate + host_watch parity)
+//! FR-007 — dashboard WebSocket operator envelope (gate + host_watch + pool + status parity)
 //! FR: FR-007
 //!
 //! AC-007.41 `sharecli serve` `/ws` snapshots carry top-level gate + host_watch siblings.
+//! AC-007.70 extends the envelope with pool + status (proc scan) siblings for dashboard parity.
 
 use std::fs;
 use std::path::PathBuf;
@@ -90,15 +91,43 @@ fn assert_ws_envelope(raw: &str) {
         "dashboard WS MUST include agents summary (AC-007.41); got: {v}"
     );
     assert!(v.get("processes").and_then(|p| p.as_array()).is_some());
+
+    let pool = v.get("pool").expect("dashboard WS MUST include pool (AC-007.70)");
+    assert!(
+        pool.get("node_total").is_some() && pool.get("healthy").is_some(),
+        "pool MUST include capacity fields (AC-007.70); got: {pool}"
+    );
+    let status = v
+        .get("status")
+        .expect("dashboard WS MUST include status (AC-007.70)");
+    assert!(
+        status.get("total_processes").is_some()
+            && status.get("scanned").is_some()
+            && status.get("watched").is_some(),
+        "status MUST include proc-scan fields (AC-007.70); got: {status}"
+    );
+
     let gate_pos = raw.find("\"gate\"").expect("gate key in WS JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch key in WS JSON");
+    let pool_pos = raw.find("\"pool\"").expect("pool key in WS JSON (AC-007.70)");
+    let status_pos = raw.find("\"status\"").expect("status key in WS JSON (AC-007.70)");
+    let agents_pos = raw.find("\"agents\"").expect("agents key in WS JSON");
+    let processes_pos = raw.find("\"processes\"").expect("processes key in WS JSON");
     assert!(
         gate_pos < host_pos,
         "dashboard WS MUST serialize gate before host_watch (AC-007.41); got: {raw}"
     );
+    assert!(
+        gate_pos < host_pos
+            && host_pos < pool_pos
+            && pool_pos < status_pos
+            && status_pos < agents_pos
+            && agents_pos < processes_pos,
+        "dashboard WS MUST serialize gate → host_watch → pool → status → agents → processes (AC-007.70); got: {raw}"
+    );
 }
 
-/// FR-007 / AC-007.41 — embedded dashboard ships operator panels for gate/host/agents.
+/// FR-007 / AC-007.41 + AC-007.70 — embedded dashboard ships operator panels for gate/host/pool/status/agents.
 #[test]
 fn fr007_dashboard_operator_panel_markup() {
     let html = dashboard_html();
@@ -108,6 +137,14 @@ fn fr007_dashboard_operator_panel_markup() {
     );
     assert!(html.contains("panel-gate"), "dashboard MUST include gate panel");
     assert!(html.contains("panel-host-watch"), "dashboard MUST include host watch panel");
+    assert!(
+        html.contains("panel-pool"),
+        "dashboard MUST include pool panel (AC-007.70)"
+    );
+    assert!(
+        html.contains("panel-status"),
+        "dashboard MUST include status snapshot panel (AC-007.70)"
+    );
     assert!(html.contains("panel-agents"), "dashboard MUST include agents summary panel");
     assert!(
         html.contains("renderOperatorPanels"),
@@ -115,7 +152,7 @@ fn fr007_dashboard_operator_panel_markup() {
     );
 }
 
-/// FR-007 / AC-007.41 — live serve `/ws` snapshot matches operator envelope contract.
+/// FR-007 / AC-007.41 + AC-007.70 — live serve `/ws` snapshot matches operator envelope contract.
 #[test]
 #[serial_test::serial]
 fn fr007_dashboard_ws_operator_envelope_e2e() {
@@ -133,9 +170,10 @@ fn fr007_dashboard_ws_operator_envelope_e2e() {
     assert_ws_envelope(&raw);
 }
 
-/// FR-007 / AC-007.41 — library snapshot builder matches status/proc gate shapes.
+/// FR-007 / AC-007.41 + AC-007.70 — library snapshot builder matches operator envelope shapes.
 #[tokio::test]
 async fn fr007_dashboard_ws_snapshot_lib_shape() {
+    let _ = sharecli::config::init_global();
     let snap = sharecli::commands::serve::build_dashboard_ws_snapshot()
         .await
         .expect("build_dashboard_ws_snapshot");
