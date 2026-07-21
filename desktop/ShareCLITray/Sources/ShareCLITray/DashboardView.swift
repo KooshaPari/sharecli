@@ -312,6 +312,28 @@ struct HealthView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(.top, 8)
+
+                    if state.isConnected {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Thermal Gate")
+                                .font(.headline)
+                            Text(OperatorDisplay.formatGateTrayLine(h.gate))
+                                .font(.system(.body, design: .monospaced))
+                            Text(OperatorDisplay.formatGateRssTrayLine(h.gate))
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+
+                            Text("Host Resource Watch")
+                                .font(.headline)
+                                .padding(.top, 4)
+                            Text(OperatorDisplay.formatHostWatchTrayLine(h.host_watch))
+                                .font(.system(.body, design: .monospaced))
+                            Text(OperatorDisplay.formatHostNetTrayLine(h.host_watch))
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.top, 8)
+                    }
                 } else {
                     Text(state.isConnected ? "Loading health data…" : "Not connected to sharecli-ipc")
                         .foregroundStyle(.secondary)

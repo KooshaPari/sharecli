@@ -6,4 +6,5 @@
 //! AC-007.54 kill / kill_all operator actions.
 
 pub mod ipc;
+pub mod operator_display;
 pub mod poll;

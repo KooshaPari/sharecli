@@ -14,6 +14,7 @@ struct TrayPopoverView: View {
             headerBar
             Divider()
             statsRow
+            operatorSection
             Divider()
             processPreview
             Divider()
@@ -67,6 +68,24 @@ struct TrayPopoverView: View {
             )
         }
         .padding(.vertical, 8)
+    }
+
+    // MARK: - Operator gate / host_watch (AC-007.56)
+
+    @ViewBuilder
+    private var operatorSection: some View {
+        if let h = state.health, state.isConnected {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(OperatorDisplay.formatOperatorTrayLines(gate: h.gate, host: h.host_watch), id: \.self) { line in
+                    Text(line)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
     }
 
     private func statCell(

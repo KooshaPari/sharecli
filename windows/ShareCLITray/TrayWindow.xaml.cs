@@ -41,6 +41,8 @@ public sealed partial class TrayWindow : Window
             DispatcherQueue?.TryEnqueue(() =>
             {
                 HealthStatusText.Text = "Daemon offline or monitoring.report failed";
+                GateStatusText.Text = "";
+                HostWatchStatusText.Text = "";
                 ProcessGrid.ItemsSource = null;
             });
             return;
@@ -54,9 +56,13 @@ public sealed partial class TrayWindow : Window
             HealthStatusText.Text =
                 $"Health: {(health.Healthy ? "✓ OK" : "✗ Unhealthy")} | " +
                 $"Managed: {health.ManagedProcesses} | " +
-                $"Memory: {health.UsedMemoryMb} / {health.TotalMemoryMb} MB | " +
-                $"Gate: {health.Gate.GateDecision} | " +
-                $"Load: {health.HostWatch.Load1m:F2}";
+                $"Memory: {health.UsedMemoryMb} / {health.TotalMemoryMb} MB";
+            GateStatusText.Text =
+                $"{OperatorDisplay.FormatGateTrayLine(health.Gate)} | " +
+                OperatorDisplay.FormatGateRssTrayLine(health.Gate);
+            HostWatchStatusText.Text =
+                $"{OperatorDisplay.FormatHostWatchTrayLine(health.HostWatch)} | " +
+                OperatorDisplay.FormatHostNetTrayLine(health.HostWatch);
             ProcessGrid.ItemsSource = m_processes;
         });
     }
