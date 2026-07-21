@@ -331,6 +331,7 @@ fn tokens_equal(a: &str, b: &str) -> bool {
 /// Paths that remain reachable without AuthN (liveness/readiness).
 pub fn is_public_path(path: &str) -> bool {
     matches!(path, "/healthz" | "/readyz")
+        || crate::dashboard_assets::is_dashboard_asset_path(path)
 }
 
 /// Axum middleware: enforce bearer or JWT when configured.
@@ -422,6 +423,7 @@ mod tests {
     fn public_paths() {
         assert!(is_public_path("/healthz"));
         assert!(is_public_path("/readyz"));
+        assert!(is_public_path("/assets/dashboard/ui/favicons/phenotype.ico"));
         assert!(!is_public_path("/metrics/prometheus"));
         assert!(!is_public_path("/config"));
     }

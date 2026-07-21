@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>sharecli dashboard</title>
+<link rel="icon" href="/assets/dashboard/ui/favicons/phenotype.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/dashboard/ui/favicons/phenotype_32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/dashboard/ui/favicons/phenotype_16.png">
+<link rel="apple-touch-icon" sizes="128x128" href="/assets/dashboard/ui/favicons/phenotype_128.png">
 <style>
   :root {
     --bb2-graphite: #0a0d12;
@@ -29,6 +33,15 @@
     align-items: center;
     gap: 12px;
     margin-bottom: 20px;
+  }
+  .dashboard-banner {
+    width: 100%;
+    max-height: 120px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 6px;
+    border: 1px solid var(--bb2-border);
+    margin-bottom: 16px;
   }
   h1 { font-size: 18px; color: #e2e8f0; letter-spacing: 0.05em; }
   #status-dot {
@@ -142,10 +155,14 @@
     background: #161b22;
   }
   .empty-state-icon {
-    font-size: 28px;
-    color: #a371f7;
-    line-height: 1;
     margin-bottom: 12px;
+    line-height: 0;
+  }
+  .empty-state-icon img,
+  .error-state-icon img {
+    width: min(240px, 80vw);
+    height: auto;
+    display: inline-block;
   }
   .empty-state-title {
     font-size: 14px;
@@ -187,10 +204,8 @@
     background: #1c1017;
   }
   .error-state-icon {
-    font-size: 28px;
-    color: #ef4444;
-    line-height: 1;
     margin-bottom: 12px;
+    line-height: 0;
   }
   .error-state-title {
     font-size: 14px;
@@ -314,6 +329,15 @@
 <body>
 <a class="skip-link" href="#main-content">Skip to process table</a>
 
+<img
+  class="dashboard-banner"
+  src="/assets/dashboard/ui/banners/dashboard_1280x320.png"
+  alt=""
+  width="1280"
+  height="320"
+  decoding="async"
+>
+
 <nav aria-label="Dashboard status">
   <header>
     <div id="status-dot" class="connecting" role="status" aria-hidden="true"></div>
@@ -380,18 +404,24 @@
   let disconnectShown = false;
   const traceparent = document.documentElement.dataset.traceparent || '';
 
+  const ASSET_BASE = '/assets/dashboard/ui';
+
   const EMPTY_STATES = {
     'first-run': {
       title: 'No processes yet',
       body: 'Start your first harness to see live status in this table.',
       cta: 'sharecli start &lt;project&gt; &lt;harness&gt;',
       href: 'https://github.com/KooshaPari/sharecli#quick-start',
+      image: '/assets/dashboard/ui/empty-states/no-data.svg',
+      imageAlt: 'No data yet',
     },
     cleared: {
       title: 'All processes stopped',
       body: 'Processes were running earlier but the pool is empty now.',
       cta: 'sharecli ps',
       href: '#main-content',
+      image: '/assets/dashboard/ui/empty-states/no-results.svg',
+      imageAlt: 'No results',
     },
   };
 
@@ -525,7 +555,9 @@
     body.removeAttribute('aria-busy');
     body.innerHTML = `<tr><td colspan="5">
       <div class="error-state" role="alert" data-error-kind="disconnect" aria-live="assertive">
-        <div class="error-state-icon" aria-hidden="true">&#x26A0;</div>
+        <div class="error-state-icon" aria-hidden="true">
+          <img src="/assets/dashboard/ui/empty-states/error.svg" alt="" width="240" height="180" decoding="async">
+        </div>
         <div class="error-state-title">Dashboard disconnected</div>
         <p class="error-state-body">
           Cannot reach the WebSocket feed. Confirm <code>sharecli serve</code> is running on this host.
@@ -552,7 +584,9 @@
     const spec = EMPTY_STATES[kind] || EMPTY_STATES['first-run'];
     body.innerHTML = `<tr><td colspan="5">
       <div class="empty-state" role="status" data-empty-kind="${kind}" aria-live="polite">
-        <div class="empty-state-icon" aria-hidden="true">&#x25C8;</div>
+        <div class="empty-state-icon" aria-hidden="true">
+          <img src="${spec.image}" alt="${spec.imageAlt}" width="240" height="180" decoding="async">
+        </div>
         <div class="empty-state-title">${spec.title}</div>
         <p class="empty-state-body">${spec.body}</p>
         <code class="empty-state-cta" role="button" tabindex="0">${spec.cta}</code>
