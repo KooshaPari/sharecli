@@ -1,0 +1,413 @@
+{
+  "name": "teamcomm",
+  "version": "0.1.0",
+  "description": "Multi-agent coordination: sessions, file reservations, inbox, live state, discovery.",
+  "transport": "stdio",
+  "tools": [
+    {
+      "name": "register_session",
+      "description": "Register a new agent session with the teamcomm daemon. Returns a session_id and lease TTL the caller must renew before expiry.",
+      "params": {
+        "type": "object",
+        "required": ["agent_id", "role"],
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "description": "Stable identifier for the agent (e.g. UUID, hostname+pid)."
+          },
+          "role": {
+            "type": "string",
+            "description": "Agent role: 'planner', 'coder', 'reviewer', 'tooling', 'docs', etc."
+          },
+          "focus": {
+            "type": "string",
+            "description": "Optional human-readable current focus area (file, task, milestone)."
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Optional free-form metadata bag (key/value strings)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "object",
+        "required": ["session_id", "lease_ttl_sec"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Server-assigned session identifier (sess_<uuid>)."
+          },
+          "lease_ttl_sec": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Seconds until the session lease must be renewed."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "RFC3339 timestamp at which the lease expires."
+          }
+        }
+      }
+    },
+    {
+      "name": "deregister_session",
+      "description": "Deregister an existing agent session. Releases any file reservations the session holds.",
+      "params": {
+        "type": "object",
+        "required": ["session_id"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Session identifier returned by register_session."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean", "description": "True on success." }
+        }
+      }
+    },
+    {
+      "name": "list_sessions",
+      "description": "List active agent sessions, optionally filtered by role or focus substring.",
+      "params": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "If set, only return sessions with this role."
+          },
+          "focus_contains": {
+            "type": "string",
+            "description": "If set, only return sessions whose focus contains this substring."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["session_id", "agent_id", "role"],
+          "properties": {
+            "session_id": { "type": "string" },
+            "agent_id": { "type": "string" },
+            "role": { "type": "string" },
+            "focus": { "type": "string" },
+            "registered_at": { "type": "string", "format": "date-time" },
+            "last_heartbeat_at": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+    {
+      "name": "claim_file",
+      "description": "Reserve a path (or path glob) for exclusive or shared use by the calling session. Returns the reservation id and any conflicts detected.",
+      "params": {
+        "type": "object",
+        "required": ["session_id", "path", "mode"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "The calling session's id."
+          },
+          "path": {
+            "type": "string",
+            "description": "Absolute path or path glob to reserve."
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["exclusive", "shared"],
+            "description": "Reservation mode: 'exclusive' (no other holders) or 'shared' (read-compatible)."
+          },
+          "ttl_sec": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Requested reservation lifetime in seconds (server may cap)."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Optional human-readable reason for the claim (shown to other agents)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "object",
+        "required": ["reservation_id", "expires_at", "conflicts"],
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "description": "Server-assigned reservation identifier (r_<uuid>)."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "RFC3339 timestamp at which the reservation expires."
+          },
+          "conflicts": {
+            "type": "array",
+            "description": "Conflicting reservations (empty if claim was accepted).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reservation_id": { "type": "string" },
+                "session_id": { "type": "string" },
+                "path": { "type": "string" },
+                "mode": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "release_file",
+      "description": "Release a previously-held file reservation.",
+      "params": {
+        "type": "object",
+        "required": ["reservation_id"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "The calling session's id (for authorization)."
+          },
+          "reservation_id": {
+            "type": "string",
+            "description": "Reservation identifier returned by claim_file."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean", "description": "True on success." }
+        }
+      }
+    },
+    {
+      "name": "list_claims",
+      "description": "List active file reservations, optionally filtered by session, path prefix, or mode.",
+      "params": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "If set, only return reservations held by this session."
+          },
+          "path_prefix": {
+            "type": "string",
+            "description": "If set, only return reservations whose path starts with this prefix."
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["exclusive", "shared"],
+            "description": "If set, only return reservations with this mode."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["reservation_id", "session_id", "path", "mode"],
+          "properties": {
+            "reservation_id": { "type": "string" },
+            "session_id": { "type": "string" },
+            "path": { "type": "string" },
+            "mode": { "type": "string" },
+            "claimed_at": { "type": "string", "format": "date-time" },
+            "expires_at": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+    {
+      "name": "post_message",
+      "description": "Post a message to another session's inbox (or to a topic). Returns the assigned message id.",
+      "params": {
+        "type": "object",
+        "required": ["session_id", "body"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "The sending session's id."
+          },
+          "to": {
+            "type": "string",
+            "description": "Recipient session_id; if omitted, message is broadcast to a topic."
+          },
+          "topic": {
+            "type": "string",
+            "description": "Topic name (used when 'to' is omitted)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["info", "request", "response", "alert"],
+            "description": "Message kind. Defaults to 'info'."
+          },
+          "body": {
+            "type": "string",
+            "description": "Message body (UTF-8)."
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Optional free-form metadata bag."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "object",
+        "required": ["message_id"],
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "description": "Server-assigned message identifier (m_<uuid>)."
+          }
+        }
+      }
+    },
+    {
+      "name": "read_inbox",
+      "description": "Read messages from the calling session's inbox, optionally bounded by limit and since.",
+      "params": {
+        "type": "object",
+        "required": ["session_id"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "The calling session's id."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of messages to return."
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "If set, only return messages posted after this RFC3339 timestamp."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["message_id", "from", "body", "posted_at"],
+          "properties": {
+            "message_id": { "type": "string" },
+            "from": { "type": "string" },
+            "to": { "type": "string" },
+            "topic": { "type": "string" },
+            "kind": { "type": "string" },
+            "body": { "type": "string" },
+            "posted_at": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+    {
+      "name": "announce_focus",
+      "description": "Announce the calling session's current focus (file, task, milestone) so other agents can see it.",
+      "params": {
+        "type": "object",
+        "required": ["session_id", "focus"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "The calling session's id."
+          },
+          "focus": {
+            "type": "string",
+            "description": "Free-form focus description."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean", "description": "True on success." }
+        }
+      }
+    },
+    {
+      "name": "set_status",
+      "description": "Set the calling session's status (idle/busy/blocked/done). Other agents can discover this via list_sessions.",
+      "params": {
+        "type": "object",
+        "required": ["session_id", "status"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "The calling session's id."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["idle", "busy", "blocked", "done"],
+            "description": "New status."
+          },
+          "message": {
+            "type": "string",
+            "description": "Optional human-readable status message."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean", "description": "True on success." }
+        }
+      }
+    },
+    {
+      "name": "discover_agents_for_path",
+      "description": "Discover active agents that are likely relevant to work on a given path (e.g. have claimed nearby files or share a focus area).",
+      "params": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path to look up relevant agents for."
+          },
+          "include_idle": {
+            "type": "boolean",
+            "description": "If true, include agents whose status is 'idle' or 'done'."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["session_id", "agent_id", "role"],
+          "properties": {
+            "session_id": { "type": "string" },
+            "agent_id": { "type": "string" },
+            "role": { "type": "string" },
+            "status": { "type": "string" },
+            "focus": { "type": "string" },
+            "relevance": { "type": "string", "description": "Why this agent is relevant: 'claim', 'focus', 'role'." }
+          }
+        }
+      }
+    }
+  ]
+}
