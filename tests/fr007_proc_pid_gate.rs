@@ -1,7 +1,7 @@
-//! FR-007 — host ResourceWatchSample on `sharecli proc --pid` JSON surfaces
+//! FR-007 — thermal gate on `sharecli proc --pid` detail surfaces
 //! FR: FR-007
 //!
-//! AC-007.16 `proc --pid N --json` emits host_watch; text detail footer parity
+//! AC-007.17 `proc --pid N --json` emits gate; text detail prints gate section
 
 use std::process::Command;
 
@@ -9,30 +9,27 @@ fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
 
-const HOST_WATCH_KEYS: [&str; 5] =
-    ["fd_count", "net_rx_bytes", "net_tx_bytes", "mem_rss_bytes", "load_1m"];
-
-const TEXT_MARKERS: [&str; 5] = [
-    "Open FDs:",
-    "RSS:",
-    "Load (1m):",
-    "Net RX:",
-    "Net TX:",
+const GATE_KEYS: [&str; 5] = [
+    "thermal_pressure",
+    "detected_agents",
+    "agent_total_rss_bytes",
+    "agent_contention",
+    "gate_decision",
 ];
 
-fn assert_host_watch_object(host: &serde_json::Value) {
-    for key in HOST_WATCH_KEYS {
+fn assert_gate_object(gate: &serde_json::Value) {
+    for key in GATE_KEYS {
         assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.16); got: {host}"
+            gate.get(key).is_some(),
+            "gate MUST include {key} (AC-007.17); got: {gate}"
         );
     }
 }
 
-/// FR-007 / AC-007.16 — one-shot proc --pid --json carries live host resource watch.
+/// FR-007 / AC-007.17 — one-shot proc --pid --json carries live thermal gate snapshot.
 #[test]
 #[serial_test::serial]
-fn fr007_proc_pid_json_host_watch_shape() {
+fn fr007_proc_pid_json_gate_shape() {
     let pid = std::process::id();
     let out = bin()
         .args(["proc", "--pid", &pid.to_string(), "--json"])
@@ -45,16 +42,16 @@ fn fr007_proc_pid_json_host_watch_shape() {
     );
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("proc --pid --json MUST emit valid JSON");
-    let host = v
-        .get("host_watch")
-        .expect("proc --pid --json MUST include host_watch object (AC-007.16)");
-    assert_host_watch_object(host);
+    let gate = v
+        .get("gate")
+        .expect("proc --pid --json MUST include gate object (AC-007.17)");
+    assert_gate_object(gate);
 }
 
-/// FR-007 / AC-007.16 — proc --pid text detail appends host watch footer.
+/// FR-007 / AC-007.17 — proc --pid text detail prints thermal gate section before host watch.
 #[test]
 #[serial_test::serial]
-fn fr007_proc_pid_text_host_watch_footer() {
+fn fr007_proc_pid_text_gate_section() {
     let pid = std::process::id();
     let out = bin()
         .args(["proc", "--pid", &pid.to_string()])
@@ -67,20 +64,28 @@ fn fr007_proc_pid_text_host_watch_footer() {
     );
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
-        s.contains("=== Host Resource Watch ==="),
-        "proc --pid text MUST include host watch section (AC-007.16); got: {s}"
+        s.contains("=== Thermal Gate (FR-011) ==="),
+        "proc --pid text MUST include gate section (AC-007.17); got: {s}"
     );
-    for marker in TEXT_MARKERS {
-        assert!(
-            s.contains(marker),
-            "proc --pid text MUST include {marker} (AC-007.16)"
-        );
-    }
+    assert!(
+        s.contains("Gate decision:"),
+        "proc --pid text MUST include gate decision (AC-007.17); got: {s}"
+    );
+    let gate_pos = s
+        .find("=== Thermal Gate (FR-011) ===")
+        .expect("gate section");
+    let watch_pos = s
+        .find("=== Host Resource Watch ===")
+        .expect("host watch section");
+    assert!(
+        gate_pos < watch_pos,
+        "gate section MUST precede host watch footer (AC-007.17); got: {s}"
+    );
 }
 
-/// FR-007 / AC-007.16 — serialized proc detail snapshot preserves host watch field names.
+/// FR-007 / AC-007.17 — serialized proc detail snapshot preserves gate field names.
 #[test]
-fn fr007_proc_pid_json_host_watch_serializes_fields() {
+fn fr007_proc_pid_json_gate_serializes_fields() {
     use sharecli::commands::proc::ProcDetailSnapshot;
     use sharecli::monitoring::HostResourceWatchJson;
 
@@ -98,8 +103,8 @@ fn fr007_proc_pid_json_host_watch_serializes_fields() {
         fd_count: Some(7),
         gate: sharecli_fleet::GateStatusSnapshot {
             thermal_pressure: "GREEN".into(),
-            detected_agents: 0,
-            agent_total_rss_bytes: 0,
+            detected_agents: 3,
+            agent_total_rss_bytes: 1024,
             agent_contention: "OK".into(),
             gate_decision: "ADMIT".into(),
         },
@@ -112,7 +117,7 @@ fn fr007_proc_pid_json_host_watch_serializes_fields() {
         },
     };
     let json = serde_json::to_string(&detail).expect("serialize proc detail snapshot");
-    for key in HOST_WATCH_KEYS {
+    for key in GATE_KEYS {
         assert!(
             json.contains(&format!("\"{key}\"")),
             "JSON MUST include {key}; got: {json}"

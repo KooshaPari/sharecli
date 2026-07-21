@@ -15,7 +15,8 @@ pub mod thermal;
 pub use agent_contention::{
     agent_contention_tier, agent_resource_contention_tier, combined_agent_contention_tier,
     count_host_agents, effective_gate_decision, effective_gate_decision_for_tier,
-    format_gate_status_section, gate_status_snapshot, gate_status_snapshot_with_rss,
+    format_gate_status_from_snapshot, format_gate_status_section, gate_status_snapshot,
+    gate_status_snapshot_with_rss,
     live_agent_contention_tier, total_watched_agent_rss_bytes, AgentContentionThresholds,
     AgentContentionTier, AgentResourceThresholds, GateStatusSnapshot,
 };

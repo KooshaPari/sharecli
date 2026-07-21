@@ -8,7 +8,8 @@ use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
-    build_host_agent_forests, format_gate_status_section, format_rss_bytes, gate_status_snapshot,
+    build_host_agent_forests, format_gate_status_from_snapshot, format_gate_status_section,
+    format_rss_bytes, gate_status_snapshot,
     lookup_proc, match_known_agent, parse_rss_bytes, scan_host_agents, walk_agent_ancestors,
     watch_detected_agents, AgentResourceSample, AgentTreeNode, DetectedAgentWatch, HostProcSource,
     ProcSource,
@@ -601,6 +602,8 @@ pub struct ProcDetailSnapshot {
     pub mem_rss: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fd_count: Option<u64>,
+    /// Live thermal + agent gate snapshot (FR-007 / AC-007.17).
+    pub gate: sharecli_fleet::GateStatusSnapshot,
     /// Live host FD/RSS/load/net watch (FR-007 / AC-007.16).
     pub host_watch: HostResourceWatchJson,
 }
@@ -736,6 +739,9 @@ pub fn build_proc_detail(source: &dyn ProcSource, pid: u32) -> Result<ProcDetail
     };
     let resource = AgentResourceSample::capture_for_pid(pid)
         .with_context(|| format!("failed to sample RSS/FD for process {pid}"))?;
+    let agents = scan_host_agents();
+    let thermal = ThermalGovernor::new().poll()?;
+    let gate = gate_status_snapshot(thermal, agents.len());
     Ok(ProcDetailSnapshot {
         pid: proc.pid,
         ppid: proc.ppid,
@@ -748,6 +754,7 @@ pub fn build_proc_detail(source: &dyn ProcSource, pid: u32) -> Result<ProcDetail
         mem_rss_bytes: resource.mem_rss_bytes,
         mem_rss: format_rss_bytes(resource.mem_rss_bytes),
         fd_count: resource.fd_count,
+        gate,
         host_watch: HostResourceWatchJson::capture()?,
     })
 }
@@ -784,6 +791,7 @@ pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()>
     println!("RSS:       {} ({} bytes)", detail.mem_rss, detail.mem_rss_bytes);
     let fd = detail.fd_count.map(|n| n.to_string()).unwrap_or_else(|| "-".into());
     println!("FD:        {fd}");
+    print!("{}", format_gate_status_from_snapshot(&detail.gate));
     print!("{}", detail.host_watch.format_text_section());
     Ok(())
 }

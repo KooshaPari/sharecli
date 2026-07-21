@@ -190,11 +190,10 @@ pub fn gate_status_snapshot_with_rss(
     }
 }
 
-/// Operator status section: thermal level, agent inventory, effective gate (FR-011).
-pub fn format_gate_status_section(thermal: ThermalLevel, agent_count: usize) -> String {
+/// Operator status section from a captured gate snapshot (FR-007 / AC-007.17).
+pub fn format_gate_status_from_snapshot(snap: &GateStatusSnapshot) -> String {
     let count_thresholds = AgentContentionThresholds::default();
     let rss_thresholds = AgentResourceThresholds::default();
-    let snap = gate_status_snapshot(thermal, agent_count);
     format!(
         "\n=== Thermal Gate (FR-011) ===\n\n\
          Thermal level: {}\n\
@@ -212,6 +211,11 @@ pub fn format_gate_status_section(thermal: ThermalLevel, agent_count: usize) -> 
         rss_thresholds.refuse_total_rss_bytes,
         snap.gate_decision,
     )
+}
+
+/// Operator status section: thermal level, agent inventory, effective gate (FR-011).
+pub fn format_gate_status_section(thermal: ThermalLevel, agent_count: usize) -> String {
+    format_gate_status_from_snapshot(&gate_status_snapshot(thermal, agent_count))
 }
 
 #[cfg(test)]
