@@ -22,13 +22,10 @@ fn main() {
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use std::time::Duration;
-
     use ksni::blocking::{Handle, TrayMethods};
 
     use sharecli_tray_linux::ipc;
-
-    const POLL_INTERVAL: Duration = Duration::from_secs(3);
+    use sharecli_tray_linux::poll::tray_poll_interval;
 
     /// Snapshot of daemon state rendered into the tray. Refreshed by the poll
     /// thread via `handle.update`.
@@ -222,10 +219,14 @@ mod linux {
                 std::process::exit(1);
             }
         };
-        tracing::info!("sharecli-tray registered; polling every {}s", POLL_INTERVAL.as_secs());
+        let poll_interval = tray_poll_interval();
+        tracing::info!(
+            "sharecli-tray registered; polling every {}s",
+            poll_interval.as_secs()
+        );
 
         loop {
-            std::thread::sleep(POLL_INTERVAL);
+            std::thread::sleep(poll_interval);
             if handle.is_closed() {
                 break;
             }
