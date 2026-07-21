@@ -33,6 +33,7 @@ mod path_remap;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod provenance;
 mod read_cache;
+mod session_registry;
 mod write_serialize;
 mod write_serialize_meters;
 
@@ -52,6 +53,7 @@ pub use provenance::{
     ATTR_SESSION, ATTR_WRITTEN_AT,
 };
 pub use read_cache::{global_read_cache_meters, ReadCacheMeters, ReadContentCache};
+pub use session_registry::{FuseMountInfo, FuseSessionRegistry};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 pub use write_serialize_meters::{
     global_write_serialize_meters, record_commit, record_discard, record_passthrough_write,
@@ -70,7 +72,7 @@ mod platform {
         ffi::OsStr,
         fs::{self, OpenOptions},
         io::{Seek, SeekFrom, Write as IoWrite},
-        os::unix::fs::{MetadataExt, PermissionsExt},
+        os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
         path::{Path, PathBuf},
         sync::Mutex,
         time::{Duration, SystemTime},
@@ -78,8 +80,8 @@ mod platform {
 
     use fuser::{
         Config, Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation, INodeNo,
-        MountOption, OpenFlags, RenameFlags, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty,
-        ReplyEntry, ReplyOpen, ReplyWrite, Request, WriteFlags,
+        MountOption, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory,
+        ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, Request, WriteFlags,
     };
     use tracing::{debug, trace};
 
@@ -239,6 +241,82 @@ mod platform {
                 cache.invalidate(&abs);
             }
             Ok(n)
+        }
+
+        /// Create a new regular file at relative `rel` (no mount; FR-009 helper).
+        ///
+        /// Invalidates negative dentry + read cache and stamps write provenance.
+        pub fn create_rel(&self, rel: &Path, mode: u32) -> std::io::Result<()> {
+            let abs = abs_under(&self.backing, rel);
+            if let Some(parent) = abs.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(mode)
+                .open(&abs)?;
+            self.after_create_at(rel, &abs)
+        }
+
+        /// Relative paths with pending CoW staging on this mount.
+        pub fn pending_rel_paths(&self) -> Result<Vec<PathBuf>, crate::WriteSerializeError> {
+            Ok(self
+                .write_locks
+                .pending_backing_paths()?
+                .into_iter()
+                .filter_map(|abs| abs.strip_prefix(&self.backing).ok().map(Path::to_path_buf))
+                .collect())
+        }
+
+        fn after_create_at(&self, rel: &Path, abs: &Path) -> std::io::Result<()> {
+            annotate_write(abs, &self.session_id)?;
+            if let Ok(mut neg) = self.neg_dentry.lock() {
+                neg.invalidate(rel);
+            }
+            if let Ok(mut cache) = self.read_cache.lock() {
+                cache.invalidate(abs);
+            }
+            Ok(())
+        }
+
+        fn install_created_entry(
+            &self,
+            rel: PathBuf,
+            path: PathBuf,
+            reply: ReplyCreate,
+        ) {
+            let mut map = self.inodes.lock().expect("inode map");
+            let ino = map.alloc_or_get(rel);
+            match fs::metadata(&path) {
+                Ok(meta) => {
+                    let attr = Self::metadata_to_attr(ino, &meta);
+                    reply.created(
+                        &TTL,
+                        &attr,
+                        Generation(0),
+                        FileHandle(ino),
+                        FopenFlags::empty(),
+                    );
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
+        }
+
+        fn install_created_entry_plain(
+            &self,
+            rel: PathBuf,
+            path: PathBuf,
+            reply: ReplyEntry,
+        ) {
+            let mut map = self.inodes.lock().expect("inode map");
+            let ino = map.alloc_or_get(rel);
+            match fs::metadata(&path) {
+                Ok(meta) => {
+                    reply.entry(&TTL, &Self::metadata_to_attr(ino, &meta), Generation(0))
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
         }
 
         fn io_errno(err: std::io::Error) -> Errno {
@@ -410,6 +488,7 @@ mod platform {
             });
             match result {
                 Ok(Ok(n)) => {
+                    record_passthrough_write();
                     if let Ok(mut cache) = self.read_cache.lock() {
                         cache.invalidate(&path);
                     }
@@ -499,13 +578,97 @@ mod platform {
                     if let Ok(mut neg) = self.neg_dentry.lock() {
                         neg.invalidate(&rel);
                     }
-                    let ino = map.alloc_or_get(rel);
+                    let ino = map.alloc_or_get(rel.clone());
                     match fs::metadata(&path) {
                         Ok(meta) => {
                             reply.entry(&TTL, &Self::metadata_to_attr(ino, &meta), Generation(0))
                         }
                         Err(err) => reply.error(Self::io_errno(err)),
                     }
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
+        }
+
+        fn create(
+            &self,
+            _req: &Request,
+            parent: INodeNo,
+            name: &OsStr,
+            mode: u32,
+            umask: u32,
+            _flags: i32,
+            reply: ReplyCreate,
+        ) {
+            debug!(?parent, ?name, mode, "create");
+            let rel = {
+                let map = self.inodes.lock().expect("inode map");
+                let Some(rel) = map.child_rel(parent.0, name) else {
+                    reply.error(Errno::ENOENT);
+                    return;
+                };
+                rel
+            };
+            let path = abs_under(&self.backing, &rel);
+            if let Some(parent) = path.parent() {
+                if fs::create_dir_all(parent).is_err() {
+                    reply.error(Errno::EIO);
+                    return;
+                }
+            }
+            let file_mode = mode & !umask;
+            match OpenOptions::new().write(true).create_new(true).mode(file_mode).open(&path) {
+                Ok(_file) => {
+                    if let Err(err) = self.after_create_at(&rel, &path) {
+                        let _ = fs::remove_file(&path);
+                        reply.error(Self::io_errno(err));
+                        return;
+                    }
+                    self.install_created_entry(rel, path, reply);
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
+        }
+
+        fn mknod(
+            &self,
+            _req: &Request,
+            parent: INodeNo,
+            name: &OsStr,
+            mode: u32,
+            umask: u32,
+            _rdev: u32,
+            reply: ReplyEntry,
+        ) {
+            const S_IFREG: u32 = 0o100_000;
+            if mode & 0o170_000 != S_IFREG {
+                reply.error(Errno::EPERM);
+                return;
+            }
+            let rel = {
+                let map = self.inodes.lock().expect("inode map");
+                let Some(rel) = map.child_rel(parent.0, name) else {
+                    reply.error(Errno::ENOENT);
+                    return;
+                };
+                rel
+            };
+            let path = abs_under(&self.backing, &rel);
+            if let Some(parent) = path.parent() {
+                if fs::create_dir_all(parent).is_err() {
+                    reply.error(Errno::EIO);
+                    return;
+                }
+            }
+            let file_mode = mode & !umask;
+            match OpenOptions::new().write(true).create_new(true).mode(file_mode).open(&path) {
+                Ok(_file) => {
+                    if let Err(err) = self.after_create_at(&rel, &path) {
+                        let _ = fs::remove_file(&path);
+                        reply.error(Self::io_errno(err));
+                        return;
+                    }
+                    self.install_created_entry_plain(rel, path, reply);
                 }
                 Err(err) => reply.error(Self::io_errno(err)),
             }
@@ -607,6 +770,111 @@ mod platform {
             vec![MountOption::FSName("sharecli-fuse".to_string()), MountOption::AutoUnmount];
         fuser::mount2(fs, mountpoint, &config)?;
         Ok(())
+    }
+
+    /// Share [`InterceptFs`] across FUSE session threads and the session registry.
+    pub(crate) struct SharedInterceptFs(pub std::sync::Arc<InterceptFs>);
+
+    impl Filesystem for SharedInterceptFs {
+        fn lookup(&self, req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
+            self.0.lookup(req, parent, name, reply);
+        }
+        fn getattr(&self, req: &Request, ino: INodeNo, fh: Option<FileHandle>, reply: ReplyAttr) {
+            self.0.getattr(req, ino, fh, reply);
+        }
+        fn open(&self, req: &Request, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
+            self.0.open(req, ino, flags, reply);
+        }
+        fn read(
+            &self,
+            req: &Request,
+            ino: INodeNo,
+            fh: FileHandle,
+            offset: u64,
+            size: u32,
+            flags: OpenFlags,
+            lock: Option<fuser::LockOwner>,
+            reply: ReplyData,
+        ) {
+            self.0.read(req, ino, fh, offset, size, flags, lock, reply);
+        }
+        fn write(
+            &self,
+            req: &Request,
+            ino: INodeNo,
+            fh: FileHandle,
+            offset: u64,
+            data: &[u8],
+            write_flags: WriteFlags,
+            flags: OpenFlags,
+            lock: Option<fuser::LockOwner>,
+            reply: ReplyWrite,
+        ) {
+            self.0.write(req, ino, fh, offset, data, write_flags, flags, lock, reply);
+        }
+        fn readdir(
+            &self,
+            req: &Request,
+            ino: INodeNo,
+            fh: FileHandle,
+            offset: u64,
+            reply: ReplyDirectory,
+        ) {
+            self.0.readdir(req, ino, fh, offset, reply);
+        }
+        fn mkdir(
+            &self,
+            req: &Request,
+            parent: INodeNo,
+            name: &OsStr,
+            mode: u32,
+            umask: u32,
+            reply: ReplyEntry,
+        ) {
+            self.0.mkdir(req, parent, name, mode, umask, reply);
+        }
+        fn create(
+            &self,
+            req: &Request,
+            parent: INodeNo,
+            name: &OsStr,
+            mode: u32,
+            umask: u32,
+            flags: i32,
+            reply: ReplyCreate,
+        ) {
+            self.0.create(req, parent, name, mode, umask, flags, reply);
+        }
+        fn mknod(
+            &self,
+            req: &Request,
+            parent: INodeNo,
+            name: &OsStr,
+            mode: u32,
+            umask: u32,
+            rdev: u32,
+            reply: ReplyEntry,
+        ) {
+            self.0.mknod(req, parent, name, mode, umask, rdev, reply);
+        }
+        fn unlink(&self, req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
+            self.0.unlink(req, parent, name, reply);
+        }
+        fn rmdir(&self, req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
+            self.0.rmdir(req, parent, name, reply);
+        }
+        fn rename(
+            &self,
+            req: &Request,
+            parent: INodeNo,
+            name: &OsStr,
+            newparent: INodeNo,
+            newname: &OsStr,
+            flags: RenameFlags,
+            reply: ReplyEmpty,
+        ) {
+            self.0.rename(req, parent, name, newparent, newname, flags, reply);
+        }
     }
 }
 

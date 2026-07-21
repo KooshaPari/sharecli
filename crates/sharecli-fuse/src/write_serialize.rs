@@ -186,6 +186,12 @@ impl WriteSerialize {
         let pending = self.pending.lock().map_err(|_| WriteSerializeError::Poisoned)?;
         Ok(pending.contains_key(backing))
     }
+
+    /// Backing paths that currently have staged CoW bytes pending commit/discard.
+    pub fn pending_backing_paths(&self) -> Result<Vec<PathBuf>, WriteSerializeError> {
+        let pending = self.pending.lock().map_err(|_| WriteSerializeError::Poisoned)?;
+        Ok(pending.keys().cloned().collect())
+    }
 }
 
 /// EXDEV (cross-device link) — portable constant (POSIX / Linux / macOS).

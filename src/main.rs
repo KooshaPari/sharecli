@@ -398,7 +398,7 @@ enum Commands {
         #[command(subcommand)]
         cmd: MeshCmd,
     },
-    /// FUSE IO intercept operator surface (provenance inspect)
+    /// FUSE IO intercept operator surface (mount, provenance, CoW)
     Fuse {
         #[command(subcommand)]
         cmd: FuseCmd,
@@ -473,6 +473,52 @@ enum FleetCmd {
 
 #[derive(Subcommand, Debug)]
 enum FuseCmd {
+    /// Mount intercept layer over a backing directory
+    Mount {
+        /// Backing filesystem root to mirror
+        backing: std::path::PathBuf,
+        /// Mountpoint path (created if missing)
+        mountpoint: std::path::PathBuf,
+        /// Write-provenance session id (default: process-local)
+        #[arg(long)]
+        session: Option<String>,
+        /// Block in foreground until unmounted (default: background daemon thread)
+        #[arg(long)]
+        foreground: bool,
+    },
+    /// Unmount a registered intercept mount
+    Unmount {
+        /// Mountpoint path
+        mountpoint: std::path::PathBuf,
+    },
+    /// Print FUSE read-cache + write-serialize global meters
+    Status {
+        /// Emit JSON instead of text sections
+        #[arg(long)]
+        json: bool,
+    },
+    /// Commit staged CoW for a relative path on a registered mount
+    Commit {
+        /// Path relative to backing root
+        relpath: std::path::PathBuf,
+        /// Mountpoint when multiple mounts are registered
+        #[arg(long)]
+        mountpoint: Option<std::path::PathBuf>,
+    },
+    /// Discard staged CoW for a relative path on a registered mount
+    Discard {
+        /// Path relative to backing root
+        relpath: std::path::PathBuf,
+        /// Mountpoint when multiple mounts are registered
+        #[arg(long)]
+        mountpoint: Option<std::path::PathBuf>,
+    },
+    /// List registered mounts and pending CoW paths
+    List {
+        /// Emit JSON instead of text
+        #[arg(long)]
+        json: bool,
+    },
     /// Read write-provenance xattrs (`user.sharecli.session`, `user.sharecli.written_at`)
     Provenance {
         /// Backing file path (need not be under a live FUSE mount)
@@ -728,6 +774,23 @@ async fn run() -> Result<()> {
             MeshCmd::Reclaim { queue, owner } => mesh_cmd::reclaim(queue, owner)?,
         },
         Commands::Fuse { cmd } => match cmd {
+            FuseCmd::Mount { backing, mountpoint, session, foreground } => {
+                fuse_cmd::mount(
+                    backing,
+                    mountpoint,
+                    session.as_deref(),
+                    *foreground,
+                )?
+            }
+            FuseCmd::Unmount { mountpoint } => fuse_cmd::unmount(mountpoint)?,
+            FuseCmd::Status { json } => fuse_cmd::status(*json)?,
+            FuseCmd::Commit { relpath, mountpoint } => {
+                fuse_cmd::commit(relpath, mountpoint.as_deref())?
+            }
+            FuseCmd::Discard { relpath, mountpoint } => {
+                fuse_cmd::discard(relpath, mountpoint.as_deref())?
+            }
+            FuseCmd::List { json } => fuse_cmd::list(*json)?,
             FuseCmd::Provenance { path, json } => fuse_cmd::provenance(path, *json)?,
         },
         Commands::Cast { cmd } => match cmd {
@@ -803,8 +866,15 @@ fn cli_list(as_json: bool) -> Result<()> {
         ),
     ];
 
-    let fuse_modules: &[(&str, &str)] =
-        &[("provenance", "Read FUSE write xattrs on a backing file (`fuse provenance <path>`)")];
+    let fuse_modules: &[(&str, &str)] = &[
+        ("mount", "Mount intercept over backing (`fuse mount <backing> <mountpoint>`)"),
+        ("unmount", "Unmount registered intercept (`fuse unmount <mountpoint>`)"),
+        ("status", "FUSE read-cache + write-serialize meters"),
+        ("commit", "Promote staged CoW for a relative path"),
+        ("discard", "Drop staged CoW for a relative path"),
+        ("list", "List registered mounts + pending CoW paths"),
+        ("provenance", "Read FUSE write xattrs on a backing file (`fuse provenance <path>`)"),
+    ];
 
     let util_modules: &[(&str, &str)] = &[
         ("base85", "Base85 encode / decode"),
