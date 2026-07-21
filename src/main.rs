@@ -247,6 +247,10 @@ enum Commands {
         /// Emit JSON (gate → host_watch siblings; AC-007.44)
         #[arg(long)]
         json: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.64 with --json)
+        #[arg(short, long)]
+        watch: Option<u64>,
     },
 
     /// Configuration management
@@ -651,7 +655,9 @@ async fn run() -> Result<()> {
             prune(idle_seconds.unwrap_or(config::global().spawn.prune_idle_seconds), *force).await?
         }
         Commands::Pool { harness: _, json } => pool_status(*json).await?,
-        Commands::Health { harness, json } => health(harness.as_deref(), *json).await?,
+        Commands::Health { harness, json, watch } => {
+            health(harness.as_deref(), *json, *watch).await?
+        }
         Commands::Run { harness, project } => run_pool(harness, project).await?,
         Commands::Limits { project, memory, processes } => {
             set_limits(project, *memory, *processes).await?

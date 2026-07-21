@@ -172,6 +172,14 @@ pub struct HealthJson {
     pub host_watch: HostResourceWatchJson,
 }
 
+/// One NDJSON watch line for `health --watch --json` (FR-007 / AC-007.64).
+#[derive(Debug, Clone, Serialize)]
+pub struct HealthNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: HealthJson,
+}
+
 async fn build_ps_all_json(
     project: Option<&str>,
     harness: Option<&str>,
@@ -925,40 +933,55 @@ pub async fn pool_status(json: bool) -> Result<()> {
     Ok(())
 }
 
-/// Run health probe for shared runtime
+async fn build_health_json() -> Result<HealthJson> {
+    let runtime = get_shared_runtime();
+    let pool_status = runtime.status().await;
+    let health = runtime.health_check().await;
+    let (gate, host_watch) = capture_live_gate_host_watch()?;
+    Ok(HealthJson {
+        healthy: health.healthy,
+        issues: health.issues,
+        node_total: pool_status.node_total,
+        node_idle: pool_status.node_idle,
+        node_in_use: health.node_in_use,
+        bun_total: pool_status.bun_total,
+        bun_idle: pool_status.bun_idle,
+        bun_in_use: health.bun_in_use,
+        max_per_type: pool_status.max_per_type,
+        gate,
+        host_watch,
+    })
+}
+
+/// Render one health snapshot (one-shot or watch cycle).
+///
 /// One-shot `health --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
-pub async fn health(harness: Option<&str>, json: bool) -> Result<()> {
-    if !json {
-        if let Some(h) = harness {
-            println!("Health probe requested for harness '{}'.", h);
-            if h != "node" && h != "bun" {
-                println!("Note: only the pooled node/bun runtimes are tracked currently.");
-            }
+async fn render_health_once(harness: Option<&str>, json: bool, ndjson: bool) -> Result<()> {
+    if json {
+        let payload = build_health_json().await?;
+        if ndjson {
+            let line = HealthNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
+        return Ok(());
+    }
+
+    if let Some(h) = harness {
+        println!("Health probe requested for harness '{}'.", h);
+        if h != "node" && h != "bun" {
+            println!("Note: only the pooled node/bun runtimes are tracked currently.");
         }
     }
 
     let runtime = get_shared_runtime();
     let pool_status = runtime.status().await;
     let health = runtime.health_check().await;
-
-    if json {
-        let (gate, host_watch) = capture_live_gate_host_watch()?;
-        let payload = HealthJson {
-            healthy: health.healthy,
-            issues: health.issues,
-            node_total: pool_status.node_total,
-            node_idle: pool_status.node_idle,
-            node_in_use: health.node_in_use,
-            bun_total: pool_status.bun_total,
-            bun_idle: pool_status.bun_idle,
-            bun_in_use: health.bun_in_use,
-            max_per_type: pool_status.max_per_type,
-            gate,
-            host_watch,
-        };
-        println!("{}", serde_json::to_string_pretty(&payload)?);
-        return Ok(());
-    }
 
     println!("\nShared runtime health: {}", if health.healthy { "HEALTHY" } else { "DEGRADED" });
 
@@ -986,6 +1009,53 @@ pub async fn health(harness: Option<&str>, json: bool) -> Result<()> {
     print_live_host_watch_section()?;
 
     Ok(())
+}
+
+/// Run health probe for shared runtime
+pub async fn health(harness: Option<&str>, json: bool, watch: Option<u64>) -> Result<()> {
+    match watch {
+        None => render_health_once(harness, json, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_health_once(harness, json, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.64).
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 /// Set project limits

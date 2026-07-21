@@ -195,6 +195,7 @@
 | AC-007.61   | `crates/sharecli-tray-linux/src/operator_display.rs` (`format_tray_tooltip_summary_line`, `format_tray_tooltip_offline_line`); `crates/sharecli-tray-linux/src/main.rs` (`tool_tip`, `gate_visual`); `tests/fr007_tray_thermal_visual.rs` | Linux SNI tooltip summary uses gate_visual.badge_label severity tokens; replaces generic UNHEALTHY suffix for Swift/Windows tray thermal trilogy parity |
 | AC-007.62   | `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift` (`formatMenuBarTitleLine`, `formatMenuBarTitleOfflineLine`); `desktop/ShareCLITray/Sources/ShareCLITray/AppEntry.swift` (`formatMenuBarTitleLine`, `resolveTrayGateVisual`, `badgeLabel`); `tests/fr007_tray_thermal_visual.rs` | Swift NSStatusItem menu bar title leads with gateVisual.badgeLabel severity tokens; replaces bare managed/memory title for Linux/Windows tray thermal trilogy parity |
 | AC-007.63   | `crates/sharecli-tray-linux/src/operator_display.rs` (`format_tray_menu_header_line`, `format_tray_menu_header_offline_line`); `crates/sharecli-tray-linux/src/main.rs` (`menu`, `gate_visual`); `tests/fr007_tray_thermal_visual.rs` | Linux SNI menu header leads with gate_visual.badge_label severity tokens; replaces bare process/memory header and generic Daemon offline fallback for tray thermal trilogy parity |
+| AC-007.64   | `tests/fr007_health_watch_text_stderr_silent.rs`; `tests/fr007_health_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`HealthNdjsonLine`, `render_health_once`, `health --watch`, `health --watch --json`); `src/main.rs` (`Health.watch`) | health --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only; health --watch --json NDJSON gate → host_watch per refresh with stderr text companions |
 
 ### FR-008 — Coalesce
 
@@ -264,6 +265,12 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 health --watch gate/host_watch parity:** `sharecli health --watch`
+  (text, no `--json`) MUST NOT print gate/host_watch text companions or `[watch]` footer on
+  stderr during refresh cycles (AC-007.64); gate → `host_watch` and footer stay on stdout only;
+  parity with ps text watch AC-007.50. `sharecli health --watch --json` streams NDJSON with
+  gate → host_watch per refresh; stderr text companions (parity with report watch AC-007.42 /
+  ps watch AC-007.49).
 - **2026-07-21 — FR-007 tray thermal gate visual indicator parity:** Linux tray `icon_name` +
   SNI `NeedsAttention`, Swift menu bar icon tint + popover thermal badge, and WinUI
   `ThermalBadgeText` + colored gate row derive from `gate.thermal_pressure` +
