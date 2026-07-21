@@ -180,6 +180,10 @@ enum Commands {
         #[arg(long)]
         family: Option<String>,
 
+        /// Drop agents matching this family id (case-insensitive; negates --family)
+        #[arg(long)]
+        exclude_family: Option<String>,
+
         /// Keep only agents whose COMM contains this substring (case-insensitive)
         #[arg(long)]
         comm: Option<String>,
@@ -590,13 +594,14 @@ async fn run() -> Result<()> {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
         Commands::Status { verbose, json } => status(*verbose, *json).await?,
-        Commands::Proc { json, csv, tree, watch, family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
+        Commands::Proc { json, csv, tree, watch, family, exclude_family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
             commands::proc::run(
                 *json,
                 *csv,
                 *tree,
                 *watch,
                 family.clone(),
+                exclude_family.clone(),
                 comm.clone(),
                 cmdline.clone(),
                 state.clone(),

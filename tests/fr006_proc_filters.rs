@@ -4,6 +4,7 @@
 //! AC-006.17 `--family` and `--min-rss` narrow proc inventory and tree forests
 //! AC-006.27 `--max-rss` upper-bound RSS filter (complements `--min-rss`)
 //! AC-006.28 `--min-fd` / `--max-fd` FD band filters (symmetric to RSS bounds)
+//! AC-006.38 `--exclude-family` negates `--family` (drops matching agent families)
 
 use std::process::Command;
 
@@ -40,6 +41,114 @@ fn fr006_proc_help_documents_filters() {
     assert!(s.contains("--max-rss"), "proc --help MUST document --max-rss; got: {s}");
     assert!(s.contains("--min-fd"), "proc --help MUST document --min-fd; got: {s}");
     assert!(s.contains("--max-fd"), "proc --help MUST document --max-fd; got: {s}");
+    assert!(
+        s.contains("--exclude-family"),
+        "proc --help MUST document --exclude-family; got: {s}"
+    );
+}
+
+/// FR-006 / AC-006.38 — exclude-family filter drops matching agents.
+#[test]
+fn fr006_proc_exclude_family_filter() {
+    let rows = vec![watch_row("claude", 10, 100), watch_row("codex", 11, 200)];
+    let filtered = filter_watched_agents(
+        &rows,
+        &ProcFilter {
+            family: None,
+            exclude_family: Some("claude".into()),
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+            ppid: None,
+            comm: None,
+            cmdline: None,
+            state: None,
+        },
+        &empty_ppid_map(),
+        &empty_cmdline_map(),
+        &empty_state_map(),
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].agent.family, "codex");
+}
+
+/// FR-006 / AC-006.38 — exclude-family is case-insensitive.
+#[test]
+fn fr006_proc_exclude_family_case_insensitive() {
+    let rows = vec![watch_row("Claude", 10, 100), watch_row("codex", 11, 200)];
+    let filtered = filter_watched_agents(
+        &rows,
+        &ProcFilter {
+            family: None,
+            exclude_family: Some("CLAUDE".into()),
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+            ppid: None,
+            comm: None,
+            cmdline: None,
+            state: None,
+        },
+        &empty_ppid_map(),
+        &empty_cmdline_map(),
+        &empty_state_map(),
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].agent.pid, 11);
+}
+
+/// FR-006 / AC-006.38 — tree forests honor exclude-family on roots.
+#[test]
+fn fr006_proc_tree_exclude_family_filter() {
+    let src = FakeProcSource::new(vec![
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
+        ProcSnapshot { pid: 50, ppid: 1, comm: "claude".into(), cmdline: vec!["claude".into()], state: 'R' },
+        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()], state: 'R' },
+    ]);
+    let forests = sharecli_fleet::build_agent_forests(&src);
+    assert_eq!(forests.len(), 2);
+    let filtered = filter_agent_forests(
+        &forests,
+        &ProcFilter {
+            family: None,
+            exclude_family: Some("claude".into()),
+            min_rss_bytes: None,
+            max_rss_bytes: None,
+            min_fd_count: None,
+            max_fd_count: None,
+            ppid: None,
+            comm: None,
+            cmdline: None,
+            state: None,
+        },
+        &std::collections::HashMap::new(),
+        &std::collections::HashMap::new(),
+        &std::collections::HashMap::new(),
+        &empty_state_map(),
+    );
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].family, Some("codex"));
+}
+
+/// FR-006 / AC-006.38 — --family and --exclude-family together fail loudly.
+#[test]
+fn fr006_proc_family_and_exclude_family_rejected() {
+    let out = bin()
+        .args(["proc", "--family", "claude", "--exclude-family", "codex"])
+        .output()
+        .expect("spawn sharecli proc family+exclude-family");
+    assert!(!out.status.success(), "family + exclude-family MUST fail");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout)
+    );
+    assert!(
+        combined.contains("family") && combined.contains("exclude"),
+        "error MUST mention family/exclude-family; got: {combined}"
+    );
 }
 
 /// FR-006 / AC-006.17 — family filter keeps matching agents only.
@@ -49,6 +158,7 @@ fn fr006_proc_family_filter() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: Some("claude".into()),
             min_rss_bytes: None,
             max_rss_bytes: None,
@@ -75,6 +185,7 @@ fn fr006_proc_min_rss_filter() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: Some(100 * 1_048_576),
             max_rss_bytes: None,
@@ -106,6 +217,7 @@ fn fr006_proc_tree_family_filter() {
     let filtered = filter_agent_forests(
         &forests,
         &ProcFilter {
+            exclude_family: None,
             family: Some("codex".into()),
             min_rss_bytes: None,
             max_rss_bytes: None,
@@ -148,6 +260,7 @@ fn fr006_proc_max_rss_filter() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: Some(100 * 1_048_576),
@@ -177,6 +290,7 @@ fn fr006_proc_rss_band_filter() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: Some(100 * 1_048_576),
             max_rss_bytes: Some(200 * 1_048_576),
@@ -210,6 +324,7 @@ fn fr006_proc_tree_max_rss_filter() {
     let filtered = filter_agent_forests(
         &forests,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: Some(100 * 1_048_576),
@@ -239,6 +354,7 @@ fn fr006_proc_min_fd_filter() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
@@ -267,6 +383,7 @@ fn fr006_proc_max_fd_filter() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
@@ -296,6 +413,7 @@ fn fr006_proc_fd_band_filter() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
@@ -321,6 +439,7 @@ fn fr006_proc_min_fd_treats_missing_as_zero() {
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
@@ -354,6 +473,7 @@ fn fr006_proc_tree_max_fd_filter() {
     let filtered = filter_agent_forests(
         &forests,
         &ProcFilter {
+            exclude_family: None,
             family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
