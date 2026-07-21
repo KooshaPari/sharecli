@@ -225,6 +225,11 @@ pub fn build_host_forest_state_map(forests: &[AgentTreeNode]) -> HashMap<u32, ch
     build_forest_state_map(&HostProcSource, forests)
 }
 
+/// Live-host convenience for [`build_agent_state_map`] (flat agent inventory, AC-006.40).
+pub fn build_host_agent_state_map(agent_pids: &[u32]) -> HashMap<u32, char> {
+    build_agent_state_map(&HostProcSource, agent_pids)
+}
+
 /// STATE display for text inventory / tree nodes; missing/unknown → `-` (AC-006.33, AC-006.34).
 pub fn state_text_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
     state_by_pid

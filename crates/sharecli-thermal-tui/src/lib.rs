@@ -25,10 +25,10 @@ use ratatui::{
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
-    build_host_agent_forests, build_host_forest_state_map, effective_gate_decision,
-    format_rss_bytes, global_coalesce_meters, global_slot_queue_meters, state_text_for_pid,
-    watch_host_agents, AgentTreeNode, CoalesceMeters, DetectedAgentWatch, ResourceWatchSample,
-    SlotQueueMeters,
+    build_host_agent_forests, build_host_agent_state_map, build_host_forest_state_map,
+    effective_gate_decision, format_rss_bytes, global_coalesce_meters, global_slot_queue_meters,
+    state_text_for_pid, watch_host_agents, AgentTreeNode, CoalesceMeters, DetectedAgentWatch,
+    ResourceWatchSample, SlotQueueMeters,
 };
 use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
@@ -289,8 +289,12 @@ pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'
 /// Max agent rows rendered in the full-layout DetectedAgent panel.
 pub const MAX_AGENT_LINES: usize = 4;
 
-/// Lines for the host agent inventory panel (FR-006 / AC-006.9 TUI slice).
-pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'static>> {
+/// Lines for the host agent inventory panel (FR-006 / AC-006.9, AC-006.40 TUI slice).
+pub fn agent_lines(
+    agents: &[DetectedAgentWatch],
+    state_by_pid: &HashMap<u32, char>,
+    compact: bool,
+) -> Vec<Line<'static>> {
     if agents.is_empty() {
         let msg = if compact { " none" } else { "  No agent processes detected" };
         return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
@@ -301,10 +305,12 @@ pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'st
             .iter()
             .take(2)
             .map(|row| {
+                let state = state_text_for_pid(state_by_pid, row.agent.pid);
                 format!(
-                    "{}:{}@{}",
+                    "{}:{}:{}@{}",
                     row.agent.family,
                     row.agent.pid,
+                    state,
                     format_rss_bytes(row.resource.mem_rss_bytes)
                 )
             })
@@ -317,10 +323,12 @@ pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'st
 
     let mut lines = vec![Line::from(format!("  Agents: {}", agents.len()))];
     for row in agents.iter().take(MAX_AGENT_LINES) {
+        let state = state_text_for_pid(state_by_pid, row.agent.pid);
         let fd = row.resource.fd_count.map(|n| format!(" FD {n}")).unwrap_or_default();
         lines.push(Line::from(format!(
-            "    PID {}  {}  RSS {}{}  ({})",
+            "    PID {}  {}  {}  RSS {}{}  ({})",
             row.agent.pid,
+            state,
             row.agent.family,
             format_rss_bytes(row.resource.mem_rss_bytes),
             fd,
@@ -409,7 +417,7 @@ pub fn agent_forest_lines(
     compact: bool,
 ) -> Vec<Line<'static>> {
     if compact || forests.is_empty() {
-        return agent_lines(watched, compact);
+        return agent_lines(watched, state_by_pid, compact);
     }
     let rss_by_pid: HashMap<u32, u64> =
         watched.iter().map(|row| (row.agent.pid, row.resource.mem_rss_bytes)).collect();
@@ -575,10 +583,15 @@ impl App {
         self
     }
 
-    fn forest_state_by_pid(&self) -> HashMap<u32, char> {
-        self.forest_state_by_pid
-            .clone()
-            .unwrap_or_else(|| build_host_forest_state_map(&self.agent_forests))
+    fn agent_panel_state_by_pid(&self) -> HashMap<u32, char> {
+        if let Some(map) = &self.forest_state_by_pid {
+            return map.clone();
+        }
+        if !self.agent_forests.is_empty() {
+            return build_host_forest_state_map(&self.agent_forests);
+        }
+        let pids: Vec<u32> = self.detected_agents.iter().map(|row| row.agent.pid).collect();
+        build_host_agent_state_map(&pids)
     }
 }
 
@@ -732,7 +745,7 @@ fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 
 fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " Agents " } else { " Detected Agents " };
-    let state_by_pid = app.forest_state_by_pid();
+    let state_by_pid = app.agent_panel_state_by_pid();
     let lines = agent_forest_lines(&app.agent_forests, &app.detected_agents, &state_by_pid, compact);
     let block = Block::default().borders(Borders::ALL).title(title);
     frame.render_widget(Paragraph::new(lines).block(block), area);
@@ -1075,7 +1088,7 @@ mod tests {
 
     #[test]
     fn test_agent_lines_empty_full() {
-        let lines = agent_lines(&[], false);
+        let lines = agent_lines(&[], &HashMap::new(), false);
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
         assert!(rendered.contains("No agent processes detected"));
     }
@@ -1086,13 +1099,16 @@ mod tests {
             agent_watch(100, "claude", "claude", 52_428_800, Some(42)),
             agent_watch(200, "cursor", "cursor-agent", 104_857_600, None),
         ];
-        let lines = agent_lines(&agents, false);
+        let mut state = HashMap::new();
+        state.insert(100, 'S');
+        state.insert(200, 'R');
+        let lines = agent_lines(&agents, &state, false);
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
         assert!(rendered.contains("Agents: 2"));
-        assert!(rendered.contains("PID 100") && rendered.contains("claude"));
+        assert!(rendered.contains("PID 100  S  claude"));
         assert!(rendered.contains("RSS 50M"));
         assert!(rendered.contains("FD 42"));
-        assert!(rendered.contains("PID 200") && rendered.contains("cursor"));
+        assert!(rendered.contains("PID 200  R  cursor"));
     }
 
     #[test]
@@ -1100,9 +1116,27 @@ mod tests {
         let agents: Vec<DetectedAgentWatch> = (0..6)
             .map(|i| agent_watch(100 + i, "claude", &format!("claude-{i}"), 1_048_576, None))
             .collect();
-        let lines = agent_lines(&agents, false);
+        let lines = agent_lines(&agents, &HashMap::new(), false);
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
         assert!(rendered.contains("+2 more"));
+    }
+
+    #[test]
+    fn test_agent_lines_missing_state_dash() {
+        let agents = vec![agent_watch(100, "claude", "claude", 1_048_576, None)];
+        let lines = agent_lines(&agents, &HashMap::new(), false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("PID 100  -  claude"), "missing state MUST show `-`");
+    }
+
+    #[test]
+    fn test_agent_lines_compact_includes_state() {
+        let agents = vec![agent_watch(100, "claude", "claude", 52_428_800, None)];
+        let mut state = HashMap::new();
+        state.insert(100, 'S');
+        let lines = agent_lines(&agents, &state, true);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("claude:100:S@"), "compact MUST show state after PID");
     }
 
     #[test]
