@@ -504,8 +504,13 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   companion sections on **stderr**; stderr MUST be empty on success (errors only on failure).
   Gate and `host_watch` MUST appear only in the JSON body (parity with AC-007.30 / AC-007.31;
   extends AC-007.25 JSON shape contract with pipe-clean stderr).
+- **AC-007.33:** `sharecli proc --csv` and `sharecli proc --tree --csv` (one-shot, no
+  `--watch`) MUST NOT print gate or host watch text companion sections on **stderr**; stderr
+  MUST be empty on success (errors only on failure). Gate and `host_watch` MUST appear only
+  in CSV companion rows on stdout (parity with AC-007.30 / AC-007.31 / AC-007.32; extends
+  AC-007.19 CSV companion contract with pipe-clean stderr).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`, `tests/fr007_proc_watch_stderr_footer.rs`, `tests/fr007_proc_tree_watch_stderr_footer.rs`, `tests/fr007_proc_json_stderr_silent.rs`, `tests/fr007_status_json_stderr_silent.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`, `tests/fr007_proc_watch_stderr_footer.rs`, `tests/fr007_proc_tree_watch_stderr_footer.rs`, `tests/fr007_proc_json_stderr_silent.rs`, `tests/fr007_status_json_stderr_silent.rs`, `tests/fr007_proc_csv_stderr_silent.rs`
 
 ---
 

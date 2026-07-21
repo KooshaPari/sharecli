@@ -644,7 +644,9 @@ fn print_host_watch_text_footer() -> Result<()> {
 
 /// Gate + host watch text companions on stderr for NDJSON watch only (AC-007.28 / AC-007.29).
 /// One-shot `proc --json`, `proc --tree --json`, and `proc --pid N --json` MUST NOT call
-/// this helper (AC-007.30 / AC-007.31).
+/// this helper (AC-007.30 / AC-007.31). One-shot `proc --csv` and `proc --tree --csv` MUST NOT
+/// call this helper either (AC-007.33); gate/host_watch stay in CSV companion rows on stdout
+/// only (AC-007.19).
 fn eprint_gate_host_watch_stderr_companions(
     thermal: ThermalLevel,
     agent_count: usize,
@@ -1031,6 +1033,7 @@ pub fn render_once(
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid, &state_by_pid);
         let forests = limit_agent_forests(forests, limit);
         let tree_state_by_pid = build_forest_state_map(&HostProcSource, &forests);
+        // One-shot `proc --tree --csv` MUST NOT print gate/host_watch stderr companions (AC-007.33).
         if csv {
             print!(
                 "{}",
@@ -1079,6 +1082,7 @@ pub fn render_once(
         ),
         limit,
     );
+    // One-shot `proc --csv` MUST NOT print gate/host_watch stderr companions (AC-007.33).
     if csv {
         print!(
             "{}",
