@@ -217,6 +217,7 @@
 | AC-007.83   | `tests/fr007_ps_all_csv.rs`; `src/commands/mod.rs` (`render_ps_all_csv_body`, `append_operator_csv_companions`, `ps --all --csv`); `src/main.rs` (`Ps.csv`); `crates/sharecli-fleet/src/operator_pool_status.rs` | ps --all --csv managed + agent-inventory body → gate → host_watch → pool → status companion rows on stdout; requires --all; rejects --json/--watch; stderr silent on success (parity with health/pool/status CSV AC-007.82) |
 | AC-007.84   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/mod.rs`; `src/commands/report.rs`; `src/commands/proc.rs`; `src/dashboard.html`; `crates/sharecli-ipc/src/handler.rs`; `crates/sharecli-ipc/src/ws_client.rs`; `crates/sharecli-tray-linux/src/operator_display.rs`; `crates/sharecli-tray-windows/src/operator_display.rs`; `crates/sharecli-thermal-tui/src/lib.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift`; `windows/ShareCLITray/OperatorDisplay.cs` | Meta regression locks operator envelope matrix: CLI text/JSON/CSV one-shot (proc/report/health/pool/status/ps --all), IPC health.status + monitoring.report, WS health_update decode, dashboard/tray/TUI companion markers; no watch dwell |
 | AC-007.85   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/proc.rs` (`render_once` text/JSON/CSV tree paths); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | Parity suite proc --tree text/JSON/CSV one-shot rows lock gate → host_watch → pool → status envelope (parity with flat proc AC-007.75/77/79) |
+| AC-007.86   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/proc.rs` (`ProcDetailSnapshot`, `render_proc_detail_text`, `render_proc_detail_csv`, `render_pid_detail`); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | Parity suite proc --pid text/JSON/CSV one-shot rows lock gate → host_watch → pool → status envelope via self-PID (parity with flat proc AC-007.75/77/79) |
 
 ### FR-008 — Coalesce
 
@@ -286,6 +287,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 proc --pid operator envelope parity suite rows (AC-007.86):**
+  `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --pid` text/JSON/CSV one-shot matrix
+  rows (self-PID) locking gate → host_watch → pool → status companions; `render_pid_detail`
+  embeds pool/status on JSON, operator lines on text, and CSV companions on `--csv`.
 - **2026-07-21 — FR-007 proc --tree operator envelope parity suite rows (AC-007.85):**
   `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --tree` text/JSON/CSV one-shot matrix
   rows locking gate → host_watch → pool → status companions (implementation from AC-007.75/77/79).

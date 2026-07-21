@@ -1,9 +1,10 @@
-//! FR-007 — operator envelope matrix parity regression suite (AC-007.84, proc --tree AC-007.85)
+//! FR-007 — operator envelope matrix parity regression suite (AC-007.84, proc --tree AC-007.85,
+//! proc --pid AC-007.86)
 //! FR: FR-007
 //!
 //! Locks the full FR-007 operator envelope across proc/report/health/pool/status/ps --all
-//! (text/JSON/CSV one-shot, including `proc --tree`), IPC, WS decode, dashboard, tray, and
-//! thermal TUI companion markers. No long `--watch` dwell cycles — those stay in per-AC
+//! (text/JSON/CSV one-shot, including `proc --tree` and `proc --pid`), IPC, WS decode, dashboard,
+//! tray, and thermal TUI companion markers. No long `--watch` dwell cycles — those stay in per-AC
 //! integration files.
 
 use std::fs;
@@ -227,6 +228,20 @@ fn run_cli(args: &[&str]) -> std::process::Output {
     bin().args(args).output().expect("spawn sharecli")
 }
 
+fn self_pid() -> String {
+    std::process::id().to_string()
+}
+
+fn run_proc_pid(suffix: &[&str]) -> std::process::Output {
+    let pid = self_pid();
+    let mut args = vec!["proc", "--pid", pid.as_str()];
+    args.extend_from_slice(suffix);
+    run_cli(&args)
+}
+
+const PROC_PID_BODY_HEADER: &str = "=== Process detail (PID ";
+const PROC_PID_CSV_HEADER: &str = "pid,ppid,comm,state,mem_rss_bytes,mem_rss,fd_count";
+
 fn sample_pool_snapshot() -> PoolSnapshot {
     PoolSnapshot {
         node_total: 2,
@@ -325,6 +340,12 @@ fn fr007_operator_matrix_cli_text_one_shot() {
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert_text_envelope(&stdout, case.body_header, case.label);
     }
+
+    let out = run_proc_pid(&[]);
+    assert!(out.status.success(), "proc --pid MUST exit 0 (AC-007.86)");
+    assert_stderr_silent(&out.stderr, "proc --pid");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_text_envelope(&stdout, PROC_PID_BODY_HEADER, "proc --pid");
 }
 
 /// FR-007 / AC-007.84 — CLI JSON one-shot matrix: gate → host_watch → pool/status siblings.
@@ -376,6 +397,12 @@ fn fr007_operator_matrix_cli_json_one_shot() {
         let raw = String::from_utf8_lossy(&out.stdout);
         assert_json_envelope(&raw, case.mode, case.label);
     }
+
+    let out = run_proc_pid(&["--json"]);
+    assert!(out.status.success(), "proc --pid --json MUST exit 0 (AC-007.86)");
+    assert_stderr_silent(&out.stderr, "proc --pid --json");
+    let raw = String::from_utf8_lossy(&out.stdout);
+    assert_json_envelope(&raw, JsonEnvelopeMode::FullPoolStatus, "proc --pid --json");
 }
 
 /// FR-007 / AC-007.84 — CLI CSV one-shot matrix: body → gate → host_watch → pool → status.
@@ -427,6 +454,12 @@ fn fr007_operator_matrix_cli_csv_one_shot() {
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert_csv_companion_order(&stdout, case.body_header, case.label);
     }
+
+    let out = run_proc_pid(&["--csv"]);
+    assert!(out.status.success(), "proc --pid --csv MUST exit 0 (AC-007.86)");
+    assert_stderr_silent(&out.stderr, "proc --pid --csv");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_csv_companion_order(&stdout, PROC_PID_CSV_HEADER, "proc --pid --csv");
 }
 
 /// FR-007 / AC-007.84 — IPC health.status + monitoring.report carry gate → host_watch → pool/status.
