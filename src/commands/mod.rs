@@ -55,7 +55,7 @@ pub(crate) fn print_live_host_watch_section() -> Result<()> {
     Ok(())
 }
 
-/// Runtime pool + proc-scan operator lines after gate → host_watch (FR-007 / AC-007.74 / AC-007.75).
+/// Runtime pool + proc-scan operator lines after gate → host_watch (FR-007 / AC-007.74–007.76).
 pub(crate) async fn print_live_pool_status_operator_sections() -> Result<()> {
     use sharecli_fleet::{format_pool_operator_line, format_status_operator_line};
 
@@ -352,7 +352,12 @@ async fn render_ps_once(
     };
     let processes: Vec<ProcessInfo> = pool.find(filter).await;
     let proc_source = HostProcSource;
-    print_ps_text_table(&processes, &proc_source, project, harness, all)
+    print_ps_text_table(&processes, &proc_source, project, harness, all)?;
+    if all {
+        // AC-007.76: pool → proc-scan on stdout after gate → host_watch (ps --all text path).
+        print_live_pool_status_operator_sections().await?;
+    }
+    Ok(())
 }
 
 /// List processes
@@ -642,6 +647,7 @@ async fn render_status_once(verbose: bool, json: bool, ndjson: bool) -> Result<(
 
     print_live_gate_section()?;
     print_live_host_watch_section()?;
+    print_live_pool_status_operator_sections().await?;
 
     let fuse_meters = global_read_cache_meters();
     print!("{}", fuse_meters.format_status_section());
@@ -1071,6 +1077,7 @@ async fn render_pool_once(json: bool, ndjson: bool) -> Result<()> {
 
     print_live_gate_section()?;
     print_live_host_watch_section()?;
+    print_live_pool_status_operator_sections().await?;
 
     Ok(())
 }
@@ -1196,6 +1203,7 @@ async fn render_health_once(harness: Option<&str>, json: bool, ndjson: bool) -> 
 
     print_live_gate_section()?;
     print_live_host_watch_section()?;
+    print_live_pool_status_operator_sections().await?;
 
     Ok(())
 }
