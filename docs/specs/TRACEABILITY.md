@@ -155,6 +155,7 @@
 | AC-007.21   | `tests/fr007_proc_text_gate.rs`; `src/commands/proc.rs` (`render_once` flat text path) | proc flat text thermal gate section before host watch footer |
 | AC-007.22   | `tests/fr007_proc_watch_gate_order.rs`; `src/commands/proc.rs` (`run` watch loop + `render_once`) | proc watch text/NDJSON gate → host_watch ordering per refresh |
 | AC-007.23   | `tests/fr007_proc_tree_watch_gate_order.rs`; `src/commands/proc.rs` (`run` watch loop + `render_once` tree path) | proc tree watch text/NDJSON gate → host_watch ordering per refresh |
+| AC-007.24   | `tests/fr007_proc_json_gate_order.rs`; `src/commands/proc.rs` (`AgentProcSnapshot`, `AgentTreeSnapshot`, `ProcDetailSnapshot`) | proc one-shot JSON gate → host_watch raw key ordering |
 
 ### FR-008 — Coalesce
 
@@ -218,6 +219,10 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc one-shot JSON gate ordering:** `sharecli proc --json`,
+  `proc --tree --json`, and `proc --pid --json` serialize `"gate"` before `"host_watch"`
+  in raw JSON (AC-007.24); completes proc gate/watch ordering matrix; flat watch dwell
+  hardened 12s→30s (AC-007.22).
 - **2026-07-20 — FR-007 proc tree watch gate ordering:** `sharecli proc --tree --watch` text and
   NDJSON preserve gate → `host_watch` ordering on every refresh (AC-007.23); locks tree watch
   parity with flat watch AC-007.22 and one-shot tree text AC-007.20.
