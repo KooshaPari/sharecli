@@ -4384,6 +4384,7 @@ dependencies = [
  "sharecli-sync",
  "sharecli-thermal-tui",
  "sharecli-tray-linux",
+ "sharecli-tray-windows",
  "spawn-core-sys",
  "substrate",
  "sysinfo",
@@ -4523,6 +4524,14 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "sharecli-tray-windows"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
