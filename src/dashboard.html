@@ -5,9 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>sharecli dashboard</title>
 <style>
+  :root {
+    --bb2-graphite: #0a0d12;
+    --bb2-panel: #161b22;
+    --bb2-pulse-green: #3fb950;
+    --bb2-warm-amber: #d29922;
+    --bb2-muted: #94a3b8;
+    --bb2-border: #2d333b;
+    --motion-duration-fast: 150ms;
+    --motion-duration: 300ms;
+    --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: #1a1a2e;
+    background: var(--bb2-graphite);
     color: #e2e8f0;
     font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
     font-size: 13px;
@@ -19,7 +30,7 @@
     gap: 12px;
     margin-bottom: 20px;
   }
-  h1 { font-size: 18px; color: #a78bfa; letter-spacing: 0.05em; }
+  h1 { font-size: 18px; color: #e2e8f0; letter-spacing: 0.05em; }
   #status-dot {
     width: 10px; height: 10px;
     border-radius: 50%;
@@ -28,14 +39,52 @@
     transition: background var(--motion-duration, 0.3s) var(--motion-ease, ease);
   }
   #status-dot.connected { background: #22c55e; }
-  #status-label { font-size: 11px; color: #94a3b8; }
+  #status-label { font-size: 11px; color: var(--bb2-muted); }
+  #operator-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .operator-panel {
+    background: var(--bb2-panel);
+    border: 1px solid var(--bb2-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .operator-panel h2 {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--bb2-muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .operator-panel dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    font-size: 12px;
+  }
+  .operator-panel dt { color: var(--bb2-muted); }
+  .operator-panel dd { color: #e2e8f0; text-align: right; margin: 0; }
+  .gate-admit { color: var(--bb2-pulse-green); }
+  .gate-deny { color: #f85149; }
+  .gate-unavailable { color: var(--bb2-warm-amber); }
+  .families-list {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--bb2-muted);
+    line-height: 1.4;
+    word-break: break-word;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
   }
   thead th {
-    background: #161b22;
-    color: #a371f7;
+    background: var(--bb2-panel);
+    color: var(--bb2-muted);
     text-align: left;
     padding: 8px 12px;
     font-size: 11px;
@@ -250,6 +299,35 @@
 </nav>
 
 <main id="main-content" tabindex="-1" aria-labelledby="dashboard-title">
+<section id="operator-panels" aria-label="Operator status" data-operator-panels>
+  <div class="operator-panel" id="panel-gate" aria-labelledby="panel-gate-title">
+    <h2 id="panel-gate-title">Thermal gate</h2>
+    <dl>
+      <dt>Pressure</dt><dd id="gate-pressure">—</dd>
+      <dt>Decision</dt><dd id="gate-decision" class="gate-unavailable">—</dd>
+      <dt>Agents</dt><dd id="gate-agents">—</dd>
+      <dt>Contention</dt><dd id="gate-contention">—</dd>
+    </dl>
+  </div>
+  <div class="operator-panel" id="panel-host-watch" aria-labelledby="panel-host-title">
+    <h2 id="panel-host-title">Host watch</h2>
+    <dl>
+      <dt>FDs</dt><dd id="host-fds">—</dd>
+      <dt>RSS</dt><dd id="host-rss">—</dd>
+      <dt>Load 1m</dt><dd id="host-load">—</dd>
+      <dt>Net RX/TX</dt><dd id="host-net">—</dd>
+    </dl>
+  </div>
+  <div class="operator-panel" id="panel-agents" aria-labelledby="panel-agents-title">
+    <h2 id="panel-agents-title">Host agents</h2>
+    <dl>
+      <dt>Scanned</dt><dd id="agents-scanned">—</dd>
+      <dt>Watched</dt><dd id="agents-watched">—</dd>
+      <dt>Total RSS</dt><dd id="agents-rss">—</dd>
+    </dl>
+    <div class="families-list" id="agents-families" aria-live="polite">—</div>
+  </div>
+</section>
 <table aria-label="Managed processes">
   <thead>
     <tr>
@@ -328,6 +406,9 @@
         setThermal('critical', '🔴 Critical');
         return;
       }
+      if (data.gate || data.host_watch || data.agents) {
+        renderOperatorPanels(data);
+      }
       const procs = Array.isArray(data.processes) ? data.processes : [];
       renderTable(procs);
       lastUpdate.textContent = 'last update: ' + new Date().toLocaleTimeString();
@@ -405,6 +486,59 @@
   }
 
   const thermalEl = document.getElementById('thermal-status');
+
+  function formatBytes(n) {
+    if (n == null || Number.isNaN(Number(n))) return '—';
+    const v = Number(n);
+    if (v < 1024) return v + ' B';
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KiB';
+    if (v < 1024 * 1024 * 1024) return (v / (1024 * 1024)).toFixed(1) + ' MiB';
+    return (v / (1024 * 1024 * 1024)).toFixed(2) + ' GiB';
+  }
+
+  function renderOperatorPanels(data) {
+    const gate = data.gate || {};
+    const host = data.host_watch || {};
+    const agents = data.agents || {};
+
+    const pressure = gate.thermal_pressure ?? '—';
+    document.getElementById('gate-pressure').textContent = pressure;
+    const decisionEl = document.getElementById('gate-decision');
+    const decision = gate.gate_decision ?? '—';
+    decisionEl.textContent = decision;
+    decisionEl.className = decision === 'ADMIT' ? 'gate-admit'
+      : decision === 'DENY' ? 'gate-deny' : 'gate-unavailable';
+    document.getElementById('gate-agents').textContent =
+      gate.detected_agents != null ? String(gate.detected_agents) : '—';
+    document.getElementById('gate-contention').textContent = gate.agent_contention ?? '—';
+
+    document.getElementById('host-fds').textContent =
+      host.fd_count != null ? String(host.fd_count) : '—';
+    document.getElementById('host-rss').textContent = formatBytes(host.mem_rss_bytes);
+    document.getElementById('host-load').textContent =
+      host.load_1m != null ? Number(host.load_1m).toFixed(2) : '—';
+    const rx = host.net_rx_bytes != null ? formatBytes(host.net_rx_bytes) : '—';
+    const tx = host.net_tx_bytes != null ? formatBytes(host.net_tx_bytes) : '—';
+    document.getElementById('host-net').textContent = rx + ' / ' + tx;
+
+    document.getElementById('agents-scanned').textContent =
+      agents.scanned != null ? String(agents.scanned) : '—';
+    document.getElementById('agents-watched').textContent =
+      agents.watched != null ? String(agents.watched) : '—';
+    document.getElementById('agents-rss').textContent = formatBytes(agents.total_rss_bytes);
+
+    const families = agents.families || {};
+    const famKeys = Object.keys(families);
+    document.getElementById('agents-families').textContent = famKeys.length
+      ? famKeys.map(k => k + ':' + families[k]).join(' · ')
+      : 'no families';
+
+    if (pressure === 'GREEN') setThermal('', 'Normal');
+    else if (pressure === 'YELLOW') setThermal('warning', 'Warning');
+    else if (pressure === 'RED') setThermal('critical', 'Critical');
+    else if (pressure === 'UNAVAILABLE') setThermal('warning', 'Unavailable');
+  }
+
   function setThermal(cls, text) {
     thermalEl.className = cls;
     thermalEl.textContent = text;

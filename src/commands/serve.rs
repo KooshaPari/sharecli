@@ -23,8 +23,12 @@ use axum::{
     routing::get,
     Router,
 };
+use std::collections::HashMap;
+
+use serde::Serialize;
 use serde_json::json;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli_fleet::GateStatusSnapshot;
 use tokio::sync::{broadcast, watch, RwLock};
 use tracing::{info, instrument, warn, Instrument};
 
@@ -35,6 +39,8 @@ use crate::error_envelope::ErrorEnvelope;
 use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
 use crate::notifier::Notifier;
+use crate::commands::proc::AgentProcSnapshot;
+use crate::monitoring::HostResourceWatchJson;
 use crate::runtime::ProcessPool;
 use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
@@ -458,7 +464,13 @@ async fn handle_ws(mut socket: WebSocket, state: AppState) {
         tokio::select! {
             // Periodic process snapshot
             _ = snapshot_interval.tick() => {
-                let snapshot = build_snapshot().await;
+                let snapshot = match build_dashboard_ws_snapshot().await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        warn!("ws snapshot error: {e}");
+                        continue;
+                    }
+                };
                 let msg = match serde_json::to_string(&snapshot) {
                     Ok(s) => Message::Text(s.into()),
                     Err(e) => {
@@ -602,25 +614,75 @@ pub fn render_prometheus_metrics(
     out
 }
 
-async fn build_snapshot() -> serde_json::Value {
+/// One managed process row in the dashboard WebSocket snapshot.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DashboardProcessRow {
+    pub pid: u32,
+    pub name: String,
+    pub cmd: Vec<String>,
+    pub memory_mb: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub harness: Option<String>,
+    pub start_time: u64,
+}
+
+/// Compact host-agent inventory for dashboard operator parity (AC-007.41).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DashboardAgentSummary {
+    pub scanned: usize,
+    pub watched: usize,
+    pub total_rss_bytes: u64,
+    pub families: HashMap<String, usize>,
+}
+
+/// WebSocket operator envelope: gate + host_watch + agent summary + pool processes (AC-007.41).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DashboardWsSnapshot {
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    pub agents: DashboardAgentSummary,
+    pub processes: Vec<DashboardProcessRow>,
+}
+
+/// Build the live dashboard WebSocket snapshot (parity with `status --json` gate/host_watch).
+pub async fn build_dashboard_ws_snapshot() -> anyhow::Result<DashboardWsSnapshot> {
     let pool = ProcessPool::new();
     let procs = pool.list().await;
-    let summaries: Vec<_> = procs
+    let agent_snap = AgentProcSnapshot::capture()?;
+
+    let mut families: HashMap<String, usize> = HashMap::new();
+    let mut total_rss_bytes = 0u64;
+    for row in &agent_snap.agents {
+        *families.entry(row.family.clone()).or_insert(0) += 1;
+        total_rss_bytes += row.mem_rss_bytes;
+    }
+
+    let processes = procs
         .iter()
-        .map(|p| {
-            json!({
-                "pid": p.pid,
-                "name": p.name,
-                "cmd": p.cmd,
-                "memory_mb": p.memory_mb,
-                "project": p.project,
-                "harness": p.harness,
-                "start_time": p.start_time,
-            })
+        .map(|p| DashboardProcessRow {
+            pid: p.pid,
+            name: p.name.clone(),
+            cmd: p.cmd.clone(),
+            memory_mb: p.memory_mb,
+            project: p.project.clone(),
+            harness: p.harness.clone(),
+            start_time: p.start_time,
         })
         .collect();
 
-    json!({ "processes": summaries })
+    Ok(DashboardWsSnapshot {
+        gate: agent_snap.gate,
+        host_watch: agent_snap.host_watch,
+        agents: DashboardAgentSummary {
+            scanned: agent_snap.scanned,
+            watched: agent_snap.watched,
+            total_rss_bytes,
+            families,
+        },
+        processes,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -935,5 +997,42 @@ mod tests {
         tx.send(ThermalEvent::ThermalWarning { pressure: 2 }).unwrap();
         let received = rx.recv().await.unwrap();
         matches!(received, ThermalEvent::ThermalWarning { pressure: 2 });
+    }
+
+    const HOST_WATCH_KEYS: [&str; 5] =
+        ["fd_count", "net_rx_bytes", "net_tx_bytes", "mem_rss_bytes", "load_1m"];
+
+    /// FR-007 / AC-007.41 — dashboard WS snapshot carries gate + host_watch operator envelope.
+    #[tokio::test]
+    async fn dashboard_ws_snapshot_includes_gate_and_host_watch() {
+        let snap = build_dashboard_ws_snapshot().await.expect("dashboard snapshot");
+        let raw = serde_json::to_string(&snap).expect("serialize dashboard snapshot");
+        let v: serde_json::Value = serde_json::from_str(&raw).expect("valid JSON");
+
+        assert!(
+            v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
+            "dashboard WS MUST include gate (AC-007.41); got: {v}"
+        );
+        let host = v
+            .get("host_watch")
+            .expect("dashboard WS MUST include host_watch (AC-007.41)");
+        for key in HOST_WATCH_KEYS {
+            assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.41)");
+        }
+        assert!(v.get("agents").is_some(), "dashboard WS MUST include agents summary (AC-007.41)");
+        assert!(v.get("processes").and_then(|p| p.as_array()).is_some());
+    }
+
+    /// FR-007 / AC-007.41 — dashboard WS snapshot preserves gate → host_watch key ordering.
+    #[tokio::test]
+    async fn dashboard_ws_snapshot_gate_before_host_watch() {
+        let snap = build_dashboard_ws_snapshot().await.expect("dashboard snapshot");
+        let raw = serde_json::to_string(&snap).expect("serialize dashboard snapshot");
+        let gate_pos = raw.find("\"gate\"").expect("gate key in dashboard WS JSON");
+        let host_pos = raw.find("\"host_watch\"").expect("host_watch key in dashboard WS JSON");
+        assert!(
+            gate_pos < host_pos,
+            "dashboard WS MUST serialize gate before host_watch (AC-007.41); got: {raw}"
+        );
     }
 }

@@ -172,6 +172,7 @@
 | AC-007.38   | `tests/fr007_ps_all_text_stderr_silent.rs`; `src/commands/mod.rs` (`print_host_agent_scan`, `ps --all`) | ps --all one-shot text gate → host_watch on stdout after inventory; stderr silent on success |
 | AC-007.39   | `tests/fr007_report_text_stderr_silent.rs`; `src/commands/report.rs` (`render_once` text path) | report text one-shot + --watch gate → host_watch on stdout after report body; stderr silent on success |
 | AC-007.40   | `tests/fr007_report_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportJson`, `render_once` JSON path) | report --format json gate → host_watch top-level siblings; stderr silent on success |
+| AC-007.41   | `tests/fr007_dashboard_ws_operator_envelope.rs`; `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`); `src/dashboard.html` | serve `/ws` gate → host_watch JSON envelope + dashboard operator panels |
 
 ### FR-008 — Coalesce
 

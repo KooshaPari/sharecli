@@ -47,7 +47,29 @@ try {
               this.dispatchEvent(event);
               queueMicrotask(() => {
                 const payload = new MessageEvent("message", {
-                  data: JSON.stringify({ processes: [] }),
+                  data: JSON.stringify({
+                    gate: {
+                      thermal_pressure: "GREEN",
+                      detected_agents: 0,
+                      agent_total_rss_bytes: 0,
+                      agent_contention: "OK",
+                      gate_decision: "ADMIT",
+                    },
+                    host_watch: {
+                      fd_count: 12,
+                      net_rx_bytes: 0,
+                      net_tx_bytes: 0,
+                      mem_rss_bytes: 1048576,
+                      load_1m: 0.42,
+                    },
+                    agents: {
+                      scanned: 0,
+                      watched: 0,
+                      total_rss_bytes: 0,
+                      families: {},
+                    },
+                    processes: [],
+                  }),
                 });
                 this.onmessage?.(payload);
                 this.dispatchEvent(payload);

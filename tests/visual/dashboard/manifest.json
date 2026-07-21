@@ -1,7 +1,7 @@
 {
   "schema": "sharecli-visual-baseline/v1",
   "surface": "src/dashboard.html",
-  "fixture": "empty-pool (fresh sharecli serve)",
+  "fixture": "empty-pool + operator envelope (fresh sharecli serve / visual WS fixture)",
   "platform": "ubuntu-24.04 + Playwright Chromium",
   "seed_sha": "91448b2",
   "seed_date": "2026-07-18",
