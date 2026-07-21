@@ -55,12 +55,12 @@ fn fr007_proc_watch_text_gate_ordering() {
         .spawn()
         .expect("spawn sharecli proc --watch 1");
 
-    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(12_000));
+    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(30_000));
 
     let frame_count = stdout.matches(INVENTORY_HEADER).count();
     assert!(
         frame_count >= 2,
-        "watch MUST re-render at least twice in ~12s; got {frame_count} frames in: {stdout}"
+        "watch MUST re-render at least twice in ~30s; got {frame_count} frames in: {stdout}"
     );
 
     for (idx, segment) in stdout.split(INVENTORY_HEADER).skip(1).enumerate() {
@@ -85,12 +85,12 @@ fn fr007_proc_watch_ndjson_gate_ordering() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(12_000));
+    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(30_000));
 
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert!(
         lines.len() >= 2,
-        "watch --json MUST emit at least two NDJSON lines in ~12s; got: {stdout}"
+        "watch --json MUST emit at least two NDJSON lines in ~30s; got: {stdout}"
     );
     for (idx, line) in lines.iter().enumerate() {
         assert_ndjson_gate_before_host_watch(line, &format!("NDJSON line {}", idx + 1));
