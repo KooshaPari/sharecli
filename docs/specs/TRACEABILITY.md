@@ -170,6 +170,7 @@
 | AC-007.36   | `tests/fr007_status_text_stderr_silent.rs`; `src/commands/mod.rs` (`status` text path) | status one-shot text stderr silent; gate/host_watch stdout text sections only |
 | AC-007.37   | `tests/fr007_health_pool_text_stderr_silent.rs`; `src/commands/mod.rs` (`health`, `pool`) | health/pool one-shot text gate → host_watch on stdout; stderr silent on success |
 | AC-007.38   | `tests/fr007_ps_all_text_stderr_silent.rs`; `src/commands/mod.rs` (`print_host_agent_scan`, `ps --all`) | ps --all one-shot text gate → host_watch on stdout after inventory; stderr silent on success |
+| AC-007.39   | `tests/fr007_report_text_stderr_silent.rs`; `src/commands/report.rs` (`render_once` text path) | report text one-shot + --watch gate → host_watch on stdout after report body; stderr silent on success |
 
 ### FR-008 — Coalesce
 
@@ -239,6 +240,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 report text host watch parity:** `sharecli report` (text, one-shot and
+  `--watch`) prints gate → `host_watch` text sections on stdout after report body (AC-007.39);
+  stderr silent on success (parity with AC-007.38 ps --all and AC-011.6 gate).
 - **2026-07-20 — FR-007 ps --all one-shot text host watch parity:** `sharecli ps --all` prints
   gate → `host_watch` text sections on stdout after host agent inventory (AC-007.38); stderr
   silent on success (parity with AC-007.37 health/pool and AC-011.6 gate).

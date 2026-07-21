@@ -248,7 +248,12 @@ async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
     let report = build_report(&processes, &gate, sort);
 
     match format {
-        ReportFormat::Text => render_text(&report),
+        ReportFormat::Text => {
+            render_text(&report);
+            // AC-007.39: gate → host_watch text sections on stdout after report body.
+            super::print_live_gate_section()?;
+            super::print_live_host_watch_section()?;
+        }
         ReportFormat::Json => render_json(&report)?,
     }
 

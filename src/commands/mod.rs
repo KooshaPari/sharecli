@@ -36,7 +36,7 @@ use sharecli_mesh::capture_maildir_status;
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();
 
 /// Poll live thermal + proc-scan agent inventory and print the FR-011 gate section.
-fn print_live_gate_section() -> Result<()> {
+pub(crate) fn print_live_gate_section() -> Result<()> {
     let thermal = ThermalGovernor::new().poll()?;
     let agent_count = count_host_agents();
     print!("{}", format_gate_status_section(thermal, agent_count));
@@ -44,7 +44,7 @@ fn print_live_gate_section() -> Result<()> {
 }
 
 /// Poll live host FD/RSS/load/net watch and print the FR-007 status section.
-fn print_live_host_watch_section() -> Result<()> {
+pub(crate) fn print_live_host_watch_section() -> Result<()> {
     let resource_watch = ResourceWatchSample::capture()?;
     print!("{}", resource_watch.format_status_section());
     Ok(())
