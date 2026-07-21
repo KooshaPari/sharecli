@@ -249,6 +249,8 @@ pub async fn stop(
 
 /// Check process status.
 /// One-shot `status --json` MUST NOT print gate/host_watch stderr companions (AC-007.32).
+/// One-shot `status` text MUST NOT print gate/host_watch stderr companions either (AC-007.36);
+/// gate/host_watch stay in text sections on stdout only (AC-007.27).
 pub async fn status(verbose: bool, json: bool) -> Result<()> {
     if json {
         let pool = ProcessPool::new();

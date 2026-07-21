@@ -167,6 +167,7 @@
 | AC-007.33   | `tests/fr007_proc_csv_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot CSV paths) | proc one-shot CSV stderr silent; gate/host_watch CSV companion rows only |
 | AC-007.34   | `tests/fr007_proc_text_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot text paths, `render_proc_detail` text path) | proc one-shot text stderr silent; gate/host_watch stdout text sections only |
 | AC-007.35   | `tests/fr007_proc_watch_text_stderr_silent.rs`; `src/commands/proc.rs` (`run` watch loop text path, `render_once` text paths) | proc watch text stderr silent; gate/host_watch + `[watch]` footer stdout only |
+| AC-007.36   | `tests/fr007_status_text_stderr_silent.rs`; `src/commands/mod.rs` (`status` text path) | status one-shot text stderr silent; gate/host_watch stdout text sections only |
 
 ### FR-008 — Coalesce
 
@@ -236,6 +237,10 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 status one-shot text stderr silence:** `sharecli status` (no `--json`)
+  MUST NOT print gate/host_watch text companions on stderr; gate and `host_watch` stay in text
+  sections on stdout only (AC-007.36); extends AC-007.27 text gate ordering with pipe-clean
+  stderr (parity with AC-007.30 / AC-007.31 / AC-007.32 / AC-007.34).
 - **2026-07-20 — FR-007 proc watch text stderr silence:** `sharecli proc --watch` and
   `proc --tree --watch` (no `--json`) MUST NOT print gate/host_watch text companions or
   `[watch]` footer on stderr during refresh cycles; gate, `host_watch`, and `[watch]` stay on
