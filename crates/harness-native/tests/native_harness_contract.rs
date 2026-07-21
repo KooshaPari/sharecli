@@ -2,6 +2,7 @@ use std::path::Path;
 
 use harness_native::find_real;
 use harness_native::strategies::{execute, ExecRequest, RuleOpts};
+use harness_native::{resolve_operator_queue_priority, QueuePriority, QUEUE_PRIORITY_ENV};
 
 // FR: native harness ownership boundary
 
@@ -44,4 +45,17 @@ fn batch_strategy_reports_contract_error() {
 
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("batch strategy"));
+}
+
+/// FR-008 / AC-008.15 — harness rules.conf `priority=` maps through operator resolver.
+#[test]
+fn operator_queue_priority_honors_rules_conf() {
+    unsafe {
+        std::env::remove_var(QUEUE_PRIORITY_ENV);
+    }
+    assert_eq!(
+        resolve_operator_queue_priority(Some("critical")),
+        QueuePriority::Critical,
+        "AC-008.15: rules.conf priority MUST reach QueuePriority"
+    );
 }
