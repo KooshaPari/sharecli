@@ -188,6 +188,25 @@ pub struct PoolNdjsonLine {
     pub snapshot: PoolJson,
 }
 
+/// JSON envelope for `sharecli status --json` (FR-007 / AC-007.25).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct StatusJson {
+    pub total_processes: usize,
+    pub agents: Vec<proc::AgentProcRow>,
+    pub scanned: usize,
+    pub watched: usize,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
+/// One NDJSON watch line for `status --watch --json` (FR-007 / AC-007.66).
+#[derive(Debug, Clone, Serialize)]
+pub struct StatusNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: StatusJson,
+}
+
 async fn build_ps_all_json(
     project: Option<&str>,
     harness: Option<&str>,
@@ -511,24 +530,38 @@ pub async fn stop(
     Ok(())
 }
 
-/// Check process status.
+async fn build_status_json() -> Result<StatusJson> {
+    let pool = ProcessPool::new();
+    let processes: Vec<ProcessInfo> = pool.list().await;
+    let snapshot = proc::AgentProcSnapshot::capture()?;
+    Ok(StatusJson {
+        total_processes: processes.len(),
+        agents: snapshot.agents,
+        scanned: snapshot.scanned,
+        watched: snapshot.watched,
+        gate: snapshot.gate,
+        host_watch: snapshot.host_watch,
+    })
+}
+
+/// Render one status snapshot (one-shot or watch cycle).
+///
 /// One-shot `status --json` MUST NOT print gate/host_watch stderr companions (AC-007.32).
 /// One-shot `status` text MUST NOT print gate/host_watch stderr companions either (AC-007.36);
 /// gate/host_watch stay in text sections on stdout only (AC-007.27).
-pub async fn status(verbose: bool, json: bool) -> Result<()> {
+async fn render_status_once(verbose: bool, json: bool, ndjson: bool) -> Result<()> {
     if json {
-        let pool = ProcessPool::new();
-        let processes: Vec<ProcessInfo> = pool.list().await;
-        let snapshot = proc::AgentProcSnapshot::capture()?;
-        let payload = serde_json::json!({
-            "total_processes": processes.len(),
-            "agents": snapshot.agents,
-            "scanned": snapshot.scanned,
-            "watched": snapshot.watched,
-            "gate": snapshot.gate,
-            "host_watch": snapshot.host_watch,
-        });
-        println!("{}", serde_json::to_string_pretty(&payload)?);
+        let payload = build_status_json().await?;
+        if ndjson {
+            let line = StatusNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
         return Ok(());
     }
 
@@ -600,6 +633,53 @@ pub async fn status(verbose: bool, json: bool) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Check process status.
+pub async fn status(verbose: bool, json: bool, watch: Option<u64>) -> Result<()> {
+    match watch {
+        None => render_status_once(verbose, json, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_status_once(verbose, json, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.66).
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 /// Configuration management

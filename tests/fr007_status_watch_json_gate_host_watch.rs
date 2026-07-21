@@ -1,0 +1,203 @@
+//! FR-007 — `sharecli status --watch --json` NDJSON gate + host_watch parity
+//! FR: FR-007
+//!
+//! AC-007.66 `status --watch --json` streams NDJSON with gate → host_watch on
+//! every refresh; stderr carries text companions (parity with pool watch AC-007.65).
+
+use std::io::Read;
+use std::process::{Child, Command, Stdio};
+use std::thread;
+use std::time::Duration;
+
+fn bin() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_sharecli"))
+}
+
+const GATE_MARKER: &str = "=== Thermal Gate (FR-011) ===";
+const WATCH_MARKER: &str = "=== Host Resource Watch ===";
+
+const HOST_WATCH_KEYS: [&str; 5] =
+    ["fd_count", "net_rx_bytes", "net_tx_bytes", "mem_rss_bytes", "load_1m"];
+
+fn assert_gate_before_watch(segment: &str, context: &str) {
+    let gate_pos = segment
+        .find(GATE_MARKER)
+        .unwrap_or_else(|| panic!("{context} MUST include gate section; got: {segment}"));
+    let watch_pos = segment
+        .find(WATCH_MARKER)
+        .unwrap_or_else(|| panic!("{context} MUST include host watch section; got: {segment}"));
+    assert!(
+        gate_pos < watch_pos,
+        "{context} MUST print gate before host watch (AC-007.66); got: {segment}"
+    );
+}
+
+fn assert_ndjson_gate_before_host_watch(line: &str, context: &str) {
+    let v: serde_json::Value =
+        serde_json::from_str(line.trim()).expect("watch NDJSON line MUST be valid JSON");
+    assert!(v.get("ts").is_some(), "{context} MUST include ts (AC-007.66)");
+    assert!(v.get("gate").is_some(), "{context} MUST include gate (AC-007.66)");
+    assert!(
+        v.get("host_watch").is_some(),
+        "{context} MUST include host_watch (AC-007.66)"
+    );
+    let gate_pos = line.find("\"gate\"").expect("gate key in NDJSON line");
+    let host_pos = line.find("\"host_watch\"").expect("host_watch key in NDJSON line");
+    assert!(
+        gate_pos < host_pos,
+        "{context} MUST serialize gate before host_watch (AC-007.66); got: {line}"
+    );
+    let host = v.get("host_watch").expect("host_watch object");
+    for key in HOST_WATCH_KEYS {
+        assert!(
+            host.get(key).is_some(),
+            "{context} host_watch MUST include {key} (AC-007.66); got: {host}"
+        );
+    }
+}
+
+fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
+    let stdout = child.stdout.take().expect("piped stdout");
+    let stderr = child.stderr.take().expect("piped stderr");
+    let stdout_reader = thread::spawn(move || {
+        let mut buf = String::new();
+        let mut out = stdout;
+        let _ = out.read_to_string(&mut buf);
+        buf
+    });
+    let stderr_reader = thread::spawn(move || {
+        let mut buf = String::new();
+        let mut err = stderr;
+        let _ = err.read_to_string(&mut buf);
+        buf
+    });
+    thread::sleep(dwell);
+    let _ = child.kill();
+    let _ = child.wait();
+    let stdout = stdout_reader.join().expect("stdout drain thread");
+    let stderr = stderr_reader.join().expect("stderr drain thread");
+    (stdout, stderr)
+}
+
+/// FR-007 / AC-007.66 — watch NDJSON stderr carries gate before host_watch companions.
+#[test]
+#[serial_test::serial]
+fn fr007_status_watch_ndjson_stderr_gate_before_host_watch() {
+    let mut child = bin()
+        .args(["status", "--json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli status --json --watch 1");
+
+    let (_stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(12_000));
+
+    assert!(
+        stderr.contains(GATE_MARKER),
+        "status watch NDJSON stderr MUST include gate companion (AC-007.66); stderr: {stderr}"
+    );
+    assert!(
+        stderr.contains(WATCH_MARKER),
+        "status watch NDJSON stderr MUST include host watch companion (AC-007.66); stderr: {stderr}"
+    );
+    assert_gate_before_watch(&stderr, "status watch NDJSON stderr");
+    assert!(
+        stderr.contains("[watch]"),
+        "status watch NDJSON stderr MUST include [watch] footer (AC-007.66); stderr: {stderr}"
+    );
+}
+
+/// FR-007 / AC-007.66 — watch NDJSON stdout stays pipe-clean.
+#[test]
+#[serial_test::serial]
+fn fr007_status_watch_ndjson_stdout_no_companion_leak() {
+    let mut child = bin()
+        .args(["status", "--json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli status --json --watch 1");
+
+    let (stdout, _stderr) = drain_watch_pipes(&mut child, Duration::from_millis(12_000));
+
+    assert!(
+        !stdout.contains(GATE_MARKER),
+        "status NDJSON stdout MUST NOT leak gate companion (AC-007.66); got: {stdout}"
+    );
+    assert!(
+        !stdout.contains(WATCH_MARKER),
+        "status NDJSON stdout MUST NOT leak host watch companion (AC-007.66); got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("[watch]"),
+        "status NDJSON stdout MUST NOT contain watch footer (AC-007.66); got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("\x1b[2J"),
+        "status NDJSON stdout MUST NOT contain terminal clear sequences (AC-007.66)"
+    );
+
+    for line in stdout.lines().filter(|l| !l.is_empty()) {
+        let _: serde_json::Value =
+            serde_json::from_str(line).expect("each status NDJSON stdout line MUST parse");
+    }
+}
+
+/// FR-007 / AC-007.66 — watch NDJSON lines embed gate before host_watch on every snapshot.
+#[test]
+#[serial_test::serial]
+fn fr007_status_watch_ndjson_gate_ordering() {
+    let mut child = bin()
+        .args(["status", "--json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli status --json --watch 1");
+
+    let (stdout, _stderr) = drain_watch_pipes(&mut child, Duration::from_millis(12_000));
+
+    let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    assert!(
+        lines.len() >= 2,
+        "status watch --json MUST emit at least two NDJSON lines in dwell window; got: {stdout}"
+    );
+    for (idx, line) in lines.iter().enumerate() {
+        assert_ndjson_gate_before_host_watch(line, &format!("status NDJSON line {}", idx + 1));
+    }
+}
+
+/// FR-007 / AC-007.66 — serialized status watch NDJSON envelope preserves gate → host_watch key order.
+#[test]
+fn fr007_status_watch_ndjson_gate_order_serializes_fields() {
+    use sharecli::commands::StatusJson;
+    use sharecli::commands::StatusNdjsonLine;
+    use sharecli::monitoring::HostResourceWatchJson;
+    use sharecli_fleet::GateStatusSnapshot;
+
+    let envelope = StatusJson {
+        total_processes: 3,
+        agents: vec![],
+        scanned: 10,
+        watched: 2,
+        gate: GateStatusSnapshot {
+            thermal_pressure: "GREEN".into(),
+            detected_agents: 1,
+            agent_total_rss_bytes: 1024,
+            agent_contention: "OK".into(),
+            gate_decision: "ADMIT".into(),
+        },
+        host_watch: HostResourceWatchJson {
+            fd_count: 7,
+            net_rx_bytes: 1024,
+            net_tx_bytes: 2048,
+            mem_rss_bytes: 4096,
+            load_1m: 1.25,
+        },
+    };
+    let line = StatusNdjsonLine {
+        ts: 1_700_000_000,
+        snapshot: envelope,
+    };
+    let json = serde_json::to_string(&line).expect("serialize status watch NDJSON envelope");
+    assert_ndjson_gate_before_host_watch(&json, "StatusNdjsonLine");
+}
