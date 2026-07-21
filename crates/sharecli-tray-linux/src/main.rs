@@ -65,18 +65,12 @@ mod linux {
         fn tool_tip(&self) -> ksni::ToolTip {
             let description = match (&self.health, self.connected) {
                 (Some(h), true) => {
-                    let base = format!(
-                        "{} managed · {} / {} MB{}",
-                        h.managed_processes,
-                        h.used_memory_mb,
-                        h.total_memory_mb,
-                        if h.healthy { "" } else { " · UNHEALTHY" },
-                    );
+                    let base = operator_display::format_tray_tooltip_summary_line(&self.gate_visual, h);
                     let op = operator_display::format_operator_status_summary(&h.gate, &h.host_watch);
                     let net = operator_display::format_host_net_tray_line(&h.host_watch);
                     format!("{base}\n{op}\n{net}")
                 }
-                _ => "sharecli daemon not reachable".into(),
+                _ => operator_display::format_tray_tooltip_offline_line(&self.gate_visual),
             };
             ksni::ToolTip {
                 title: "ShareCLI".into(),
