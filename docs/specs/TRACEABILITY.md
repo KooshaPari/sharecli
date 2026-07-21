@@ -145,6 +145,7 @@
 | AC-007.11   | `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-thermal-tui` | Host watch + FUSE meters in thermal TUI |
 | AC-007.12   | `tests/fr007_thermal_tui_watch.rs` (`fr007_thermal_tui_resource_watch_net_lines`); `crates/sharecli-thermal-tui/src/lib.rs` (`resource_watch_lines`) | thermal TUI host net RX/TX parity with status |
 | AC-007.13   | `tests/fr007_proc_json_host_watch.rs`; `src/commands/proc.rs` (`AgentProcSnapshot::host_watch`); `src/monitoring.rs` (`HostResourceWatchJson`) | proc JSON host ResourceWatchSample parity |
+| AC-007.14   | `tests/fr007_proc_text_csv_host_watch.rs`; `src/commands/proc.rs` (`print_host_watch_text_footer`, `append_host_watch_csv_companion`); `src/monitoring.rs` (`HostResourceWatchJson::format_text_section`, `format_csv_companion`) | proc text/CSV host ResourceWatchSample parity |
 
 ### FR-008 — Coalesce
 
@@ -208,6 +209,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc text/CSV host watch:** `sharecli proc` text footer and
+  `--csv` companion `host` record surface live FD/RSS/load/net via
+  `HostResourceWatchJson` (AC-007.14); flat + `--tree` parity with JSON `host_watch`.
 - **2026-07-20 — FR-006 thermal TUI flat agent state:** flat Detected Agents lines
   (full, compact, empty-forest fallback) show process state letters via
   `build_host_agent_state_map` / `state_text_for_pid` (AC-006.40).
