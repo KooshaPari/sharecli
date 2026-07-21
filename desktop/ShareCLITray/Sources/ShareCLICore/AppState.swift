@@ -1,6 +1,7 @@
 /// AppState.swift — Observable state for the tray popover + main window.
 ///
-/// Polls the IPC server every 3 s for live data.
+/// Polls the IPC server every 3 s for live data via a single `monitoring.report`
+/// snapshot (AC-007.48): gate/host_watch + process inventory in one round-trip.
 
 import Foundation
 import Combine
@@ -34,11 +35,9 @@ public final class AppState: ObservableObject {
 
     public func refresh() async {
         do {
-            async let procs = client.listProcesses()
-            async let snap = client.health()
-            let (p, h) = try await (procs, snap)
-            processes = p
-            health = h
+            let report = try await client.monitoringReport()
+            processes = report.asProcessSummaries()
+            health = report.asHealthSnapshot()
             isConnected = true
             lastError = nil
         } catch {
