@@ -236,6 +236,38 @@ fn fr007_tray_thermal_visual_swift_popover_stats_row_wires_gate_visual() {
     );
 }
 
+/// FR-007 / AC-007.61 — Linux SNI tooltip summary uses gate visual badge_label.
+#[test]
+fn fr007_tray_thermal_visual_linux_tooltip_wires_gate_visual() {
+    let op = include_str!("../crates/sharecli-tray-linux/src/operator_display.rs");
+    assert!(
+        op.contains("format_tray_tooltip_summary_line"),
+        "Linux OperatorDisplay MUST expose tooltip summary formatter (AC-007.61)"
+    );
+    assert!(
+        op.contains("format_tray_tooltip_offline_line"),
+        "Linux OperatorDisplay MUST expose offline tooltip formatter (AC-007.61)"
+    );
+
+    let main_rs = include_str!("../crates/sharecli-tray-linux/src/main.rs");
+    assert!(
+        main_rs.contains("format_tray_tooltip_summary_line"),
+        "Linux tray tool_tip MUST bind summary from gate visual (AC-007.61)"
+    );
+    assert!(
+        main_rs.contains("gate_visual"),
+        "Linux tray tool_tip MUST use gate_visual for severity (AC-007.61)"
+    );
+    assert!(
+        !main_rs.contains("UNHEALTHY"),
+        "Linux tray tool_tip MUST NOT use generic UNHEALTHY suffix (AC-007.61)"
+    );
+    assert!(
+        !main_rs.contains("h.healthy"),
+        "Linux tray tool_tip MUST NOT derive severity from health.healthy (AC-007.61)"
+    );
+}
+
 /// FR-007 / AC-007.60 — Windows HealthStatusText uses gate visual tokens.
 #[test]
 fn fr007_tray_thermal_visual_windows_health_status_wires_gate_visual() {

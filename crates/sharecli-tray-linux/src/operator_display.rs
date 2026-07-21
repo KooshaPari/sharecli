@@ -3,7 +3,7 @@
 //!
 //! Mirrors dashboard operator panels and proc/status text sections; testable without GUI.
 
-use crate::ipc::{GateStatusSnapshot, HostResourceWatchJson};
+use crate::ipc::{GateStatusSnapshot, HealthSnapshot, HostResourceWatchJson};
 
 /// Tray thermal/gate severity bucket (dashboard `#thermal-status` + gate decision).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,6 +187,22 @@ pub fn format_operator_status_summary(
         format_gate_rss_tray_line(gate),
         format_host_watch_tray_line(host),
     )
+}
+
+/// Primary tooltip summary line for Linux SNI (AC-007.61).
+pub fn format_tray_tooltip_summary_line(visual: &TrayGateVisual, health: &HealthSnapshot) -> String {
+    format!(
+        "{} managed · {} / {} MB · {}",
+        health.managed_processes,
+        health.used_memory_mb,
+        health.total_memory_mb,
+        visual.badge_label,
+    )
+}
+
+/// Offline tooltip summary when monitoring.report is unavailable (AC-007.61).
+pub fn format_tray_tooltip_offline_line(visual: &TrayGateVisual) -> String {
+    format!("ShareCLI · {} · daemon not reachable", visual.badge_label)
 }
 
 #[cfg(test)]
