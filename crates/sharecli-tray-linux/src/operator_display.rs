@@ -205,6 +205,22 @@ pub fn format_tray_tooltip_offline_line(visual: &TrayGateVisual) -> String {
     format!("ShareCLI · {} · daemon not reachable", visual.badge_label)
 }
 
+/// Primary SNI menu header line (AC-007.63).
+pub fn format_tray_menu_header_line(visual: &TrayGateVisual, health: &HealthSnapshot) -> String {
+    format!(
+        "{} · {} process(es) · {} / {} MB",
+        visual.badge_label,
+        health.managed_processes,
+        health.used_memory_mb,
+        health.total_memory_mb,
+    )
+}
+
+/// Offline SNI menu header when monitoring.report is unavailable (AC-007.63).
+pub fn format_tray_menu_header_offline_line(visual: &TrayGateVisual) -> String {
+    format!("{} · Daemon offline", visual.badge_label)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -296,5 +312,27 @@ mod tests {
         let v = resolve_tray_gate_visual("GREEN", "ADMIT", false);
         assert_eq!(v.severity, TrayGateSeverity::Offline);
         assert_eq!(v.badge_label, "Offline");
+    }
+
+    #[test]
+    fn format_tray_menu_header_line_prefixes_badge() {
+        let visual = resolve_tray_gate_visual("GREEN", "ADMIT", true);
+        let health = crate::ipc::HealthSnapshot {
+            managed_processes: 2,
+            used_memory_mb: 512,
+            total_memory_mb: 8192,
+            healthy: true,
+            gate: sample_gate(),
+            host_watch: sample_host(),
+        };
+        let line = format_tray_menu_header_line(&visual, &health);
+        assert_eq!(line, "Normal · 2 process(es) · 512 / 8192 MB");
+    }
+
+    #[test]
+    fn format_tray_menu_header_offline_line_prefixes_badge() {
+        let visual = resolve_tray_gate_visual("GREEN", "ADMIT", false);
+        let line = format_tray_menu_header_offline_line(&visual);
+        assert_eq!(line, "Offline · Daemon offline");
     }
 }

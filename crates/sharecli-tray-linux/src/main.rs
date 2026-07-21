@@ -86,11 +86,10 @@ mod linux {
             let mut items: Vec<ksni::MenuItem<Self>> = Vec::new();
 
             let header = match (&self.health, self.connected) {
-                (Some(h), true) => format!(
-                    "{} process(es) · {} / {} MB",
-                    h.managed_processes, h.used_memory_mb, h.total_memory_mb
-                ),
-                _ => "Daemon offline".into(),
+                (Some(h), true) => {
+                    operator_display::format_tray_menu_header_line(&self.gate_visual, h)
+                }
+                _ => operator_display::format_tray_menu_header_offline_line(&self.gate_visual),
             };
             items.push(StandardItem { label: header, enabled: false, ..Default::default() }.into());
             items.push(MenuItem::Separator);
