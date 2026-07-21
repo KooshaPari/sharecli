@@ -124,7 +124,7 @@
 | AC-006.34   | `tests/fr006_proc_tree_state.rs`; `src/commands/proc.rs` | `state` on `--tree` text nodes and `--tree --json` rows |
 | AC-006.35   | `tests/fr006_proc_tree_state.rs`; `src/commands/proc.rs` (`collect_forest_pids`, `build_forest_state_map`) | live tree state for all forest PIDs (roots + children) |
 | AC-006.36   | `tests/fr006_proc_sort.rs`; `src/commands/proc.rs` (`ProcSort::State`, `sort_watched_agents`, `sort_agent_forests`) | `sharecli proc --sort state` process-state letter ordering |
-| AC-006.37   | `tests/fr006_proc_ndjson.rs`; `src/commands/proc.rs` (`AgentProcNdjsonLine`, `agent_row_from_watch`) | NDJSON watch agent rows include `state` (AC-006.32 parity) |
+| AC-006.37   | `tests/fr006_proc_ndjson.rs`; `src/commands/proc.rs` (`emit_ndjson_line`, `AgentProcNdjsonLine`, `agent_row_from_watch`) | NDJSON watch agent rows include `state` (AC-006.32 parity); flushed stdout + stderr footer |
 | AC-006.38   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs` | `sharecli proc --exclude-family` negates `--family` |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 

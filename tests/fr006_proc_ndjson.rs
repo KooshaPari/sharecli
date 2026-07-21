@@ -15,6 +15,7 @@ fn bin() -> Command {
 
 /// FR-006 / AC-006.18 — each watch refresh is a single parseable NDJSON line with `ts`.
 #[test]
+#[serial_test::serial]
 fn fr006_proc_watch_ndjson_one_line_per_refresh() {
     let mut child = bin()
         .args(["proc", "--json", "--watch", "1"])
@@ -47,6 +48,7 @@ fn fr006_proc_watch_ndjson_one_line_per_refresh() {
 
 /// FR-006 / AC-006.18 — NDJSON stdout stays pipe-clean (no watch footer, no ANSI clear).
 #[test]
+#[serial_test::serial]
 fn fr006_proc_watch_ndjson_stdout_is_pipe_clean() {
     let mut child = bin()
         .args(["proc", "--json", "--watch", "1"])
@@ -81,6 +83,7 @@ fn fr006_proc_watch_ndjson_stdout_is_pipe_clean() {
 
 /// FR-006 / AC-006.37 — NDJSON watch agent objects expose `state` key (AC-006.32 parity).
 #[test]
+#[serial_test::serial]
 fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
     let mut child = bin()
         .args(["proc", "--json", "--watch", "1"])
@@ -149,6 +152,7 @@ fn fr006_proc_watch_ndjson_line_serializes_agent_state() {
 
 /// FR-006 / AC-006.18 — one-shot proc --json remains pretty-printed (non-NDJSON).
 #[test]
+#[serial_test::serial]
 fn fr006_proc_json_snapshot_not_ndjson() {
     let out = bin().args(["proc", "--json"]).output().expect("spawn sharecli proc --json");
     assert!(out.status.success(), "proc --json should exit 0; stderr: {:?}", out.stderr);
