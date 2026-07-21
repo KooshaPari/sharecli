@@ -175,6 +175,7 @@
 | AC-007.41   | `tests/fr007_dashboard_ws_operator_envelope.rs`; `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`); `src/dashboard.html` | serve `/ws` gate → host_watch JSON envelope + dashboard operator panels |
 | AC-007.42   | `tests/fr007_report_watch_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportNdjsonLine`, `run` watch NDJSON path); `src/commands/mod.rs` (`eprint_live_gate_host_watch_sections`) | report --watch --format json NDJSON gate → host_watch per refresh; stderr text companions |
 | AC-007.43   | `tests/fr007_ps_all_json_gate_host_watch.rs`; `src/commands/mod.rs` (`PsAllJson`, `ps --all --json`) | ps --all --json gate → host_watch after pool + agent inventory; stderr silent on success; --json requires --all |
+| AC-007.44   | `tests/fr007_health_pool_json_gate_host_watch.rs`; `src/commands/mod.rs` (`HealthJson`, `PoolJson`, `health --json`, `pool --json`) | health/pool --json gate → host_watch after runtime fields; stderr silent on success |
 
 ### FR-008 — Coalesce
 
@@ -244,6 +245,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 health/pool JSON gate/host_watch parity:** `sharecli health --json` and
+  `sharecli pool --json` emit top-level `gate` + `host_watch` JSON siblings after runtime health /
+  pool status fields (AC-007.44); gate → host_watch key order; stderr silent on success (parity
+  with AC-007.25 status --json and AC-007.43 ps --all --json).
 - **2026-07-21 — FR-007 ps --all JSON gate/host_watch parity:** `sharecli ps --all --json`
   emits top-level `gate` + `host_watch` JSON siblings after managed pool + host agent inventory
   fields (AC-007.43); gate → host_watch key order; stderr silent on success (parity with
