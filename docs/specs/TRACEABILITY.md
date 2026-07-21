@@ -201,6 +201,7 @@
 | AC-007.67   | `tests/fr007_ipc_pool_status_snapshot.rs`; `crates/sharecli-ipc/src/handler.rs` (`PoolSnapshot`, `StatusSnapshot`, `pool.status`, `status.snapshot`); `src/commands/proc.rs` (`AgentProcRow` Deserialize for wire roundtrip) | IPC pool.status + status.snapshot gate → host_watch after pool/status fields; parity with pool --json AC-007.44 and status --json AC-007.25 |
 | AC-007.68   | `crates/sharecli-tray-linux/src/ipc.rs` (`PoolSnapshot`, `StatusSnapshot`, `pool_status`, `status_snapshot`); `crates/sharecli-tray-windows/src/ipc.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`poolStatus`, `statusSnapshot`); `windows/ShareCLITray/PoolStatusSnapshot.cs`; `tests/fr007_ipc_pool_status_tray_wire.rs` | Tray/desktop wire parity for pool.status + status.snapshot; decode gate + host_watch via IPC RPC without pool/status --json shell-out |
 | AC-007.69   | `tests/fr007_tray_pool_status_consume.rs`; `crates/sharecli-tray-linux/src/operator_display.rs` (`format_pool_tray_line`, `format_status_snapshot_tray_line`); `crates/sharecli-tray-linux/src/main.rs` (`refresh` supplementary pool/status); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift`; `windows/ShareCLITray/TrayWindow.xaml.cs`; `windows/ShareCLITray/OperatorDisplay.cs` | Tray refresh enriches operator panels from supplementary pool.status + status.snapshot alongside monitoring.report primary refresh |
+| AC-007.70   | `tests/fr007_dashboard_ws_operator_envelope.rs`; `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`); `src/commands/mod.rs` (`build_pool_json`, `build_status_json`); `src/dashboard.html` | serve `/ws` gate → host_watch → pool → status → agents → processes JSON envelope + dashboard operator panels |
 
 ### FR-008 — Coalesce
 
@@ -270,6 +271,11 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 dashboard WS pool/status envelope parity:** `sharecli serve` `/ws`
+  snapshots emit top-level `pool` + `status` siblings (AC-007.70) in order
+  gate → host_watch → pool → status → agents → processes; embedded dashboard operator panels
+  render pool capacity + proc-scan fields; extends AC-007.41 dashboard envelope + AC-007.69
+  tray format helpers.
 - **2026-07-21 — FR-007 tray pool/status consume parity:** Linux/Swift/Windows tray refresh loops
   call supplementary `pool.status` + `status.snapshot` IPC round-trips alongside primary
   `monitoring.report` refresh (AC-007.69); operator panels surface dedicated pool + proc-scan

@@ -367,6 +367,25 @@
       <dt>Net RX/TX</dt><dd id="host-net">—</dd>
     </dl>
   </div>
+  <div class="operator-panel" id="panel-pool" aria-labelledby="panel-pool-title">
+    <h2 id="panel-pool-title">Runtime pool</h2>
+    <dl>
+      <dt>Node</dt><dd id="pool-node">—</dd>
+      <dt>Bun</dt><dd id="pool-bun">—</dd>
+      <dt>Max/type</dt><dd id="pool-max">—</dd>
+      <dt>Health</dt><dd id="pool-health">—</dd>
+    </dl>
+    <div class="families-list" id="pool-issues" aria-live="polite">—</div>
+  </div>
+  <div class="operator-panel" id="panel-status" aria-labelledby="panel-status-title">
+    <h2 id="panel-status-title">Proc scan</h2>
+    <dl>
+      <dt>Managed</dt><dd id="status-managed">—</dd>
+      <dt>Scanned</dt><dd id="status-scanned">—</dd>
+      <dt>Watched</dt><dd id="status-watched">—</dd>
+      <dt>Agent rows</dt><dd id="status-agent-rows">—</dd>
+    </dl>
+  </div>
   <div class="operator-panel" id="panel-agents" aria-labelledby="panel-agents-title">
     <h2 id="panel-agents-title">Host agents</h2>
     <dl>
@@ -449,6 +468,8 @@
   const OPERATOR_SKELETON_LAYOUT = {
     gate: ['md', 'sm', 'sm', 'lg'],
     host: ['sm', 'md', 'sm', 'xl'],
+    pool: ['md', 'md', 'sm', 'sm'],
+    status: ['sm', 'sm', 'sm', 'sm'],
     agents: ['sm', 'sm', 'md'],
   };
 
@@ -469,6 +490,22 @@
     hostDds.forEach((id, i) => {
       const el = document.getElementById(id);
       el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.host[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const poolDds = ['pool-node', 'pool-bun', 'pool-max', 'pool-health'];
+    poolDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = '';
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.pool[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const poolIssues = document.getElementById('pool-issues');
+    poolIssues.innerHTML = skeletonCell('lg');
+    poolIssues.setAttribute('data-loading-kind', 'panel-value');
+    const statusDds = ['status-managed', 'status-scanned', 'status-watched', 'status-agent-rows'];
+    statusDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.status[i]);
       el.setAttribute('data-loading-kind', 'panel-value');
     });
     const agentDds = ['agents-scanned', 'agents-watched', 'agents-rss'];
@@ -530,7 +567,7 @@
         setThermal('critical', '🔴 Critical');
         return;
       }
-      if (data.gate || data.host_watch || data.agents) {
+      if (data.gate || data.host_watch || data.pool || data.status || data.agents) {
         renderOperatorPanels(data);
       }
       const procs = Array.isArray(data.processes) ? data.processes : [];
@@ -655,6 +692,44 @@
     const rx = host.net_rx_bytes != null ? formatBytes(host.net_rx_bytes) : '—';
     const tx = host.net_tx_bytes != null ? formatBytes(host.net_tx_bytes) : '—';
     document.getElementById('host-net').textContent = rx + ' / ' + tx;
+
+    const pool = data.pool || {};
+    document.getElementById('pool-node').textContent =
+      (pool.node_total != null && pool.node_idle != null)
+        ? `${pool.node_idle}/${pool.node_total} idle`
+        : '—';
+    document.getElementById('pool-bun').textContent =
+      (pool.bun_total != null && pool.bun_idle != null)
+        ? `${pool.bun_idle}/${pool.bun_total} idle`
+        : '—';
+    document.getElementById('pool-max').textContent =
+      pool.max_per_type != null ? String(pool.max_per_type) : '—';
+    const poolHealthEl = document.getElementById('pool-health');
+    if (pool.healthy === true) {
+      poolHealthEl.textContent = 'healthy';
+      poolHealthEl.className = 'gate-admit';
+    } else if (pool.healthy === false) {
+      poolHealthEl.textContent = 'degraded';
+      poolHealthEl.className = 'gate-deny';
+    } else {
+      poolHealthEl.textContent = '—';
+      poolHealthEl.className = '';
+    }
+    const issues = Array.isArray(pool.issues) ? pool.issues : [];
+    document.getElementById('pool-issues').textContent = issues.length
+      ? issues.join(' · ')
+      : 'no issues';
+
+    const status = data.status || {};
+    document.getElementById('status-managed').textContent =
+      status.total_processes != null ? String(status.total_processes) : '—';
+    document.getElementById('status-scanned').textContent =
+      status.scanned != null ? String(status.scanned) : '—';
+    document.getElementById('status-watched').textContent =
+      status.watched != null ? String(status.watched) : '—';
+    const agentRows = Array.isArray(status.agents) ? status.agents.length : null;
+    document.getElementById('status-agent-rows').textContent =
+      agentRows != null ? String(agentRows) : '—';
 
     document.getElementById('agents-scanned').textContent =
       agents.scanned != null ? String(agents.scanned) : '—';
