@@ -235,6 +235,7 @@
 | AC-008.15 | `tests/fr008_queue_priority_operator.rs`; `crates/sharecli-ipc/src/queue.rs` (`resolve_operator_queue_priority`, `QUEUE_PRIORITY_ENV`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::from_operator`, `SpawnRequest::new`); `crates/harness-native/tests/native_harness_contract.rs` (`operator_queue_priority_honors_rules_conf`) | operator env + rules.conf → SpawnRequest queue priority |
 | AC-008.16 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::run_queued`, `hypervisor_run_queued_skips_coalesce_cache`); `crates/harness-native/src/strategies/queue.rs` (`queue_strategy_executes_via_hypervisor`, `priority_queue_strategy_executes_via_hypervisor`) | harness queue/priority_queue → Hypervisor nocache lane via `from_operator` |
 | AC-008.17 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::from_config`, `HypervisorConfig::coalesce_ttl`, `coalesce_ttl`); `crates/harness-native/src/strategies/coalesce.rs` (`coalesce_strategy_executes_via_hypervisor`, `coalesce_strategy_serves_cache_on_replay`, `cache_strategy_executes_via_hypervisor`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_hypervisor_config`, `config_from_rule_opts`) | harness coalesce/cache → Hypervisor::run via from_operator + RuleOpts ttl/debounce/max_concurrent |
+| AC-008.19 | `crates/harness-native/src/strategies/retry.rs`; `crates/harness-native/src/strategies/circuit_breaker.rs`; `crates/harness-native/src/strategies/process.rs`; `crates/harness-native/src/strategies/mod.rs` | harness retry/circuit_breaker/passthrough (+ process delegates) → Hypervisor::run; no raw Command::spawn |
 | AC-008.18 | `crates/harness-native/src/strategies/debounce.rs` (`debounce_strategy_executes_via_hypervisor`, `debounce_strategy_serves_cache_on_replay`, `debounce_strategy_shares_in_window_store`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`config_from_rule_opts`, `build_hypervisor`) | harness debounce → Hypervisor::run via hypervisor_lane + debounce_ms → coalesce_debounce |
 
 ### FR-009 — FUSE
@@ -287,6 +288,7 @@
 
 ## Change log
 
+- **2026-07-21 — FR-008 harness retry/circuit_breaker/process via Hypervisor (AC-008.19):** `retry`, `circuit_breaker`, and `passthrough`/process-delegating strategies execute via `Hypervisor::run` + `SpawnRequest::from_operator`; open circuit fails loudly; retry exhaustion surfaces non-zero exit.
 - **2026-07-21 — FR-007 proc --pid operator envelope parity suite rows (AC-007.86):**
   `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --pid` text/JSON/CSV one-shot matrix
   rows (self-PID) locking gate → host_watch → pool → status companions; `render_pid_detail`
