@@ -124,6 +124,7 @@
 | AC-006.34   | `tests/fr006_proc_tree_state.rs`; `src/commands/proc.rs` | `state` on `--tree` text nodes and `--tree --json` rows |
 | AC-006.35   | `tests/fr006_proc_tree_state.rs`; `src/commands/proc.rs` (`collect_forest_pids`, `build_forest_state_map`) | live tree state for all forest PIDs (roots + children) |
 | AC-006.36   | `tests/fr006_proc_sort.rs`; `src/commands/proc.rs` (`ProcSort::State`, `sort_watched_agents`, `sort_agent_forests`) | `sharecli proc --sort state` process-state letter ordering |
+| AC-006.37   | `tests/fr006_proc_ndjson.rs`; `src/commands/proc.rs` (`AgentProcNdjsonLine`, `agent_row_from_watch`) | NDJSON watch agent rows include `state` (AC-006.32 parity) |
 | AC-006.38   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs` | `sharecli proc --exclude-family` negates `--family` |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
@@ -231,6 +232,8 @@
 - **2026-07-20 — FR-006 proc sort state:** `sharecli proc --sort state` orders flat
   inventory and tree root forests by process state letter with PID tie-break
   (AC-006.36).
+- **2026-07-20 — FR-006 proc watch NDJSON state parity:** `proc --watch --json` NDJSON
+  agent rows include `state` letter matching flat `--json` export (AC-006.37).
 - **2026-07-20 — FR-006 proc exclude-family filter:** `sharecli proc --exclude-family <id>`
   drops matching agent families from flat inventory and `--tree` roots (negation of
   `--family`); mutually exclusive with `--family` (AC-006.38).

@@ -1,6 +1,7 @@
 //! FR-006 — `sharecli proc` host agent inventory CLI.
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
@@ -618,7 +619,7 @@ pub struct ProcDetailSnapshot {
     pub fd_count: Option<u64>,
 }
 
-/// One NDJSON watch line for flat inventory (`proc --watch --json`, AC-006.18).
+/// One NDJSON watch line for flat inventory (`proc --watch --json`, AC-006.18 / AC-006.37).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentProcNdjsonLine {
     pub ts: u64,
@@ -636,6 +637,13 @@ pub struct AgentTreeNdjsonLine {
 
 fn unix_ts_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+}
+
+/// Emit one compact JSON line and flush (piped stdout is block-buffered; AC-006.18).
+fn emit_ndjson_line<T: Serialize>(value: &T) -> Result<()> {
+    println!("{}", serde_json::to_string(value)?);
+    std::io::stdout().flush()?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1005,7 +1013,7 @@ pub fn render_once(
         if json {
             if ndjson {
                 let line = AgentTreeNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
-                println!("{}", serde_json::to_string(&line)?);
+                emit_ndjson_line(&line)?;
                 return Ok(());
             }
             println!("{}", serde_json::to_string_pretty(&snap)?);
@@ -1044,7 +1052,7 @@ pub fn render_once(
         };
         if ndjson {
             let line = AgentProcNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
-            println!("{}", serde_json::to_string(&line)?);
+            emit_ndjson_line(&line)?;
             return Ok(());
         }
         println!("{}", serde_json::to_string_pretty(&snap)?);
@@ -1125,6 +1133,7 @@ pub async fn run(
                     format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {
                     eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
                 } else {
                     println!("{footer}");
                 }
@@ -1227,6 +1236,38 @@ mod tests {
         let json = serde_json::to_string(&line).expect("serialize");
         assert!(json.contains("\"ts\":1750000000"));
         assert!(json.contains("\"agents\":[]"));
+    }
+
+    #[test]
+    fn ndjson_line_agent_rows_include_state() {
+        let line = AgentProcNdjsonLine {
+            ts: 1_750_000_000,
+            snapshot: AgentProcSnapshot {
+                agents: vec![AgentProcRow {
+                    pid: 42,
+                    family: "claude".into(),
+                    comm: "claude".into(),
+                    state: "R".into(),
+                    mem_rss_bytes: 100,
+                    mem_rss: "100B".into(),
+                    fd_count: None,
+                }],
+                scanned: 1,
+                watched: 1,
+                gate: sharecli_fleet::GateStatusSnapshot {
+                    thermal_pressure: "GREEN".into(),
+                    detected_agents: 1,
+                    agent_total_rss_bytes: 100,
+                    agent_contention: "OK".into(),
+                    gate_decision: "ADMIT".into(),
+                },
+            },
+        };
+        let json = serde_json::to_string(&line).expect("serialize");
+        assert!(
+            json.contains("\"state\":\"R\""),
+            "NDJSON watch line MUST include agent state (AC-006.37); got: {json}"
+        );
     }
 
     #[test]

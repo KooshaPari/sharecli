@@ -325,6 +325,10 @@ replacing vendor agent executables as the primary detection path.
   existing filters and export flags; missing state sorts last; equal letters
   tie-break by ascending PID; `--json`, NDJSON, CSV, and text surfaces reflect
   the chosen order.
+- **AC-006.37:** `sharecli proc --watch --json` NDJSON agent rows include a `state`
+  field with the process state letter (parity with flat `--json` from AC-006.32);
+  missing state serializes as empty string; composes with `--state` filter and all
+  other proc watch/export flags.
 - **AC-006.38:** `sharecli proc --exclude-family <id>` keeps flat inventory rows and
   `--tree` root forests whose agent family does NOT match `<id>` (case-insensitive,
   negation of `--family`), composed with `--comm`, `--cmdline`, `--state`,
