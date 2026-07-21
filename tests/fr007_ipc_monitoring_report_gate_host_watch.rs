@@ -85,8 +85,24 @@ async fn fr007_ipc_monitoring_report_gate_host_watch_live() {
 fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
     use sharecli::monitoring::HostResourceWatchJson;
     use sharecli_fleet::GateStatusSnapshot;
-    use sharecli_ipc::handler::{MonitoringProcessEntry, MonitoringReportSnapshot};
+    use sharecli_ipc::handler::{
+        MonitoringProcessEntry, MonitoringReportSnapshot, PoolSnapshot, StatusSnapshot,
+    };
 
+    let gate = GateStatusSnapshot {
+        thermal_pressure: "GREEN".into(),
+        detected_agents: 1,
+        agent_total_rss_bytes: 512,
+        agent_contention: "OK".into(),
+        gate_decision: "ADMIT".into(),
+    };
+    let host_watch = HostResourceWatchJson {
+        fd_count: 10,
+        net_rx_bytes: 100,
+        net_tx_bytes: 200,
+        mem_rss_bytes: 4096,
+        load_1m: 0.42,
+    };
     let snap = MonitoringReportSnapshot {
         timestamp: 1_700_000_000,
         total_processes: 2,
@@ -99,19 +115,26 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
             project: Some("demo".into()),
             harness: None,
         }],
-        gate: GateStatusSnapshot {
-            thermal_pressure: "GREEN".into(),
-            detected_agents: 1,
-            agent_total_rss_bytes: 512,
-            agent_contention: "OK".into(),
-            gate_decision: "ADMIT".into(),
+        gate: gate.clone(),
+        host_watch: host_watch.clone(),
+        pool: PoolSnapshot {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 0,
+            max_per_type: 4,
+            healthy: true,
+            issues: vec![],
+            gate: gate.clone(),
+            host_watch: host_watch.clone(),
         },
-        host_watch: HostResourceWatchJson {
-            fd_count: 10,
-            net_rx_bytes: 100,
-            net_tx_bytes: 200,
-            mem_rss_bytes: 4096,
-            load_1m: 0.42,
+        status: StatusSnapshot {
+            total_processes: 2,
+            agents: vec![],
+            scanned: 50,
+            watched: 1,
+            gate,
+            host_watch,
         },
     };
     let json = serde_json::to_string(&snap).expect("serialize MonitoringReportSnapshot");
@@ -130,7 +153,18 @@ fn fr007_ipc_monitoring_report_tray_wire_roundtrip() {
         "gate":{"thermal_pressure":"GREEN","detected_agents":0,
         "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
         "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
-        "mem_rss_bytes":4,"load_1m":0.5}}"#;
+        "mem_rss_bytes":4,"load_1m":0.5},
+        "pool":{"node_total":2,"node_idle":1,"bun_total":1,"bun_idle":0,"max_per_type":4,
+        "healthy":true,"issues":[],
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+        "mem_rss_bytes":4,"load_1m":0.5}},
+        "status":{"total_processes":2,"agents":[],"scanned":50,"watched":1,
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+        "mem_rss_bytes":4,"load_1m":0.5}}}"#;
     let snap: MonitoringReportSnapshot =
         serde_json::from_str(raw).expect("decode MonitoringReportSnapshot wire JSON");
     assert_eq!(snap.total_processes, 1);

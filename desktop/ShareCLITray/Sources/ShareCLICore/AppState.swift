@@ -1,8 +1,8 @@
 /// AppState.swift — Observable state for the tray popover + main window.
 ///
 /// Polls the IPC server on `TrayPoll.intervalSeconds` cadence for live data via a single
-/// `monitoring.report` snapshot (AC-007.48): gate/host_watch + process inventory in one round-trip.
-/// Supplementary `pool.status` + `status.snapshot` enrich operator panels (AC-007.69).
+/// `monitoring.report` snapshot (AC-007.48 / AC-007.72): gate/host_watch + process inventory
+/// + embedded pool/status in one round-trip.
 
 import Foundation
 import Combine
@@ -41,10 +41,10 @@ public final class AppState: ObservableObject {
             let report = try await client.monitoringReport()
             processes = report.asProcessSummaries()
             health = report.asHealthSnapshot()
+            poolStatus = report.pool
+            statusSnapshot = report.status
             isConnected = true
             lastError = nil
-            poolStatus = try? await client.poolStatus()
-            statusSnapshot = try? await client.statusSnapshot()
             NotificationCenter.default.post(
                 name: .sharecliHealthChanged,
                 object: health

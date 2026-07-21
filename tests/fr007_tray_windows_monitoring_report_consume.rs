@@ -43,7 +43,18 @@ fn fr007_tray_windows_monitoring_report_maps_gate_host_watch_order() {
         "gate":{"thermal_pressure":"YELLOW","detected_agents":1,
         "agent_total_rss_bytes":512,"agent_contention":"WARN","gate_decision":"THROTTLE"},
         "host_watch":{"fd_count":10,"net_rx_bytes":100,"net_tx_bytes":200,
-        "mem_rss_bytes":4096,"load_1m":1.25}}"#;
+        "mem_rss_bytes":4096,"load_1m":1.25},
+        "pool":{"node_total":2,"node_idle":1,"bun_total":1,"bun_idle":0,"max_per_type":4,
+        "healthy":true,"issues":[],
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+        "mem_rss_bytes":4,"load_1m":0.5}},
+        "status":{"total_processes":2,"agents":[],"scanned":50,"watched":1,
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+        "mem_rss_bytes":4,"load_1m":0.5}}}"#;
     let gate_pos = raw.find("\"gate\"").expect("gate in wire JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch in wire JSON");
     assert!(gate_pos < host_pos, "gate MUST precede host_watch on wire (AC-007.51)");

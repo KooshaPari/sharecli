@@ -85,6 +85,8 @@ public struct MonitoringReportSnapshot: Decodable {
     public let processes: [MonitoringProcessEntry]
     public let gate: GateStatusSnapshot
     public let host_watch: HostResourceWatchJson
+    public let pool: PoolSnapshot
+    public let status: StatusSnapshot
 
     /// Map fleet monitoring snapshot → tray health fields (parity with `health.status`).
     public func asHealthSnapshot() -> HealthSnapshot {

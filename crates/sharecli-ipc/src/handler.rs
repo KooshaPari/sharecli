@@ -133,10 +133,10 @@ pub struct StatusSnapshot {
     pub host_watch: HostResourceWatchJson,
 }
 
-/// IPC `monitoring.report` envelope (FR-007 / AC-007.46).
+/// IPC `monitoring.report` envelope (FR-007 / AC-007.46, pool/status AC-007.72).
 ///
-/// Fleet monitoring fields precede live `gate` and `host_watch` siblings
-/// (parity with `report --format json` AC-007.40 and `health.status` AC-007.45).
+/// Fleet monitoring fields precede live `gate`, `host_watch`, `pool`, and `status`
+/// siblings (parity with dashboard WS AC-007.70 key order within the operator envelope).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct MonitoringReportSnapshot {
     pub timestamp: u64,
@@ -146,6 +146,8 @@ pub struct MonitoringReportSnapshot {
     pub processes: Vec<MonitoringProcessEntry>,
     pub gate: GateStatusSnapshot,
     pub host_watch: HostResourceWatchJson,
+    pub pool: PoolSnapshot,
+    pub status: StatusSnapshot,
 }
 
 /// Live thermal gate + host resource watch for IPC envelopes (FR-007 / AC-007.45).
@@ -291,6 +293,29 @@ impl Handler {
                 let procs = self.pool.list().await;
                 let (used, total) = self.pool.system_memory_usage().await;
                 let (gate, host_watch) = capture_gate_host_watch()?;
+                let runtime = shared_runtime();
+                let pool_status = runtime.status().await;
+                let pool_health = runtime.health_check().await;
+                let pool = PoolSnapshot {
+                    node_total: pool_status.node_total,
+                    node_idle: pool_status.node_idle,
+                    bun_total: pool_status.bun_total,
+                    bun_idle: pool_status.bun_idle,
+                    max_per_type: pool_status.max_per_type,
+                    healthy: pool_health.healthy,
+                    issues: pool_health.issues,
+                    gate: gate.clone(),
+                    host_watch: host_watch.clone(),
+                };
+                let agent_snap = AgentProcSnapshot::capture()?;
+                let status = StatusSnapshot {
+                    total_processes: procs.len(),
+                    agents: agent_snap.agents,
+                    scanned: agent_snap.scanned,
+                    watched: agent_snap.watched,
+                    gate: agent_snap.gate,
+                    host_watch: agent_snap.host_watch,
+                };
                 let snap = MonitoringReportSnapshot {
                     timestamp: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
@@ -311,6 +336,8 @@ impl Handler {
                         .collect(),
                     gate,
                     host_watch,
+                    pool,
+                    status,
                 };
                 Ok(serde_json::to_value(snap)?)
             }

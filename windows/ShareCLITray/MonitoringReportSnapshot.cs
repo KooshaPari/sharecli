@@ -29,6 +29,12 @@ public sealed class MonitoringReportSnapshot
     [JsonPropertyName("host_watch")]
     public HostResourceWatchJson HostWatch { get; set; } = new();
 
+    [JsonPropertyName("pool")]
+    public PoolSnapshot Pool { get; set; } = new();
+
+    [JsonPropertyName("status")]
+    public StatusSnapshot Status { get; set; } = new();
+
     public TrayHealthSnapshot AsHealthSnapshot()
     {
         return new TrayHealthSnapshot
