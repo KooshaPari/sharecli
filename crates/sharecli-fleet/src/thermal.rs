@@ -84,3 +84,16 @@ impl ThermalGovernor {
         Ok(ThermalLevel::Green)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ThermalGovernor, ThermalLevel};
+
+    #[test]
+    fn thermal_mock_levels_are_deterministic() {
+        for level in [ThermalLevel::Green, ThermalLevel::Yellow, ThermalLevel::Red] {
+            let gov = ThermalGovernor::with_mock(level);
+            assert_eq!(gov.poll().expect("poll"), level);
+        }
+    }
+}

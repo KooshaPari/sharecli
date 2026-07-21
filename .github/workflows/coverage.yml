@@ -40,7 +40,7 @@ jobs:
       - name: Guard — refuse empty test suite
         run: |
           set -euo pipefail
-          OUT=$(cargo test --locked --all-features -- --list 2>/dev/null || true)
+          OUT=$(cargo test --locked --all-features --workspace -- --list 2>/dev/null || true)
           COUNT=$(printf '%s\n' "$OUT" | grep -c ': test$' || true)
           echo "Discovered tests: $COUNT"
           if [ "${COUNT:-0}" -le 0 ]; then
