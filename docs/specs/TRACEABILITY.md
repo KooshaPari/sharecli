@@ -170,6 +170,7 @@
 | AC-008.12 | `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-fleet/src/slot_queue_meters.rs` | SlotQueue acquire/wait/timeout in status + thermal TUI |
 | AC-008.13 | `tests/fr008_coalesce_mesh.rs` (`fr008_command_key_cwd_env_dimensions`, `fr008_hypervisor_cache_respects_cwd_and_env`); `crates/sharecli-ipc/src/lib.rs` (`command_key`); `crates/sharecli-core/src/lib.rs` (`Hypervisor::run`) | command_key cwd/env dimensions + Hypervisor cache isolation |
 | AC-008.14 | `tests/fr008_coalesce_mesh.rs` (`fr008_slot_queue_critical_before_normal`, `fr008_hypervisor_nocache_critical_before_normal`); `crates/sharecli-ipc/src/queue.rs` (`critical_dequeues_before_normal_under_contention`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::queue_priority`, `Hypervisor::run`) | SlotQueue Critical-before-Normal priority + Hypervisor nocache wiring |
+| AC-008.15 | `tests/fr008_queue_priority_operator.rs`; `crates/sharecli-ipc/src/queue.rs` (`resolve_operator_queue_priority`, `QUEUE_PRIORITY_ENV`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::from_operator`, `SpawnRequest::new`); `crates/harness-native/tests/native_harness_contract.rs` (`operator_queue_priority_honors_rules_conf`) | operator env + rules.conf → SpawnRequest queue priority |
 
 ### FR-009 — FUSE
 
@@ -275,6 +276,9 @@
   coalesce-derived session id to `mount_with_session` (AC-009.12).
 - **2026-07-20 — FR-009 fuse provenance CLI:** `sharecli fuse provenance`
   reads backing write xattrs via `read_provenance` (AC-009.11).
+- **2026-07-20 — FR-008 operator queue priority:** `SHARECLI_QUEUE_PRIORITY` +
+  rules.conf `priority=` resolve through `resolve_operator_queue_priority` into
+  `SpawnRequest::queue_priority` (AC-008.15); harness-native re-exports resolver.
 - **2026-07-20 — FR-008 SlotQueue operator meters:** `global_slot_queue_meters`
   + status/thermal TUI panels (AC-008.12); acquire/wait/timeout on nocache lane.
 - **2026-07-20 — FR-009 write-serialize operator meters:** `global_write_serialize_meters`

@@ -23,6 +23,7 @@ name = "harness_native"
 path = "src/lib.rs"
 
 [dependencies]
+sharecli-ipc = { path = "../sharecli-ipc" }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 clap = { version = "4.5.59", features = ["derive"] }
 fs2 = "0.4"

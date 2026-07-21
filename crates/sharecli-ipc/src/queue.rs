@@ -54,6 +54,22 @@ impl QueuePriority {
     }
 }
 
+/// Operator env override for Hypervisor nocache [`SlotQueue`] priority (FR-008 AC-008.15).
+pub const QUEUE_PRIORITY_ENV: &str = "SHARECLI_QUEUE_PRIORITY";
+
+/// Resolve queue priority from the operator surface.
+///
+/// Precedence: non-empty [`QUEUE_PRIORITY_ENV`] → optional rules.conf `priority=`
+/// → [`QueuePriority::Normal`].
+pub fn resolve_operator_queue_priority(rule_priority: Option<&str>) -> QueuePriority {
+    if let Ok(raw) = std::env::var(QUEUE_PRIORITY_ENV) {
+        if !raw.trim().is_empty() {
+            return QueuePriority::parse(&raw);
+        }
+    }
+    rule_priority.map(QueuePriority::parse).unwrap_or(QueuePriority::Normal)
+}
+
 /// Filesystem-backed N-slot concurrency limiter for a named command lane.
 ///
 /// Callers that must not coalesce (mutating / `nocache_args` paths) acquire a
@@ -424,5 +440,37 @@ mod tests {
             vec!["holder_start", "holder_end", "critical", "normal_late"],
             "AC-008.14: Critical MUST dequeue before Normal"
         );
+    }
+
+    /// FR-008 / AC-008.15 — operator env overrides rules.conf priority.
+    #[test]
+    #[serial_test::serial]
+    fn resolve_operator_queue_priority_env_overrides_rule() {
+        unsafe {
+            std::env::set_var(QUEUE_PRIORITY_ENV, "critical");
+        }
+        assert_eq!(
+            resolve_operator_queue_priority(Some("low")),
+            QueuePriority::Critical,
+            "AC-008.15: SHARECLI_QUEUE_PRIORITY MUST win over rules.conf"
+        );
+        unsafe {
+            std::env::remove_var(QUEUE_PRIORITY_ENV);
+        }
+    }
+
+    /// FR-008 / AC-008.15 — rules.conf priority fallback when env unset.
+    #[test]
+    #[serial_test::serial]
+    fn resolve_operator_queue_priority_rule_fallback() {
+        unsafe {
+            std::env::remove_var(QUEUE_PRIORITY_ENV);
+        }
+        assert_eq!(
+            resolve_operator_queue_priority(Some("high")),
+            QueuePriority::High,
+            "AC-008.15: rules.conf priority MUST map to QueuePriority"
+        );
+        assert_eq!(resolve_operator_queue_priority(None), QueuePriority::Normal);
     }
 }

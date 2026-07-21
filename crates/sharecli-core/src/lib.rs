@@ -84,7 +84,7 @@ pub use sharecli_fleet::{
     sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
     ResourceWatchSample,
 };
-pub use sharecli_ipc::QueuePriority;
+pub use sharecli_ipc::{resolve_operator_queue_priority, QueuePriority, QUEUE_PRIORITY_ENV};
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
@@ -470,9 +470,26 @@ pub struct SpawnRequest {
 }
 
 impl SpawnRequest {
-    /// Build a spawn request with default nocache queue priority (`Normal`).
+    /// Build a spawn request with operator-resolved nocache queue priority.
     pub fn new(argv: Vec<String>, cwd: PathBuf, env: Vec<(String, String)>) -> Self {
-        Self { argv, cwd, env, queue_priority: QueuePriority::default() }
+        Self::from_operator(argv, cwd, env, None)
+    }
+
+    /// Build from argv/cwd/env with optional rules.conf `priority=` fallback.
+    ///
+    /// Non-empty [`QUEUE_PRIORITY_ENV`] wins over `rule_priority` (FR-008 AC-008.15).
+    pub fn from_operator(
+        argv: Vec<String>,
+        cwd: PathBuf,
+        env: Vec<(String, String)>,
+        rule_priority: Option<&str>,
+    ) -> Self {
+        Self {
+            argv,
+            cwd,
+            env,
+            queue_priority: resolve_operator_queue_priority(rule_priority),
+        }
     }
 
     /// Override nocache queue priority for this spawn.
