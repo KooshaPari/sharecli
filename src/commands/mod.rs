@@ -199,6 +199,30 @@ pub struct StatusJson {
     pub host_watch: HostResourceWatchJson,
 }
 
+impl From<PoolJson> for sharecli_fleet::PoolOperatorPanel {
+    fn from(p: PoolJson) -> Self {
+        Self {
+            node_total: p.node_total,
+            node_idle: p.node_idle,
+            bun_total: p.bun_total,
+            bun_idle: p.bun_idle,
+            max_per_type: p.max_per_type,
+            healthy: p.healthy,
+        }
+    }
+}
+
+impl From<StatusJson> for sharecli_fleet::StatusOperatorPanel {
+    fn from(s: StatusJson) -> Self {
+        Self {
+            scanned: s.scanned,
+            watched: s.watched,
+            total_processes: s.total_processes,
+            agent_rows: s.agents.len(),
+        }
+    }
+}
+
 /// One NDJSON watch line for `status --watch --json` (FR-007 / AC-007.66).
 #[derive(Debug, Clone, Serialize)]
 pub struct StatusNdjsonLine {

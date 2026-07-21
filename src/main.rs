@@ -688,7 +688,15 @@ async fn run() -> Result<()> {
         }
         Commands::Thermal { cap } => {
             let gov = sharecli_fleet::thermal::ThermalGovernor::new();
-            thermal_tui::run(&gov, *cap)?;
+            let poll_pool_status = move || {
+                let handle = tokio::runtime::Handle::current();
+                handle.block_on(async {
+                    let pool = crate::commands::build_pool_json().await.ok().map(Into::into);
+                    let status = crate::commands::build_status_json().await.ok().map(Into::into);
+                    (pool, status)
+                })
+            };
+            thermal_tui::run_with_pool_status(&gov, *cap, Some(Box::new(poll_pool_status)))?;
         }
         Commands::Fleet { cmd } => match cmd {
             FleetCmd::Status => fleet_status().await?,

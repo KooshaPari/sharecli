@@ -20,7 +20,7 @@ use sharecli_mesh::MaildirStatus;
 use sharecli_thermal_tui::{render, App};
 
 const TUI_W: u16 = 80;
-const TUI_H: u16 = 52;
+const TUI_H: u16 = 64;
 
 const GOLDEN_WATCH: ResourceWatchSample = ResourceWatchSample {
     fd_count: 16,
@@ -173,6 +173,14 @@ fn golden_thermal_tui_levels() {
         );
         assert!(actual.contains("Mesh ready:"), "{name} MUST include mesh Maildir depth meters");
         assert!(actual.contains("Detected Agents"), "{name} MUST include proc-scan agent panel");
+        assert!(
+            actual.contains("Runtime Pool") || actual.contains(" pool unavailable"),
+            "{name} MUST include runtime pool operator panel (AC-007.71)"
+        );
+        assert!(
+            actual.contains("Proc Scan Status") || actual.contains(" status unavailable"),
+            "{name} MUST include proc-scan status operator panel (AC-007.71)"
+        );
         assert!(actual.contains("Neg hits:"), "{name} MUST include neg dentry meters");
     }
 }

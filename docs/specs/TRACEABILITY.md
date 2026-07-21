@@ -202,6 +202,7 @@
 | AC-007.68   | `crates/sharecli-tray-linux/src/ipc.rs` (`PoolSnapshot`, `StatusSnapshot`, `pool_status`, `status_snapshot`); `crates/sharecli-tray-windows/src/ipc.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`poolStatus`, `statusSnapshot`); `windows/ShareCLITray/PoolStatusSnapshot.cs`; `tests/fr007_ipc_pool_status_tray_wire.rs` | Tray/desktop wire parity for pool.status + status.snapshot; decode gate + host_watch via IPC RPC without pool/status --json shell-out |
 | AC-007.69   | `tests/fr007_tray_pool_status_consume.rs`; `crates/sharecli-tray-linux/src/operator_display.rs` (`format_pool_tray_line`, `format_status_snapshot_tray_line`); `crates/sharecli-tray-linux/src/main.rs` (`refresh` supplementary pool/status); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift`; `windows/ShareCLITray/TrayWindow.xaml.cs`; `windows/ShareCLITray/OperatorDisplay.cs` | Tray refresh enriches operator panels from supplementary pool.status + status.snapshot alongside monitoring.report primary refresh |
 | AC-007.70   | `tests/fr007_dashboard_ws_operator_envelope.rs`; `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`); `src/commands/mod.rs` (`build_pool_json`, `build_status_json`); `src/dashboard.html` | serve `/ws` gate → host_watch → pool → status → agents → processes JSON envelope + dashboard operator panels |
+| AC-007.71   | `tests/fr007_thermal_tui_pool_status.rs`; `crates/sharecli-fleet/src/operator_pool_status.rs`; `crates/sharecli-thermal-tui/src/lib.rs` (`pool_panel_lines`, `status_panel_lines`, `run_with_pool_status`); `src/main.rs` (`build_pool_json` / `build_status_json` poll hook); `src/commands/mod.rs` (`From<PoolJson>`, `From<StatusJson>`) | Thermal TUI pool + proc-scan operator panels parity with tray AC-007.69 / dashboard AC-007.70 |
 
 ### FR-008 — Coalesce
 
@@ -271,6 +272,11 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 thermal TUI pool/status operator panels:** `sharecli thermal` surfaces
+  dedicated runtime pool + proc-scan status panels (AC-007.71) via `run_with_pool_status` polling
+  `build_pool_json` / `build_status_json`; shared [`PoolOperatorPanel`](crates/sharecli-fleet/src/operator_pool_status.rs)
+  / [`StatusOperatorPanel`](crates/sharecli-fleet/src/operator_pool_status.rs) formatters match tray
+  AC-007.69 lines; keyboard focus adds pool (`2`) and status (`3`) panels.
 - **2026-07-21 — FR-007 dashboard WS pool/status envelope parity:** `sharecli serve` `/ws`
   snapshots emit top-level `pool` + `status` siblings (AC-007.70) in order
   gate → host_watch → pool → status → agents → processes; embedded dashboard operator panels
