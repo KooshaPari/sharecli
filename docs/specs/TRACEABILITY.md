@@ -168,6 +168,7 @@
 | AC-008.10 | `tests/e2e_hypervisor_nocache.rs` | Hypervisor nocache e2e: re-exec, serialize, coalesce isolation |
 | AC-008.11 | `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-ipc` `global_coalesce_meters_record_hit_miss_and_nocache` | coalesce operator meters in status + thermal TUI |
 | AC-008.12 | `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-fleet/src/slot_queue_meters.rs` | SlotQueue acquire/wait/timeout in status + thermal TUI |
+| AC-008.13 | `tests/fr008_coalesce_mesh.rs` (`fr008_command_key_cwd_env_dimensions`, `fr008_hypervisor_cache_respects_cwd_and_env`); `crates/sharecli-ipc/src/lib.rs` (`command_key`); `crates/sharecli-core/src/lib.rs` (`Hypervisor::run`) | command_key cwd/env dimensions + Hypervisor cache isolation |
 
 ### FR-009 — FUSE
 
@@ -219,6 +220,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-008 command_key cwd/env dimensions:** `command_key` and
+  Hypervisor coalesce cache isolate `cwd` + `env_subset`, not argv alone
+  (AC-008.13); closes AC-008.1 cwd/env coverage gap in coalesce mesh tests.
 - **2026-07-20 — FR-007 proc one-shot JSON gate ordering:** `sharecli proc --json`,
   `proc --tree --json`, and `proc --pid --json` serialize `"gate"` before `"host_watch"`
   in raw JSON (AC-007.24); completes proc gate/watch ordering matrix; flat watch dwell

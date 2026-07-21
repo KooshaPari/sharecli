@@ -10,6 +10,7 @@
 //! AC-008.7 nocache_args mutating flags bypass coalesce
 //! AC-008.8 SlotQueue serializes max_concurrent=1
 //! AC-008.9 Hypervisor routes nocache argv through queue (not cache)
+//! AC-008.13 command_key cwd/env dimensions + Hypervisor cache isolation
 //! (Mesh membership ACs live under FR-010.)
 
 use sharecli_core::{
@@ -36,6 +37,80 @@ fn fr008_command_key_stable() {
     let c = command_key(&["echo".into(), "y".into()], cwd, &[]);
     assert_eq!(a, b);
     assert_ne!(a, c);
+}
+
+/// FR-008 / AC-008.13 — `command_key` incorporates cwd and env_subset dimensions.
+#[test]
+fn fr008_command_key_cwd_env_dimensions() {
+    let argv = vec!["echo".into(), "mesh".into()];
+    let cwd_a = Path::new("/tmp/sharecli-a");
+    let cwd_b = Path::new("/tmp/sharecli-b");
+    let env_v1 = vec![("TOOL".into(), "1".into())];
+    let env_v2 = vec![("TOOL".into(), "2".into())];
+    let env_perm = vec![("B".into(), "2".into()), ("A".into(), "1".into())];
+    let env_sorted = vec![("A".into(), "1".into()), ("B".into(), "2".into())];
+
+    let base = command_key(&argv, cwd_a, &env_v1);
+    assert_eq!(base, command_key(&argv, cwd_a, &env_v1), "stable cwd+env");
+    assert_ne!(
+        command_key(&argv, cwd_b, &env_v1),
+        base,
+        "different cwd MUST change command_key (AC-008.13)"
+    );
+    assert_ne!(
+        command_key(&argv, cwd_a, &env_v2),
+        base,
+        "different env value MUST change command_key (AC-008.13)"
+    );
+    assert_eq!(
+        command_key(&argv, cwd_a, &env_perm),
+        command_key(&argv, cwd_a, &env_sorted),
+        "env key order MUST NOT affect command_key (AC-008.13)"
+    );
+}
+
+/// FR-008 / AC-008.13 — Hypervisor coalesce cache isolates cwd/env, not argv alone.
+#[tokio::test]
+async fn fr008_hypervisor_cache_respects_cwd_and_env() {
+    let root = TempDir::new().expect("tempdir");
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let hv = Hypervisor::with_thermal_gate(root.path(), gate);
+
+    #[cfg(unix)]
+    let argv = vec!["echo".to_string(), "cwd-env".to_string()];
+    #[cfg(windows)]
+    let argv = vec![
+        "cmd".to_string(),
+        "/C".to_string(),
+        "echo".to_string(),
+        "cwd-env".to_string(),
+    ];
+
+    let cwd_a = root.path().join("a");
+    let cwd_b = root.path().join("b");
+    std::fs::create_dir_all(&cwd_a).expect("mkdir a");
+    std::fs::create_dir_all(&cwd_b).expect("mkdir b");
+
+    let req_a = SpawnRequest {
+        argv: argv.clone(),
+        cwd: cwd_a.clone(),
+        env: vec![("SHARECLI_PROBE".into(), "1".into())],
+    };
+    let first = hv.run(req_a.clone()).await.expect("first run");
+    assert!(!first.from_cache);
+    let replay = hv.run(req_a).await.expect("replay same cwd+env");
+    assert!(replay.from_cache, "identical cwd+env MUST hit cache (AC-008.13)");
+
+    let req_b = SpawnRequest {
+        argv,
+        cwd: cwd_b,
+        env: vec![("SHARECLI_PROBE".into(), "2".into())],
+    };
+    let isolated = hv.run(req_b).await.expect("different cwd+env");
+    assert!(
+        !isolated.from_cache,
+        "different cwd/env MUST NOT reuse argv-only cache entry (AC-008.13)"
+    );
 }
 
 /// FR-008 / AC-008.2 — with_lock executes the miss path once per key.
