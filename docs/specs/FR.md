@@ -415,8 +415,14 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   [`HostResourceWatchJson::format_csv_companion`](src/monitoring.rs) (companion
   `host` CSV record after agent rows); MUST fail loudly via `?` when sampling
   is unsupported or errors (parity with JSON `host_watch` from AC-007.13).
+- **AC-007.15:** `sharecli proc --tree --json` and `sharecli proc --tree --watch --json`
+  MUST emit a `host_watch` object on every snapshot with live
+  [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs) fields via
+  [`HostResourceWatchJson`](src/monitoring.rs) on [`AgentTreeSnapshot`](src/commands/proc.rs);
+  MUST fail loudly via `?` when sampling is unsupported or errors (parity with flat
+  JSON `host_watch` from AC-007.13).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`
 
 ---
 
