@@ -468,8 +468,13 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   in raw output (parity with watch NDJSON ordering from AC-007.22 / AC-007.23); serde field
   order on [`AgentProcSnapshot`](src/commands/proc.rs), [`AgentTreeSnapshot`](src/commands/proc.rs),
   and [`ProcDetailSnapshot`](src/commands/proc.rs) is the contract.
+- **AC-007.25:** `sharecli status --json` MUST emit top-level `gate` and `host_watch` siblings
+  with the same shapes as `sharecli proc --json` (AC-007.13), plus flat `agents` array,
+  `scanned`, `watched`, and `total_processes`; MUST NOT nest the full
+  [`AgentProcSnapshot`](src/commands/proc.rs) under `agents`; raw JSON MUST serialize
+  `"gate"` before `"host_watch"` (parity with AC-007.24).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`
 
 ---
 

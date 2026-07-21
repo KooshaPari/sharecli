@@ -252,10 +252,14 @@ pub async fn status(verbose: bool, json: bool) -> Result<()> {
     if json {
         let pool = ProcessPool::new();
         let processes: Vec<ProcessInfo> = pool.list().await;
-        let agents = proc::AgentProcSnapshot::capture()?;
+        let snapshot = proc::AgentProcSnapshot::capture()?;
         let payload = serde_json::json!({
             "total_processes": processes.len(),
-            "agents": agents,
+            "agents": snapshot.agents,
+            "scanned": snapshot.scanned,
+            "watched": snapshot.watched,
+            "gate": snapshot.gate,
+            "host_watch": snapshot.host_watch,
         });
         println!("{}", serde_json::to_string_pretty(&payload)?);
         return Ok(());

@@ -34,7 +34,7 @@ fn fr006_proc_cli_json_shape() {
     assert!(v.get("gate").and_then(|g| g.get("agent_total_rss_bytes")).is_some());
 }
 
-/// FR-006 / AC-006.13 — status --json includes detected agent inventory.
+/// FR-006 / AC-006.13 + FR-007 / AC-007.25 — status --json includes agent inventory + gate.
 #[test]
 fn fr006_status_json_includes_agents() {
     let out = bin().args(["status", "--json"]).output().expect("spawn sharecli status --json");
@@ -42,7 +42,11 @@ fn fr006_status_json_includes_agents() {
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("status --json MUST emit valid JSON");
     assert!(v.get("total_processes").is_some());
-    let agents = v.get("agents").expect("status JSON MUST include agents object");
-    assert!(agents.get("gate").is_some());
-    assert!(agents.get("scanned").is_some());
+    assert!(
+        v.get("agents").and_then(|a| a.as_array()).is_some(),
+        "status JSON agents MUST be a flat array (AC-007.25)"
+    );
+    assert!(v.get("gate").is_some(), "status JSON MUST include top-level gate (AC-007.25)");
+    assert!(v.get("scanned").is_some());
+    assert!(v.get("host_watch").is_some(), "status JSON MUST include top-level host_watch (AC-007.25)");
 }
