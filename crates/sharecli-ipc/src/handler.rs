@@ -15,7 +15,10 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sharecli::config::Config;
+use sharecli::monitoring::HostResourceWatchJson;
 use sharecli::{ProcessInfo, ProcessPool};
+use sharecli_fleet::thermal::ThermalGovernor;
+use sharecli_fleet::{count_host_agents, gate_status_snapshot, GateStatusSnapshot};
 use tokio::sync::RwLock;
 
 // ---------------------------------------------------------------------------
@@ -72,12 +75,34 @@ impl From<ProcessInfo> for ProcessSummary {
     }
 }
 
+/// IPC `health.status` envelope (FR-007 / AC-007.45).
+///
+/// Runtime health fields precede live `gate` and `host_watch` siblings
+/// (parity with `health --json` AC-007.44).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HealthSnapshot {
     pub managed_processes: usize,
     pub used_memory_mb: u64,
     pub total_memory_mb: u64,
     pub healthy: bool,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
+/// Live thermal gate + host resource watch for IPC envelopes (FR-007 / AC-007.45).
+fn capture_gate_host_watch() -> Result<(GateStatusSnapshot, HostResourceWatchJson)> {
+    let gate = match ThermalGovernor::new().poll() {
+        Ok(level) => gate_status_snapshot(level, count_host_agents()),
+        Err(_) => GateStatusSnapshot {
+            thermal_pressure: "UNAVAILABLE".to_string(),
+            detected_agents: count_host_agents(),
+            agent_total_rss_bytes: 0,
+            agent_contention: "UNAVAILABLE".to_string(),
+            gate_decision: "UNAVAILABLE".to_string(),
+        },
+    };
+    let host_watch = HostResourceWatchJson::capture()?;
+    Ok((gate, host_watch))
 }
 
 // ---------------------------------------------------------------------------
@@ -134,11 +159,14 @@ impl Handler {
                 self.pool.refresh().await;
                 let procs = self.pool.list().await;
                 let (used, total) = self.pool.system_memory_usage().await;
+                let (gate, host_watch) = capture_gate_host_watch()?;
                 let snap = HealthSnapshot {
                     managed_processes: procs.len(),
                     used_memory_mb: used,
                     total_memory_mb: total,
                     healthy: used < total / 2,
+                    gate,
+                    host_watch,
                 };
                 Ok(serde_json::to_value(snap)?)
             }

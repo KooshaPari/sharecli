@@ -158,7 +158,7 @@ mod tests {
     }
 
     fn make_health_json() -> String {
-        r#"{"type":"health_update","health":{"managed_processes":3,"used_memory_mb":512,"total_memory_mb":16384,"healthy":true}}"#.to_owned()
+        r#"{"type":"health_update","health":{"managed_processes":3,"used_memory_mb":512,"total_memory_mb":16384,"healthy":true,"gate":{"thermal_pressure":"GREEN","detected_agents":0,"agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},"host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,"mem_rss_bytes":4,"load_1m":0.5}}}"#.to_owned()
     }
 
     fn make_thermal_json() -> String {
@@ -195,6 +195,8 @@ mod tests {
                 assert_eq!(h.managed_processes, 3);
                 assert_eq!(h.used_memory_mb, 512);
                 assert!(h.healthy);
+                assert_eq!(h.gate.gate_decision, "ADMIT");
+                assert_eq!(h.host_watch.load_1m, 0.5);
             }
             other => panic!("expected HealthUpdate, got {other:?}"),
         }

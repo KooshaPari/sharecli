@@ -44,11 +44,29 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable {
     public let start_time: UInt64
 }
 
+public struct GateStatusSnapshot: Decodable, Hashable {
+    public let thermal_pressure: String
+    public let detected_agents: Int
+    public let agent_total_rss_bytes: UInt64
+    public let agent_contention: String
+    public let gate_decision: String
+}
+
+public struct HostResourceWatchJson: Decodable, Hashable {
+    public let fd_count: UInt64
+    public let net_rx_bytes: UInt64
+    public let net_tx_bytes: UInt64
+    public let mem_rss_bytes: UInt64
+    public let load_1m: Double
+}
+
 public struct HealthSnapshot: Decodable {
     public let managed_processes: Int
     public let used_memory_mb: UInt64
     public let total_memory_mb: UInt64
     public let healthy: Bool
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
 }
 
 // ---------------------------------------------------------------------------

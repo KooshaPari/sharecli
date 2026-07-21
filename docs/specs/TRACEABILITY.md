@@ -176,6 +176,7 @@
 | AC-007.42   | `tests/fr007_report_watch_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportNdjsonLine`, `run` watch NDJSON path); `src/commands/mod.rs` (`eprint_live_gate_host_watch_sections`) | report --watch --format json NDJSON gate → host_watch per refresh; stderr text companions |
 | AC-007.43   | `tests/fr007_ps_all_json_gate_host_watch.rs`; `src/commands/mod.rs` (`PsAllJson`, `ps --all --json`) | ps --all --json gate → host_watch after pool + agent inventory; stderr silent on success; --json requires --all |
 | AC-007.44   | `tests/fr007_health_pool_json_gate_host_watch.rs`; `src/commands/mod.rs` (`HealthJson`, `PoolJson`, `health --json`, `pool --json`) | health/pool --json gate → host_watch after runtime fields; stderr silent on success |
+| AC-007.45   | `tests/fr007_ipc_health_status_gate_host_watch.rs`; `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`, `health.status`); `crates/sharecli-tray-linux/src/ipc.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` | IPC health.status gate → host_watch after runtime fields; tray/desktop wire parity with health --json AC-007.44 |
 
 ### FR-008 — Coalesce
 
@@ -245,6 +246,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 IPC health.status gate/host_watch parity:** IPC `health.status` /
+  `HealthSnapshot` emit top-level `gate` + `host_watch` JSON siblings after runtime health
+  fields (AC-007.45); gate → host_watch key order; tray/desktop wire parity with
+  `health --json` AC-007.44 (`sharecli-tray-linux`, Swift `IPCClient`).
 - **2026-07-21 — FR-007 health/pool JSON gate/host_watch parity:** `sharecli health --json` and
   `sharecli pool --json` emit top-level `gate` + `host_watch` JSON siblings after runtime health /
   pool status fields (AC-007.44); gate → host_watch key order; stderr silent on success (parity
