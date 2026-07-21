@@ -166,6 +166,10 @@ enum Commands {
         #[arg(long)]
         json: bool,
 
+        /// Emit operator snapshot as CSV (header + rows; AC-007.82)
+        #[arg(long)]
+        csv: bool,
+
         /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.66 with --json)
         #[arg(short, long)]
         watch: Option<u64>,
@@ -252,6 +256,10 @@ enum Commands {
         #[arg(long)]
         json: bool,
 
+        /// Emit operator snapshot as CSV (header + rows; AC-007.82)
+        #[arg(long)]
+        csv: bool,
+
         /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.64 with --json)
         #[arg(short, long)]
         watch: Option<u64>,
@@ -296,6 +304,10 @@ enum Commands {
         /// Emit JSON (gate → host_watch siblings; AC-007.44)
         #[arg(long)]
         json: bool,
+
+        /// Emit operator snapshot as CSV (header + rows; AC-007.82)
+        #[arg(long)]
+        csv: bool,
 
         /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.65 with --json)
         #[arg(short, long)]
@@ -633,7 +645,9 @@ async fn run() -> Result<()> {
         Commands::Stop { pid, project, harness, all, force, yes } => {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
-        Commands::Status { verbose, json, watch } => status(*verbose, *json, *watch).await?,
+        Commands::Status { verbose, json, csv, watch } => {
+            status(*verbose, *json, *csv, *watch).await?
+        }
         Commands::Proc { json, csv, tree, watch, family, exclude_family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
             commands::proc::run(
                 *json,
@@ -662,9 +676,9 @@ async fn run() -> Result<()> {
         Commands::Prune { idle_seconds, force } => {
             prune(idle_seconds.unwrap_or(config::global().spawn.prune_idle_seconds), *force).await?
         }
-        Commands::Pool { harness: _, json, watch } => pool_status(*json, *watch).await?,
-        Commands::Health { harness, json, watch } => {
-            health(harness.as_deref(), *json, *watch).await?
+        Commands::Pool { harness: _, json, csv, watch } => pool_status(*json, *csv, *watch).await?,
+        Commands::Health { harness, json, csv, watch } => {
+            health(harness.as_deref(), *json, *csv, *watch).await?
         }
         Commands::Run { harness, project } => run_pool(harness, project).await?,
         Commands::Limits { project, memory, processes } => {
