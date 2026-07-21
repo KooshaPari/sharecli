@@ -21,6 +21,16 @@
                 Text="sharecli Process Manager"
                 Style="{ThemeResource TitleTextBlockStyle}" />
             <TextBlock x:Name="HealthStatusText" Text="Checking health..." />
+            <TextBlock
+                x:Name="GateStatusText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
+            <TextBlock
+                x:Name="HostWatchStatusText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
         </StackPanel>
 
         <!-- Process List -->
