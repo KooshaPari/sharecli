@@ -12,7 +12,10 @@ use std::sync::Arc;
 use std::io::Write;
 
 use anyhow::Result;
+use serde::Serialize;
 pub use serve::run as serve_run;
+
+use crate::monitoring::HostResourceWatchJson;
 
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
 use crate::progress::StepProgress;
@@ -77,8 +80,47 @@ fn get_project_resources() -> &'static ProjectResources {
     PROJECT_RESOURCES.get_or_init(ProjectResources::new)
 }
 
+/// One managed pool row for `sharecli ps --all --json` (FR-007 / AC-007.43).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PsManagedProcessRow {
+    pub pid: u32,
+    pub name: String,
+    pub memory_mb: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub harness: Option<String>,
+    pub agent: String,
+}
+
+/// JSON envelope for `sharecli ps --all --json` (FR-007 / AC-007.43).
+///
+/// Managed pool fields precede host agent inventory; live `gate` and `host_watch`
+/// siblings follow (parity with `status --json` AC-007.25 / proc JSON AC-007.24).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PsAllJson {
+    pub processes: Vec<PsManagedProcessRow>,
+    pub total_memory_mb: u64,
+    pub agents: Vec<proc::AgentProcRow>,
+    pub scanned: usize,
+    pub watched: usize,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
 /// List processes
-pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Result<()> {
+pub async fn ps(
+    project: Option<&str>,
+    harness: Option<&str>,
+    all: bool,
+    json: bool,
+) -> Result<()> {
+    if json && !all {
+        anyhow::bail!(
+            "`sharecli ps --json` requires `--all` for host agent inventory parity (AC-007.43)"
+        );
+    }
+
     let pool = ProcessPool::new();
     let filter = if let Some(p) = project {
         ProcessFilter::ByProject(p.to_string())
@@ -90,6 +132,33 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
 
     let processes: Vec<ProcessInfo> = pool.find(filter).await;
     let proc_source = HostProcSource;
+
+    if json {
+        let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
+        let managed: Vec<PsManagedProcessRow> = processes
+            .iter()
+            .map(|proc| PsManagedProcessRow {
+                pid: proc.pid,
+                name: proc.name.clone(),
+                memory_mb: proc.memory_mb,
+                project: proc.project.clone(),
+                harness: proc.harness.clone(),
+                agent: agent_label_for_pid(&proc_source, proc.pid).to_string(),
+            })
+            .collect();
+        let snapshot = proc::AgentProcSnapshot::capture()?;
+        let payload = PsAllJson {
+            processes: managed,
+            total_memory_mb: total_mem,
+            agents: snapshot.agents,
+            scanned: snapshot.scanned,
+            watched: snapshot.watched,
+            gate: snapshot.gate,
+            host_watch: snapshot.host_watch,
+        };
+        println!("{}", serde_json::to_string_pretty(&payload)?);
+        return Ok(());
+    }
 
     println!(
         "{:<8} {:<20} {:<12} {:<15} {:<14} HARNESS",
