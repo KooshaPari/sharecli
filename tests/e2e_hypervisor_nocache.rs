@@ -7,7 +7,7 @@
 //! - serializes through Hypervisor's SlotQueue under concurrent load
 //! - stays isolated from a seeded coalesce cache hit on a read-only twin
 
-use sharecli_core::{FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision};
+use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -55,6 +55,7 @@ async fn e2e_hypervisor_nocache_double_exec_side_effect() {
         argv: nocache_append_argv(&counter),
         cwd: dir.path().to_path_buf(),
         env: vec![],
+        queue_priority: QueuePriority::Normal,
     };
 
     let first = hv.run(req.clone()).await.expect("first nocache");
@@ -85,7 +86,7 @@ async fn e2e_hypervisor_nocache_concurrent_serializes() {
         let argv = argv.clone();
         let cwd = cwd.clone();
         joins.push(tokio::spawn(
-            async move { hv.run(SpawnRequest { argv, cwd, env: vec![] }).await },
+            async move { hv.run(SpawnRequest { argv, cwd, env: vec![], queue_priority: QueuePriority::Normal }).await },
         ));
     }
     let mut outcomes = Vec::new();
@@ -126,7 +127,7 @@ async fn e2e_hypervisor_nocache_isolated_from_coalesce_cache() {
     let readonly =
         vec!["cmd".to_string(), "/C".to_string(), format!("echo.>>\"{}\"", counter.display())];
 
-    let read_req = SpawnRequest { argv: readonly, cwd: dir.path().to_path_buf(), env: vec![] };
+    let read_req = SpawnRequest { argv: readonly, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
     let miss = hv.run(read_req.clone()).await.expect("coalesce miss");
     assert!(!miss.from_cache);
     let hit = hv.run(read_req).await.expect("coalesce hit");
@@ -137,6 +138,7 @@ async fn e2e_hypervisor_nocache_isolated_from_coalesce_cache() {
         argv: nocache_append_argv(&counter),
         cwd: dir.path().to_path_buf(),
         env: vec![],
+        queue_priority: QueuePriority::Normal,
     };
     let mutating = hv.run(nocache_req).await.expect("nocache after coalesce");
     assert!(!mutating.from_cache, "AC-008.10: nocache MUST NOT reuse coalesce cache");

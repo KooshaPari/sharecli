@@ -4,8 +4,8 @@
 //! AC-011.4 Hypervisor escalates spawn gate when proc-scan agent count exceeds thresholds.
 
 use sharecli_core::{
-    AgentAwareThermalGate, FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision,
-    THERMAL_MAX_RETRIES,
+    AgentAwareThermalGate, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,
+    ThermalDecision, THERMAL_MAX_RETRIES,
 };
 use sharecli_fleet::agent_contention::{effective_gate_decision, AgentContentionThresholds};
 use sharecli_fleet::thermal::ThermalLevel;
@@ -34,7 +34,7 @@ async fn fr011_agent_contention_refuses_hypervisor_spawn() {
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "agent-gated".to_string()];
 
     let err = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
         .await
         .expect_err("Refuse MUST err after retries");
 
@@ -65,7 +65,7 @@ async fn fr011_agent_contention_warn_still_spawns() {
     #[cfg(windows)]
     let argv = vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "warn-ok".to_string()];
 
-    hv.run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
+    hv.run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
         .await
         .expect("Warn tier MUST still allow spawn");
 }

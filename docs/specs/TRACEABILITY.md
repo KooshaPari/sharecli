@@ -169,6 +169,7 @@
 | AC-008.11 | `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-ipc` `global_coalesce_meters_record_hit_miss_and_nocache` | coalesce operator meters in status + thermal TUI |
 | AC-008.12 | `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `crates/sharecli-fleet/src/slot_queue_meters.rs` | SlotQueue acquire/wait/timeout in status + thermal TUI |
 | AC-008.13 | `tests/fr008_coalesce_mesh.rs` (`fr008_command_key_cwd_env_dimensions`, `fr008_hypervisor_cache_respects_cwd_and_env`); `crates/sharecli-ipc/src/lib.rs` (`command_key`); `crates/sharecli-core/src/lib.rs` (`Hypervisor::run`) | command_key cwd/env dimensions + Hypervisor cache isolation |
+| AC-008.14 | `tests/fr008_coalesce_mesh.rs` (`fr008_slot_queue_critical_before_normal`, `fr008_hypervisor_nocache_critical_before_normal`); `crates/sharecli-ipc/src/queue.rs` (`critical_dequeues_before_normal_under_contention`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::queue_priority`, `Hypervisor::run`) | SlotQueue Critical-before-Normal priority + Hypervisor nocache wiring |
 
 ### FR-009 — FUSE
 

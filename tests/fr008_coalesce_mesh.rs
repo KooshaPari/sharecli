@@ -11,21 +11,23 @@
 //! AC-008.8 SlotQueue serializes max_concurrent=1
 //! AC-008.9 Hypervisor routes nocache argv through queue (not cache)
 //! AC-008.13 command_key cwd/env dimensions + Hypervisor cache isolation
+//! AC-008.14 SlotQueue Critical dequeues before Normal under contention (Hypervisor nocache)
 //! (Mesh membership ACs live under FR-010.)
 
 use sharecli_core::{
-    FakeThermalGate, Hypervisor, HypervisorConfig, SpawnRequest, ThermalDecision,
+    FakeThermalGate, Hypervisor, HypervisorConfig, QueuePriority, SpawnRequest, ThermalDecision,
     THERMAL_MAX_RETRIES,
 };
 use sharecli_ipc::{
     command_key, has_nocache_arg, should_bypass_coalesce, CachedResult, CoalesceCache,
-    QueuePriority, SlotQueue, DEFAULT_NOCACHE_ARGS,
+    SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
+use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
 /// FR-008 / AC-008.1 — identical argv/cwd/env → same key; different argv → different.
@@ -95,6 +97,7 @@ async fn fr008_hypervisor_cache_respects_cwd_and_env() {
         argv: argv.clone(),
         cwd: cwd_a.clone(),
         env: vec![("SHARECLI_PROBE".into(), "1".into())],
+        queue_priority: QueuePriority::Normal,
     };
     let first = hv.run(req_a.clone()).await.expect("first run");
     assert!(!first.from_cache);
@@ -105,6 +108,7 @@ async fn fr008_hypervisor_cache_respects_cwd_and_env() {
         argv,
         cwd: cwd_b,
         env: vec![("SHARECLI_PROBE".into(), "2".into())],
+        queue_priority: QueuePriority::Normal,
     };
     let isolated = hv.run(req_b).await.expect("different cwd+env");
     assert!(
@@ -153,7 +157,7 @@ async fn fr008_thermal_gate_before_coalesce() {
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "should-not-run".to_string()];
 
     let err = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
         .await
         .expect_err("Refuse MUST err after retries");
 
@@ -177,7 +181,7 @@ async fn fr008_second_run_from_cache() {
     let argv =
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "coalesce".to_string()];
 
-    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] };
+    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
     let first = hv.run(req.clone()).await.expect("first");
     assert!(!first.from_cache);
     let second = hv.run(req).await.expect("second");
@@ -294,7 +298,7 @@ async fn fr008_hypervisor_debounce_waits_and_shares() {
     });
 
     let outcome =
-        hv.run(SpawnRequest { argv, cwd, env: vec![] }).await.expect("debounced hypervisor run");
+        hv.run(SpawnRequest { argv, cwd, env: vec![], queue_priority: QueuePriority::Normal }).await.expect("debounced hypervisor run");
 
     producer.join().expect("producer join");
 
@@ -385,7 +389,7 @@ async fn fr008_hypervisor_nocache_routes_to_queue() {
     ];
 
     // echo ignores unknown flags on unix; we care about routing, not exit.
-    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] };
+    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
     let first = hv.run(req.clone()).await.expect("first nocache run");
     assert!(!first.from_cache, "AC-008.9: nocache MUST NOT use coalesce cache");
     let second = hv.run(req).await.expect("second nocache run");
@@ -393,4 +397,230 @@ async fn fr008_hypervisor_nocache_routes_to_queue() {
     // Queue API is exposed for Hypervisor callers.
     assert_eq!(hv.queue().max_concurrent(), 1);
     assert!(hv.nocache_args().iter().any(|f| f == "--force"));
+}
+
+/// FR-008 / AC-008.14 — `QueuePriority::Critical` acquires before `Normal` under contention.
+#[test]
+fn fr008_slot_queue_critical_before_normal() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Mutex;
+
+    let dir = TempDir::new().expect("tempdir");
+    let order = Arc::new(Mutex::new(Vec::<&'static str>::new()));
+    let holder_ready = Arc::new(AtomicBool::new(false));
+    let release_holder = Arc::new(AtomicBool::new(false));
+
+    let holder_order = Arc::clone(&order);
+    let holder_ready_flag = Arc::clone(&holder_ready);
+    let holder_release = Arc::clone(&release_holder);
+    let holder_root = dir.path().to_path_buf();
+    let holder = thread::spawn(move || {
+        let q = SlotQueue::with_options(
+            holder_root,
+            1,
+            Duration::from_secs(5),
+            Duration::from_millis(5),
+        );
+        q.with_slot("lane", QueuePriority::Normal, || {
+            holder_order.lock().expect("lock").push("holder_start");
+            holder_ready_flag.store(true, Ordering::SeqCst);
+            while !holder_release.load(Ordering::SeqCst) {
+                thread::sleep(Duration::from_millis(5));
+            }
+            holder_order.lock().expect("lock").push("holder_end");
+            Ok(())
+        })
+        .expect("holder slot");
+    });
+
+    while !holder_ready.load(Ordering::SeqCst) {
+        thread::sleep(Duration::from_millis(2));
+    }
+
+    let critical_order = Arc::clone(&order);
+    let critical_root = dir.path().to_path_buf();
+    let critical = thread::spawn(move || {
+        let q = SlotQueue::with_options(
+            critical_root,
+            1,
+            Duration::from_secs(5),
+            Duration::from_millis(5),
+        );
+        q.with_slot("lane", QueuePriority::Critical, || {
+            critical_order.lock().expect("lock").push("critical");
+            Ok(())
+        })
+        .expect("critical slot");
+    });
+
+    let late_normal_order = Arc::clone(&order);
+    let late_normal_root = dir.path().to_path_buf();
+    let late_normal = thread::spawn(move || {
+        let q = SlotQueue::with_options(
+            late_normal_root,
+            1,
+            Duration::from_secs(5),
+            Duration::from_millis(5),
+        );
+        q.with_slot("lane", QueuePriority::Normal, || {
+            late_normal_order.lock().expect("lock").push("normal_late");
+            Ok(())
+        })
+        .expect("late normal slot");
+    });
+
+    // Ensure both waiters are registered before the holder releases the slot.
+    let waiting = dir.path().join("lane.waiting");
+    let wait_deadline = Instant::now() + Duration::from_secs(2);
+    while Instant::now() < wait_deadline {
+        let count = fs::read_dir(&waiting).map(|rd| rd.count()).unwrap_or(0);
+        if count >= 2 {
+            break;
+        }
+        thread::sleep(Duration::from_millis(2));
+    }
+
+    thread::sleep(Duration::from_millis(20));
+    release_holder.store(true, Ordering::SeqCst);
+    holder.join().expect("holder join");
+    critical.join().expect("critical join");
+    late_normal.join().expect("late normal join");
+
+    let seq = order.lock().expect("lock").clone();
+    assert_eq!(
+        seq,
+        vec!["holder_start", "holder_end", "critical", "normal_late"],
+        "AC-008.14: Critical MUST dequeue before Normal under contention"
+    );
+}
+
+/// FR-008 / AC-008.14 — Hypervisor nocache lane honors `SpawnRequest::queue_priority`.
+#[tokio::test]
+async fn fr008_hypervisor_nocache_critical_before_normal() {
+    let dir = TempDir::new().expect("tempdir");
+    let order_path = dir.path().join("order.log");
+    std::fs::write(&order_path, b"").expect("seed order log");
+
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let hv = Arc::new(Hypervisor::with_thermal_gate(dir.path(), gate));
+
+    #[cfg(unix)]
+    let hold_argv = vec![
+        "sh".to_string(),
+        "-c".to_string(),
+        format!(
+            "printf 'holder_start\n' >> '{}'; sleep 0.15; printf 'holder_end\n' >> '{}'",
+            order_path.display(),
+            order_path.display()
+        ),
+        "--force".to_string(),
+    ];
+    #[cfg(windows)]
+    let hold_argv = vec![
+        "cmd".to_string(),
+        "/C".to_string(),
+        format!(
+            "echo holder_start>>\"{}\" & timeout /T 2 /NOBREAK >NUL & echo holder_end>>\"{}\"",
+            order_path.display(),
+            order_path.display()
+        ),
+        "--force".to_string(),
+    ];
+
+    let order_log = order_path.display().to_string();
+
+    #[cfg(unix)]
+    let critical_argv = vec![
+        "sh".to_string(),
+        "-c".to_string(),
+        format!("printf 'critical\n' >> '{order_log}'"),
+        "--force".to_string(),
+    ];
+    #[cfg(windows)]
+    let critical_argv = vec![
+        "cmd".to_string(),
+        "/C".to_string(),
+        format!("echo critical>>\"{order_log}\""),
+        "--force".to_string(),
+    ];
+
+    #[cfg(unix)]
+    let late_normal_argv = vec![
+        "sh".to_string(),
+        "-c".to_string(),
+        format!("printf 'normal_late\n' >> '{order_log}'"),
+        "--force".to_string(),
+    ];
+    #[cfg(windows)]
+    let late_normal_argv = vec![
+        "cmd".to_string(),
+        "/C".to_string(),
+        format!("echo normal_late>>\"{order_log}\""),
+        "--force".to_string(),
+    ];
+
+    let cwd = dir.path().to_path_buf();
+    let holder_hv = Arc::clone(&hv);
+    let holder_cwd = cwd.clone();
+    let holder = tokio::spawn(async move {
+        holder_hv
+            .run(SpawnRequest {
+                argv: hold_argv,
+                cwd: holder_cwd,
+                env: vec![],
+                queue_priority: QueuePriority::Normal,
+            })
+            .await
+            .expect("holder nocache run")
+    });
+
+    while !std::fs::read_to_string(&order_path)
+        .map(|s| s.contains("holder_start"))
+        .unwrap_or(false)
+    {
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+
+    let critical_hv = Arc::clone(&hv);
+    let critical_cwd = cwd.clone();
+    let critical = tokio::spawn(async move {
+        critical_hv
+            .run(
+                SpawnRequest {
+                    argv: critical_argv,
+                    cwd: critical_cwd,
+                    env: vec![],
+                    queue_priority: QueuePriority::Critical,
+                },
+            )
+            .await
+            .expect("critical nocache run")
+    });
+
+    let late_normal_hv = Arc::clone(&hv);
+    let late_normal = tokio::spawn(async move {
+        late_normal_hv
+            .run(
+                SpawnRequest {
+                    argv: late_normal_argv,
+                    cwd,
+                    env: vec![],
+                    queue_priority: QueuePriority::Normal,
+                },
+            )
+            .await
+            .expect("late normal nocache run")
+    });
+
+    holder.await.expect("holder join");
+    critical.await.expect("critical join");
+    late_normal.await.expect("late normal join");
+
+    let order = std::fs::read_to_string(&order_path).expect("read order log");
+    let lines: Vec<&str> = order.lines().filter(|l| !l.is_empty()).collect();
+    assert_eq!(
+        lines,
+        vec!["holder_start", "holder_end", "critical", "normal_late"],
+        "AC-008.14: Hypervisor nocache Critical MUST run before queued Normal"
+    );
 }
