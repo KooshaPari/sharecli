@@ -66,6 +66,21 @@ public sealed partial class TrayWindow : Window
         await RefreshDataAsync();
     }
 
+    private async void OnKillProcessClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: uint pid })
+        {
+            IpcKill.TryKill(pid);
+            await RefreshDataAsync();
+        }
+    }
+
+    private async void OnKillAllClick(object sender, RoutedEventArgs e)
+    {
+        IpcKill.TryKillAll();
+        await RefreshDataAsync();
+    }
+
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {
         _pollTimer?.Stop();
