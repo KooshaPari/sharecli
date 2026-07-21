@@ -28,8 +28,8 @@ use sharecli_fleet::global_slot_queue_meters;
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::ResourceWatchSample;
 use sharecli_fleet::{
-    agent_label_for_pid, count_host_agents, format_gate_status_section, scan_agents,
-    watch_detected_agents, HostProcSource,
+    agent_label_for_pid, count_host_agents, format_gate_status_section, gate_status_snapshot,
+    scan_agents, watch_detected_agents, HostProcSource,
 };
 use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
@@ -64,6 +64,14 @@ pub(crate) fn eprint_live_gate_host_watch_sections() -> Result<()> {
     eprint!("{}", HostResourceWatchJson::capture()?.format_text_section());
     let _ = std::io::stderr().flush();
     Ok(())
+}
+
+/// Live thermal gate + host resource watch for JSON envelopes (FR-007 / AC-007.44).
+fn capture_live_gate_host_watch() -> Result<(sharecli_fleet::GateStatusSnapshot, HostResourceWatchJson)> {
+    let thermal = ThermalGovernor::new().poll()?;
+    let gate = gate_status_snapshot(thermal, count_host_agents());
+    let host_watch = HostResourceWatchJson::capture()?;
+    Ok((gate, host_watch))
 }
 
 fn get_shared_runtime() -> &'static SharedRuntime {
@@ -104,6 +112,42 @@ pub struct PsAllJson {
     pub agents: Vec<proc::AgentProcRow>,
     pub scanned: usize,
     pub watched: usize,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
+/// JSON envelope for `sharecli pool --json` (FR-007 / AC-007.44).
+///
+/// Pool status fields precede live `gate` and `host_watch` siblings
+/// (parity with `status --json` AC-007.25 / `ps --all --json` AC-007.43).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PoolJson {
+    pub node_total: usize,
+    pub node_idle: usize,
+    pub bun_total: usize,
+    pub bun_idle: usize,
+    pub max_per_type: usize,
+    pub healthy: bool,
+    pub issues: Vec<String>,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
+/// JSON envelope for `sharecli health --json` (FR-007 / AC-007.44).
+///
+/// Runtime health fields precede live `gate` and `host_watch` siblings
+/// (parity with `status --json` AC-007.25 / `ps --all --json` AC-007.43).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct HealthJson {
+    pub healthy: bool,
+    pub issues: Vec<String>,
+    pub node_total: usize,
+    pub node_idle: usize,
+    pub node_in_use: usize,
+    pub bun_total: usize,
+    pub bun_idle: usize,
+    pub bun_in_use: usize,
+    pub max_per_type: usize,
     pub gate: sharecli_fleet::GateStatusSnapshot,
     pub host_watch: HostResourceWatchJson,
 }
@@ -712,9 +756,28 @@ pub async fn run_pool(harness_type: &str, project: &str) -> Result<()> {
 }
 
 /// Show pool status
-pub async fn pool_status() -> Result<()> {
+/// One-shot `pool --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
+pub async fn pool_status(json: bool) -> Result<()> {
     let runtime = get_shared_runtime();
     let status = runtime.status().await;
+    let health = runtime.health_check().await;
+
+    if json {
+        let (gate, host_watch) = capture_live_gate_host_watch()?;
+        let payload = PoolJson {
+            node_total: status.node_total,
+            node_idle: status.node_idle,
+            bun_total: status.bun_total,
+            bun_idle: status.bun_idle,
+            max_per_type: status.max_per_type,
+            healthy: health.healthy,
+            issues: health.issues,
+            gate,
+            host_watch,
+        };
+        println!("{}", serde_json::to_string_pretty(&payload)?);
+        return Ok(());
+    }
 
     println!("=== Shared Runtime Pool Status ===\n");
     println!("{:<10} {:<10} {:<10} {:<10}", "TYPE", "TOTAL", "IDLE", "MAX");
@@ -730,7 +793,6 @@ pub async fn pool_status() -> Result<()> {
     println!("\nMax per type: {}", status.max_per_type);
 
     // Health check
-    let health = runtime.health_check().await;
     println!("\n=== Health Check ===");
     if health.healthy {
         println!("Status: HEALTHY");
@@ -751,17 +813,39 @@ pub async fn pool_status() -> Result<()> {
 }
 
 /// Run health probe for shared runtime
-pub async fn health(harness: Option<&str>) -> Result<()> {
-    if let Some(h) = harness {
-        println!("Health probe requested for harness '{}'.", h);
-        if h != "node" && h != "bun" {
-            println!("Note: only the pooled node/bun runtimes are tracked currently.");
+/// One-shot `health --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
+pub async fn health(harness: Option<&str>, json: bool) -> Result<()> {
+    if !json {
+        if let Some(h) = harness {
+            println!("Health probe requested for harness '{}'.", h);
+            if h != "node" && h != "bun" {
+                println!("Note: only the pooled node/bun runtimes are tracked currently.");
+            }
         }
     }
 
     let runtime = get_shared_runtime();
     let pool_status = runtime.status().await;
     let health = runtime.health_check().await;
+
+    if json {
+        let (gate, host_watch) = capture_live_gate_host_watch()?;
+        let payload = HealthJson {
+            healthy: health.healthy,
+            issues: health.issues,
+            node_total: pool_status.node_total,
+            node_idle: pool_status.node_idle,
+            node_in_use: health.node_in_use,
+            bun_total: pool_status.bun_total,
+            bun_idle: pool_status.bun_idle,
+            bun_in_use: health.bun_in_use,
+            max_per_type: pool_status.max_per_type,
+            gate,
+            host_watch,
+        };
+        println!("{}", serde_json::to_string_pretty(&payload)?);
+        return Ok(());
+    }
 
     println!("\nShared runtime health: {}", if health.healthy { "HEALTHY" } else { "DEGRADED" });
 

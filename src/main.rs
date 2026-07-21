@@ -239,6 +239,10 @@ enum Commands {
         /// Optional harness type hint (node, bun, etc.)
         #[arg(long)]
         harness: Option<String>,
+
+        /// Emit JSON (gate → host_watch siblings; AC-007.44)
+        #[arg(long)]
+        json: bool,
     },
 
     /// Configuration management
@@ -276,6 +280,10 @@ enum Commands {
         /// Harness type to check (node, bun)
         #[arg(long)]
         harness: Option<String>,
+
+        /// Emit JSON (gate → host_watch siblings; AC-007.44)
+        #[arg(long)]
+        json: bool,
     },
 
     /// Run using pooled runtime
@@ -631,8 +639,8 @@ async fn run() -> Result<()> {
         Commands::Prune { idle_seconds, force } => {
             prune(idle_seconds.unwrap_or(config::global().spawn.prune_idle_seconds), *force).await?
         }
-        Commands::Pool { harness: _ } => pool_status().await?,
-        Commands::Health { harness } => health(harness.as_deref()).await?,
+        Commands::Pool { harness: _, json } => pool_status(*json).await?,
+        Commands::Health { harness, json } => health(harness.as_deref(), *json).await?,
         Commands::Run { harness, project } => run_pool(harness, project).await?,
         Commands::Limits { project, memory, processes } => {
             set_limits(project, *memory, *processes).await?
