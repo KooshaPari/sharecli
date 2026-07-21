@@ -642,10 +642,23 @@ fn print_host_watch_text_footer() -> Result<()> {
     Ok(())
 }
 
+fn append_gate_csv_companion(csv: String, gate: &sharecli_fleet::GateStatusSnapshot) -> String {
+    let mut out = csv;
+    out.push_str(&gate.format_csv_companion());
+    out
+}
+
 fn append_host_watch_csv_companion(csv: String) -> Result<String> {
     let mut out = csv;
     out.push_str(&HostResourceWatchJson::capture()?.format_csv_companion());
     Ok(out)
+}
+
+fn append_proc_csv_companions(
+    csv: String,
+    gate: &sharecli_fleet::GateStatusSnapshot,
+) -> Result<String> {
+    append_host_watch_csv_companion(append_gate_csv_companion(csv, gate))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1004,6 +1017,21 @@ pub fn render_once(
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid, &state_by_pid);
         let forests = limit_agent_forests(forests, limit);
         let tree_state_by_pid = build_forest_state_map(&HostProcSource, &forests);
+        if csv {
+            print!(
+                "{}",
+                append_proc_csv_companions(
+                    render_agent_tree_csv(
+                        &forests,
+                        &rss_by_pid,
+                        &fd_by_pid,
+                        &tree_state_by_pid,
+                    ),
+                    &gate,
+                )?
+            );
+            return Ok(());
+        }
         let snap = AgentTreeSnapshot {
             forests: forests
                 .iter()
@@ -1020,18 +1048,6 @@ pub fn render_once(
                 return Ok(());
             }
             println!("{}", serde_json::to_string_pretty(&snap)?);
-            return Ok(());
-        }
-        if csv {
-            print!(
-                "{}",
-                append_host_watch_csv_companion(render_agent_tree_csv(
-                    &forests,
-                    &rss_by_pid,
-                    &fd_by_pid,
-                    &tree_state_by_pid
-                ))?
-            );
             return Ok(());
         }
         render_agent_tree(&forests, &tree_state_by_pid);
@@ -1051,7 +1067,10 @@ pub fn render_once(
     if csv {
         print!(
             "{}",
-            append_host_watch_csv_companion(render_agent_inventory_csv(&watched, &state_by_pid))?
+            append_proc_csv_companions(
+                render_agent_inventory_csv(&watched, &state_by_pid),
+                &gate,
+            )?
         );
         return Ok(());
     }
