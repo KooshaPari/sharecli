@@ -151,6 +151,7 @@
 | AC-007.17   | `tests/fr007_proc_pid_gate.rs`; `src/commands/proc.rs` (`ProcDetailSnapshot::gate`, `render_proc_detail`); `crates/sharecli-fleet/src/agent_contention.rs` (`format_gate_status_from_snapshot`) | proc pid JSON/text thermal gate parity |
 | AC-007.18   | `tests/fr007_proc_tree_json_gate.rs`; `src/commands/proc.rs` (`AgentTreeSnapshot::gate`) | proc tree JSON/NDJSON thermal gate parity |
 | AC-007.19   | `tests/fr007_proc_text_csv_gate.rs`; `src/commands/proc.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/agent_contention.rs` (`GateStatusSnapshot::format_csv_companion`) | proc flat/tree CSV thermal gate companion parity |
+| AC-007.20   | `tests/fr007_proc_tree_text_gate.rs`; `src/commands/proc.rs` (`render_once` tree text path) | proc tree text thermal gate section before host watch footer |
 
 ### FR-008 — Coalesce
 
@@ -214,6 +215,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc tree text gate ordering:** `sharecli proc --tree` text
+  prints thermal gate section before host watch footer (AC-007.20); completes proc text
+  gate coverage across flat/tree/pid surfaces.
 - **2026-07-20 — FR-007 proc CSV gate companion:** `sharecli proc --csv` and
   `--tree --csv` append companion `gate` CSV record before `host` via
   `GateStatusSnapshot::format_csv_companion` (AC-007.19); completes proc CSV gate
