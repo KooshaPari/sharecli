@@ -180,6 +180,25 @@ pub fn build_agent_state_map(source: &dyn ProcSource, agent_pids: &[u32]) -> Has
         .collect()
 }
 
+/// Collect every PID in agent forests, roots and nested children (AC-006.35).
+pub fn collect_forest_pids(forests: &[AgentTreeNode]) -> Vec<u32> {
+    let mut pids = Vec::new();
+    collect_forest_pids_inner(forests, &mut pids);
+    pids
+}
+
+fn collect_forest_pids_inner(nodes: &[AgentTreeNode], out: &mut Vec<u32>) {
+    for node in nodes {
+        out.push(node.pid);
+        collect_forest_pids_inner(&node.children, out);
+    }
+}
+
+/// Live process-state map for all nodes in displayed forests (AC-006.35).
+pub fn build_forest_state_map(source: &dyn ProcSource, forests: &[AgentTreeNode]) -> HashMap<u32, char> {
+    build_agent_state_map(source, &collect_forest_pids(forests))
+}
+
 /// Sort key for `sharecli proc` inventory rows (AC-006.19).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ProcSort {
@@ -932,10 +951,11 @@ pub fn render_once(
         );
         let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
         let forests = limit_agent_forests(forests, limit);
+        let tree_state_by_pid = build_forest_state_map(&HostProcSource, &forests);
         let snap = AgentTreeSnapshot {
             forests: forests
                 .iter()
-                .map(|root| agent_tree_node_to_json(root, &state_by_pid))
+                .map(|root| agent_tree_node_to_json(root, &tree_state_by_pid))
                 .collect(),
             roots: forests.len(),
         };
@@ -949,10 +969,10 @@ pub fn render_once(
             return Ok(());
         }
         if csv {
-            print!("{}", render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid, &state_by_pid));
+            print!("{}", render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid, &tree_state_by_pid));
             return Ok(());
         }
-        render_agent_tree(&forests, &state_by_pid);
+        render_agent_tree(&forests, &tree_state_by_pid);
         print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
         return Ok(());
     }
@@ -1151,6 +1171,25 @@ mod tests {
         let json = serde_json::to_string(&line).expect("serialize");
         assert!(json.contains("\"ts\":1750000000"));
         assert!(json.contains("\"agents\":[]"));
+    }
+
+    #[test]
+    fn build_forest_state_map_includes_child_pids() {
+        let src = FakeProcSource::new(vec![
+            ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
+            ProcSnapshot {
+                pid: 50,
+                ppid: 1,
+                comm: "claude".into(),
+                cmdline: vec!["claude".into()],
+                state: 'S',
+            },
+            ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+        ]);
+        let forests = sharecli_fleet::build_agent_forests(&src);
+        assert_eq!(collect_forest_pids(&forests), vec![50, 51]);
+        let map = build_forest_state_map(&src, &forests);
+        assert_eq!(map.get(&51), Some(&'R'));
     }
 
     #[test]
