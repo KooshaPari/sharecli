@@ -173,6 +173,7 @@
 | AC-007.39   | `tests/fr007_report_text_stderr_silent.rs`; `src/commands/report.rs` (`render_once` text path) | report text one-shot + --watch gate → host_watch on stdout after report body; stderr silent on success |
 | AC-007.40   | `tests/fr007_report_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportJson`, `render_once` JSON path) | report --format json gate → host_watch top-level siblings; stderr silent on success |
 | AC-007.41   | `tests/fr007_dashboard_ws_operator_envelope.rs`; `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`); `src/dashboard.html` | serve `/ws` gate → host_watch JSON envelope + dashboard operator panels |
+| AC-007.42   | `tests/fr007_report_watch_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportNdjsonLine`, `run` watch NDJSON path); `src/commands/mod.rs` (`eprint_live_gate_host_watch_sections`) | report --watch --format json NDJSON gate → host_watch per refresh; stderr text companions |
 
 ### FR-008 — Coalesce
 
@@ -242,6 +243,9 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 report watch NDJSON gate/host_watch parity:** `sharecli report --watch --format json`
+  streams NDJSON with `ts` + fleet analytics + gate → `host_watch` per refresh (AC-007.42);
+  stderr text companions + `[watch]` footer; stdout pipe-clean (parity with proc watch AC-007.28).
 - **2026-07-21 — FR-007 report JSON gate/host_watch parity:** `sharecli report --format json`
   emits top-level `gate` + `host_watch` JSON siblings after fleet analytics fields
   (AC-007.40); gate → host_watch key order; stderr silent on success (parity with AC-007.25

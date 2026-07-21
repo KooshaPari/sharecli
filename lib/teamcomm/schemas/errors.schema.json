@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Teamcomm Error Codes",
+  "description": "Numeric error code catalog for the teamcomm JSON-RPC wire protocol. Mirrors the Rust `ErrorCode` enum in crates/teamcomm-protocol/src/error.rs.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "integer",
+      "enum": [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+      ],
+      "description": "Numeric error code"
+    },
+    "code_name": {
+      "type": "string",
+      "enum": [
+        "Unspecified", "SessionNotFound", "SessionAlreadyRegistered",
+        "ReservationNotFound", "ReservationConflict", "ReservationExpired",
+        "MessageNotFound", "ValidationError", "InternalError", "Unauthorized",
+        "SessionExpired", "InvalidTransition", "AgentNotRegistered",
+        "FocusConflict"
+      ],
+      "description": "Canonical name of the error code"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable error message"
+    }
+  },
+  "required": ["code", "message"],
+  "anyOf": [
+    { "$ref": "#/$defs/InternalError" },
+    { "$ref": "#/$defs/SessionErrors" },
+    { "$ref": "#/$defs/ReservationErrors" },
+    { "$ref": "#/$defs/InboxErrors" },
+    { "$ref": "#/$defs/StateErrors" },
+    { "$ref": "#/$defs/DiscoveryErrors" }
+  ],
+  "$defs": {
+    "InternalError": {
+      "title": "InternalError",
+      "description": "Unexpected daemon-side failure (code 0). The client should retry or report.",
+      "type": "object",
+      "properties": {
+        "code": { "const": 0 },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"]
+    },
+    "SessionErrors": {
+      "title": "Session Errors",
+      "description": "Errors related to session lifecycle (codes 1–3, 10, 12)",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "enum": [1, 2, 3, 10, 12]
+        },
+        "code_name": {
+          "type": "string",
+          "enum": [
+            "SessionNotFound", "SessionAlreadyRegistered",
+            "SessionExpired", "InvalidTransition", "AgentNotRegistered"
+          ]
+        },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"]
+    },
+    "ReservationErrors": {
+      "title": "Reservation Errors",
+      "description": "Errors related to file/device reservation (codes 4–6)",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "enum": [4, 5, 6]
+        },
+        "code_name": {
+          "type": "string",
+          "enum": [
+            "ReservationNotFound", "ReservationConflict", "ReservationExpired"
+          ]
+        },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"]
+    },
+    "InboxErrors": {
+      "title": "Inbox Errors",
+      "description": "Errors related to inbox message operations (code 7)",
+      "type": "object",
+      "properties": {
+        "code": { "const": 7 },
+        "code_name": { "const": "MessageNotFound" },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"]
+    },
+    "StateErrors": {
+      "title": "State Errors",
+      "description": "Errors related to agent state operations (codes 8–9, 13)",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "enum": [8, 9, 13]
+        },
+        "code_name": {
+          "type": "string",
+          "enum": [
+            "ValidationError", "Unauthorized", "FocusConflict"
+          ]
+        },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"]
+    },
+    "DiscoveryErrors": {
+      "title": "Discovery Errors",
+      "description": "Errors related to discovery (codes 8, 9)",
+      "type": "object",
+      "properties": {
+        "code": { "enum": [8, 9] },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"]
+    }
+  }
+}
