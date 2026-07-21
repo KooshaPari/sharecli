@@ -69,7 +69,7 @@ use sharecli_fleet::agent_contention::{
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_ipc::{
     command_key, has_nocache_arg, record_coalesce_lookup_hit, record_nocache_run, CachedResult,
-    CoalesceCache, CoalesceHitKind, CommandKey, QueuePriority, SlotQueue, DEFAULT_NOCACHE_ARGS,
+    CoalesceCache, CoalesceHitKind, CommandKey, SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
 use tracing::{debug, error, warn};
 
@@ -84,6 +84,7 @@ pub use sharecli_fleet::{
     sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
     ResourceWatchSample,
 };
+pub use sharecli_ipc::QueuePriority;
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
@@ -464,6 +465,22 @@ pub struct SpawnRequest {
     pub cwd: PathBuf,
     /// Environment variable overrides passed to the child.
     pub env: Vec<(String, String)>,
+    /// Nocache / mutating-path [`SlotQueue`] priority (FR-008 AC-008.14).
+    pub queue_priority: QueuePriority,
+}
+
+impl SpawnRequest {
+    /// Build a spawn request with default nocache queue priority (`Normal`).
+    pub fn new(argv: Vec<String>, cwd: PathBuf, env: Vec<(String, String)>) -> Self {
+        Self { argv, cwd, env, queue_priority: QueuePriority::default() }
+    }
+
+    /// Override nocache queue priority for this spawn.
+    #[must_use]
+    pub fn with_queue_priority(mut self, priority: QueuePriority) -> Self {
+        self.queue_priority = priority;
+        self
+    }
 }
 
 /// The outcome of a [`Hypervisor::run`] call.
@@ -718,8 +735,9 @@ impl Hypervisor {
                 .unwrap_or("unknown");
             debug!(lane, argv = ?req.argv, "hypervisor::run — nocache → queue");
             record_nocache_run();
-            let outcome =
-                self.queue.with_slot(lane, QueuePriority::Normal, || spawn_process_sync(&req))?;
+            let outcome = self
+                .queue
+                .with_slot(lane, req.queue_priority, || spawn_process_sync(&req))?;
             return Ok(SpawnOutcome {
                 exit_code: outcome.exit_code,
                 stdout: outcome.stdout,
@@ -966,7 +984,7 @@ mod tests {
         let hv = allow_hypervisor(dir.path());
 
         let req =
-            SpawnRequest { argv: echo_argv("hello"), cwd: dir.path().to_path_buf(), env: vec![] };
+            SpawnRequest { argv: echo_argv("hello"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
 
         let outcome = hv.run(req).await.expect("run should succeed");
 
@@ -985,7 +1003,7 @@ mod tests {
         let hv = allow_hypervisor(dir.path());
 
         let req =
-            SpawnRequest { argv: echo_argv("world"), cwd: dir.path().to_path_buf(), env: vec![] };
+            SpawnRequest { argv: echo_argv("world"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
 
         // First call — live spawn.
         let first = hv.run(req.clone()).await.expect("first run");
@@ -1012,6 +1030,7 @@ mod tests {
             argv: echo_argv("green-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         let outcome = hv.run(req).await.expect("Green gate must allow spawn");
@@ -1031,6 +1050,7 @@ mod tests {
             argv: echo_argv("yellow-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         // Yellow must not block or error.
@@ -1053,6 +1073,7 @@ mod tests {
             argv: echo_argv("red-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         let result = hv.run(req).await;
@@ -1097,7 +1118,7 @@ mod tests {
         let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
 
         let req =
-            SpawnRequest { argv: echo_argv("recover"), cwd: dir.path().to_path_buf(), env: vec![] };
+            SpawnRequest { argv: echo_argv("recover"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
 
         // With `start_paused` tokio::time::sleep resolves immediately in tests.
         let outcome = hv.run(req).await.expect("should succeed after one RED retry");
@@ -1267,6 +1288,7 @@ mod tests {
             argv: echo_argv("fuse-run"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         let outcome = hv.run(req).await.expect("run must succeed with fuse-io wiring");
@@ -1330,6 +1352,7 @@ mod tests {
                 argv: echo_argv("gated"),
                 cwd: dir.path().to_path_buf(),
                 env: vec![],
+        queue_priority: QueuePriority::Normal,
             })
             .await
             .expect_err("agent contention Refuse MUST err after retries");

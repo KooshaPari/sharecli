@@ -6,7 +6,8 @@
 //! AC-009.14 SpawnOutcome exposes backing/mount remap pair; remap_mount_to_backing path translate
 
 use sharecli_core::{
-    fuse_session_id_for_command_key, FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision,
+    fuse_session_id_for_command_key, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,
+    ThermalDecision,
 };
 use sharecli_fuse::{read_provenance, remap_mount_to_backing, InterceptFs};
 use sharecli_ipc::command_key;
@@ -67,7 +68,7 @@ async fn fr009_hypervisor_spawn_outcome_fuse_session_id() {
         "fr009-fuse-spawn-outcome".to_string(),
     ];
 
-    let req = SpawnRequest { argv: argv.clone(), cwd: dir.path().to_path_buf(), env: vec![] };
+    let req = SpawnRequest { argv: argv.clone(), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
     let key = command_key(&argv, dir.path(), &[]);
     let expected_session = fuse_session_id_for_command_key(&key);
 
@@ -99,7 +100,7 @@ async fn fr009_hypervisor_spawn_outcome_fuse_session_id() {
 
     // Cache hit must never carry a FUSE session id.
     let hit = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
         .await
         .expect("Hypervisor cache hit");
     assert!(hit.from_cache);
@@ -141,7 +142,7 @@ async fn fr009_hypervisor_spawn_outcome_fuse_path_remap() {
     ];
 
     let outcome = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![] })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
         .await
         .expect("Hypervisor cache-miss run");
 
