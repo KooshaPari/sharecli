@@ -106,6 +106,7 @@ optional = true
 [dev-dependencies]
 tempfile = "3"
 serial_test = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 criterion = { version = "0.8", features = ["async_tokio", "html_reports"] }
 # Golden snapshot suite (T-250 / L30.7) needs headless thermal TUI renders.
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
