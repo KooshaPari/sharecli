@@ -65,6 +65,7 @@ fn fr006_proc_ppid_filter_keeps_matching_parent() {
         &ProcFilter {
             ppid: Some(1),
             family: None,
+            exclude_family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
             min_fd_count: None,
@@ -98,6 +99,7 @@ fn fr006_proc_ppid_composes_with_family() {
         &ProcFilter {
             ppid: Some(1),
             family: Some("claude".into()),
+            exclude_family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
             min_fd_count: None,
@@ -129,6 +131,7 @@ fn fr006_proc_tree_ppid_filter() {
         &ProcFilter {
             ppid: Some(1),
             family: None,
+            exclude_family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
             min_fd_count: None,
@@ -148,6 +151,7 @@ fn fr006_proc_tree_ppid_filter() {
         &ProcFilter {
             ppid: Some(999),
             family: None,
+            exclude_family: None,
             min_rss_bytes: None,
             max_rss_bytes: None,
             min_fd_count: None,

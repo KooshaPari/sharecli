@@ -14,10 +14,11 @@ use sharecli_fleet::{
 };
 use tokio::time::sleep;
 
-/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30, AC-006.31).
+/// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30, AC-006.31, AC-006.38).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
     pub family: Option<String>,
+    pub exclude_family: Option<String>,
     pub comm: Option<String>,
     pub cmdline: Option<String>,
     pub state: Option<char>,
@@ -79,6 +80,7 @@ pub fn parse_fd_count(raw: &str, flag: &str) -> Result<u64> {
 impl ProcFilter {
     pub fn from_cli(
         family: Option<String>,
+        exclude_family: Option<String>,
         comm: Option<String>,
         cmdline: Option<String>,
         state: Option<String>,
@@ -128,8 +130,12 @@ impl ProcFilter {
                 bail!("--min-fd MUST NOT exceed --max-fd");
             }
         }
+        if family.is_some() && exclude_family.is_some() {
+            bail!("--family and --exclude-family are mutually exclusive");
+        }
         Ok(Self {
             family,
+            exclude_family,
             comm,
             cmdline,
             state,
@@ -143,6 +149,7 @@ impl ProcFilter {
 
     fn active(&self) -> bool {
         self.family.is_some()
+            || self.exclude_family.is_some()
             || self.comm.is_some()
             || self.cmdline.is_some()
             || self.state.is_some()
@@ -375,6 +382,11 @@ fn agent_row_matches_filter(
             return false;
         }
     }
+    if let Some(ref exclude) = filter.exclude_family {
+        if row.agent.family.eq_ignore_ascii_case(exclude) {
+            return false;
+        }
+    }
     if let Some(ref pattern) = filter.comm {
         if !comm_matches_pattern(&row.agent.comm, pattern) {
             return false;
@@ -493,6 +505,11 @@ fn forest_root_matches_filter(
             return false;
         };
         if !root_family.eq_ignore_ascii_case(family) {
+            return false;
+        }
+    }
+    if let Some(ref exclude) = filter.exclude_family {
+        if root.family.is_some_and(|f| f.eq_ignore_ascii_case(exclude)) {
             return false;
         }
     }
@@ -1045,6 +1062,7 @@ pub async fn run(
     tree: bool,
     watch: Option<u64>,
     family: Option<String>,
+    exclude_family: Option<String>,
     comm: Option<String>,
     cmdline: Option<String>,
     state: Option<String>,
@@ -1077,7 +1095,18 @@ pub async fn run(
     if csv && watch.is_some() {
         bail!("--csv cannot be combined with --watch");
     }
-    let filter = ProcFilter::from_cli(family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, ppid)?;
+    let filter = ProcFilter::from_cli(
+        family,
+        exclude_family,
+        comm,
+        cmdline,
+        state,
+        min_rss,
+        max_rss,
+        min_fd,
+        max_fd,
+        ppid,
+    )?;
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
@@ -1168,7 +1197,7 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, false, false, Some(0), None, None, None, None, None, None, None, None,
+                false, false, false, Some(0), None, None, None, None, None, None, None, None, None,
                 None, None, None, None,
             ))
             .expect_err("watch 0 MUST fail");
@@ -1263,7 +1292,7 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, false, false, Some(1), None, None, None, None, None, None, None, None,
+                false, false, false, Some(1), None, None, None, None, None, None, None, None, None,
                 None, None, Some(42), None,
             ))
             .expect_err("pid+watch MUST fail");
