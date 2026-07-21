@@ -28,6 +28,18 @@ Intent on this branch: close Feb→sharecli lineage for **mesh**, **strategy**, 
 | Feb recovery lineage / ADR wiring | **Landed** | PR [#397](https://github.com/KooshaPari/sharecli/pull/397) + ADR 0006 refresh |
 | CoW commit/discard + `smart_merge` / worktree pool (mesh) | **Landed** | PR [#400](https://github.com/KooshaPari/sharecli/pull/400) |
 
+## Mesh port (Jun boundary) — complete
+
+Rust ports live under `crates/sharecli-mesh/`:
+
+| Donor (`thegent/src/thegent/mesh/`) | sharecli |
+|------------------------------------|----------|
+| `task_queue.py` (Maildir) | `task_queue.rs` |
+| `smart_merge.py` | `smart_merge.rs` |
+| `git_parallelism.py` / worktree pool | `worktree_pool.rs` |
+
+thegent Python modules remain **recovery donors / temporary shims** until adapters sunset (boundary contracts). New mesh work lands only in sharecli.
+
 ## Remaining (highest leverage)
 
 1. **C04 L34 — GPG Verified commits (operator)** — ruleset `main-signed-commits` (**19181236**) is active; L34 stays **2** until a maintainer-signed commit shows **Verified** on `main`. Operator guide: [`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md) (see also [`signed-commits.md`](signed-commits.md), [`ruleset-checklist.md`](ruleset-checklist.md)).
