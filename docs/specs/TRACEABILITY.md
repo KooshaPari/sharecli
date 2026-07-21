@@ -207,6 +207,7 @@
 | AC-007.73   | `tests/fr007_report_json_pool_status.rs`; `tests/fr007_report_json_gate_host_watch.rs`; `tests/fr007_report_watch_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportJson`, `FleetReportNdjsonLine`, `render_once` JSON path); `src/commands/mod.rs` (`build_pool_json`, `build_status_json`, `PoolJson`, `StatusJson`) | report --format json gate → host_watch → pool → status top-level siblings; watch NDJSON parity; stderr silent on one-shot success |
 | AC-007.74   | `tests/fr007_report_text_pool_status.rs`; `tests/fr007_report_text_stderr_silent.rs`; `src/commands/report.rs` (`render_once` text path); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`); `crates/sharecli-fleet/src/operator_pool_status.rs` | report text one-shot + --watch gate → host_watch → pool → proc-scan operator lines on stdout; stderr silent on success |
 | AC-007.75   | `tests/fr007_proc_text_pool_status.rs`; `tests/fr007_proc_text_stderr_silent.rs`; `tests/fr007_proc_watch_text_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` text path); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`); `crates/sharecli-fleet/src/operator_pool_status.rs` | proc + proc --tree text one-shot + --watch gate → host_watch → pool → proc-scan operator lines on stdout; stderr silent on success |
+| AC-007.76   | `tests/fr007_health_pool_status_ps_text_pool_status.rs`; `tests/fr007_health_pool_text_stderr_silent.rs`; `tests/fr007_health_watch_text_stderr_silent.rs`; `tests/fr007_pool_watch_text_stderr_silent.rs`; `tests/fr007_status_watch_text_stderr_silent.rs`; `tests/fr007_ps_all_text_stderr_silent.rs`; `tests/fr007_ps_all_watch_text_stderr_silent.rs`; `src/commands/mod.rs` (`render_health_once`, `render_pool_once`, `render_status_once`, `render_ps_once`, `print_live_pool_status_operator_sections`); `crates/sharecli-fleet/src/operator_pool_status.rs` | health/pool/status/ps --all text one-shot + --watch gate → host_watch → pool → proc-scan operator lines on stdout; stderr silent on success |
 
 ### FR-008 — Coalesce
 
@@ -276,6 +277,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 health/pool/status/ps --all text pool/proc-scan operator lines (AC-007.76):**
+  `sharecli health`, `pool`, `status`, and `ps --all` (text, one-shot + `--watch`) print
+  `format_pool_operator_line` / `format_status_operator_line` on stdout after gate → `host_watch`
+  (parity with AC-007.74/75 report/proc text paths); stderr silent on success.
 - **2026-07-21 — FR-007 proc text pool/proc-scan operator lines (AC-007.75):** `sharecli proc` and
   `sharecli proc --tree` (text, one-shot + `--watch`) print `format_pool_operator_line` /
   `format_status_operator_line` on stdout after gate → `host_watch` (parity with AC-007.74 report
