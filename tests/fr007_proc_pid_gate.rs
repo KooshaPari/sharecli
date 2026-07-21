@@ -115,6 +115,8 @@ fn fr007_proc_pid_json_gate_serializes_fields() {
             mem_rss_bytes: 4096,
             load_1m: 1.25,
         },
+        pool: None,
+        status: None,
     };
     let json = serde_json::to_string(&detail).expect("serialize proc detail snapshot");
     for key in GATE_KEYS {

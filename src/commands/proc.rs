@@ -620,6 +620,12 @@ pub struct ProcDetailSnapshot {
     pub gate: sharecli_fleet::GateStatusSnapshot,
     /// Live host FD/RSS/load/net watch (FR-007 / AC-007.16).
     pub host_watch: HostResourceWatchJson,
+    /// Runtime pool operator panel (FR-007 / AC-007.77, proc --pid parity AC-007.86).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool: Option<super::PoolJson>,
+    /// Proc-scan status operator panel (FR-007 / AC-007.77, proc --pid parity AC-007.86).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<super::StatusJson>,
 }
 
 /// One NDJSON watch line for flat inventory (`proc --watch --json`, AC-006.18 / AC-006.37).
@@ -811,6 +817,8 @@ pub fn build_proc_detail(source: &dyn ProcSource, pid: u32) -> Result<ProcDetail
         fd_count: resource.fd_count,
         gate,
         host_watch: HostResourceWatchJson::capture()?,
+        pool: None,
+        status: None,
     })
 }
 
@@ -821,15 +829,10 @@ fn format_cmdline(cmdline: &[String]) -> String {
     cmdline.join(" ")
 }
 
-/// Render one process detail snapshot (text or JSON, AC-006.23).
-/// One-shot `proc --pid N --json` MUST NOT print gate/host_watch stderr companions (AC-007.31).
-/// One-shot `proc --pid N` text MUST NOT print gate/host_watch stderr companions either
-/// (AC-007.34); gate/host_watch stay in text sections on stdout only (AC-007.17).
-pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()> {
-    if json {
-        println!("{}", serde_json::to_string_pretty(detail)?);
-        return Ok(());
-    }
+/// Render one process detail snapshot as text (AC-006.23).
+/// One-shot `proc --pid N` text MUST NOT print gate/host_watch stderr companions (AC-007.34);
+/// gate/host_watch stay in text sections on stdout only (AC-007.17).
+pub fn render_proc_detail_text(detail: &ProcDetailSnapshot) -> Result<()> {
     println!("=== Process detail (PID {}) ===\n", detail.pid);
     println!("PID:       {}", detail.pid);
     let parent = match (&detail.parent_comm, detail.ppid) {
@@ -854,9 +857,46 @@ pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()>
     Ok(())
 }
 
-fn render_pid_detail(pid: u32, json: bool) -> Result<()> {
-    let detail = build_proc_detail(&HostProcSource, pid)?;
-    render_proc_detail(&detail, json)
+/// Render one process detail row as CSV body (FR-007 / AC-007.86).
+pub fn render_proc_detail_csv(detail: &ProcDetailSnapshot) -> String {
+    const HEADER: &str = "pid,ppid,comm,state,mem_rss_bytes,mem_rss,fd_count";
+    let fd = detail
+        .fd_count
+        .map(|n| n.to_string())
+        .unwrap_or_default();
+    format!(
+        "{HEADER}\n{pid},{ppid},{comm},{state},{rss},{mem_rss},{fd}\n",
+        pid = detail.pid,
+        ppid = detail.ppid,
+        comm = csv_escape_field(&detail.comm),
+        state = csv_escape_field(&detail.state),
+        rss = detail.mem_rss_bytes,
+        mem_rss = csv_escape_field(&detail.mem_rss),
+        fd = fd,
+    )
+}
+
+async fn render_pid_detail(pid: u32, json: bool, csv: bool) -> Result<()> {
+    let mut detail = build_proc_detail(&HostProcSource, pid)?;
+    if csv {
+        let body = render_proc_detail_csv(&detail);
+        print!(
+            "{}",
+            append_proc_csv_companions(body, &detail.gate).await?
+        );
+        return Ok(());
+    }
+    if json {
+        let (pool_panel, status_panel) = super::fetch_operator_pool_status_siblings().await?;
+        detail.pool = Some(pool_panel);
+        detail.status = Some(status_panel);
+        println!("{}", serde_json::to_string_pretty(&detail)?);
+        return Ok(());
+    }
+    render_proc_detail_text(&detail)?;
+    // AC-007.75 / AC-007.86: gate → host_watch → pool → proc-scan on stdout after detail body.
+    super::print_live_pool_status_operator_sections().await?;
+    Ok(())
 }
 
 /// Escape one CSV field (RFC 4180-style quoting when needed).
@@ -1197,10 +1237,7 @@ pub async fn run(
         if watch.is_some() {
             bail!("--pid cannot be combined with --watch");
         }
-        if csv {
-            bail!("--csv cannot be combined with --pid");
-        }
-        return render_pid_detail(target_pid, json);
+        return render_pid_detail(target_pid, json, csv).await;
     }
     if csv && watch.is_some() {
         bail!("--csv cannot be combined with --watch");
