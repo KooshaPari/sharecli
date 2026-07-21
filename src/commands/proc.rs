@@ -13,6 +13,11 @@ use sharecli_fleet::{
     watch_detected_agents, AgentResourceSample, AgentTreeNode, DetectedAgentWatch, HostProcSource,
     ProcSource,
 };
+
+pub use sharecli_fleet::{
+    build_agent_state_map, build_forest_state_map, collect_forest_pids, state_text_for_pid,
+};
+
 use tokio::time::sleep;
 
 /// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30, AC-006.31, AC-006.38).
@@ -178,33 +183,6 @@ pub fn build_agent_cmdline_map(source: &dyn ProcSource, agent_pids: &[u32]) -> H
             lookup_proc(source, pid).map(|proc| (pid, format_cmdline(&proc.cmdline)))
         })
         .collect()
-}
-
-/// Map agent PID → process state letter from a proc source (AC-006.31).
-pub fn build_agent_state_map(source: &dyn ProcSource, agent_pids: &[u32]) -> HashMap<u32, char> {
-    agent_pids
-        .iter()
-        .filter_map(|&pid| lookup_proc(source, pid).map(|proc| (pid, proc.state)))
-        .collect()
-}
-
-/// Collect every PID in agent forests, roots and nested children (AC-006.35).
-pub fn collect_forest_pids(forests: &[AgentTreeNode]) -> Vec<u32> {
-    let mut pids = Vec::new();
-    collect_forest_pids_inner(forests, &mut pids);
-    pids
-}
-
-fn collect_forest_pids_inner(nodes: &[AgentTreeNode], out: &mut Vec<u32>) {
-    for node in nodes {
-        out.push(node.pid);
-        collect_forest_pids_inner(&node.children, out);
-    }
-}
-
-/// Live process-state map for all nodes in displayed forests (AC-006.35).
-pub fn build_forest_state_map(source: &dyn ProcSource, forests: &[AgentTreeNode]) -> HashMap<u32, char> {
-    build_agent_state_map(source, &collect_forest_pids(forests))
 }
 
 /// Sort key for `sharecli proc` inventory rows (AC-006.19).
@@ -684,15 +662,6 @@ fn state_letter_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
 
 fn state_json_from_char(state: char) -> String {
     if state == '?' { String::new() } else { state.to_string() }
-}
-
-/// STATE column for flat text inventory; missing/unknown → `-` (AC-006.33).
-pub fn state_text_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
-    state_by_pid
-        .get(&pid)
-        .filter(|ch| **ch != '?')
-        .map(|ch| ch.to_string())
-        .unwrap_or_else(|| "-".into())
 }
 
 fn state_text_from_detail_state(state: &str) -> String {

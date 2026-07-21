@@ -190,6 +190,50 @@ pub fn build_host_agent_forests() -> Vec<AgentTreeNode> {
     build_agent_forests(&HostProcSource)
 }
 
+/// Collect every PID in agent forests, roots and nested children (AC-006.35).
+pub fn collect_forest_pids(forests: &[AgentTreeNode]) -> Vec<u32> {
+    let mut pids = Vec::new();
+    collect_forest_pids_inner(forests, &mut pids);
+    pids
+}
+
+fn collect_forest_pids_inner(nodes: &[AgentTreeNode], out: &mut Vec<u32>) {
+    for node in nodes {
+        out.push(node.pid);
+        collect_forest_pids_inner(&node.children, out);
+    }
+}
+
+/// Map agent PID → process state letter from a proc source (AC-006.31).
+pub fn build_agent_state_map(source: &dyn ProcSource, agent_pids: &[u32]) -> HashMap<u32, char> {
+    agent_pids
+        .iter()
+        .filter_map(|&pid| lookup_proc(source, pid).map(|proc| (pid, proc.state)))
+        .collect()
+}
+
+/// Live process-state map for all nodes in displayed forests (AC-006.35).
+pub fn build_forest_state_map(
+    source: &dyn ProcSource,
+    forests: &[AgentTreeNode],
+) -> HashMap<u32, char> {
+    build_agent_state_map(source, &collect_forest_pids(forests))
+}
+
+/// Live-host convenience for [`build_forest_state_map`].
+pub fn build_host_forest_state_map(forests: &[AgentTreeNode]) -> HashMap<u32, char> {
+    build_forest_state_map(&HostProcSource, forests)
+}
+
+/// STATE display for text inventory / tree nodes; missing/unknown → `-` (AC-006.33, AC-006.34).
+pub fn state_text_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
+    state_by_pid
+        .get(&pid)
+        .filter(|ch| **ch != '?')
+        .map(|ch| ch.to_string())
+        .unwrap_or_else(|| "-".into())
+}
+
 fn build_agent_subtree(
     pid: u32,
     by_pid: &HashMap<u32, ProcSnapshot>,
@@ -418,5 +462,23 @@ mod tests {
         assert_eq!(forests[0].children[0].family, Some("forge"));
         assert_eq!(forests[0].children[0].children.len(), 1);
         assert_eq!(forests[0].children[0].children[0].pid, 21);
+    }
+
+    #[test]
+    fn collect_forest_pids_includes_nested_children() {
+        let forests = build_agent_forests(&tree());
+        let mut pids = collect_forest_pids(&forests);
+        pids.sort_unstable();
+        assert_eq!(pids, vec![100, 200, 300]);
+    }
+
+    #[test]
+    fn build_forest_state_map_resolves_child_states() {
+        let forests = build_agent_forests(&tree());
+        let map = build_forest_state_map(&tree(), &forests);
+        assert_eq!(map.get(&100), Some(&'R'));
+        assert_eq!(map.get(&300), Some(&'R'));
+        assert_eq!(state_text_for_pid(&map, 300), "R");
+        assert_eq!(state_text_for_pid(&HashMap::new(), 300), "-");
     }
 }
