@@ -15,6 +15,11 @@ Related:
 | [`ruleset-checklist.md`](ruleset-checklist.md) | Org-admin ruleset / 2FA checklist |
 | [`feb-recovery.md`](feb-recovery.md) | Remaining A+ blockers (includes L34) |
 
+**Tray/serve UX:** Current deploy surface (tray icon + `sharecli serve`) is accepted
+operator UX — not the Feb harness TUI. Feb used a harness TUI dashboard for metrics;
+an optional later port of those dashboard meters does not block L34 or lineage closure.
+See [`feb-recovery.md`](feb-recovery.md) and [ADR 0006](../adr/0006-feb-harness-recovery-lineage.md).
+
 ---
 
 ## Diagnosis (current machine as of 2026-07-19)

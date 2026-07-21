@@ -19,7 +19,7 @@ use sharecli_core::{
     THERMAL_MAX_RETRIES,
 };
 use sharecli_ipc::{
-    command_key, has_nocache_arg, should_bypass_coalesce, CachedResult, CoalesceCache,
+    command_key, has_nocache_arg, should_bypass_coalesce, CachedResult, CacheKeyMode, CoalesceCache,
     SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
 use std::fs;
@@ -277,6 +277,8 @@ async fn fr008_hypervisor_debounce_waits_and_shares() {
             queue_max_concurrent: 1,
             coalesce_ttl: Duration::from_secs(300),
             coalesce_debounce: debounce,
+            cache_key_mode: CacheKeyMode::Time,
+            semantic: false,
         },
         gate,
         vec![],
@@ -623,5 +625,92 @@ async fn fr008_hypervisor_nocache_critical_before_normal() {
         lines,
         vec!["holder_start", "holder_end", "critical", "normal_late"],
         "AC-008.14: Hypervisor nocache Critical MUST run before queued Normal"
+    );
+}
+
+/// FR-008 / AC-008.19 — Args cache_key_mode shares cache across cwd.
+#[tokio::test]
+async fn fr008_hypervisor_args_cache_key_mode_ignores_cwd() {
+    let dir = TempDir::new().expect("tempdir");
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let cache_root = dir.path().join("cache");
+    let hv = Hypervisor::with_options(
+        HypervisorConfig {
+            cache_root,
+            queue_root: dir.path().join("queue"),
+            queue_max_concurrent: 1,
+            coalesce_ttl: Duration::from_secs(300),
+            coalesce_debounce: Duration::ZERO,
+            cache_key_mode: CacheKeyMode::Args,
+            semantic: false,
+        },
+        gate,
+        vec![],
+    );
+
+    let sub_a = dir.path().join("a");
+    let sub_b = dir.path().join("b");
+    fs::create_dir_all(&sub_a).expect("mkdir a");
+    fs::create_dir_all(&sub_b).expect("mkdir b");
+
+    let argv = vec!["/bin/echo".into(), "args-mode-probe".into()];
+    let first = hv
+        .run(SpawnRequest::new(argv.clone(), sub_a, vec![]))
+        .await
+        .expect("first run");
+    assert!(!first.from_cache);
+
+    let second = hv
+        .run(SpawnRequest::new(argv, sub_b, vec![]))
+        .await
+        .expect("second run");
+    assert!(
+        second.from_cache,
+        "AC-008.19: Args mode MUST coalesce across different cwd"
+    );
+}
+
+/// FR-008 / AC-008.20 — semantic normalization applied before Hypervisor cache hash.
+#[tokio::test]
+async fn fr008_hypervisor_semantic_coalesces_repeated_lint_dot() {
+    let dir = TempDir::new().expect("tempdir");
+    let fake_ruff = dir.path().join("ruff");
+    std::os::unix::fs::symlink("/bin/echo", &fake_ruff).expect("symlink ruff→echo");
+
+    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let hv = Hypervisor::with_options(
+        HypervisorConfig {
+            cache_root: dir.path().join("cache"),
+            queue_root: dir.path().join("queue"),
+            queue_max_concurrent: 1,
+            coalesce_ttl: Duration::from_secs(300),
+            coalesce_debounce: Duration::ZERO,
+            cache_key_mode: CacheKeyMode::Time,
+            semantic: true,
+        },
+        gate,
+        vec![],
+    );
+
+    let argv = vec![
+        fake_ruff.to_string_lossy().into(),
+        "check".into(),
+        ".".into(),
+    ];
+    let cwd = dir.path().to_path_buf();
+
+    let first = hv
+        .run(SpawnRequest::new(argv.clone(), cwd.clone(), vec![]))
+        .await
+        .expect("first semantic lint run");
+    assert!(!first.from_cache);
+
+    let second = hv
+        .run(SpawnRequest::new(argv, cwd, vec![]))
+        .await
+        .expect("second semantic lint run");
+    assert!(
+        second.from_cache,
+        "AC-008.20: semantic lint invocations MUST coalesce on replay"
     );
 }

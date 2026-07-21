@@ -2,6 +2,7 @@
 //! FR: FR-009
 //!
 //! AC-009.11 CLI `fuse provenance <path>` reads write xattrs via read_provenance
+//! AC-009.17 CLI fuse mount/unmount/status/list/commit/discard operator surface
 
 use sharecli_fuse::{annotate_write_at, read_provenance};
 use std::process::Command;
@@ -81,4 +82,41 @@ fn fr009_cli_fuse_provenance_matches_read_provenance() {
     let v: serde_json::Value = serde_json::from_str(&stdout(&out)).expect("json");
     assert_eq!(v["session_id"], lib.session_id);
     assert_eq!(v["written_at_unix"], lib.written_at_unix);
+}
+
+/// FR-009 / AC-009.17 — `fuse status --json` exposes read-cache + write-serialize meters.
+#[test]
+fn fr009_cli_fuse_status_json() {
+    let out = bin().args(["fuse", "status", "--json"]).output().expect("spawn fuse status");
+    assert!(out.status.success(), "stderr={}", stderr(&out));
+    let v: serde_json::Value = serde_json::from_str(&stdout(&out)).expect("json status");
+    assert!(v.get("read_cache").is_some(), "must include read_cache");
+    assert!(v.get("write_serialize").is_some(), "must include write_serialize");
+}
+
+/// FR-009 / AC-009.17 — `fuse list` with no mounts returns success.
+#[test]
+fn fr009_cli_fuse_list_empty() {
+    let out = bin().args(["fuse", "list"]).output().expect("spawn fuse list");
+    assert!(out.status.success(), "stderr={}", stderr(&out));
+    assert!(
+        stdout(&out).contains("no registered mounts"),
+        "stdout={}",
+        stdout(&out)
+    );
+}
+
+/// FR-009 / AC-009.17 — commit without a registered mount fails loudly.
+#[test]
+fn fr009_cli_fuse_commit_requires_mount() {
+    let out = bin()
+        .args(["fuse", "commit", "some/path.txt"])
+        .output()
+        .expect("spawn fuse commit");
+    assert!(!out.status.success(), "commit without mount MUST fail");
+    assert!(
+        stderr(&out).contains("no active FUSE mounts") || stderr(&out).contains("registered mount"),
+        "stderr={}",
+        stderr(&out)
+    );
 }

@@ -29,15 +29,19 @@
 //! Use [`should_bypass_coalesce`] then [`SlotQueue::with_slot`]. Hypervisor callers:
 //! see `sharecli_core::Hypervisor::{queue, run}`.
 
+pub mod cache_key;
 pub mod handler;
 pub mod nocache;
 pub mod queue;
+pub mod semantic;
 pub mod serve_lock;
 pub mod ws_client;
 
+pub use cache_key::{command_key, command_key_with_mode, CacheKeyMode};
 pub use nocache::{
     has_nocache_arg, parse_nocache_args_csv, should_bypass_coalesce, DEFAULT_NOCACHE_ARGS,
 };
+pub use semantic::semantic_normalize_argv;
 pub use queue::{
     resolve_operator_queue_priority, PriorityQueue, QueuePriority, SlotQueue, QUEUE_PRIORITY_ENV,
 };
@@ -56,7 +60,6 @@ use std::time::{Duration, SystemTime};
 use anyhow::{Context, Result};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
 // ---------------------------------------------------------------------------
 // CommandKey
@@ -64,44 +67,9 @@ use sha2::{Digest, Sha256};
 
 /// An opaque, stable, hex-encoded cache key for a command invocation.
 ///
-/// Two invocations are considered identical when they have the same argv,
-/// working directory, and the same subset of environment variables.
+/// See [`command_key_with_mode`] and [`CacheKeyMode`] for dimension rules.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandKey(pub String);
-
-/// Compute the [`CommandKey`] for a command invocation.
-///
-/// Inputs are normalised before hashing:
-/// - `argv` — joined with NUL bytes so spaces inside arguments are safe.
-/// - `cwd`  — the canonical string representation of the path.
-/// - `env_subset` — key=value pairs sorted by key so insertion order is irrelevant.
-pub fn command_key(argv: &[String], cwd: &Path, env_subset: &[(String, String)]) -> CommandKey {
-    let mut hasher = Sha256::new();
-
-    // argv: NUL-separated tokens so `["ruff", "check ."]` != `["ruff check", "."]`
-    for arg in argv {
-        hasher.update(arg.as_bytes());
-        hasher.update(b"\x00");
-    }
-    hasher.update(b"\x01"); // argv/cwd separator
-
-    // cwd
-    hasher.update(cwd.to_string_lossy().as_bytes());
-    hasher.update(b"\x01"); // cwd/env separator
-
-    // env: sort so {A=1,B=2} == {B=2,A=1}
-    let mut sorted_env: Vec<&(String, String)> = env_subset.iter().collect();
-    sorted_env.sort_by_key(|(k, _)| k.as_str());
-    for (k, v) in sorted_env {
-        hasher.update(k.as_bytes());
-        hasher.update(b"=");
-        hasher.update(v.as_bytes());
-        hasher.update(b"\x00");
-    }
-
-    let digest = hasher.finalize();
-    CommandKey(hex::encode(digest))
-}
 
 // ---------------------------------------------------------------------------
 // CachedResult
@@ -352,16 +320,6 @@ impl CoalesceCache {
 
         // Lock releases on drop.
         Ok((T::from(cached), CoalesceHitKind::Miss))
-    }
-}
-
-// ---------------------------------------------------------------------------
-// hex helper (avoid a separate dep — sha2 already pulls in digest)
-// ---------------------------------------------------------------------------
-
-mod hex {
-    pub fn encode(bytes: impl AsRef<[u8]>) -> String {
-        bytes.as_ref().iter().map(|b| format!("{b:02x}")).collect()
     }
 }
 

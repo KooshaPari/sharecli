@@ -18,6 +18,7 @@ use std::process::Command;
 
 use harness_native::find_real;
 use harness_native::strategies::{self, RuleOpts};
+use sharecli_ipc::parse_nocache_args_csv;
 use tracing::{debug, info, warn};
 
 fn init_tracing() {
@@ -179,6 +180,7 @@ fn parse_opts(opts_str: &str) -> RuleOpts {
                 "retry_jitter" => opts.retry_jitter = v.parse().unwrap_or(0.1),
                 "stale" => opts.stale_threshold = v.parse().unwrap_or(0),
                 "semantic" => opts.semantic = v == "1",
+                "nocache_args" => opts.nocache_args = Some(parse_nocache_args_csv(v)),
                 "jobserver_auth" => opts.jobserver_auth = v.to_string(),
                 "jobserver_tokens" => opts.jobserver_tokens = v.parse().unwrap_or(0),
                 "jobserver_borrow" => opts.jobserver_borrow = v == "1",

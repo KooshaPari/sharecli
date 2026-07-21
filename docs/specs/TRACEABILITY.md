@@ -235,8 +235,10 @@
 | AC-008.15 | `tests/fr008_queue_priority_operator.rs`; `crates/sharecli-ipc/src/queue.rs` (`resolve_operator_queue_priority`, `QUEUE_PRIORITY_ENV`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::from_operator`, `SpawnRequest::new`); `crates/harness-native/tests/native_harness_contract.rs` (`operator_queue_priority_honors_rules_conf`) | operator env + rules.conf → SpawnRequest queue priority |
 | AC-008.16 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::run_queued`, `hypervisor_run_queued_skips_coalesce_cache`); `crates/harness-native/src/strategies/queue.rs` (`queue_strategy_executes_via_hypervisor`, `priority_queue_strategy_executes_via_hypervisor`) | harness queue/priority_queue → Hypervisor nocache lane via `from_operator` |
 | AC-008.17 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::from_config`, `HypervisorConfig::coalesce_ttl`, `coalesce_ttl`); `crates/harness-native/src/strategies/coalesce.rs` (`coalesce_strategy_executes_via_hypervisor`, `coalesce_strategy_serves_cache_on_replay`, `cache_strategy_executes_via_hypervisor`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_hypervisor_config`, `config_from_rule_opts`) | harness coalesce/cache → Hypervisor::run via from_operator + RuleOpts ttl/debounce/max_concurrent |
-| AC-008.19 | `crates/harness-native/src/strategies/retry.rs`; `crates/harness-native/src/strategies/circuit_breaker.rs`; `crates/harness-native/src/strategies/process.rs`; `crates/harness-native/src/strategies/mod.rs` | harness retry/circuit_breaker/passthrough (+ process delegates) → Hypervisor::run; no raw Command::spawn |
 | AC-008.18 | `crates/harness-native/src/strategies/debounce.rs` (`debounce_strategy_executes_via_hypervisor`, `debounce_strategy_serves_cache_on_replay`, `debounce_strategy_shares_in_window_store`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`config_from_rule_opts`, `build_hypervisor`) | harness debounce → Hypervisor::run via hypervisor_lane + debounce_ms → coalesce_debounce |
+| AC-008.19 | `crates/sharecli-ipc/src/cache_key.rs` (`cache_key_args_mode_ignores_cwd_and_env`, `cache_key_git_mode_parse_and_differs_from_args`); `tests/fr008_coalesce_mesh.rs` (`fr008_hypervisor_args_cache_key_mode_ignores_cwd`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_cache_key_mode_and_semantic`, `build_hypervisor_rule_nocache_args_*`, `build_hypervisor_omitted_nocache_args_keeps_defaults`); `crates/sharecli-core/src/lib.rs` (`HypervisorConfig::cache_key_mode`, `Hypervisor::run`) | CacheKeyMode time/args/git + per-rule nocache_args override semantics |
+| AC-008.20 | `crates/sharecli-ipc/src/semantic.rs` (`semantic_normalize_dot_to_project_root`, `semantic_normalize_canonicalizes_directory`); `tests/fr008_coalesce_mesh.rs` (`fr008_hypervisor_semantic_coalesces_repeated_lint_dot`); `crates/sharecli-core/src/lib.rs` (`HypervisorConfig::semantic`, `Hypervisor::run`) | semantic lint argv normalization before cache hash |
+| AC-008.21 | `crates/harness-native/src/strategies/retry.rs`; `crates/harness-native/src/strategies/circuit_breaker.rs`; `crates/harness-native/src/strategies/process.rs`; `crates/harness-native/src/strategies/mod.rs` | harness retry/circuit_breaker/passthrough (+ process delegates) → Hypervisor::run; no raw Command::spawn |
 
 ### FR-009 — FUSE
 
@@ -255,6 +257,9 @@
 | AC-009.12 | `tests/fr009_fuse_hypervisor_session.rs`; `sharecli-core` `fuse_session_id_for_command_key`; `sharecli-fuse` `mount_with_session` | Hypervisor FUSE session from coalesce CommandKey |
 | AC-009.13 | `tests/fr009_fuse_hypervisor_session.rs` (`fr009_hypervisor_spawn_outcome_fuse_session_id`); `sharecli-core` `SpawnOutcome::fuse_session_id` | SpawnOutcome exposes FUSE session when intercept active |
 | AC-009.14 | `tests/fr009_fuse_hypervisor_session.rs` (`fr009_remap_mount_to_backing_subtree`, `fr009_hypervisor_spawn_outcome_fuse_path_remap`); `sharecli-fuse` `path_remap.rs`; `sharecli-core` `SpawnOutcome::remap_fuse_path`, `FuseGuard` teardown | FUSE mount/backing remap + spawn/teardown lifecycle |
+| AC-009.15 | `tests/fr009_fuse_intercept.rs` (`fr009_create_rel_provenance_and_neg_invalidate`); `crates/sharecli-fuse/src/lib.rs` FUSE `create`/`mknod` | create files through intercept; provenance + cache/dentry invalidate |
+| AC-009.16 | `crates/sharecli-fuse/src/lib.rs` (`Filesystem::write` + `record_passthrough_write`); `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` extended smoke | live write metering + create/mkdir/unlink/rename mount smoke |
+| AC-009.17 | `tests/fr009_fuse_cli.rs`; `src/commands/fuse.rs`; `crates/sharecli-fuse/src/session_registry.rs` | fuse mount/unmount/status/list/commit/discard CLI + registry |
 
 ### FR-010 — Mesh
 
@@ -288,7 +293,8 @@
 
 ## Change log
 
-- **2026-07-21 — FR-008 harness retry/circuit_breaker/process via Hypervisor (AC-008.19):** `retry`, `circuit_breaker`, and `passthrough`/process-delegating strategies execute via `Hypervisor::run` + `SpawnRequest::from_operator`; open circuit fails loudly; retry exhaustion surfaces non-zero exit.
+- **2026-07-21 — FR-008 harness retry/circuit_breaker/process via Hypervisor (AC-008.21):** `retry`, `circuit_breaker`, and `passthrough`/process-delegating strategies execute via `Hypervisor::run` + `SpawnRequest::from_operator`; open circuit fails loudly; retry exhaustion surfaces non-zero exit.
+- **2026-07-21 — FR-008 cache_key modes + semantic normalization (AC-008.19..20):** `CacheKeyMode` time/args/git plumbed via rules.conf; per-rule `nocache_args=` override; `semantic=1` applies lint argv normalization before cache hash.
 - **2026-07-21 — FR-007 proc --pid operator envelope parity suite rows (AC-007.86):**
   `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --pid` text/JSON/CSV one-shot matrix
   rows (self-PID) locking gate → host_watch → pool → status companions; `render_pid_detail`
@@ -652,6 +658,8 @@
 - **2026-07-20 — FR-007 thermal TUI dashboard slice:** `sharecli thermal`
   polls ResourceWatchSample + FUSE read-coalesce meters each redraw
   (AC-007.9 TUI + AC-007.11); formalized AC-007.7..9 in FR.md.
+- **2026-07-21 — FR-008 cache key modes + semantic + per-rule nocache:** `CacheKeyMode`
+  (`time`/`args`/`git`), `semantic_normalize_argv`, `RuleOpts.nocache_args` (AC-008.19..20).
 - **2026-07-20 — FR-008 Hypervisor nocache e2e:** AC-008.10 side-effect
   re-exec + concurrent SlotQueue serialize + coalesce isolation
   (`tests/e2e_hypervisor_nocache.rs`).
@@ -666,6 +674,9 @@
   `SHARECLI_FUSE_MOUNT_SMOKE=1` (`run_mount_smoke`, AC-009.8).
 - **2026-07-20 — FR-009 write provenance:** `user.sharecli.session` /
   `user.sharecli.written_at` stamped on `write_rel` / `commit_rel` (AC-009.6).
+- **2026-07-21 — FR-009 FUSE gaps:** FUSE `create`/`mknod`, live `write` passthrough metering,
+  extended mount smoke (create/mkdir/unlink/rename), `FuseSessionRegistry`, and `sharecli fuse`
+  mount/unmount/status/list/commit/discard CLI (AC-009.15..17).
 - **2026-07-19 — FR-009/010 A+ closeout:** CoW `stage_bytes`/`commit_pending`/
   `discard_pending` (AC-009.5); `SmartMerger` + `WorktreePool` (AC-010.7..8).
 - **2026-07-19 — FR-009 A+ recovery:** InterceptFs passthrough + inode map +

@@ -164,6 +164,40 @@ pub fn run_mount_smoke(backing: &Path) -> anyhow::Result<()> {
         "mount smoke write: backing file not updated through FUSE"
     );
     verify_mount_smoke_provenance(&backing_seed)?;
+
+    // Create, mkdir, unlink, rename round-trip (AC-009.16).
+    let new_file = session.mountpoint().join("smoke-new.txt");
+    std::fs::write(&new_file, b"created-via-fuse")?;
+    anyhow::ensure!(
+        std::fs::read(backing.join("smoke-new.txt"))? == b"created-via-fuse",
+        "mount smoke create: backing file missing after FUSE create"
+    );
+    verify_mount_smoke_provenance(&backing.join("smoke-new.txt"))?;
+
+    let new_dir = session.mountpoint().join("smoke-dir");
+    std::fs::create_dir(&new_dir)?;
+    anyhow::ensure!(backing.join("smoke-dir").is_dir(), "mount smoke mkdir: backing dir missing");
+
+    std::fs::remove_file(&new_file)?;
+    anyhow::ensure!(
+        !backing.join("smoke-new.txt").exists(),
+        "mount smoke unlink: backing file still present"
+    );
+
+    let rename_src = session.mountpoint().join("smoke-rename.txt");
+    std::fs::write(&rename_src, b"rename-me")?;
+    let rename_dst = session.mountpoint().join("smoke-renamed.txt");
+    std::fs::rename(&rename_src, &rename_dst)?;
+    anyhow::ensure!(
+        backing.join("smoke-renamed.txt").is_file(),
+        "mount smoke rename: destination missing on backing"
+    );
+    std::fs::rename(&rename_dst, &rename_src)?;
+    anyhow::ensure!(
+        backing.join("smoke-rename.txt").is_file(),
+        "mount smoke rename round-trip: source not restored on backing"
+    );
+
     Ok(())
 }
 

@@ -40,6 +40,13 @@ pub struct RuleOpts {
     pub jobserver_borrow: bool,
     pub stale_threshold: u64,
     pub semantic: bool,
+    /// Per-rule nocache flag list from rules.conf `nocache_args=`.
+    ///
+    /// `None` — rule did not specify; harness [`build_hypervisor`] keeps
+    /// [`DEFAULT_NOCACHE_ARGS`] from [`Hypervisor::from_config`].
+    /// `Some(vec![])` — rule set `nocache_args=` (explicit empty → no bypass).
+    /// `Some(flags)` — rule-listed mutating tokens only.
+    pub nocache_args: Option<Vec<String>>,
 }
 
 /// Execute a strategy. Returns exit code.

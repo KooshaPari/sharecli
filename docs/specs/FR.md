@@ -915,7 +915,9 @@ be served from the coalesce cache.
 - **AC-008.16:** harness-native [`queue`](crates/harness-native/src/strategies/queue.rs) and [`priority_queue`](crates/harness-native/src/strategies/mod.rs) strategies MUST execute via [`Hypervisor::run_queued`](crates/sharecli-core/src/lib.rs) with [`SpawnRequest::from_operator`](crates/sharecli-core/src/lib.rs) (`rules.conf` `priority=` + env); MUST NOT use raw `Command::spawn`; repeated identical invocations MUST NOT set `from_cache`.
 - **AC-008.17:** harness-native [`coalesce`](crates/harness-native/src/strategies/coalesce.rs) and [`cache`](crates/harness-native/src/strategies/mod.rs) strategies MUST execute via [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) with [`SpawnRequest::from_operator`](crates/sharecli-core/src/lib.rs); cache root MUST be `{harness_home}/var/sharecli-hypervisor`; [`RuleOpts`](crates/harness-native/src/strategies/mod.rs) `ttl=` / `debounce_ms=` / `max_concurrent=` MUST map into [`HypervisorConfig`](crates/sharecli-core/src/lib.rs); repeated identical invocations MUST set `from_cache` on replay; MUST NOT use raw `Command::spawn`.
 - **AC-008.18:** harness-native [`debounce`](crates/harness-native/src/strategies/debounce.rs) strategy MUST execute via [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) with [`SpawnRequest::from_operator`](crates/sharecli-core/src/lib.rs) and [`RuleOpts`](crates/harness-native/src/strategies/mod.rs) `debounce_ms=` mapped into [`HypervisorConfig::coalesce_debounce`](crates/sharecli-core/src/lib.rs) via [`hypervisor_lane`](crates/harness-native/src/strategies/hypervisor_lane.rs); MUST share in-window sibling stores per AC-008.6; repeated identical invocations MUST set `from_cache` on replay; MUST NOT use raw `Command::spawn`.
-- **AC-008.19:** harness-native [`retry`](crates/harness-native/src/strategies/retry.rs), [`circuit_breaker`](crates/harness-native/src/strategies/circuit_breaker.rs), [`passthrough`](crates/harness-native/src/strategies/process.rs) / process-delegating strategies (`incremental`, `resource_throttle`, `jobserver`, `load_balance`, `speculative`, `proactive_warm`, `batch`, `causal_order`) MUST execute via [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) with [`SpawnRequest::from_operator`](crates/sharecli-core/src/lib.rs) through [`hypervisor_lane`](crates/harness-native/src/strategies/hypervisor_lane.rs); MUST NOT use raw `Command::spawn`; open circuit breaker MUST fail loudly; retry exhaustion MUST surface non-zero exit.
+- **AC-008.19:** [`CacheKeyMode`](crates/sharecli-ipc/src/cache_key.rs) (`time` / `args` / `git`) MUST be selectable via rules.conf `cache_key=` and plumbed through [`HypervisorConfig::cache_key_mode`](crates/sharecli-core/src/lib.rs) into [`command_key_with_mode`](crates/sharecli-ipc/src/cache_key.rs) on every [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) coalesce path; `args` MUST hash argv only (CWD-independent); `git` MUST incorporate cwd + git porcelain + HEAD fingerprint (Feb `harness::cache_key` git branch); per-rule `nocache_args=` MUST override [`DEFAULT_NOCACHE_ARGS`](crates/sharecli-ipc/src/nocache.rs) when present, explicit empty `nocache_args=` MUST disable bypass for that rule, omitted `nocache_args` MUST keep Hypervisor defaults for harness [`build_hypervisor`](crates/harness-native/src/strategies/hypervisor_lane.rs).
+- **AC-008.20:** When rules.conf `semantic=1`, [`HypervisorConfig::semantic`](crates/sharecli-core/src/lib.rs) MUST apply [`semantic_normalize_argv`](crates/sharecli-ipc/src/semantic.rs) (ruff/mypy/pylint/flake8 path normalization ported from Feb `harness::semantic::normalize`) before cache-key hashing; repeated semantically normalized lint invocations MUST coalesce on replay.
+- **AC-008.21:** harness-native [`retry`](crates/harness-native/src/strategies/retry.rs), [`circuit_breaker`](crates/harness-native/src/strategies/circuit_breaker.rs), [`passthrough`](crates/harness-native/src/strategies/process.rs) / process-delegating strategies (`incremental`, `resource_throttle`, `jobserver`, `load_balance`, `speculative`, `proactive_warm`, `batch`, `causal_order`) MUST execute via [`Hypervisor::run`](crates/sharecli-core/src/lib.rs) with [`SpawnRequest::from_operator`](crates/sharecli-core/src/lib.rs) through [`hypervisor_lane`](crates/harness-native/src/strategies/hypervisor_lane.rs); MUST NOT use raw `Command::spawn`; open circuit breaker MUST fail loudly; retry exhaustion MUST surface non-zero exit.
 
 **Test refs:** `tests/fr008_coalesce_mesh.rs`; `tests/fr008_queue_priority_operator.rs`; `tests/fr008_coalesce_status.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `tests/e2e_hypervisor_nocache.rs`; `crates/harness-native/tests/native_harness_contract.rs`; `sharecli-core` `hypervisor_run_queued_skips_coalesce_cache`; `crates/harness-native/src/strategies/coalesce.rs` (`coalesce_strategy_executes_via_hypervisor`, `coalesce_strategy_serves_cache_on_replay`); `crates/harness-native/src/strategies/debounce.rs`; `crates/harness-native/src/strategies/retry.rs`; `crates/harness-native/src/strategies/circuit_breaker.rs`; `crates/harness-native/src/strategies/process.rs` (`debounce_strategy_executes_via_hypervisor`, `debounce_strategy_serves_cache_on_replay`, `debounce_strategy_shares_in_window_store`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_hypervisor_config`); `sharecli-ipc` unit tests for TTL/debounce/queue/nocache/meters.
 
@@ -947,7 +949,8 @@ until create / mkdir / rename-into invalidates the entry.
 - `crates/sharecli-fuse/src/write_serialize.rs` — `WriteSerialize`
 - `crates/sharecli-fuse/src/provenance.rs` — write provenance xattrs
 - `crates/sharecli-fuse/src/mount_smoke.rs` — opt-in privileged mount smoke
-- `src/commands/fuse.rs` — `sharecli fuse provenance`
+- `crates/sharecli-fuse/src/session_registry.rs` — process-local mount registry
+- `src/commands/fuse.rs` — `sharecli fuse` operator surface
 
 **Acceptance Criteria:**
 
@@ -1005,6 +1008,18 @@ until create / mkdir / rename-into invalidates the entry.
   translate paths under the mount to backing equivalents (prefix-safe, `None` outside subtree).
   [`FuseGuard`](crates/sharecli-core/src/lib.rs) MUST remain mounted for the full coalesce
   spawn window and force-unmount on drop after the child exits.
+- **AC-009.15:** FUSE `create` / `mknod` (regular files) and in-process [`create_rel`](crates/sharecli-fuse/src/lib.rs)
+  MUST create backing files without ENOSYS; successful create MUST stamp write provenance
+  (parity with AC-009.6), invalidate negative dentry + read cache (parity with AC-009.7).
+- **AC-009.16:** Live FUSE [`Filesystem::write`](crates/sharecli-fuse/src/lib.rs) MUST call
+  [`record_passthrough_write`](crates/sharecli-fuse/src/write_serialize_meters.rs) on success
+  (parity with `write_rel` / AC-009.10). With `SHARECLI_FUSE_MOUNT_SMOKE=1`, [`run_mount_smoke`](crates/sharecli-fuse/src/mount_smoke.rs)
+  MUST also exercise create, mkdir, unlink, and rename round-trip through the mount.
+- **AC-009.17:** `sharecli fuse` MUST expose operator subcommands: `mount`, `unmount`, `status`,
+  `commit`, `discard`, and `list` (in addition to `provenance`). [`FuseSessionRegistry`](crates/sharecli-fuse/src/session_registry.rs)
+  tracks background mounts (`mountpoint` → [`InterceptFs`]) so `commit`/`discard` operate on
+  staged CoW via `commit_rel`/`discard_rel`; `list` enumerates mounts and pending relative paths;
+  `status` prints global read-cache + write-serialize meter sections.
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
 

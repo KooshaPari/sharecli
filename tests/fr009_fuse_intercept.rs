@@ -11,6 +11,8 @@
 //! AC-009.8 privileged mount smoke (SHARECLI_FUSE_MOUNT_SMOKE=1) + provenance xattrs
 //! AC-009.9 global neg dentry meters aggregate for status/TUI
 //! AC-009.10 global write-serialize meters aggregate for status/TUI
+//! AC-009.15 FUSE create via create_rel stamps provenance + invalidates neg/read cache
+//! AC-009.16 privileged mount smoke create/mkdir/unlink/rename (SHARECLI_FUSE_MOUNT_SMOKE=1)
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -205,6 +207,31 @@ fn fr009_negative_dentry_cache() {
     fs.invalidate_neg_rel(missing);
     assert!(fs.exists_rel(missing).expect("positive after create"));
     assert_eq!(fs.neg_dentry_meters().hits, 1);
+}
+
+/// FR-009 / AC-009.15 — create_rel stamps provenance and clears negative dentry.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+#[serial_test::serial]
+fn fr009_create_rel_provenance_and_neg_invalidate() {
+    use sharecli_fuse::read_provenance;
+
+    let dir = TempDir::new().expect("tempdir");
+    let fs = sharecli_fuse::InterceptFs::with_session(dir.path(), "sess-create");
+    let rel = Path::new("brand-new.txt");
+
+    assert!(!fs.exists_rel(rel).expect("ENOENT probe"));
+    assert_eq!(fs.neg_dentry_meters().misses, 1);
+
+    fs.create_rel(rel, 0o644).expect("create_rel must not ENOSYS");
+    assert!(fs.exists_rel(rel).expect("visible after create"));
+
+    let backing = dir.path().join("brand-new.txt");
+    let prov = read_provenance(&backing).expect("read").expect("provenance on create");
+    assert_eq!(prov.session_id, "sess-create");
+
+    let _ = fs.read_coalesced_rel(rel).expect("read after create");
+    assert_eq!(fs.cache_meters().misses, 1);
 }
 
 /// FR-009 / AC-009.7 — NegativeDentryCache unit surface (all platforms).
