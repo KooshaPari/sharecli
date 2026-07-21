@@ -17,6 +17,7 @@ mod config;
 mod config_validator;
 mod config_watcher;
 mod crc64;
+mod dashboard_assets;
 mod csv_writer;
 mod error;
 mod error_envelope;

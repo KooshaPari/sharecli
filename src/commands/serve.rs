@@ -239,6 +239,10 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
 
     let app = Router::new()
         .route("/", get(dashboard))
+        .route(
+            "/assets/dashboard/ui/{*path}",
+            get(crate::dashboard_assets::serve),
+        )
         .route("/healthz", get(healthz))
         .route("/readyz", get(readyz))
         .route("/config", get(config_handler))
