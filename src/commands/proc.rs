@@ -20,6 +20,8 @@ pub use sharecli_fleet::{
 
 use tokio::time::sleep;
 
+use crate::monitoring::HostResourceWatchJson;
+
 /// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30, AC-006.31, AC-006.38).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
@@ -554,12 +556,14 @@ pub struct AgentProcRow {
 }
 
 /// JSON payload for `sharecli proc --json` and `sharecli status --json` (AC-006.13).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AgentProcSnapshot {
     pub agents: Vec<AgentProcRow>,
     pub scanned: usize,
     pub watched: usize,
     pub gate: sharecli_fleet::GateStatusSnapshot,
+    /// Live host FD/RSS/load/net watch (FR-007 / AC-007.13).
+    pub host_watch: HostResourceWatchJson,
 }
 
 /// JSON payload for `sharecli proc --tree --json` (AC-006.16).
@@ -598,7 +602,7 @@ pub struct ProcDetailSnapshot {
 }
 
 /// One NDJSON watch line for flat inventory (`proc --watch --json`, AC-006.18 / AC-006.37).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AgentProcNdjsonLine {
     pub ts: u64,
     #[serde(flatten)]
@@ -652,6 +656,7 @@ impl AgentProcSnapshot {
             scanned: agents.len(),
             watched: watched.len(),
             gate,
+            host_watch: HostResourceWatchJson::capture()?,
         })
     }
 }
@@ -1018,6 +1023,7 @@ pub fn render_once(
             scanned: scanned_agents.len(),
             watched: watched.len(),
             gate,
+            host_watch: HostResourceWatchJson::capture()?,
         };
         if ndjson {
             let line = AgentProcNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
@@ -1206,11 +1212,13 @@ mod tests {
                     agent_contention: "OK".into(),
                     gate_decision: "ADMIT".into(),
                 },
+                host_watch: HostResourceWatchJson::default(),
             },
         };
         let json = serde_json::to_string(&line).expect("serialize");
         assert!(json.contains("\"ts\":1750000000"));
         assert!(json.contains("\"agents\":[]"));
+        assert!(json.contains("\"host_watch\""));
     }
 
     #[test]
@@ -1236,6 +1244,7 @@ mod tests {
                     agent_contention: "OK".into(),
                     gate_decision: "ADMIT".into(),
                 },
+                host_watch: HostResourceWatchJson::default(),
             },
         };
         let json = serde_json::to_string(&line).expect("serialize");
