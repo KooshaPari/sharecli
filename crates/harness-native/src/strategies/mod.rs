@@ -5,6 +5,7 @@ mod causal_order;
 mod circuit_breaker;
 mod coalesce;
 mod debounce;
+mod hypervisor_lane;
 mod incremental;
 mod jobserver;
 mod load_balance;
@@ -58,8 +59,14 @@ pub fn execute(req: ExecRequest<'_>) -> Result<i32, String> {
     let full_args: Vec<&str> = req.args.iter().map(|s| s.as_str()).collect();
 
     match req.strategy {
-        "passthrough" => coalesce::run(req.real_cmd, &full_args),
-        "coalesce" | "cache" => coalesce::run(req.real_cmd, &full_args),
+        "passthrough" => process::run_status(req.real_cmd, &full_args),
+        "coalesce" | "cache" => coalesce::run(
+            req.harness_home,
+            req.real_cmd,
+            req.cmd_name,
+            &full_args,
+            req.opts,
+        ),
         "queue" | "priority_queue" => {
             queue::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
         }
@@ -94,7 +101,7 @@ pub fn execute(req: ExecRequest<'_>) -> Result<i32, String> {
                 req.opts,
                 req.agent_name,
             );
-            coalesce::run(req.real_cmd, &full_args)
+            coalesce::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
         }
     }
 }
