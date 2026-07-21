@@ -156,6 +156,7 @@
 | AC-007.22   | `tests/fr007_proc_watch_gate_order.rs`; `src/commands/proc.rs` (`run` watch loop + `render_once`) | proc watch text/NDJSON gate → host_watch ordering per refresh |
 | AC-007.23   | `tests/fr007_proc_tree_watch_gate_order.rs`; `src/commands/proc.rs` (`run` watch loop + `render_once` tree path) | proc tree watch text/NDJSON gate → host_watch ordering per refresh |
 | AC-007.24   | `tests/fr007_proc_json_gate_order.rs`; `src/commands/proc.rs` (`AgentProcSnapshot`, `AgentTreeSnapshot`, `ProcDetailSnapshot`) | proc one-shot JSON gate → host_watch raw key ordering |
+| AC-007.25   | `tests/fr007_status_json_host_watch.rs`; `tests/fr006_proc_cli.rs`; `src/commands/mod.rs` (`status`) | status --json top-level gate + host_watch siblings (proc parity) |
 
 ### FR-008 — Coalesce
 
@@ -225,6 +226,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 status JSON host watch:** `sharecli status --json` emits
+  top-level `gate` + `host_watch` siblings with flat `agents` array (AC-007.25);
+  proc-adjacent operator surface parity with `sharecli proc --json`.
 - **2026-07-20 — FR-008 command_key cwd/env dimensions:** `command_key` and
   Hypervisor coalesce cache isolate `cwd` + `env_subset`, not argv alone
   (AC-008.13); closes AC-008.1 cwd/env coverage gap in coalesce mesh tests.
