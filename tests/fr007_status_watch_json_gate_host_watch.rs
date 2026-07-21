@@ -193,6 +193,7 @@ fn fr007_status_watch_ndjson_gate_order_serializes_fields() {
             mem_rss_bytes: 4096,
             load_1m: 1.25,
         },
+        pool: None,
     };
     let line = StatusNdjsonLine {
         ts: 1_700_000_000,

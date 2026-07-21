@@ -556,7 +556,7 @@ pub struct AgentProcRow {
     pub fd_count: Option<u64>,
 }
 
-/// JSON payload for `sharecli proc --json` and `sharecli status --json` (AC-006.13).
+/// JSON payload for `sharecli proc --json` (AC-006.13, pool/status siblings AC-007.77).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AgentProcSnapshot {
     pub agents: Vec<AgentProcRow>,
@@ -565,9 +565,15 @@ pub struct AgentProcSnapshot {
     pub gate: sharecli_fleet::GateStatusSnapshot,
     /// Live host FD/RSS/load/net watch (FR-007 / AC-007.13).
     pub host_watch: HostResourceWatchJson,
+    /// Runtime pool operator panel (FR-007 / AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool: Option<super::PoolJson>,
+    /// Proc-scan status operator panel (FR-007 / AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<super::StatusJson>,
 }
 
-/// JSON payload for `sharecli proc --tree --json` (AC-006.16).
+/// JSON payload for `sharecli proc --tree --json` (AC-006.16, pool/status siblings AC-007.77).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AgentTreeSnapshot {
     pub forests: Vec<AgentTreeNodeJson>,
@@ -576,6 +582,12 @@ pub struct AgentTreeSnapshot {
     pub gate: sharecli_fleet::GateStatusSnapshot,
     /// Live host FD/RSS/load/net watch (FR-007 / AC-007.15).
     pub host_watch: HostResourceWatchJson,
+    /// Runtime pool operator panel (FR-007 / AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool: Option<super::PoolJson>,
+    /// Proc-scan status operator panel (FR-007 / AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<super::StatusJson>,
 }
 
 /// Nearest ancestor agent reference for proc detail (AC-006.23).
@@ -709,6 +721,8 @@ impl AgentProcSnapshot {
             watched: watched.len(),
             gate,
             host_watch: HostResourceWatchJson::capture()?,
+            pool: None,
+            status: None,
         })
     }
 }
@@ -1063,8 +1077,16 @@ pub async fn render_once(
             roots: forests.len(),
             gate,
             host_watch: HostResourceWatchJson::capture()?,
+            pool: None,
+            status: None,
         };
         if json {
+            let (pool_panel, status_panel) = super::fetch_operator_pool_status_siblings().await?;
+            let snap = AgentTreeSnapshot {
+                pool: Some(pool_panel),
+                status: Some(status_panel),
+                ..snap
+            };
             if ndjson {
                 let line = AgentTreeNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
                 emit_ndjson_line(&line)?;
@@ -1103,6 +1125,7 @@ pub async fn render_once(
         return Ok(());
     }
     if json {
+        let (pool_panel, status_panel) = super::fetch_operator_pool_status_siblings().await?;
         let snap = AgentProcSnapshot {
             agents: watched
                 .iter()
@@ -1112,6 +1135,8 @@ pub async fn render_once(
             watched: watched.len(),
             gate,
             host_watch: HostResourceWatchJson::capture()?,
+            pool: Some(pool_panel),
+            status: Some(status_panel),
         };
         if ndjson {
             let line = AgentProcNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
@@ -1308,6 +1333,8 @@ mod tests {
                     gate_decision: "ADMIT".into(),
                 },
                 host_watch: HostResourceWatchJson::default(),
+                pool: None,
+                status: None,
             },
         };
         let json = serde_json::to_string(&line).expect("serialize");
@@ -1340,6 +1367,8 @@ mod tests {
                     gate_decision: "ADMIT".into(),
                 },
                 host_watch: HostResourceWatchJson::default(),
+                pool: None,
+                status: None,
             },
         };
         let json = serde_json::to_string(&line).expect("serialize");

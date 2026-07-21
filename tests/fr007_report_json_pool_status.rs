@@ -169,6 +169,7 @@ fn fr007_report_json_pool_status_serializes_fields() {
         issues: vec![],
         gate: gate.clone(),
         host_watch,
+        status: None,
     };
     let status = StatusJson {
         total_processes: 1,
@@ -177,6 +178,7 @@ fn fr007_report_json_pool_status_serializes_fields() {
         watched: 1,
         gate: gate.clone(),
         host_watch,
+        pool: None,
     };
     let envelope = FleetReportJson {
         timestamp: 1,

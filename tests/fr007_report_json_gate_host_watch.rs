@@ -178,6 +178,7 @@ fn fr007_report_json_gate_order_serializes_fields() {
                 mem_rss_bytes: 4096,
                 load_1m: 1.25,
             },
+            status: None,
         },
         status: sharecli::commands::StatusJson {
             total_processes: 0,
@@ -198,6 +199,7 @@ fn fr007_report_json_gate_order_serializes_fields() {
                 mem_rss_bytes: 4096,
                 load_1m: 1.25,
             },
+            pool: None,
         },
     };
     let json = serde_json::to_string(&envelope).expect("serialize report JSON envelope");

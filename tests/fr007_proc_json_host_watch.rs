@@ -89,6 +89,8 @@ fn fr007_proc_json_host_watch_serializes_fields() {
             mem_rss_bytes: 4096,
             load_1m: 1.25,
         },
+        pool: None,
+        status: None,
     };
     let json = serde_json::to_string(&snap).expect("serialize proc snapshot");
     for key in HOST_WATCH_KEYS {

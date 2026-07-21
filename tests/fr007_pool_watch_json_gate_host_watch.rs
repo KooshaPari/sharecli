@@ -196,6 +196,7 @@ fn fr007_pool_watch_ndjson_gate_order_serializes_fields() {
             mem_rss_bytes: 4096,
             load_1m: 1.25,
         },
+        status: None,
     };
     let line = PoolNdjsonLine {
         ts: 1_700_000_000,
