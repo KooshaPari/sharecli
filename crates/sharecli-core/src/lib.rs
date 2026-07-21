@@ -67,10 +67,6 @@ use sharecli_fleet::agent_contention::{
     AgentContentionTier,
 };
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
-use sharecli_ipc::{
-    command_key, has_nocache_arg, record_coalesce_lookup_hit, record_nocache_run, CachedResult,
-    CoalesceCache, CoalesceHitKind, CommandKey, SlotQueue, DEFAULT_NOCACHE_ARGS,
-};
 use tracing::{debug, error, warn};
 
 pub mod detect;
@@ -84,7 +80,12 @@ pub use sharecli_fleet::{
     sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
     ResourceWatchSample,
 };
-pub use sharecli_ipc::{resolve_operator_queue_priority, QueuePriority, QUEUE_PRIORITY_ENV};
+pub use sharecli_ipc::{
+    command_key, command_key_with_mode, has_nocache_arg, record_coalesce_lookup_hit,
+    record_nocache_run, resolve_operator_queue_priority, semantic_normalize_argv, CachedResult,
+    CacheKeyMode, CoalesceCache, CoalesceHitKind, CommandKey, SlotQueue, QueuePriority,
+    QUEUE_PRIORITY_ENV, DEFAULT_NOCACHE_ARGS,
+};
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
@@ -456,6 +457,10 @@ pub struct HypervisorConfig {
     /// When non-zero, [`CoalesceCache::with_lock`] waits then re-checks so an
     /// in-window sibling store is shared (AC-008.6). [`Duration::ZERO`] disables.
     pub coalesce_debounce: Duration,
+    /// Cache-key mode from rules.conf `cache_key=` (AC-008.19).
+    pub cache_key_mode: CacheKeyMode,
+    /// When true, apply lint-tool semantic argv normalization before hashing (AC-008.20).
+    pub semantic: bool,
 }
 
 /// A request to spawn a managed process.
@@ -641,6 +646,8 @@ impl Hypervisor {
                 queue_max_concurrent: 1,
                 coalesce_ttl: CoalesceCache::DEFAULT_TTL,
                 coalesce_debounce: Duration::ZERO,
+                cache_key_mode: CacheKeyMode::Time,
+                semantic: false,
             },
             gate,
             DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect(),
@@ -808,7 +815,17 @@ impl Hypervisor {
         // ── Cache lookup ─────────────────────────────────────────────────────
         // NOTE: the cache key uses the *original* `req.cwd` so that identical
         // commands produce the same key regardless of whether FUSE is active.
-        let key = command_key(&req.argv, &req.cwd, &req.env);
+        let argv_for_key = if self.config.semantic {
+            semantic_normalize_argv(&req.argv, &req.cwd)
+        } else {
+            req.argv.clone()
+        };
+        let key = command_key_with_mode(
+            self.config.cache_key_mode,
+            &argv_for_key,
+            &req.cwd,
+            &req.env,
+        );
         debug!(key = %key.0, argv = ?req.argv, "hypervisor::run");
 
         // Check the cache before acquiring the lock so that we can
@@ -1321,6 +1338,8 @@ mod tests {
                 queue_max_concurrent: 1,
                 coalesce_ttl: CoalesceCache::DEFAULT_TTL,
                 coalesce_debounce: debounce,
+                cache_key_mode: CacheKeyMode::Time,
+                semantic: false,
             },
             Arc::new(FakeThermalGate::new(ThermalDecision::Allow)),
             vec![],
