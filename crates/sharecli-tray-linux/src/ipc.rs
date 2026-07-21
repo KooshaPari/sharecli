@@ -47,11 +47,31 @@ pub struct ProcessSummary {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct GateStatusSnapshot {
+    pub thermal_pressure: String,
+    pub detected_agents: usize,
+    pub agent_total_rss_bytes: u64,
+    pub agent_contention: String,
+    pub gate_decision: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct HostResourceWatchJson {
+    pub fd_count: u64,
+    pub net_rx_bytes: u64,
+    pub net_tx_bytes: u64,
+    pub mem_rss_bytes: u64,
+    pub load_1m: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct HealthSnapshot {
     pub managed_processes: usize,
     pub used_memory_mb: u64,
     pub total_memory_mb: u64,
     pub healthy: bool,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
 }
 
 /// Resolve the IPC socket path, honoring `SHARECLI_IPC_SOCK` and falling back to
@@ -154,12 +174,18 @@ mod tests {
     #[test]
     fn health_snapshot_matches_server_wire_shape() {
         let raw = r#"{"managed_processes":3,"used_memory_mb":2048,
-            "total_memory_mb":16384,"healthy":true}"#;
+            "total_memory_mb":16384,"healthy":true,
+            "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+            "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}}"#;
         let h: HealthSnapshot = serde_json::from_str(raw).unwrap();
         assert_eq!(h.managed_processes, 3);
         assert_eq!(h.used_memory_mb, 2048);
         assert_eq!(h.total_memory_mb, 16384);
         assert!(h.healthy);
+        assert_eq!(h.gate.gate_decision, "ADMIT");
+        assert_eq!(h.host_watch.load_1m, 0.5);
     }
 
     #[test]

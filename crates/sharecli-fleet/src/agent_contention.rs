@@ -150,7 +150,7 @@ fn contention_tier_label(tier: AgentContentionTier) -> &'static str {
 }
 
 /// Structured gate fields for JSON report / programmatic surfaces (FR-011).
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct GateStatusSnapshot {
     /// Thermal level label (`GREEN` / `YELLOW` / `RED`).
     pub thermal_pressure: String,
