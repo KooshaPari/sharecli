@@ -648,7 +648,9 @@ fn print_host_watch_text_footer() -> Result<()> {
 /// call this helper either (AC-007.33); gate/host_watch stay in CSV companion rows on stdout
 /// only (AC-007.19). One-shot text `proc`, `proc --tree`, and `proc --pid N` MUST NOT call
 /// this helper either (AC-007.34); gate/host_watch stay in text sections on stdout only
-/// (AC-007.17 / AC-007.20 / AC-007.21).
+/// (AC-007.17 / AC-007.20 / AC-007.21). Text watch `proc --watch` and `proc --tree --watch`
+/// (no `--json`) MUST NOT call this helper either (AC-007.35); gate/host_watch and `[watch]`
+/// footer stay on stdout only (inverse of AC-007.28 / AC-007.29).
 fn eprint_gate_host_watch_stderr_companions(
     thermal: ThermalLevel,
     agent_count: usize,
@@ -1196,6 +1198,8 @@ pub async fn run(
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
+                // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.35).
+                // NDJSON watch: companions + footer on stderr (AC-007.28 / AC-007.29).
                 let footer =
                     format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {

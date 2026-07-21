@@ -166,6 +166,7 @@
 | AC-007.32   | `tests/fr007_status_json_stderr_silent.rs`; `src/commands/mod.rs` (`status` JSON path) | status one-shot JSON stderr silent; gate/host_watch JSON body only |
 | AC-007.33   | `tests/fr007_proc_csv_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot CSV paths) | proc one-shot CSV stderr silent; gate/host_watch CSV companion rows only |
 | AC-007.34   | `tests/fr007_proc_text_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot text paths, `render_proc_detail` text path) | proc one-shot text stderr silent; gate/host_watch stdout text sections only |
+| AC-007.35   | `tests/fr007_proc_watch_text_stderr_silent.rs`; `src/commands/proc.rs` (`run` watch loop text path, `render_once` text paths) | proc watch text stderr silent; gate/host_watch + `[watch]` footer stdout only |
 
 ### FR-008 — Coalesce
 
@@ -235,6 +236,11 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc watch text stderr silence:** `sharecli proc --watch` and
+  `proc --tree --watch` (no `--json`) MUST NOT print gate/host_watch text companions or
+  `[watch]` footer on stderr during refresh cycles; gate, `host_watch`, and `[watch]` stay on
+  stdout only (AC-007.35); inverse contract of AC-007.28 / AC-007.29 NDJSON stderr companions;
+  extends AC-007.34 to watch text refresh.
 - **2026-07-20 — FR-007 proc one-shot text stderr silence:** `sharecli proc`, `proc --tree`, and
   `proc --pid N` (no `--watch`) MUST NOT print gate/host_watch text companions on stderr; gate
   and `host_watch` stay in text sections on stdout only (AC-007.34); extends AC-007.17 /
