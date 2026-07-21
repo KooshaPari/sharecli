@@ -314,6 +314,11 @@ replacing vendor agent executables as the primary detection path.
   process state letter (parity with `--tree --csv` from AC-006.32); missing state
   shows `-` on text nodes and empty string in JSON; composes with `--state` filter
   and all other proc tree flags.
+- **AC-006.35:** Live tree state lookup resolves every PID in displayed agent forests
+  (roots and nested children) via `collect_forest_pids` /
+  `build_forest_state_map`, so `--tree` text/JSON/CSV surfaces child process state
+  without relying only on scanned-agent PIDs in `state_by_pid`; composes with all
+  proc tree flags including `--watch`.
 
 **Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`, `tests/fr006_proc_csv.rs`, `tests/fr006_proc_ppid.rs`, `tests/fr006_proc_tree_csv.rs`, `tests/fr006_proc_comm.rs`, `tests/fr006_proc_cmdline.rs`, `tests/fr006_proc_state.rs`, `tests/fr006_proc_state_export.rs`, `tests/fr006_proc_state_text.rs`, `tests/fr006_proc_tree_state.rs`
 
