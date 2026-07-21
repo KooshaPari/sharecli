@@ -208,7 +208,7 @@ enum Commands {
         #[arg(long)]
         max_fd: Option<String>,
 
-        /// Sort inventory rows or tree roots: rss (desc), fd (desc), pid (asc)
+        /// Sort inventory rows or tree roots: rss (desc), fd (desc), pid (asc), state (asc)
         #[arg(long)]
         sort: Option<String>,
 

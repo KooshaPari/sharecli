@@ -120,7 +120,7 @@ fn fr006_proc_csv_respects_sort_order() {
         watch(20, "b", "b", 300, None),
         watch(30, "c", "c", 200, None),
     ];
-    let sorted = sort_watched_agents(&rows, ProcSort::Rss);
+    let sorted = sort_watched_agents(&rows, ProcSort::Rss, &HashMap::new());
     let csv = render_agent_inventory_csv(&sorted, &HashMap::new());
     let pids: Vec<u32> = csv
         .lines()
