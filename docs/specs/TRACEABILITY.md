@@ -184,6 +184,7 @@
 | AC-007.50   | `tests/fr007_ps_all_watch_text_stderr_silent.rs`; `src/commands/mod.rs` (`ps` watch loop text path, `print_host_agent_scan`, `render_ps_once` text path) | ps --all --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only |
 | AC-007.51   | `crates/sharecli-tray-windows/src/ipc.rs` (`health_snapshot`, `process_summaries`); `windows/ShareCLITray/MonitoringReportSnapshot.cs` (`AsHealthSnapshot`, `AsProcessSummaries`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`RefreshDataAsync`); `tests/fr007_tray_windows_monitoring_report_consume.rs` | Windows tray refresh single monitoring.report snapshot drives gate/host_watch + process inventory; no split health + process.list polls |
 | AC-007.52   | `crates/sharecli-tray-windows/src/poll.rs` (`TRAY_POLL_INTERVAL_SECS`, `tray_poll_interval`); `windows/ShareCLITray/TrayPoll.cs` (`IntervalSeconds`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`DispatcherQueueTimer`, `StartPeriodicPolling`); `tests/fr007_tray_windows_poll_interval.rs` | Windows tray ~3 s periodic poll via DispatcherQueueTimer; same monitoring.report refresh path as AC-007.51; parity with Linux/Swift tray cadence |
+| AC-007.53   | `crates/sharecli-tray-linux/src/poll.rs` (`TRAY_POLL_INTERVAL_SECS`, `tray_poll_interval`); `crates/sharecli-tray-linux/src/main.rs` (`tray_poll_interval`, poll loop); `desktop/ShareCLITray/Sources/ShareCLICore/TrayPoll.swift` (`intervalSeconds`, `intervalNanoseconds`); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift` (`startPolling`, `TrayPoll.intervalNanoseconds`); `tests/fr007_tray_linux_poll_interval.rs`; `tests/fr007_tray_swift_poll_interval.rs` | Linux/Swift tray ~3 s periodic poll via shared TRAY_POLL_INTERVAL_SECS; same monitoring.report refresh path as AC-007.48; parity with Windows AC-007.52 |
 
 ### FR-008 — Coalesce
 
@@ -253,6 +254,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 Linux/Swift tray poll constant parity:** Linux tray loop and Swift
+  `AppState.startPolling` wire shared `TRAY_POLL_INTERVAL_SECS` / `TrayPoll.intervalSeconds`
+  on ~3 s cadence (AC-007.53); same `monitoring.report` refresh path as AC-007.48; parity with
+  Windows AC-007.52.
 - **2026-07-21 — FR-007 Windows tray periodic poll parity:** WinUI `TrayWindow` wires
   `DispatcherQueueTimer` on ~3 s cadence calling `RefreshDataAsync` / `monitoring.report`
   (AC-007.52); `TRAY_POLL_INTERVAL_SECS` + C# `TrayPoll.IntervalSeconds`; parity with Linux

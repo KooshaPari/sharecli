@@ -1,7 +1,7 @@
 /// AppState.swift — Observable state for the tray popover + main window.
 ///
-/// Polls the IPC server every 3 s for live data via a single `monitoring.report`
-/// snapshot (AC-007.48): gate/host_watch + process inventory in one round-trip.
+/// Polls the IPC server on `TrayPoll.intervalSeconds` cadence for live data via a single
+/// `monitoring.report` snapshot (AC-007.48): gate/host_watch + process inventory in one round-trip.
 
 import Foundation
 import Combine
@@ -23,7 +23,7 @@ public final class AppState: ObservableObject {
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refresh()
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                try? await Task.sleep(nanoseconds: TrayPoll.intervalNanoseconds)
             }
         }
     }
