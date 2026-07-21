@@ -169,4 +169,17 @@ public static class OperatorDisplay
         GateStatusSnapshot gate,
         HostResourceWatchJson host) =>
         $"{FormatGateTrayLine(gate)} | {FormatGateRssTrayLine(gate)} | {FormatHostWatchTrayLine(host)}";
+
+    /// Health summary row for WinUI `HealthStatusText` (AC-007.60).
+    public static string FormatHealthStatusLine(
+        TrayGateVisual visual,
+        GateStatusSnapshot gate,
+        TrayHealthSnapshot health) =>
+        $"Health: {visual.BadgeLabel} · {gate.ThermalPressure} · {gate.GateDecision} | " +
+        $"Managed: {health.ManagedProcesses} | " +
+        $"Memory: {health.UsedMemoryMb} / {health.TotalMemoryMb} MB";
+
+    /// Offline health summary when monitoring.report is unavailable (AC-007.60).
+    public static string FormatHealthStatusOfflineLine(TrayGateVisual visual, string reason) =>
+        $"Health: {visual.BadgeLabel} | {reason}";
 }
