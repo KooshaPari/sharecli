@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-19 (C08 Harbor EXTRACTED/N/A formalize — FR-003)
+- Status: DONE — ADR 0005 Phase 1; Harbor Phase 2–3 **EXTRACTED** to benchora `harbor-soft` / `portage-temp`; sharecli hosts no Harbor workflows
+- Score: L76 **1** (seeded N/A); C08 **22/30 (73% C)** unchanged; reconcile v3/v4 L76 interim lifts superseded
+- Sync: `audit/.lane-c08/C08.md` · `SCORECARD-v38.md` · `GAP-QA-MATRIX.md` · `WORK_DAG.md` T-650 · `RC-audit-v38-80B.md` · `GOVERNANCE.md`
+- FR: FR-003 · C08 L71/L76 · ADR 0005
 ## 2026-07-19 (Wave14 governance closeout — T-680 / FR-003)
 - Status: DONE — reconcile WBS/GAP/DAG/RC/SCORECARD after Wave14 #337–#340 + cluster lifts through #391; WORK_DAG T-650 dedupe (Harbor → T-675 EXTRACTED)
 - Score: unweighted **89.8% B**; tier-1 weighted **91% A** (pin `0fa1fd0`)
@@ -76,7 +81,8 @@
 - FR: FR-003
 
 ## 2026-07-18 (C08 Harbor Phase 3 soak execution scaffold — FR-003)
-- Status: IN_PROGRESS — `scripts/eval/harbor_soak.sh`; `audit/.lane-c08/harbor-phase3-soak-log.md`; `harbor-soak-exec-soft.yml`; `just harbor-soak`; partial evidence documented; seven-day `main` window open post-merge; L76 stays 1
+- Status: EXTRACTED / N/A (sharecli) — superseded by benchora `harbor-soft` + FR-003 formalize; was #333 in-repo scaffold
+- FR: FR-003
 
 ## 2026-07-18 (C05 trace IPC + tray injectors — FR-003)
 - Status: DONE — `apply_traceparent_spawn_env` in `src/otel.rs`; tray FFI sidecar spawn in `crates/sharecli-ffi`; `tests/c05_trace_ipc_tray_inject.rs`; `docs/ops/trace-multihop.md` IPC/tray rows wired; T-530 / W13.4
@@ -95,7 +101,7 @@
 - FR: FR-003
 
 ## 2026-07-17 (C08 Harbor Phase 3 soak plan — FR-003)
-- Status: DONE — `docs/ops/harbor-phase3-soak.md`; ADR 0005 Phase 3 checklist + cross-repo pins; harbor-eval-stub cross-ref; L76 stays 1 until soak completes
+- Status: EXTRACTED / N/A (sharecli) — superseded by benchora checklist + FR-003 formalize; was `docs/ops/harbor-phase3-soak.md` (#326)
 - FR: FR-003
 
 ## 2026-07-17 (C10 PNG baseline scaffold soft — FR-003)
@@ -125,7 +131,7 @@
 - FR: FR-003
 
 ## 2026-07-17 (C08 Harbor eval stub soft — FR-003)
-- Status: DONE — `docs/ops/harbor-eval-stub.md` + `scripts/eval/harbor_stub.sh` + `harbor-eval-stub-soft.yml`; ADR 0005 Phase 2 stub; corpus preflight + stub pass; L71 stays 3
+- Status: EXTRACTED / N/A (sharecli) — superseded by benchora `harbor-soft` + FR-003 formalize; was #321 in-repo stub
 - FR: FR-003
 
 ## 2026-07-17 (scorecard reconcile v2 — FR-003)

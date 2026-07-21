@@ -107,6 +107,21 @@ flowchart TD
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
+| T-600 | Promote dashboard PNG diff to deterministic hard gate | FR-003 / C10 L107 | T-510,T-550 | S | DONE | Ubuntu capture is deterministic and visual diff blocks on failure |
+| T-645 | Sync machine `audit_scorecard.json` to live SCORECARD | audit | T-550 | S | DONE | JSON cluster pct/grade/score + overall_pct/grade/date match `audit/SCORECARD-v38.md` Category Scores |
+| T-640 | Mutants soft→hard gate (C07 L65) | FR-003 / C07 L65 | T-550 | M | DONE | No `continue-on-error`; `ci-success` needs `mutants`; L65 2→3; C07 80% B |
+| T-655 | OSV/GHSA hard gate (C04 L38) | FR-003 / C04 L38 | T-550 | S | DONE | No soft shim; `ci.yml` `osv` + `ci-success`; L38 2→3; C04 83% B |
+| T-630 | Chaos restart ci-success hard gate (C05 L50) | FR-003 / C05 L50 | T-550 | S | DONE | `ci.yml` `chaos-restart-hard` + `ci-success`; L50 2→3; C05 83% B |
+| T-650 | Seven-day Harbor soak log completion (W14.2) | FR-003 / C08 L76 | T-520 | M | EXTRACTED / N/A (sharecli) | Tracked in benchora `harbor-soft` / `portage-temp`; sharecli L76 N/A=1; no score lift |
+| T-625 | Broad-workspace coverage numeric pin (C01 L11) | FR-003 / C01 L11 | T-620 | S | DONE | Matrix pins 83.48% lines; `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json`; L11 2→3; C01 83% B |
+| T-670 | FR↔acceptance-test SSOT gate (C01 L12) | FR-003 / C01 L12 | T-625 | S | DONE | `tests/c01_fr_ssot_gate.rs`; FR-001..005 Acceptance refs on disk; L12 2→3; C01 87% B |
+| T-660 | GHCR cosign sign/attest hard publish (C06 L56) | C06 L56 | T-550 | M | READY | Keyless cosign on GHCR; soft→hard; L56 2→3 |
+
+## Wave14 evidence hardening (IN_PROGRESS)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-620 | Pin measured coverage evidence and automate snapshot | FR-003 / C01 L11 | T-550 | S | DONE | Matrix cites a successful base-SHA run without inventing a percentage; CI retains machine-readable llvm-cov totals |
 | T-680 | Governance sync WBS/GAP/DAG/RC/SCORECARD | audit | Wave14 W14.1–W14.5 | S | DONE | W14 rows + lifts through #391 match SCORECARD |
 | T-675 | Seven-day Harbor soak log completion (W14.2) | FR-003 / C08 L76 | T-520 | M | EXTRACTED | Tracked in benchora/`portage-temp` — not sharecli `main` (ADR 0002/0005) |
 
