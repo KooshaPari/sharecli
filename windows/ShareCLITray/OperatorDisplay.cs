@@ -170,6 +170,12 @@ public static class OperatorDisplay
         HostResourceWatchJson host) =>
         $"{FormatGateTrayLine(gate)} | {FormatGateRssTrayLine(gate)} | {FormatHostWatchTrayLine(host)}";
 
+    public static string FormatPoolTrayLine(PoolSnapshot pool) =>
+        $"Pool node {pool.NodeTotal}/{pool.NodeIdle} idle · bun {pool.BunTotal}/{pool.BunIdle} idle · max {pool.MaxPerType} · {(pool.Healthy ? "healthy" : "degraded")}";
+
+    public static string FormatStatusSnapshotTrayLine(StatusSnapshot status) =>
+        $"Proc scan {status.Scanned} · watched {status.Watched} · {status.TotalProcesses} managed · {status.Agents.Count} agent row(s)";
+
     /// Health summary row for WinUI `HealthStatusText` (AC-007.60).
     public static string FormatHealthStatusLine(
         TrayGateVisual visual,

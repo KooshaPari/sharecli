@@ -34,6 +34,8 @@ mod linux {
     struct ShareCliTray {
         processes: Vec<ipc::ProcessSummary>,
         health: Option<ipc::HealthSnapshot>,
+        pool: Option<ipc::PoolSnapshot>,
+        status: Option<ipc::StatusSnapshot>,
         connected: bool,
         gate_visual: operator_display::TrayGateVisual,
     }
@@ -113,6 +115,17 @@ mod linux {
                         );
                     }
                     items.push(MenuItem::Separator);
+                }
+            }
+
+            if let (Some(pool), Some(status)) = (&self.pool, &self.status) {
+                if self.connected {
+                    items.push(MenuItem::Separator);
+                    for line in operator_display::format_pool_status_operator_lines(pool, status) {
+                        items.push(
+                            StandardItem { label: line, enabled: false, ..Default::default() }.into(),
+                        );
+                    }
                 }
             }
 
@@ -211,6 +224,7 @@ mod linux {
     ///
     /// Single `monitoring.report` round-trip drives operator gate/host_watch + process
     /// inventory (AC-007.48); avoids split `health.status` + `process.list` polls.
+    /// Supplementary `pool.status` + `status.snapshot` enrich operator panels (AC-007.69).
     fn refresh(tray: &mut ShareCliTray) {
         match ipc::monitoring_report() {
             Ok(snap) => {
@@ -221,12 +235,16 @@ mod linux {
                     &snap.gate,
                     true,
                 );
+                tray.pool = ipc::pool_status().ok();
+                tray.status = ipc::status_snapshot().ok();
             }
             Err(e) => {
                 tracing::debug!("monitoring.report poll failed: {e}");
                 tray.connected = false;
                 tray.health = None;
                 tray.processes.clear();
+                tray.pool = None;
+                tray.status = None;
                 tray.gate_visual =
                     operator_display::resolve_tray_gate_visual("UNAVAILABLE", "UNAVAILABLE", false);
             }

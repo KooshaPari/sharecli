@@ -15,6 +15,7 @@ struct TrayPopoverView: View {
             Divider()
             statsRow
             operatorSection
+            poolStatusSection
             Divider()
             processPreview
             Divider()
@@ -105,6 +106,22 @@ struct TrayPopoverView: View {
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+    }
+
+    @ViewBuilder
+    private var poolStatusSection: some View {
+        if let pool = state.poolStatus, let status = state.statusSnapshot, state.isConnected {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(OperatorDisplay.formatPoolStatusOperatorLines(pool: pool, status: status), id: \.self) { line in
+                    Text(line)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
             }
             .padding(.horizontal, 12)

@@ -3,7 +3,7 @@
 //!
 //! Mirrors dashboard operator panels and proc/status text sections; testable without GUI.
 
-use crate::ipc::{GateStatusSnapshot, HealthSnapshot, HostResourceWatchJson};
+use crate::ipc::{GateStatusSnapshot, HealthSnapshot, HostResourceWatchJson, PoolSnapshot, StatusSnapshot};
 
 /// Tray thermal/gate severity bucket (dashboard `#thermal-status` + gate decision).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -219,6 +219,35 @@ pub fn format_tray_menu_header_line(visual: &TrayGateVisual, health: &HealthSnap
 /// Offline SNI menu header when monitoring.report is unavailable (AC-007.63).
 pub fn format_tray_menu_header_offline_line(visual: &TrayGateVisual) -> String {
     format!("{} · Daemon offline", visual.badge_label)
+}
+
+/// Pool capacity line from `pool.status` IPC (AC-007.69).
+pub fn format_pool_tray_line(pool: &PoolSnapshot) -> String {
+    format!(
+        "Pool node {}/{} idle · bun {}/{} idle · max {} · {}",
+        pool.node_total,
+        pool.node_idle,
+        pool.bun_total,
+        pool.bun_idle,
+        pool.max_per_type,
+        if pool.healthy { "healthy" } else { "degraded" },
+    )
+}
+
+/// Proc-scan summary line from `status.snapshot` IPC (AC-007.69).
+pub fn format_status_snapshot_tray_line(status: &StatusSnapshot) -> String {
+    format!(
+        "Proc scan {} · watched {} · {} managed · {} agent row(s)",
+        status.scanned,
+        status.watched,
+        status.total_processes,
+        status.agents.len(),
+    )
+}
+
+/// Supplementary pool + status operator lines (AC-007.69).
+pub fn format_pool_status_operator_lines(pool: &PoolSnapshot, status: &StatusSnapshot) -> Vec<String> {
+    vec![format_pool_tray_line(pool), format_status_snapshot_tray_line(status)]
 }
 
 #[cfg(test)]
