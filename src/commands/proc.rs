@@ -642,7 +642,7 @@ fn print_host_watch_text_footer() -> Result<()> {
     Ok(())
 }
 
-/// Gate + host watch text companions on stderr for NDJSON watch (AC-007.28).
+/// Gate + host watch text companions on stderr for NDJSON watch (AC-007.28 / AC-007.29).
 fn eprint_gate_host_watch_stderr_companions(
     thermal: ThermalLevel,
     agent_count: usize,

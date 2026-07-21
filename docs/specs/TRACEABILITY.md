@@ -160,6 +160,7 @@
 | AC-007.26   | `tests/fr007_thermal_tui_gate_parity.rs`; `crates/sharecli-thermal-tui/src/lib.rs` (`gate_panel_lines`, `render_decision`); `crates/sharecli-fleet/src/resource_watch.rs` (`sum_detected_agent_rss_bytes`) | thermal TUI gate panel RSS-aware snapshot parity |
 | AC-007.27   | `tests/fr007_status_text_gate_order.rs`; `src/commands/mod.rs` (`status` text path) | status text thermal gate section before host watch (proc parity) |
 | AC-007.28   | `tests/fr007_proc_watch_stderr_footer.rs`; `src/commands/proc.rs` (`eprint_gate_host_watch_stderr_companions`, `render_once` NDJSON path) | proc watch NDJSON stderr gate → host_watch companions; stdout pipe-clean |
+| AC-007.29   | `tests/fr007_proc_tree_watch_stderr_footer.rs`; `src/commands/proc.rs` (`eprint_gate_host_watch_stderr_companions`, `render_once` tree NDJSON path) | proc tree watch NDJSON stderr gate → host_watch companions; stdout pipe-clean |
 
 ### FR-008 — Coalesce
 
@@ -229,6 +230,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc tree watch NDJSON stderr footer lock:** `sharecli proc --tree --watch --json`
+  prints gate → host_watch text companions on stderr each refresh via the same helper as flat
+  watch (AC-007.29); stdout stays pipe-clean NDJSON only; extends AC-007.28 to tree watch.
 - **2026-07-20 — FR-007 proc watch NDJSON stderr footer lock:** `sharecli proc --watch --json`
   prints gate → host_watch text companions on stderr each refresh; stdout stays pipe-clean
   NDJSON only (AC-007.28); extends AC-006.18 stderr footer contract with gate/watch ordering.
