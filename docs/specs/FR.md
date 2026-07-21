@@ -396,6 +396,11 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   on each redraw and renders host FD/RSS/load plus FUSE read-coalesce meters
   in dedicated TUI panels (Feb harness dashboard slice); capture failure MUST
   render an explicit unavailable message (no silent zero panel).
+- **AC-007.12:** `sharecli thermal` host resource watch panel
+  ([`resource_watch_lines`](crates/sharecli-thermal-tui/src/lib.rs)) MUST surface
+  host net RX/TX byte counters from [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs)
+  in full and compact layouts, matching [`format_status_section`](crates/sharecli-fleet/src/resource_watch.rs)
+  parity established by AC-007.10.
 
 **Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`
 
