@@ -121,6 +121,7 @@ fn fr007_ipc_monitoring_report_snapshot_pool_status_order() {
             issues: vec![],
             gate: gate.clone(),
             host_watch: host_watch.clone(),
+            status: None,
         },
         status: StatusSnapshot {
             total_processes: 2,
@@ -129,6 +130,7 @@ fn fr007_ipc_monitoring_report_snapshot_pool_status_order() {
             watched: 1,
             gate,
             host_watch,
+            pool: None,
         },
     };
     let json = serde_json::to_string(&snap).expect("serialize MonitoringReportSnapshot");

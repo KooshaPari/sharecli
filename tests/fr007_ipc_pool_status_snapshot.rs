@@ -131,6 +131,7 @@ fn fr007_ipc_pool_snapshot_gate_before_host_watch() {
             mem_rss_bytes: 4096,
             load_1m: 0.42,
         },
+        status: None,
     };
     let json = serde_json::to_string(&snap).expect("serialize PoolSnapshot");
     assert_json_gate_before_host_watch(&json, "PoolSnapshot");
@@ -171,6 +172,7 @@ fn fr007_ipc_status_snapshot_gate_before_host_watch() {
             mem_rss_bytes: 4096,
             load_1m: 0.42,
         },
+        pool: None,
     };
     let json = serde_json::to_string(&snap).expect("serialize StatusSnapshot");
     assert_json_gate_before_host_watch(&json, "StatusSnapshot");
