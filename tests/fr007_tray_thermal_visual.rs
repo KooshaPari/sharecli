@@ -268,6 +268,38 @@ fn fr007_tray_thermal_visual_linux_tooltip_wires_gate_visual() {
     );
 }
 
+/// FR-007 / AC-007.63 — Linux SNI menu header leads with gate visual badge_label.
+#[test]
+fn fr007_tray_thermal_visual_linux_menu_header_wires_gate_visual() {
+    let op = include_str!("../crates/sharecli-tray-linux/src/operator_display.rs");
+    assert!(
+        op.contains("format_tray_menu_header_line"),
+        "Linux OperatorDisplay MUST expose menu header formatter (AC-007.63)"
+    );
+    assert!(
+        op.contains("format_tray_menu_header_offline_line"),
+        "Linux OperatorDisplay MUST expose offline menu header formatter (AC-007.63)"
+    );
+
+    let main_rs = include_str!("../crates/sharecli-tray-linux/src/main.rs");
+    assert!(
+        main_rs.contains("format_tray_menu_header_line"),
+        "Linux tray menu MUST bind header from gate visual (AC-007.63)"
+    );
+    assert!(
+        main_rs.contains("format_tray_menu_header_offline_line"),
+        "Linux tray menu MUST bind offline header from gate visual (AC-007.63)"
+    );
+    assert!(
+        !main_rs.contains("\"Daemon offline\""),
+        "Linux tray menu MUST NOT use bare Daemon offline header (AC-007.63)"
+    );
+    assert!(
+        !main_rs.contains("process(es) · {} / {} MB\""),
+        "Linux tray menu MUST NOT use bare process/memory header without badge (AC-007.63)"
+    );
+}
+
 /// FR-007 / AC-007.62 — Swift NSStatusItem title leads with gate visual badge_label.
 #[test]
 fn fr007_tray_thermal_visual_swift_menubar_title_wires_gate_visual() {
