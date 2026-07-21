@@ -47,6 +47,10 @@
                         Header="Project"
                         Binding="{Binding project}"
                         Width="150" />
+                    <controls:DataGridTextColumn
+                        Header="Harness"
+                        Binding="{Binding harness}"
+                        Width="100" />
                     <controls:DataGridTemplateColumn Header="Actions" Width="80">
                         <controls:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
