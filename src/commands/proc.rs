@@ -5,7 +5,7 @@ use std::io::Write;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
     build_host_agent_forests, format_gate_status_from_snapshot, format_gate_status_section,
@@ -543,7 +543,7 @@ fn forest_root_matches_filter(
 }
 
 /// One detected agent row for text/JSON surfaces (AC-006.11, AC-006.32).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentProcRow {
     pub pid: u32,
     pub family: String,
