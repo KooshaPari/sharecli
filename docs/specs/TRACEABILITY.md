@@ -164,6 +164,7 @@
 | AC-007.30   | `tests/fr007_proc_json_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot JSON paths) | proc one-shot JSON stderr silent; gate/host_watch JSON body only |
 | AC-007.31   | `tests/fr007_proc_json_stderr_silent.rs`; `src/commands/proc.rs` (`render_proc_detail` JSON path) | proc --pid one-shot JSON stderr silent; gate/host_watch JSON body only |
 | AC-007.32   | `tests/fr007_status_json_stderr_silent.rs`; `src/commands/mod.rs` (`status` JSON path) | status one-shot JSON stderr silent; gate/host_watch JSON body only |
+| AC-007.33   | `tests/fr007_proc_csv_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot CSV paths) | proc one-shot CSV stderr silent; gate/host_watch CSV companion rows only |
 
 ### FR-008 — Coalesce
 
@@ -233,6 +234,10 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc one-shot CSV stderr silence:** `sharecli proc --csv` and
+  `proc --tree --csv` (no `--watch`) MUST NOT print gate/host_watch text companions on stderr;
+  gate and `host_watch` stay in CSV companion rows on stdout only (AC-007.33); extends AC-007.19
+  CSV companion contract with pipe-clean stderr (parity with AC-007.30 / AC-007.31 / AC-007.32).
 - **2026-07-20 — FR-007 status one-shot JSON stderr silence:** `sharecli status --json` MUST NOT
   print gate/host_watch text companions on stderr; gate and `host_watch` stay in the JSON body
   only (AC-007.32); extends AC-007.25 JSON shape with pipe-clean stderr (parity with AC-007.30 /
