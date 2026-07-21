@@ -147,6 +147,7 @@
 | AC-007.13   | `tests/fr007_proc_json_host_watch.rs`; `src/commands/proc.rs` (`AgentProcSnapshot::host_watch`); `src/monitoring.rs` (`HostResourceWatchJson`) | proc JSON host ResourceWatchSample parity |
 | AC-007.14   | `tests/fr007_proc_text_csv_host_watch.rs`; `src/commands/proc.rs` (`print_host_watch_text_footer`, `append_host_watch_csv_companion`); `src/monitoring.rs` (`HostResourceWatchJson::format_text_section`, `format_csv_companion`) | proc text/CSV host ResourceWatchSample parity |
 | AC-007.15   | `tests/fr007_proc_tree_json_host_watch.rs`; `src/commands/proc.rs` (`AgentTreeSnapshot::host_watch`) | proc tree JSON/NDJSON host ResourceWatchSample parity |
+| AC-007.16   | `tests/fr007_proc_pid_json_host_watch.rs`; `src/commands/proc.rs` (`ProcDetailSnapshot::host_watch`, `render_proc_detail`) | proc pid JSON/text host ResourceWatchSample parity |
 
 ### FR-008 — Coalesce
 
@@ -210,6 +211,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc pid JSON host watch:** `sharecli proc --pid N --json` emits
+  `host_watch` on [`ProcDetailSnapshot`](src/commands/proc.rs) and text detail appends host
+  watch footer (AC-007.16); completes proc JSON `host_watch` coverage.
 - **2026-07-20 — FR-007 proc tree JSON host watch:** `sharecli proc --tree --json` and
   `--tree --watch --json` emit `host_watch` on every snapshot via
   `AgentTreeSnapshot` (AC-007.15); parity with flat JSON from AC-007.13.
