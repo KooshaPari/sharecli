@@ -215,6 +215,7 @@
 | AC-007.81   | `tests/fr007_report_csv_pool_status.rs`; `tests/fr007_report_csv_stderr_silent.rs`; `src/commands/report.rs` (`ReportFormat::Csv`, `render_report_csv_body`, `append_report_csv_companions`, `render_once` CSV path); `crates/sharecli-fleet/src/operator_pool_status.rs` | report --format csv fleet body → gate → host_watch → pool → status companion rows on stdout; rejects --watch; stderr silent on success (parity with proc CSV AC-007.79) |
 | AC-007.82   | `tests/fr007_health_pool_status_csv.rs`; `src/commands/mod.rs` (`render_health_csv_body`, `render_pool_csv_body`, `render_status_csv_body`, `append_operator_csv_companions`, `health --csv`, `pool --csv`, `status --csv`); `src/main.rs` (`Health.csv`, `Pool.csv`, `Status.csv`); `crates/sharecli-fleet/src/operator_pool_status.rs` | health/pool/status --csv command body → gate → host_watch → pool → status companion rows on stdout; rejects --json/--watch; stderr silent on success (parity with proc/report CSV AC-007.79/81) |
 | AC-007.83   | `tests/fr007_ps_all_csv.rs`; `src/commands/mod.rs` (`render_ps_all_csv_body`, `append_operator_csv_companions`, `ps --all --csv`); `src/main.rs` (`Ps.csv`); `crates/sharecli-fleet/src/operator_pool_status.rs` | ps --all --csv managed + agent-inventory body → gate → host_watch → pool → status companion rows on stdout; requires --all; rejects --json/--watch; stderr silent on success (parity with health/pool/status CSV AC-007.82) |
+| AC-007.84   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/mod.rs`; `src/commands/report.rs`; `src/commands/proc.rs`; `src/dashboard.html`; `crates/sharecli-ipc/src/handler.rs`; `crates/sharecli-ipc/src/ws_client.rs`; `crates/sharecli-tray-linux/src/operator_display.rs`; `crates/sharecli-tray-windows/src/operator_display.rs`; `crates/sharecli-thermal-tui/src/lib.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift`; `windows/ShareCLITray/OperatorDisplay.cs` | Meta regression locks operator envelope matrix: CLI text/JSON/CSV one-shot (proc/report/health/pool/status/ps --all), IPC health.status + monitoring.report, WS health_update decode, dashboard/tray/TUI companion markers; no watch dwell |
 
 ### FR-008 — Coalesce
 
@@ -284,6 +285,13 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 operator envelope matrix parity suite (AC-007.84):** `tests/fr007_operator_envelope_parity_suite.rs`
+  locks CLI text/JSON/CSV one-shot matrix (proc/report/health/pool/status/ps --all), IPC
+  `health.status` + `monitoring.report`, WS `health_update` decode, dashboard/tray/TUI companion
+  markers; no long `--watch` dwell cycles.
+- **2026-07-21 — FR-007 ps --all --csv operator companions (AC-007.83):** `sharecli ps --all --csv`
+  emits managed-process + agent-inventory CSV body then companion `gate` → `host_watch` → `pool` →
+  `status` records; requires `--all`; rejects `--json` / `--watch`; stderr silent on success.
 - **2026-07-21 — FR-007 health/pool/status CSV operator companions (AC-007.82):** `sharecli health --csv`,
   `pool --csv`, and `status --csv` emit command-specific CSV bodies then companion
   `gate` → `host_watch` → `pool` → `status` records (parity with proc CSV AC-007.79 and report
