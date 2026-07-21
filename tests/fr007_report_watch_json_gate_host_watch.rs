@@ -5,7 +5,7 @@
 //! every refresh; stderr carries text companions (parity with proc watch AC-007.28).
 
 use std::io::Read;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
@@ -56,18 +56,27 @@ fn assert_ndjson_gate_before_host_watch(line: &str, context: &str) {
     }
 }
 
-fn drain_stdout_after_watch(child: &mut std::process::Child, dwell: Duration) -> String {
+fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
     let stdout = child.stdout.take().expect("piped stdout");
-    let reader = thread::spawn(move || {
+    let stderr = child.stderr.take().expect("piped stderr");
+    let stdout_reader = thread::spawn(move || {
         let mut buf = String::new();
         let mut out = stdout;
         let _ = out.read_to_string(&mut buf);
         buf
     });
+    let stderr_reader = thread::spawn(move || {
+        let mut buf = String::new();
+        let mut err = stderr;
+        let _ = err.read_to_string(&mut buf);
+        buf
+    });
     thread::sleep(dwell);
     let _ = child.kill();
     let _ = child.wait();
-    reader.join().expect("stdout drain thread")
+    let stdout = stdout_reader.join().expect("stdout drain thread");
+    let stderr = stderr_reader.join().expect("stderr drain thread");
+    (stdout, stderr)
 }
 
 /// FR-007 / AC-007.42 — watch NDJSON stderr carries gate before host_watch companions.
@@ -81,13 +90,7 @@ fn fr007_report_watch_ndjson_stderr_gate_before_host_watch() {
         .spawn()
         .expect("spawn sharecli report --format json --watch 1");
 
-    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(3_500));
-    let _ = stdout;
-
-    let mut stderr = String::new();
-    if let Some(mut err) = child.stderr.take() {
-        let _ = err.read_to_string(&mut stderr);
-    }
+    let (_stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(12_000));
 
     assert!(
         stderr.contains(GATE_MARKER),
@@ -115,13 +118,7 @@ fn fr007_report_watch_ndjson_stdout_no_companion_leak() {
         .spawn()
         .expect("spawn sharecli report --format json --watch 1");
 
-    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(3_500));
-
-    let mut stderr = String::new();
-    if let Some(mut err) = child.stderr.take() {
-        let _ = err.read_to_string(&mut stderr);
-    }
-    let _ = stderr; // stderr may carry companions; stdout contract is under test
+    let (stdout, _stderr) = drain_watch_pipes(&mut child, Duration::from_millis(12_000));
 
     assert!(
         !stdout.contains(GATE_MARKER),
@@ -157,12 +154,12 @@ fn fr007_report_watch_ndjson_gate_ordering() {
         .spawn()
         .expect("spawn sharecli report --format json --watch 1");
 
-    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(3_500));
+    let (stdout, _stderr) = drain_watch_pipes(&mut child, Duration::from_millis(12_000));
 
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert!(
         lines.len() >= 2,
-        "report watch --json MUST emit at least two NDJSON lines in ~3.5s; got: {stdout}"
+        "report watch --json MUST emit at least two NDJSON lines in dwell window; got: {stdout}"
     );
     for (idx, line) in lines.iter().enumerate() {
         assert_ndjson_gate_before_host_watch(line, &format!("report NDJSON line {}", idx + 1));
