@@ -86,6 +86,16 @@ public enum OperatorDisplay {
         ].joined(separator: " | ")
     }
 
+    /// Compact menu bar title for NSStatusItem (AC-007.62).
+    public static func formatMenuBarTitleLine(visual: TrayGateVisual, health: HealthSnapshot) -> String {
+        " \(visual.badgeLabel) · \(health.managed_processes) | \(health.used_memory_mb)M"
+    }
+
+    /// Offline menu bar title when monitoring.report is unavailable (AC-007.62).
+    public static func formatMenuBarTitleOfflineLine(visual: TrayGateVisual) -> String {
+        " \(visual.badgeLabel) · offline"
+    }
+
     public static func resolveGateDecisionClass(_ gateDecision: String) -> String {
         switch gateDecision {
         case "ADMIT": return "gate-admit"

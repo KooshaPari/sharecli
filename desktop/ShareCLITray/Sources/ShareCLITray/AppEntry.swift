@@ -51,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         btn.action = #selector(togglePopover)
         btn.target = self
 
-        // Keep title + icon updated from live monitoring.report gate visuals (AC-007.57).
+        // Keep title + icon updated from live monitoring.report gate visuals (AC-007.57, AC-007.62).
         NotificationCenter.default.addObserver(
             forName: .sharecliHealthChanged,
             object: nil,
@@ -62,15 +62,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let visual: TrayGateVisual
             if let snap {
                 visual = OperatorDisplay.resolveTrayGateVisual(gate: snap.gate, connected: true)
-                self.statusItem.button?.title =
-                    " \(snap.managed_processes) | \(snap.used_memory_mb)M"
+                self.statusItem.button?.title = OperatorDisplay.formatMenuBarTitleLine(
+                    visual: visual,
+                    health: snap
+                )
             } else {
                 visual = OperatorDisplay.resolveTrayGateVisual(
                     thermalPressure: "UNAVAILABLE",
                     gateDecision: "UNAVAILABLE",
                     connected: false
                 )
-                self.statusItem.button?.title = " offline"
+                self.statusItem.button?.title = OperatorDisplay.formatMenuBarTitleOfflineLine(
+                    visual: visual
+                )
             }
             self.statusItem.button?.image = NSImage(
                 systemSymbolName: visual.swiftSymbolName,
