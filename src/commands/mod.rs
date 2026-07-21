@@ -180,6 +180,14 @@ pub struct HealthNdjsonLine {
     pub snapshot: HealthJson,
 }
 
+/// One NDJSON watch line for `pool --watch --json` (FR-007 / AC-007.65).
+#[derive(Debug, Clone, Serialize)]
+pub struct PoolNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: PoolJson,
+}
+
 async fn build_ps_all_json(
     project: Option<&str>,
     harness: Option<&str>,
@@ -876,29 +884,46 @@ pub async fn run_pool(harness_type: &str, project: &str) -> Result<()> {
     Ok(())
 }
 
-/// Show pool status
-/// One-shot `pool --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
-pub async fn pool_status(json: bool) -> Result<()> {
+async fn build_pool_json() -> Result<PoolJson> {
     let runtime = get_shared_runtime();
     let status = runtime.status().await;
     let health = runtime.health_check().await;
+    let (gate, host_watch) = capture_live_gate_host_watch()?;
+    Ok(PoolJson {
+        node_total: status.node_total,
+        node_idle: status.node_idle,
+        bun_total: status.bun_total,
+        bun_idle: status.bun_idle,
+        max_per_type: status.max_per_type,
+        healthy: health.healthy,
+        issues: health.issues,
+        gate,
+        host_watch,
+    })
+}
 
+/// Render one pool snapshot (one-shot or watch cycle).
+///
+/// One-shot `pool --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
+async fn render_pool_once(json: bool, ndjson: bool) -> Result<()> {
     if json {
-        let (gate, host_watch) = capture_live_gate_host_watch()?;
-        let payload = PoolJson {
-            node_total: status.node_total,
-            node_idle: status.node_idle,
-            bun_total: status.bun_total,
-            bun_idle: status.bun_idle,
-            max_per_type: status.max_per_type,
-            healthy: health.healthy,
-            issues: health.issues,
-            gate,
-            host_watch,
-        };
-        println!("{}", serde_json::to_string_pretty(&payload)?);
+        let payload = build_pool_json().await?;
+        if ndjson {
+            let line = PoolNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
         return Ok(());
     }
+
+    let runtime = get_shared_runtime();
+    let status = runtime.status().await;
+    let health = runtime.health_check().await;
 
     println!("=== Shared Runtime Pool Status ===\n");
     println!("{:<10} {:<10} {:<10} {:<10}", "TYPE", "TOTAL", "IDLE", "MAX");
@@ -931,6 +956,53 @@ pub async fn pool_status(json: bool) -> Result<()> {
     print_live_host_watch_section()?;
 
     Ok(())
+}
+
+/// Show pool status
+pub async fn pool_status(json: bool, watch: Option<u64>) -> Result<()> {
+    match watch {
+        None => render_pool_once(json, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_pool_once(json, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.65).
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 async fn build_health_json() -> Result<HealthJson> {
