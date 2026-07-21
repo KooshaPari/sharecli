@@ -537,6 +537,10 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   `host_watch` text sections on **stdout** after the report body (parity with AC-007.38
   ps --all and AC-011.6 gate). **stderr** MUST be empty on success (errors only on failure);
   gate and `host_watch` MUST NOT appear on stderr.
+- **AC-007.40:** `sharecli report --format json` MUST emit top-level `gate` + `host_watch`
+  JSON siblings after fleet analytics fields (parity with `status --json` AC-007.25 / proc JSON
+  AC-007.24 key order: `gate` before `host_watch`). **stderr** MUST be empty on success
+  (errors only on failure); gate and `host_watch` MUST NOT appear on stderr.
 - **AC-007.41:** `sharecli serve` WebSocket `/ws` periodic snapshots MUST emit top-level
   `gate` and `host_watch` siblings with the same shapes as `sharecli status --json`
   (AC-007.25), plus a compact `agents` summary (`scanned`, `watched`, `total_rss_bytes`,
@@ -544,7 +548,7 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   `"host_watch"` (parity with AC-007.24 / AC-007.25); embedded dashboard MUST render
   functional operator panels from the envelope (not decorative cards).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`, `tests/fr007_proc_watch_stderr_footer.rs`, `tests/fr007_proc_tree_watch_stderr_footer.rs`, `tests/fr007_proc_json_stderr_silent.rs`, `tests/fr007_status_json_stderr_silent.rs`, `tests/fr007_proc_csv_stderr_silent.rs`, `tests/fr007_proc_text_stderr_silent.rs`, `tests/fr007_proc_watch_text_stderr_silent.rs`, `tests/fr007_status_text_stderr_silent.rs`, `tests/fr007_health_pool_text_stderr_silent.rs`, `tests/fr007_ps_all_text_stderr_silent.rs`, `tests/fr007_report_text_stderr_silent.rs`, `tests/fr007_dashboard_ws_operator_envelope.rs`, `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`)
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`, `tests/fr007_proc_watch_stderr_footer.rs`, `tests/fr007_proc_tree_watch_stderr_footer.rs`, `tests/fr007_proc_json_stderr_silent.rs`, `tests/fr007_status_json_stderr_silent.rs`, `tests/fr007_proc_csv_stderr_silent.rs`, `tests/fr007_proc_text_stderr_silent.rs`, `tests/fr007_proc_watch_text_stderr_silent.rs`, `tests/fr007_status_text_stderr_silent.rs`, `tests/fr007_health_pool_text_stderr_silent.rs`, `tests/fr007_ps_all_text_stderr_silent.rs`, `tests/fr007_report_text_stderr_silent.rs`, `tests/fr007_report_json_gate_host_watch.rs`, `tests/fr007_dashboard_ws_operator_envelope.rs`, `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`)
 
 ---
 

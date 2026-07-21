@@ -12,6 +12,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sharecli_fleet::GateStatusSnapshot;
 
+use crate::monitoring::HostResourceWatchJson;
 use crate::runtime::{ProcessInfo, ProcessPool};
 
 // ---------------------------------------------------------------------------
@@ -99,6 +100,51 @@ pub struct FleetReport {
     pub agent_contention: String,
     /// Effective gate decision (`ADMIT` / `DENY`).
     pub gate_decision: String,
+}
+
+/// JSON envelope for `sharecli report --format json` (FR-007 / AC-007.40).
+///
+/// Fleet analytics fields are followed by live `gate` and `host_watch` siblings
+/// (parity with `status --json` AC-007.25 / proc JSON AC-007.24 key order).
+#[derive(Debug, Clone, Serialize)]
+pub struct FleetReportJson {
+    pub timestamp: u64,
+    pub uptime_seconds: u64,
+    pub total_processes: usize,
+    pub total_memory_mb: u64,
+    pub by_project: HashMap<String, ProjectBreakdown>,
+    pub top_consumers: Vec<TopConsumer>,
+    pub thermal_pressure: String,
+    pub detected_agents: usize,
+    pub agent_contention: String,
+    pub gate_decision: String,
+    /// Live thermal + agent gate snapshot (FR-007 / AC-007.40).
+    pub gate: GateStatusSnapshot,
+    /// Live host FD/RSS/load/net watch (FR-007 / AC-007.40).
+    pub host_watch: HostResourceWatchJson,
+}
+
+impl FleetReportJson {
+    pub fn from_parts(
+        report: &FleetReport,
+        gate: GateStatusSnapshot,
+        host_watch: HostResourceWatchJson,
+    ) -> Self {
+        Self {
+            timestamp: report.timestamp,
+            uptime_seconds: report.uptime_seconds,
+            total_processes: report.total_processes,
+            total_memory_mb: report.total_memory_mb,
+            by_project: report.by_project.clone(),
+            top_consumers: report.top_consumers.clone(),
+            thermal_pressure: report.thermal_pressure.clone(),
+            detected_agents: report.detected_agents,
+            agent_contention: report.agent_contention.clone(),
+            gate_decision: report.gate_decision.clone(),
+            gate,
+            host_watch,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -213,8 +259,13 @@ fn render_text(report: &FleetReport) {
     }
 }
 
-fn render_json(report: &FleetReport) -> Result<()> {
-    let json = serde_json::to_string_pretty(report)?;
+fn render_json(
+    report: &FleetReport,
+    gate: &GateStatusSnapshot,
+    host_watch: &HostResourceWatchJson,
+) -> Result<()> {
+    let payload = FleetReportJson::from_parts(report, gate.clone(), *host_watch);
+    let json = serde_json::to_string_pretty(&payload)?;
     println!("{}", json);
     Ok(())
 }
@@ -254,7 +305,11 @@ async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
             super::print_live_gate_section()?;
             super::print_live_host_watch_section()?;
         }
-        ReportFormat::Json => render_json(&report)?,
+        ReportFormat::Json => {
+            // AC-007.40: gate → host_watch JSON siblings after report body; stderr silent.
+            let host_watch = HostResourceWatchJson::capture()?;
+            render_json(&report, &gate, &host_watch)?;
+        }
     }
 
     Ok(())
