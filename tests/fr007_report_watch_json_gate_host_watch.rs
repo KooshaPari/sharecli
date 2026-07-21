@@ -41,11 +41,18 @@ fn assert_ndjson_gate_before_host_watch(line: &str, context: &str) {
         v.get("host_watch").is_some(),
         "{context} MUST include host_watch (AC-007.42)"
     );
+    assert!(v.get("pool").is_some(), "{context} MUST include pool (AC-007.73)");
+    assert!(
+        v.get("status").is_some(),
+        "{context} MUST include status (AC-007.73)"
+    );
     let gate_pos = line.find("\"gate\"").expect("gate key in NDJSON line");
     let host_pos = line.find("\"host_watch\"").expect("host_watch key in NDJSON line");
+    let pool_pos = line.find("\"pool\"").expect("pool key in NDJSON line (AC-007.73)");
+    let status_pos = line.find("\"status\"").expect("status key in NDJSON line (AC-007.73)");
     assert!(
-        gate_pos < host_pos,
-        "{context} MUST serialize gate before host_watch (AC-007.42); got: {line}"
+        gate_pos < host_pos && host_pos < pool_pos && pool_pos < status_pos,
+        "{context} MUST serialize gate → host_watch → pool → status (AC-007.42/AC-007.73); got: {line}"
     );
     let host = v.get("host_watch").expect("host_watch object");
     for key in HOST_WATCH_KEYS {
