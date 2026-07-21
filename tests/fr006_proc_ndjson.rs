@@ -2,6 +2,7 @@
 //! FR: FR-006
 //!
 //! AC-006.18 watch + JSON emits one compact JSON object per line (NDJSON)
+//! AC-006.37 NDJSON agent rows include `state` (parity with flat `--json`, AC-006.32)
 
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -75,6 +76,74 @@ fn fr006_proc_watch_ndjson_stdout_is_pipe_clean() {
     assert!(
         stderr.contains("[watch]"),
         "watch footer MUST appear on stderr in NDJSON mode; stderr: {stderr}"
+    );
+}
+
+/// FR-006 / AC-006.37 — NDJSON watch agent objects expose `state` key (AC-006.32 parity).
+#[test]
+fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
+    let mut child = bin()
+        .args(["proc", "--json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli proc --json --watch 1");
+
+    thread::sleep(Duration::from_millis(2_500));
+    let _ = child.kill();
+
+    let mut stdout = String::new();
+    if let Some(mut out) = child.stdout.take() {
+        let _ = out.read_to_string(&mut stdout);
+    }
+    let _ = child.wait();
+
+    let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    let line = lines.first().copied().unwrap_or_else(|| {
+        panic!("NDJSON watch MUST emit at least one line in ~2.5s; got: {stdout}");
+    });
+    let v: serde_json::Value = serde_json::from_str(line).expect("NDJSON line MUST parse");
+    let agents = v.get("agents").and_then(|a| a.as_array()).expect("agents array");
+    if let Some(first) = agents.first() {
+        assert!(
+            first.get("state").is_some(),
+            "NDJSON watch agent rows MUST include state when agents present; got: {first}"
+        );
+    }
+}
+
+/// FR-006 / AC-006.37 — serialized NDJSON line preserves agent state letters.
+#[test]
+fn fr006_proc_watch_ndjson_line_serializes_agent_state() {
+    use sharecli::commands::proc::{AgentProcNdjsonLine, AgentProcRow, AgentProcSnapshot};
+
+    let line = AgentProcNdjsonLine {
+        ts: 1_750_000_000,
+        snapshot: AgentProcSnapshot {
+            agents: vec![AgentProcRow {
+                pid: 42,
+                family: "claude".into(),
+                comm: "claude".into(),
+                state: "S".into(),
+                mem_rss_bytes: 4096,
+                mem_rss: "4K".into(),
+                fd_count: Some(3),
+            }],
+            scanned: 1,
+            watched: 1,
+            gate: sharecli_fleet::GateStatusSnapshot {
+                thermal_pressure: "GREEN".into(),
+                detected_agents: 1,
+                agent_total_rss_bytes: 4096,
+                agent_contention: "OK".into(),
+                gate_decision: "ADMIT".into(),
+            },
+        },
+    };
+    let json = serde_json::to_string(&line).expect("serialize NDJSON line");
+    assert!(
+        json.contains("\"state\":\"S\""),
+        "NDJSON watch line MUST include agent state; got: {json}"
     );
 }
 
