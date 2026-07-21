@@ -359,7 +359,7 @@ enum Commands {
 
     /// Print a fleet analytics snapshot (one-shot or live watch mode)
     Report {
-        /// Output format: text (default) or json
+        /// Output format: text (default), json, or csv
         #[arg(long, default_value = "text")]
         format: String,
 
