@@ -96,6 +96,25 @@ public enum OperatorDisplay {
         " \(visual.badgeLabel) · offline"
     }
 
+    /// Pool capacity line from `pool.status` IPC (AC-007.69).
+    public static func formatPoolTrayLine(_ pool: PoolSnapshot) -> String {
+        let healthLabel = pool.healthy ? "healthy" : "degraded"
+        return "Pool node \(pool.node_total)/\(pool.node_idle) idle · bun \(pool.bun_total)/\(pool.bun_idle) idle · max \(pool.max_per_type) · \(healthLabel)"
+    }
+
+    /// Proc-scan summary line from `status.snapshot` IPC (AC-007.69).
+    public static func formatStatusSnapshotTrayLine(_ status: StatusSnapshot) -> String {
+        "Proc scan \(status.scanned) · watched \(status.watched) · \(status.total_processes) managed · \(status.agents.count) agent row(s)"
+    }
+
+    /// Supplementary pool + status operator lines (AC-007.69).
+    public static func formatPoolStatusOperatorLines(
+        pool: PoolSnapshot,
+        status: StatusSnapshot
+    ) -> [String] {
+        [formatPoolTrayLine(pool), formatStatusSnapshotTrayLine(status)]
+    }
+
     public static func resolveGateDecisionClass(_ gateDecision: String) -> String {
         switch gateDecision {
         case "ADMIT": return "gate-admit"

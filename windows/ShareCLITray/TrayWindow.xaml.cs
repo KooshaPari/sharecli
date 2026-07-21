@@ -50,6 +50,8 @@ public sealed partial class TrayWindow : Window
                     OperatorDisplay.TrayGateSeverity.Offline);
                 GateStatusText.Text = "";
                 HostWatchStatusText.Text = "";
+                PoolStatusText.Text = "";
+                StatusSnapshotText.Text = "";
                 ProcessGrid.ItemsSource = null;
             });
             return;
@@ -58,6 +60,15 @@ public sealed partial class TrayWindow : Window
         var health = report.AsHealthSnapshot();
         m_processes = report.AsProcessSummaries();
         var visual = OperatorDisplay.ResolveTrayGateVisual(health.Gate, connected: true);
+
+        // Supplementary pool/status IPC enriches operator panels (AC-007.69); primary refresh
+        // stays monitoring.report (AC-007.51).
+        var poolJson = ShareCLIInterop.SendRequest(
+            "{\"id\": 2, \"method\": \"pool.status\", \"params\": {}}");
+        var statusJson = ShareCLIInterop.SendRequest(
+            "{\"id\": 3, \"method\": \"status.snapshot\", \"params\": {}}");
+        var pool = PoolSnapshot.TryParseIpcResponse(poolJson);
+        var status = StatusSnapshot.TryParseIpcResponse(statusJson);
 
         DispatcherQueue?.TryEnqueue(() =>
         {
@@ -74,6 +85,16 @@ public sealed partial class TrayWindow : Window
             HostWatchStatusText.Text =
                 $"{OperatorDisplay.FormatHostWatchTrayLine(health.HostWatch)} | " +
                 OperatorDisplay.FormatHostNetTrayLine(health.HostWatch);
+            if (pool != null && status != null)
+            {
+                PoolStatusText.Text = OperatorDisplay.FormatPoolTrayLine(pool);
+                StatusSnapshotText.Text = OperatorDisplay.FormatStatusSnapshotTrayLine(status);
+            }
+            else
+            {
+                PoolStatusText.Text = "";
+                StatusSnapshotText.Text = "";
+            }
             ProcessGrid.ItemsSource = m_processes;
         });
     }

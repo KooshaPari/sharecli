@@ -349,6 +349,19 @@ struct HealthView: View {
                         }
                         .padding(.top, 8)
                     }
+
+                    if let pool = state.poolStatus, let status = state.statusSnapshot, state.isConnected {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Pool + Proc Scan")
+                                .font(.headline)
+                                .padding(.top, 4)
+                            ForEach(OperatorDisplay.formatPoolStatusOperatorLines(pool: pool, status: status), id: \.self) { line in
+                                Text(line)
+                                    .font(.system(.body, design: .monospaced))
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
                 } else {
                     Text(state.isConnected ? "Loading health data…" : "Not connected to sharecli-ipc")
                         .foregroundStyle(.secondary)

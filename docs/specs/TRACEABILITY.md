@@ -200,6 +200,7 @@
 | AC-007.66   | `tests/fr007_status_watch_text_stderr_silent.rs`; `tests/fr007_status_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`StatusJson`, `StatusNdjsonLine`, `render_status_once`, `status --watch`, `status --watch --json`); `src/main.rs` (`Status.watch`) | status --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only; status --watch --json NDJSON gate → host_watch per refresh with stderr text companions |
 | AC-007.67   | `tests/fr007_ipc_pool_status_snapshot.rs`; `crates/sharecli-ipc/src/handler.rs` (`PoolSnapshot`, `StatusSnapshot`, `pool.status`, `status.snapshot`); `src/commands/proc.rs` (`AgentProcRow` Deserialize for wire roundtrip) | IPC pool.status + status.snapshot gate → host_watch after pool/status fields; parity with pool --json AC-007.44 and status --json AC-007.25 |
 | AC-007.68   | `crates/sharecli-tray-linux/src/ipc.rs` (`PoolSnapshot`, `StatusSnapshot`, `pool_status`, `status_snapshot`); `crates/sharecli-tray-windows/src/ipc.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`poolStatus`, `statusSnapshot`); `windows/ShareCLITray/PoolStatusSnapshot.cs`; `tests/fr007_ipc_pool_status_tray_wire.rs` | Tray/desktop wire parity for pool.status + status.snapshot; decode gate + host_watch via IPC RPC without pool/status --json shell-out |
+| AC-007.69   | `tests/fr007_tray_pool_status_consume.rs`; `crates/sharecli-tray-linux/src/operator_display.rs` (`format_pool_tray_line`, `format_status_snapshot_tray_line`); `crates/sharecli-tray-linux/src/main.rs` (`refresh` supplementary pool/status); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift`; `windows/ShareCLITray/TrayWindow.xaml.cs`; `windows/ShareCLITray/OperatorDisplay.cs` | Tray refresh enriches operator panels from supplementary pool.status + status.snapshot alongside monitoring.report primary refresh |
 
 ### FR-008 — Coalesce
 
@@ -269,6 +270,13 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 tray pool/status consume parity:** Linux/Swift/Windows tray refresh loops
+  call supplementary `pool.status` + `status.snapshot` IPC round-trips alongside primary
+  `monitoring.report` refresh (AC-007.69); operator panels surface dedicated pool + proc-scan
+  lines via shared format helpers; extends AC-007.68 wire + AC-007.48 monitoring.report consume.
+- **2026-07-21 — FR-007 tray pool/status IPC wire parity:** Linux/Windows/Swift/C# tray clients
+  decode `PoolSnapshot` / `StatusSnapshot` from `pool.status` / `status.snapshot` (AC-007.68);
+  parity with AC-007.47 monitoring.report wiring.
 - **2026-07-21 — FR-007 IPC pool.status + status.snapshot gate/host_watch parity:** IPC
   `pool.status` / `PoolSnapshot` and `status.snapshot` / `StatusSnapshot` emit top-level `gate` +
   `host_watch` siblings after pool/status fields (AC-007.67); parity with `pool --json` AC-007.44

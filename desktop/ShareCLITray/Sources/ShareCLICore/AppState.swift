@@ -2,6 +2,7 @@
 ///
 /// Polls the IPC server on `TrayPoll.intervalSeconds` cadence for live data via a single
 /// `monitoring.report` snapshot (AC-007.48): gate/host_watch + process inventory in one round-trip.
+/// Supplementary `pool.status` + `status.snapshot` enrich operator panels (AC-007.69).
 
 import Foundation
 import Combine
@@ -10,6 +11,8 @@ import Combine
 public final class AppState: ObservableObject {
     @Published public var processes: [ProcessSummary] = []
     @Published public var health: HealthSnapshot?
+    @Published public var poolStatus: PoolSnapshot?
+    @Published public var statusSnapshot: StatusSnapshot?
     @Published public var lastError: String?
     @Published public var isConnected: Bool = false
 
@@ -40,6 +43,8 @@ public final class AppState: ObservableObject {
             health = report.asHealthSnapshot()
             isConnected = true
             lastError = nil
+            poolStatus = try? await client.poolStatus()
+            statusSnapshot = try? await client.statusSnapshot()
             NotificationCenter.default.post(
                 name: .sharecliHealthChanged,
                 object: health
@@ -47,6 +52,8 @@ public final class AppState: ObservableObject {
         } catch {
             isConnected = false
             lastError = error.localizedDescription
+            poolStatus = nil
+            statusSnapshot = nil
             NotificationCenter.default.post(
                 name: .sharecliHealthChanged,
                 object: nil

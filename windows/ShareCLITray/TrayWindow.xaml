@@ -36,6 +36,16 @@
                 Text=""
                 FontFamily="Consolas"
                 IsTextSelectionEnabled="True" />
+            <TextBlock
+                x:Name="PoolStatusText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
+            <TextBlock
+                x:Name="StatusSnapshotText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
         </StackPanel>
 
         <!-- Process List -->
