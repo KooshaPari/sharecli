@@ -117,6 +117,8 @@ pub struct MonitoringReportSnapshot {
     pub processes: Vec<MonitoringProcessEntry>,
     pub gate: GateStatusSnapshot,
     pub host_watch: HostResourceWatchJson,
+    pub pool: PoolSnapshot,
+    pub status: StatusSnapshot,
 }
 
 impl MonitoringReportSnapshot {
@@ -161,12 +163,25 @@ mod tests {
             "gate":{"thermal_pressure":"GREEN","detected_agents":0,
             "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
             "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
-            "mem_rss_bytes":4,"load_1m":0.5}}"#;
+            "mem_rss_bytes":4,"load_1m":0.5},
+            "pool":{"node_total":2,"node_idle":1,"bun_total":1,"bun_idle":0,"max_per_type":4,
+            "healthy":true,"issues":[],
+            "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+            "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}},
+            "status":{"total_processes":2,"agents":[],"scanned":50,"watched":1,
+            "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+            "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}}}"#;
         let snap: MonitoringReportSnapshot = serde_json::from_str(raw).unwrap();
         assert_eq!(snap.timestamp, 1_700_000_000);
         assert_eq!(snap.total_processes, 1);
         assert_eq!(snap.gate.gate_decision, "ADMIT");
         assert_eq!(snap.host_watch.load_1m, 0.5);
+        assert_eq!(snap.pool.node_total, 2);
+        assert_eq!(snap.status.scanned, 50);
     }
 
     #[test]
@@ -229,12 +244,25 @@ mod tests {
             "gate":{"thermal_pressure":"GREEN","detected_agents":0,
             "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
             "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
-            "mem_rss_bytes":4,"load_1m":0.5}}"#;
+            "mem_rss_bytes":4,"load_1m":0.5},
+            "pool":{"node_total":2,"node_idle":1,"bun_total":1,"bun_idle":0,"max_per_type":4,
+            "healthy":true,"issues":[],
+            "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+            "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}},
+            "status":{"total_processes":2,"agents":[],"scanned":50,"watched":1,
+            "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+            "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}}}"#;
         let snap: MonitoringReportSnapshot = serde_json::from_str(raw).unwrap();
         let health = snap.health_snapshot();
         assert_eq!(health.managed_processes, 2);
         assert_eq!(health.gate.gate_decision, "ADMIT");
         assert_eq!(health.host_watch.load_1m, 0.5);
+        assert_eq!(snap.pool.node_total, 2);
+        assert_eq!(snap.status.scanned, 50);
 
         let procs = snap.process_summaries();
         assert_eq!(procs.len(), 2);

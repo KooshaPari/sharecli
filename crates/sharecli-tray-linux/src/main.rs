@@ -223,20 +223,19 @@ mod linux {
     /// Pull the latest state from the IPC daemon into the tray struct.
     ///
     /// Single `monitoring.report` round-trip drives operator gate/host_watch + process
-    /// inventory (AC-007.48); avoids split `health.status` + `process.list` polls.
-    /// Supplementary `pool.status` + `status.snapshot` enrich operator panels (AC-007.69).
+    /// inventory + embedded pool/status (AC-007.48 / AC-007.72); avoids split polls.
     fn refresh(tray: &mut ShareCliTray) {
         match ipc::monitoring_report() {
             Ok(snap) => {
                 tray.health = Some(snap.health_snapshot());
                 tray.processes = snap.process_summaries();
+                tray.pool = Some(snap.pool);
+                tray.status = Some(snap.status);
                 tray.connected = true;
                 tray.gate_visual = operator_display::resolve_tray_gate_visual_from_gate(
                     &snap.gate,
                     true,
                 );
-                tray.pool = ipc::pool_status().ok();
-                tray.status = ipc::status_snapshot().ok();
             }
             Err(e) => {
                 tracing::debug!("monitoring.report poll failed: {e}");

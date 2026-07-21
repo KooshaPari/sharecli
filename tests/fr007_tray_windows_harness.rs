@@ -16,7 +16,18 @@ fn fr007_tray_windows_harness_maps_from_monitoring_report() {
         "gate":{"thermal_pressure":"GREEN","detected_agents":0,
         "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
         "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
-        "mem_rss_bytes":4,"load_1m":0.5}}"#;
+        "mem_rss_bytes":4,"load_1m":0.5},
+        "pool":{"node_total":2,"node_idle":1,"bun_total":1,"bun_idle":0,"max_per_type":4,
+        "healthy":true,"issues":[],
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+        "mem_rss_bytes":4,"load_1m":0.5}},
+        "status":{"total_processes":2,"agents":[],"scanned":50,"watched":1,
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+        "mem_rss_bytes":4,"load_1m":0.5}}}"#;
 
     let snap: MonitoringReportSnapshot = serde_json::from_str(raw).unwrap();
     let procs = snap.process_summaries();
