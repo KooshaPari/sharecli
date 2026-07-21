@@ -156,6 +156,49 @@ fn fr007_report_json_gate_order_serializes_fields() {
             mem_rss_bytes: 4096,
             load_1m: 1.25,
         },
+        pool: sharecli::commands::PoolJson {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 0,
+            max_per_type: 4,
+            healthy: true,
+            issues: vec![],
+            gate: GateStatusSnapshot {
+                thermal_pressure: "GREEN".into(),
+                detected_agents: 0,
+                agent_total_rss_bytes: 0,
+                agent_contention: "OK".into(),
+                gate_decision: "ADMIT".into(),
+            },
+            host_watch: HostResourceWatchJson {
+                fd_count: 7,
+                net_rx_bytes: 1024,
+                net_tx_bytes: 2048,
+                mem_rss_bytes: 4096,
+                load_1m: 1.25,
+            },
+        },
+        status: sharecli::commands::StatusJson {
+            total_processes: 0,
+            agents: vec![],
+            scanned: 50,
+            watched: 1,
+            gate: GateStatusSnapshot {
+                thermal_pressure: "GREEN".into(),
+                detected_agents: 0,
+                agent_total_rss_bytes: 0,
+                agent_contention: "OK".into(),
+                gate_decision: "ADMIT".into(),
+            },
+            host_watch: HostResourceWatchJson {
+                fd_count: 7,
+                net_rx_bytes: 1024,
+                net_tx_bytes: 2048,
+                mem_rss_bytes: 4096,
+                load_1m: 1.25,
+            },
+        },
     };
     let json = serde_json::to_string(&envelope).expect("serialize report JSON envelope");
     assert_json_gate_before_host_watch(&json, "FleetReportJson");

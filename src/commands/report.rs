@@ -13,6 +13,7 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use sharecli_fleet::GateStatusSnapshot;
 
+use crate::commands::{PoolJson, StatusJson};
 use crate::monitoring::HostResourceWatchJson;
 use crate::runtime::{ProcessInfo, ProcessPool};
 
@@ -103,10 +104,10 @@ pub struct FleetReport {
     pub gate_decision: String,
 }
 
-/// JSON envelope for `sharecli report --format json` (FR-007 / AC-007.40).
+/// JSON envelope for `sharecli report --format json` (FR-007 / AC-007.40, pool/status AC-007.73).
 ///
-/// Fleet analytics fields are followed by live `gate` and `host_watch` siblings
-/// (parity with `status --json` AC-007.25 / proc JSON AC-007.24 key order).
+/// Fleet analytics fields are followed by live `gate`, `host_watch`, `pool`, and `status`
+/// siblings (parity with `monitoring.report` AC-007.72 / dashboard WS AC-007.70 key order).
 #[derive(Debug, Clone, Serialize)]
 pub struct FleetReportJson {
     pub timestamp: u64,
@@ -123,6 +124,10 @@ pub struct FleetReportJson {
     pub gate: GateStatusSnapshot,
     /// Live host FD/RSS/load/net watch (FR-007 / AC-007.40).
     pub host_watch: HostResourceWatchJson,
+    /// Runtime pool status (FR-007 / AC-007.73).
+    pub pool: PoolJson,
+    /// Proc-scan status snapshot (FR-007 / AC-007.73).
+    pub status: StatusJson,
 }
 
 impl FleetReportJson {
@@ -130,6 +135,8 @@ impl FleetReportJson {
         report: &FleetReport,
         gate: GateStatusSnapshot,
         host_watch: HostResourceWatchJson,
+        pool: PoolJson,
+        status: StatusJson,
     ) -> Self {
         Self {
             timestamp: report.timestamp,
@@ -144,6 +151,8 @@ impl FleetReportJson {
             gate_decision: report.gate_decision.clone(),
             gate,
             host_watch,
+            pool,
+            status,
         }
     }
 }
@@ -283,8 +292,11 @@ fn render_json(
     report: &FleetReport,
     gate: &GateStatusSnapshot,
     host_watch: &HostResourceWatchJson,
+    pool: &PoolJson,
+    status: &StatusJson,
 ) -> Result<()> {
-    let payload = FleetReportJson::from_parts(report, gate.clone(), *host_watch);
+    let payload =
+        FleetReportJson::from_parts(report, gate.clone(), *host_watch, pool.clone(), status.clone());
     let json = serde_json::to_string_pretty(&payload)?;
     println!("{}", json);
     Ok(())
@@ -326,15 +338,28 @@ async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Resu
             super::print_live_host_watch_section()?;
         }
         ReportFormat::Json => {
-            // AC-007.40 one-shot / AC-007.42 watch NDJSON: gate → host_watch JSON siblings.
-            let host_watch = HostResourceWatchJson::capture()?;
+            // AC-007.40/AC-007.73 one-shot / AC-007.42 watch NDJSON: gate → host_watch → pool → status.
+            let (host_watch, pool_json, status_json) = tokio::join!(
+                async { HostResourceWatchJson::capture() },
+                super::build_pool_json(),
+                super::build_status_json(),
+            );
+            let host_watch = host_watch?;
+            let pool = pool_json?;
+            let status = status_json?;
             if ndjson {
-                let payload = FleetReportJson::from_parts(&report, gate.clone(), host_watch);
+                let payload = FleetReportJson::from_parts(
+                    &report,
+                    gate.clone(),
+                    host_watch,
+                    pool,
+                    status,
+                );
                 let line = FleetReportNdjsonLine { ts: unix_ts_secs(), snapshot: payload };
                 emit_ndjson_line(&line)?;
                 super::eprint_live_gate_host_watch_sections()?;
             } else {
-                render_json(&report, &gate, &host_watch)?;
+                render_json(&report, &gate, &host_watch, &pool, &status)?;
             }
         }
     }
