@@ -157,6 +157,7 @@
 | AC-007.23   | `tests/fr007_proc_tree_watch_gate_order.rs`; `src/commands/proc.rs` (`run` watch loop + `render_once` tree path) | proc tree watch text/NDJSON gate → host_watch ordering per refresh |
 | AC-007.24   | `tests/fr007_proc_json_gate_order.rs`; `src/commands/proc.rs` (`AgentProcSnapshot`, `AgentTreeSnapshot`, `ProcDetailSnapshot`) | proc one-shot JSON gate → host_watch raw key ordering |
 | AC-007.25   | `tests/fr007_status_json_host_watch.rs`; `tests/fr006_proc_cli.rs`; `src/commands/mod.rs` (`status`) | status --json top-level gate + host_watch siblings (proc parity) |
+| AC-007.26   | `tests/fr007_thermal_tui_gate_parity.rs`; `crates/sharecli-thermal-tui/src/lib.rs` (`gate_panel_lines`, `render_decision`); `crates/sharecli-fleet/src/resource_watch.rs` (`sum_detected_agent_rss_bytes`) | thermal TUI gate panel RSS-aware snapshot parity |
 
 ### FR-008 — Coalesce
 
@@ -277,6 +278,9 @@
 - **2026-07-20 — FR-009 FUSE path remap + lifecycle:** SpawnOutcome exposes
   `fuse_backing` / `fuse_mountpoint`; `remap_mount_to_backing` + guard teardown
   on drop (AC-009.14).
+- **2026-07-20 — FR-007 thermal TUI gate parity:** `sharecli thermal` gate panel derives
+  ADMIT/DENY from `gate_status_snapshot_with_rss` with live agent RSS + contention
+  (AC-007.26); replaces count-only `effective_gate_decision` in thermal TUI.
 - **2026-07-20 — FR-009 SpawnOutcome FUSE session:** cache-miss outcomes expose
   `fuse_session_id` when intercept mount is active (AC-009.13).
 - **2026-07-20 — FR-009 Hypervisor FUSE session:** cache-miss mounts pass
@@ -311,7 +315,7 @@
   `format_gate_status_section` with live thermal + agent inventory (AC-011.5).
 - **2026-07-20 — FR-011 agent-aware thermal gate:** `AgentAwareThermalGate` wraps
   production Hypervisor gate; proc-scan agent count escalates spawn decisions
-  (AC-011.4); thermal TUI gate panel uses `effective_gate_decision`.
+  (AC-011.4); thermal TUI gate panel uses `gate_status_snapshot_with_rss` (AC-007.26).
 - **2026-07-20 — FR-006 proc sort state:** `sharecli proc --sort state` orders flat
   inventory and tree root forests by process state letter with PID tie-break
   (AC-006.36).

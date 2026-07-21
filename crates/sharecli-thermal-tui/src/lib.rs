@@ -26,9 +26,9 @@ use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
     build_host_agent_forests, build_host_agent_state_map, build_host_forest_state_map,
-    effective_gate_decision, format_rss_bytes, global_coalesce_meters, global_slot_queue_meters,
-    state_text_for_pid, watch_host_agents, AgentTreeNode, CoalesceMeters, DetectedAgentWatch,
-    ResourceWatchSample, SlotQueueMeters,
+    format_rss_bytes, gate_status_snapshot_with_rss, global_coalesce_meters, global_slot_queue_meters,
+    state_text_for_pid, sum_detected_agent_rss_bytes, watch_host_agents, AgentTreeNode,
+    CoalesceMeters, DetectedAgentWatch, GateStatusSnapshot, ResourceWatchSample, SlotQueueMeters,
 };
 use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
@@ -126,6 +126,59 @@ pub const COMPACT_WIDTH: u16 = 80;
 /// or an explicit `COLUMNS`-derived width in tests.
 pub fn is_compact(width: u16) -> bool {
     width < COMPACT_WIDTH
+}
+
+/// Lines for the thermal gate decision panel (FR-007 / AC-007.26 TUI slice).
+///
+/// Derives ADMIT/DENY from [`GateStatusSnapshot`] built with live agent count + RSS
+/// (parity with `sharecli proc` / `status --json` gate).
+pub fn gate_panel_lines(
+    snap: &GateStatusSnapshot,
+    thermal: ThermalLevel,
+    compact: bool,
+) -> Vec<Line<'static>> {
+    let decision = snap.gate_decision.as_str();
+    let color = if decision == "DENY" { Color::Red } else { decision_color(thermal) };
+    let decision_span = Span::styled(
+        format!("[ {decision} ]"),
+        Style::default().fg(color).add_modifier(Modifier::BOLD),
+    );
+
+    if compact {
+        return vec![Line::from(vec![
+            Span::raw(" Gate: "),
+            decision_span,
+            Span::raw(format!(
+                " RSS:{} {}",
+                snap.agent_total_rss_bytes,
+                snap.agent_contention
+            )),
+        ])];
+    }
+
+    let hint = if decision == "DENY" {
+        if thermal == ThermalLevel::Red {
+            "  — hypervisor will retry up to 5x before returning Err"
+        } else {
+            "  — agent contention limit reached; hypervisor will back-pressure"
+        }
+    } else {
+        ""
+    };
+
+    vec![
+        Line::from(vec![
+            Span::raw("  Gate decision: "),
+            decision_span,
+            Span::raw(hint),
+        ]),
+        Line::from(format!(
+            "  Agent RSS total: {} bytes ({})",
+            snap.agent_total_rss_bytes,
+            format_rss_bytes(snap.agent_total_rss_bytes)
+        )),
+        Line::from(format!("  Agent contention: {}", snap.agent_contention)),
+    ]
 }
 
 /// Lines for the host resource watch panel (FR-007 / AC-007.10, AC-007.12 TUI slice).
@@ -632,6 +685,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let compact = is_compact(area.width);
     let margin = if compact || area.height < 33 { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
+    let gate_h = if compact { 4 } else { 5 };
     let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 7 };
     let fuse_h = if compact { 8 } else { 21 };
@@ -642,7 +696,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         .constraints([
             Constraint::Length(3),         // title
             Constraint::Length(thermal_h), // thermal pressure block
-            Constraint::Length(3),         // gate decision
+            Constraint::Length(gate_h),    // gate decision
             Constraint::Length(3),         // slot gauge
             Constraint::Length(agents_h),  // host agent inventory
             Constraint::Length(watch_h),   // host resource watch
@@ -701,33 +755,13 @@ fn render_thermal(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 fn render_decision(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let level = app.thermal_level;
     let agent_count = app.detected_agents.len();
-    let decision = effective_gate_decision(level, agent_count);
-    let color = if decision == "DENY" { Color::Red } else { decision_color(level) };
-
-    let hint = if compact {
-        ""
-    } else if decision == "DENY" {
-        if level == ThermalLevel::Red {
-            "  — hypervisor will retry up to 5x before returning Err"
-        } else {
-            "  — agent contention limit reached; hypervisor will back-pressure"
-        }
-    } else {
-        ""
-    };
-
-    let line = Line::from(vec![
-        Span::raw(if compact { " Gate: " } else { "  Gate decision: " }),
-        Span::styled(
-            format!("[ {decision} ]"),
-            Style::default().fg(color).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(hint),
-    ]);
+    let total_rss = sum_detected_agent_rss_bytes(&app.detected_agents);
+    let snap = gate_status_snapshot_with_rss(level, agent_count, total_rss);
+    let lines = gate_panel_lines(&snap, level, compact);
 
     let title = if compact { " Gate " } else { " Gate Decision " };
     let block = Block::default().borders(Borders::ALL).title(title);
-    let para = Paragraph::new(line).block(block);
+    let para = Paragraph::new(lines).block(block);
     frame.render_widget(para, area);
 }
 
@@ -968,6 +1002,48 @@ mod tests {
     #[test]
     fn test_decision_green_admit() {
         assert_eq!(gate_decision(ThermalLevel::Green), "ADMIT");
+    }
+
+    // --- gate_panel_lines (AC-007.26) ---
+    #[test]
+    fn test_gate_panel_lines_rss_refuse_denies_on_green() {
+        const RSS_REFUSE: u64 = 32 * 1_073_741_824;
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Green, 1, RSS_REFUSE);
+        assert_eq!(snap.gate_decision, "DENY");
+        assert_eq!(snap.agent_contention, "REFUSE");
+
+        let lines = gate_panel_lines(&snap, ThermalLevel::Green, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("DENY"), "full gate panel MUST show DENY; got: {text}");
+        assert!(
+            text.contains(&RSS_REFUSE.to_string()),
+            "full gate panel MUST show agent RSS total; got: {text}"
+        );
+        assert!(text.contains("REFUSE"), "full gate panel MUST show contention; got: {text}");
+
+        let compact = gate_panel_lines(&snap, ThermalLevel::Green, true);
+        let compact_text: String = compact.iter().map(|l| l.to_string()).collect();
+        assert!(compact_text.contains("DENY"), "compact gate MUST show DENY; got: {compact_text}");
+        assert!(
+            compact_text.contains(&RSS_REFUSE.to_string()),
+            "compact gate MUST show agent RSS total; got: {compact_text}"
+        );
+        assert!(
+            compact_text.contains("REFUSE"),
+            "compact gate MUST show contention; got: {compact_text}"
+        );
+    }
+
+    #[test]
+    fn test_gate_panel_lines_count_only_warn_still_admits() {
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Green, 4, 0);
+        assert_eq!(snap.gate_decision, "ADMIT");
+        assert_eq!(snap.agent_contention, "WARN");
+
+        let lines = gate_panel_lines(&snap, ThermalLevel::Green, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("ADMIT"));
+        assert!(text.contains("WARN"));
     }
 
     #[test]

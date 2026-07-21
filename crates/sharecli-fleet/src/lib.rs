@@ -37,8 +37,9 @@ pub use proc_scan::{
 pub use registry::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
 pub use resource_watch::{
     format_rss_bytes, parse_rss_bytes, sample_host_load_1m, sample_host_net, sample_pid_fds,
-    sample_pid_rss_bytes, sample_self_fds, sample_self_rss_bytes, watch_detected_agents,
-    watch_host_agents, AgentResourceSample, DetectedAgentWatch, ResourceWatchSample,
+    sample_pid_rss_bytes, sample_self_fds, sample_self_rss_bytes, sum_detected_agent_rss_bytes,
+    watch_detected_agents, watch_host_agents, AgentResourceSample, DetectedAgentWatch,
+    ResourceWatchSample,
 };
 pub use slot_queue_meters::{
     global_slot_queue_meters, record_slot_acquire, record_slot_timeout, record_slot_wait,
