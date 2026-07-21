@@ -158,6 +158,7 @@
 | AC-007.24   | `tests/fr007_proc_json_gate_order.rs`; `src/commands/proc.rs` (`AgentProcSnapshot`, `AgentTreeSnapshot`, `ProcDetailSnapshot`) | proc one-shot JSON gate → host_watch raw key ordering |
 | AC-007.25   | `tests/fr007_status_json_host_watch.rs`; `tests/fr006_proc_cli.rs`; `src/commands/mod.rs` (`status`) | status --json top-level gate + host_watch siblings (proc parity) |
 | AC-007.26   | `tests/fr007_thermal_tui_gate_parity.rs`; `crates/sharecli-thermal-tui/src/lib.rs` (`gate_panel_lines`, `render_decision`); `crates/sharecli-fleet/src/resource_watch.rs` (`sum_detected_agent_rss_bytes`) | thermal TUI gate panel RSS-aware snapshot parity |
+| AC-007.27   | `tests/fr007_status_text_gate_order.rs`; `src/commands/mod.rs` (`status` text path) | status text thermal gate section before host watch (proc parity) |
 
 ### FR-008 — Coalesce
 
@@ -227,6 +228,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 status text gate ordering:** `sharecli status` text prints
+  thermal gate section before host resource watch (AC-007.27); parity with proc text
+  (AC-007.21) and status --json gate → host_watch (AC-007.25).
 - **2026-07-20 — FR-007 status JSON host watch:** `sharecli status --json` emits
   top-level `gate` + `host_watch` siblings with flat `agents` array (AC-007.25);
   proc-adjacent operator surface parity with `sharecli proc --json`.
