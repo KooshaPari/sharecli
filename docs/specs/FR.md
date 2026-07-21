@@ -401,8 +401,14 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   host net RX/TX byte counters from [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs)
   in full and compact layouts, matching [`format_status_section`](crates/sharecli-fleet/src/resource_watch.rs)
   parity established by AC-007.10.
+- **AC-007.13:** `sharecli proc --json` and `sharecli proc --watch --json` MUST
+  emit a `host_watch` object on every snapshot with live
+  [`ResourceWatchSample`](crates/sharecli-fleet/src/resource_watch.rs) fields
+  (`fd_count`, `mem_rss_bytes`, `load_1m`, `net_rx_bytes`, `net_tx_bytes`) via
+  [`HostResourceWatchJson`](src/monitoring.rs); MUST fail loudly via `?` when
+  sampling is unsupported or errors (parity with `status` text + thermal TUI).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`
 
 ---
 

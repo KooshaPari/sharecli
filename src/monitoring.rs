@@ -18,6 +18,35 @@ pub use sharecli_fleet::{
     ResourceWatchSample,
 };
 
+/// JSON surface for live host [`ResourceWatchSample`] (FR-007 / AC-007.13).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct HostResourceWatchJson {
+    pub fd_count: u64,
+    pub net_rx_bytes: u64,
+    pub net_tx_bytes: u64,
+    pub mem_rss_bytes: u64,
+    pub load_1m: f64,
+}
+
+impl HostResourceWatchJson {
+    /// Capture FD/RSS/load/net watch fields from the live host.
+    pub fn capture() -> Result<Self> {
+        Ok(ResourceWatchSample::capture()?.into())
+    }
+}
+
+impl From<ResourceWatchSample> for HostResourceWatchJson {
+    fn from(sample: ResourceWatchSample) -> Self {
+        Self {
+            fd_count: sample.fd_count,
+            net_rx_bytes: sample.net_rx_bytes,
+            net_tx_bytes: sample.net_tx_bytes,
+            mem_rss_bytes: sample.mem_rss_bytes,
+            load_1m: sample.load_1m,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthStatus {
     pub healthy: bool,
