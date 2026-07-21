@@ -1,6 +1,8 @@
 /// AppState.swift — Observable state for the tray popover + main window.
 ///
-/// Polls the IPC server every 3 s for live data.
+/// Polls the IPC server on `TrayPoll.intervalSeconds` cadence for live data via a single
+/// `monitoring.report` snapshot (AC-007.48 / AC-007.72): gate/host_watch + process inventory
+/// + embedded pool/status in one round-trip.
 
 import Foundation
 import Combine
@@ -9,6 +11,8 @@ import Combine
 public final class AppState: ObservableObject {
     @Published public var processes: [ProcessSummary] = []
     @Published public var health: HealthSnapshot?
+    @Published public var poolStatus: PoolSnapshot?
+    @Published public var statusSnapshot: StatusSnapshot?
     @Published public var lastError: String?
     @Published public var isConnected: Bool = false
 
@@ -22,7 +26,7 @@ public final class AppState: ObservableObject {
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refresh()
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                try? await Task.sleep(nanoseconds: TrayPoll.intervalNanoseconds)
             }
         }
     }
@@ -34,16 +38,26 @@ public final class AppState: ObservableObject {
 
     public func refresh() async {
         do {
-            async let procs = client.listProcesses()
-            async let snap = client.health()
-            let (p, h) = try await (procs, snap)
-            processes = p
-            health = h
+            let report = try await client.monitoringReport()
+            processes = report.asProcessSummaries()
+            health = report.asHealthSnapshot()
+            poolStatus = report.pool
+            statusSnapshot = report.status
             isConnected = true
             lastError = nil
+            NotificationCenter.default.post(
+                name: .sharecliHealthChanged,
+                object: health
+            )
         } catch {
             isConnected = false
             lastError = error.localizedDescription
+            poolStatus = nil
+            statusSnapshot = nil
+            NotificationCenter.default.post(
+                name: .sharecliHealthChanged,
+                object: nil
+            )
         }
     }
 

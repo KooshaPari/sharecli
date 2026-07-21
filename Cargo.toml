@@ -48,9 +48,13 @@ sysinfo = "0.39"
 # Zig hot core: POSIX semaphore, posix_spawn, setpriority, waitpid
 spawn-core-sys = { path = "crates/spawn-core-sys" }
 
-# Fleet: device registry + thermal governor
+# Fleet: device registry + thermal governor + FR-006 proc_scan
 sharecli-fleet = { path = "crates/sharecli-fleet" }
+# FUSE read-coalesce global meters surfaced in `status` (FR-007 / AC-007.9)
+sharecli-fuse = { path = "crates/sharecli-fuse" }
 sharecli-sync = { path = "crates/sharecli-sync" }
+# Mesh: Maildir task queue + SmartMerger / WorktreePool (FR-010 CLI)
+sharecli-mesh = { path = "crates/sharecli-mesh" }
 
 # Thermal TUI
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
@@ -101,13 +105,18 @@ optional = true
 
 [dev-dependencies]
 tempfile = "3"
+serial_test = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 criterion = { version = "0.8", features = ["async_tokio", "html_reports"] }
 # Golden snapshot suite (T-250 / L30.7) needs headless thermal TUI renders.
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 sharecli-core = { path = "crates/sharecli-core" }
 sharecli-ipc = { path = "crates/sharecli-ipc" }
+sharecli-tray-linux = { path = "crates/sharecli-tray-linux" }
+sharecli-tray-windows = { path = "crates/sharecli-tray-windows" }
 sharecli-fuse = { path = "crates/sharecli-fuse" }
+# sharecli-mesh is a normal dependency (mesh CLI); re-export not needed in dev-deps
 ratatui = "0.30"
 proptest = "1.6"
 
@@ -187,7 +196,9 @@ members = [
     "crates/sharecli-ipc",
     "crates/sharecli-ffi",
     "crates/sharecli-tray-linux",
+    "crates/sharecli-tray-windows",
     "crates/sharecli-fleet",
+    "crates/sharecli-mesh",
     "crates/spawn-core-sys",
     "crates/sharecli-fuse",
     "crates/sharecli-core",

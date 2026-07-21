@@ -1,16 +1,20 @@
 //! Fleet analytics report command.
 //!
-//! `sharecli report [--format text|json] [--watch <secs>] [--sort memory|name]`
+//! `sharecli report [--format text|json|csv] [--watch <secs>] [--sort memory|name]`
 //! prints a fleet analytics snapshot to stdout.  With `--watch N` it clears the
 //! terminal and re-renders every N seconds until Ctrl-C.
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::io::Write;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
+use sharecli_fleet::GateStatusSnapshot;
 
+use crate::commands::{PoolJson, StatusJson};
+use crate::monitoring::HostResourceWatchJson;
 use crate::runtime::{ProcessInfo, ProcessPool};
 
 // ---------------------------------------------------------------------------
@@ -23,6 +27,7 @@ pub enum ReportFormat {
     #[default]
     Text,
     Json,
+    Csv,
 }
 
 /// Sort key for top-consumers list.
@@ -54,7 +59,8 @@ impl std::str::FromStr for ReportFormat {
         match s.to_ascii_lowercase().as_str() {
             "text" => Ok(Self::Text),
             "json" => Ok(Self::Json),
-            other => anyhow::bail!("unknown format '{}'; expected 'text' or 'json'", other),
+            "csv" => Ok(Self::Csv),
+            other => anyhow::bail!("unknown format '{}'; expected 'text', 'json', or 'csv'", other),
         }
     }
 }
@@ -92,6 +98,84 @@ pub struct FleetReport {
     pub top_consumers: Vec<TopConsumer>,
     /// Thermal pressure level string ("GREEN" / "YELLOW" / "RED" or "UNAVAILABLE").
     pub thermal_pressure: String,
+    /// Live proc-scan agent inventory (FR-011).
+    pub detected_agents: usize,
+    /// Agent contention tier (`OK` / `WARN` / `REFUSE`).
+    pub agent_contention: String,
+    /// Effective gate decision (`ADMIT` / `DENY`).
+    pub gate_decision: String,
+}
+
+/// JSON envelope for `sharecli report --format json` (FR-007 / AC-007.40, pool/status AC-007.73).
+///
+/// Fleet analytics fields are followed by live `gate`, `host_watch`, `pool`, and `status`
+/// siblings (parity with `monitoring.report` AC-007.72 / dashboard WS AC-007.70 key order).
+#[derive(Debug, Clone, Serialize)]
+pub struct FleetReportJson {
+    pub timestamp: u64,
+    pub uptime_seconds: u64,
+    pub total_processes: usize,
+    pub total_memory_mb: u64,
+    pub by_project: HashMap<String, ProjectBreakdown>,
+    pub top_consumers: Vec<TopConsumer>,
+    pub thermal_pressure: String,
+    pub detected_agents: usize,
+    pub agent_contention: String,
+    pub gate_decision: String,
+    /// Live thermal + agent gate snapshot (FR-007 / AC-007.40).
+    pub gate: GateStatusSnapshot,
+    /// Live host FD/RSS/load/net watch (FR-007 / AC-007.40).
+    pub host_watch: HostResourceWatchJson,
+    /// Runtime pool status (FR-007 / AC-007.73).
+    pub pool: PoolJson,
+    /// Proc-scan status snapshot (FR-007 / AC-007.73).
+    pub status: StatusJson,
+}
+
+impl FleetReportJson {
+    pub fn from_parts(
+        report: &FleetReport,
+        gate: GateStatusSnapshot,
+        host_watch: HostResourceWatchJson,
+        pool: PoolJson,
+        status: StatusJson,
+    ) -> Self {
+        Self {
+            timestamp: report.timestamp,
+            uptime_seconds: report.uptime_seconds,
+            total_processes: report.total_processes,
+            total_memory_mb: report.total_memory_mb,
+            by_project: report.by_project.clone(),
+            top_consumers: report.top_consumers.clone(),
+            thermal_pressure: report.thermal_pressure.clone(),
+            detected_agents: report.detected_agents,
+            agent_contention: report.agent_contention.clone(),
+            gate_decision: report.gate_decision.clone(),
+            gate,
+            host_watch,
+            pool,
+            status,
+        }
+    }
+}
+
+/// One NDJSON watch line for `report --watch --format json` (FR-007 / AC-007.42).
+#[derive(Debug, Clone, Serialize)]
+pub struct FleetReportNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: FleetReportJson,
+}
+
+fn unix_ts_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+}
+
+/// Emit one compact JSON line and flush (piped stdout is block-buffered; AC-007.42).
+fn emit_ndjson_line<T: Serialize>(value: &T) -> Result<()> {
+    println!("{}", serde_json::to_string(value)?);
+    std::io::stdout().flush()?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -111,10 +195,13 @@ pub fn sort_consumers(consumers: &mut [TopConsumer], sort: &SortBy) {
 
 /// Build a [`FleetReport`] from a slice of process snapshots.
 ///
-/// `thermal` is the current thermal pressure string (caller supplies it so
-/// the function stays sync and testable without hitting sysfs).
+/// `gate` carries live thermal + agent inventory gate fields (FR-011).
 /// `sort` controls the order of `top_consumers`.
-pub fn build_report(processes: &[ProcessInfo], thermal: &str, sort: &SortBy) -> FleetReport {
+pub fn build_report(
+    processes: &[ProcessInfo],
+    gate: &GateStatusSnapshot,
+    sort: &SortBy,
+) -> FleetReport {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
     let total_memory_mb: u64 = processes.iter().map(|p| p.memory_mb).sum();
@@ -156,7 +243,10 @@ pub fn build_report(processes: &[ProcessInfo], thermal: &str, sort: &SortBy) -> 
         total_memory_mb,
         by_project,
         top_consumers,
-        thermal_pressure: thermal.to_string(),
+        thermal_pressure: gate.thermal_pressure.clone(),
+        detected_agents: gate.detected_agents,
+        agent_contention: gate.agent_contention.clone(),
+        gate_decision: gate.gate_decision.clone(),
     }
 }
 
@@ -169,6 +259,9 @@ fn render_text(report: &FleetReport) {
     println!("Timestamp:       {}", report.timestamp);
     println!("Uptime:          {} s", report.uptime_seconds);
     println!("Thermal:         {}", report.thermal_pressure);
+    println!("Detected agents: {}", report.detected_agents);
+    println!("Agent contention: {}", report.agent_contention);
+    println!("Gate decision:   {}", report.gate_decision);
     println!("Total processes: {}", report.total_processes);
     println!("Total memory:    {} MB", report.total_memory_mb);
 
@@ -197,9 +290,86 @@ fn render_text(report: &FleetReport) {
     }
 }
 
-fn render_json(report: &FleetReport) -> Result<()> {
-    let json = serde_json::to_string_pretty(report)?;
+fn render_json(
+    report: &FleetReport,
+    gate: &GateStatusSnapshot,
+    host_watch: &HostResourceWatchJson,
+    pool: &PoolJson,
+    status: &StatusJson,
+) -> Result<()> {
+    let payload =
+        FleetReportJson::from_parts(report, gate.clone(), *host_watch, pool.clone(), status.clone());
+    let json = serde_json::to_string_pretty(&payload)?;
     println!("{}", json);
+    Ok(())
+}
+
+/// RFC 4180-style fleet analytics CSV body (summary + project + consumer sections).
+pub fn render_report_csv_body(report: &FleetReport) -> String {
+    use crate::commands::proc::csv_escape_field;
+
+    let mut out = String::new();
+    out.push_str(
+        "record,timestamp,uptime_seconds,total_processes,total_memory_mb,thermal_pressure,detected_agents,agent_contention,gate_decision\n",
+    );
+    out.push_str(&format!(
+        "summary,{},{},{},{},{},{},{},{}\n",
+        report.timestamp,
+        report.uptime_seconds,
+        report.total_processes,
+        report.total_memory_mb,
+        csv_escape_field(&report.thermal_pressure),
+        report.detected_agents,
+        csv_escape_field(&report.agent_contention),
+        csv_escape_field(&report.gate_decision),
+    ));
+
+    out.push_str("\nrecord,project,count,memory_mb\n");
+    let mut projects: Vec<_> = report.by_project.iter().collect();
+    projects.sort_by(|a, b| a.0.cmp(b.0));
+    for (name, bd) in projects {
+        out.push_str(&format!(
+            "project,{},{},{}\n",
+            csv_escape_field(name),
+            bd.count,
+            bd.memory_mb,
+        ));
+    }
+
+    out.push_str("\nrecord,pid,name,project,memory_mb\n");
+    for tc in &report.top_consumers {
+        out.push_str(&format!(
+            "consumer,{},{},{},{}\n",
+            tc.pid,
+            csv_escape_field(&tc.name),
+            csv_escape_field(tc.project.as_deref().unwrap_or("-")),
+            tc.memory_mb,
+        ));
+    }
+    out
+}
+
+async fn append_report_csv_companions(
+    csv: String,
+    gate: &GateStatusSnapshot,
+) -> Result<String> {
+    use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
+
+    let mut out = csv;
+    out.push_str(&gate.format_csv_companion());
+    out.push_str(&HostResourceWatchJson::capture()?.format_csv_companion());
+    let (pool_json, status_json) = super::fetch_operator_pool_status_siblings().await?;
+    let pool: PoolOperatorPanel = pool_json.into();
+    let status: StatusOperatorPanel = status_json.into();
+    out.push_str(&pool.format_csv_companion());
+    out.push_str(&status.format_csv_companion());
+    Ok(out)
+}
+
+async fn render_csv(report: &FleetReport, gate: &GateStatusSnapshot) -> Result<()> {
+    let body = render_report_csv_body(report);
+    let csv = append_report_csv_companions(body, gate).await?;
+    print!("{csv}");
     Ok(())
 }
 
@@ -208,25 +378,66 @@ fn render_json(report: &FleetReport) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 /// Render one snapshot and print it according to `format`.
-async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
+async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Result<()> {
     let pool = ProcessPool::new();
     let processes = pool.list().await;
 
-    // Best-effort thermal level via sharecli-fleet
-    let thermal = {
+    // Live thermal + agent gate (FR-011)
+    let gate = {
         use sharecli_fleet::thermal::ThermalGovernor;
+        use sharecli_fleet::{count_host_agents, gate_status_snapshot};
         let gov = ThermalGovernor::new();
         match gov.poll() {
-            Ok(level) => format!("{level:?}"),
-            Err(_) => "UNAVAILABLE".to_string(),
+            Ok(level) => gate_status_snapshot(level, count_host_agents()),
+            Err(_) => GateStatusSnapshot {
+                thermal_pressure: "UNAVAILABLE".to_string(),
+                detected_agents: count_host_agents(),
+                agent_total_rss_bytes: 0,
+                agent_contention: "UNAVAILABLE".to_string(),
+                gate_decision: "UNAVAILABLE".to_string(),
+            },
         }
     };
 
-    let report = build_report(&processes, &thermal, sort);
+    let report = build_report(&processes, &gate, sort);
 
     match format {
-        ReportFormat::Text => render_text(&report),
-        ReportFormat::Json => render_json(&report)?,
+        ReportFormat::Text => {
+            render_text(&report);
+            // AC-007.39 / AC-007.74: gate → host_watch → pool → proc-scan on stdout after report body.
+            super::print_live_gate_section()?;
+            super::print_live_host_watch_section()?;
+            super::print_live_pool_status_operator_sections().await?;
+        }
+        ReportFormat::Json => {
+            // AC-007.40/AC-007.73 one-shot / AC-007.42 watch NDJSON: gate → host_watch → pool → status.
+            let (host_watch, pool_json, status_json) = tokio::join!(
+                async { HostResourceWatchJson::capture() },
+                super::build_pool_json(),
+                super::build_status_json(),
+            );
+            let host_watch = host_watch?;
+            let pool = pool_json?;
+            let status = status_json?;
+            if ndjson {
+                let payload = FleetReportJson::from_parts(
+                    &report,
+                    gate.clone(),
+                    host_watch,
+                    pool,
+                    status,
+                );
+                let line = FleetReportNdjsonLine { ts: unix_ts_secs(), snapshot: payload };
+                emit_ndjson_line(&line)?;
+                super::eprint_live_gate_host_watch_sections()?;
+            } else {
+                render_json(&report, &gate, &host_watch, &pool, &status)?;
+            }
+        }
+        ReportFormat::Csv => {
+            // AC-007.81 one-shot: fleet CSV body → gate → host_watch → pool → status companions.
+            render_csv(&report, &gate).await?;
+        }
     }
 
     Ok(())
@@ -238,21 +449,44 @@ async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
 ///   until Ctrl-C; if `None`, run once and exit.
 /// - `sort`: controls ordering of the top-consumers section.
 pub async fn run(format: ReportFormat, watch: Option<u64>, sort: SortBy) -> Result<()> {
+    if format == ReportFormat::Csv && watch.is_some() {
+        bail!("--format csv cannot be combined with --watch");
+    }
     match watch {
-        None => render_once(&format, &sort).await,
+        None => render_once(&format, &sort, false).await,
         Some(interval_secs) => {
+            if interval_secs == 0 {
+                bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = format == ReportFormat::Json;
             loop {
-                // Clear terminal (ANSI: erase screen + move cursor to top-left)
-                print!("\x1b[2J\x1b[H");
-
-                render_once(&format, &sort).await?;
-
-                println!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
-
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_once(&format, &sort, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
                 tokio::select! {
-                    _ = tokio::time::sleep(Duration::from_secs(interval_secs)) => {},
+                    _ = tokio::time::sleep(sleep_for) => {},
                     _ = tokio::signal::ctrl_c() => {
-                        println!("\nExiting watch mode.");
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
                         break;
                     }
                 }
@@ -288,14 +522,26 @@ mod tests {
         }
     }
 
+    fn gate(thermal: &str, agents: usize, contention: &str, decision: &str) -> GateStatusSnapshot {
+        GateStatusSnapshot {
+            thermal_pressure: thermal.to_string(),
+            detected_agents: agents,
+            agent_total_rss_bytes: 0,
+            agent_contention: contention.to_string(),
+            gate_decision: decision.to_string(),
+        }
+    }
+
     #[test]
     fn test_build_report_empty() {
-        let report = build_report(&[], "GREEN", &SortBy::Memory);
+        let report = build_report(&[], &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Memory);
         assert_eq!(report.total_processes, 0);
         assert_eq!(report.total_memory_mb, 0);
         assert!(report.by_project.is_empty());
         assert!(report.top_consumers.is_empty());
         assert_eq!(report.thermal_pressure, "GREEN");
+        assert_eq!(report.detected_agents, 0);
+        assert_eq!(report.gate_decision, "ADMIT");
     }
 
     #[test]
@@ -306,7 +552,7 @@ mod tests {
             make_proc(3, "node", Some("beta"), 200, 1_000_200),
             make_proc(4, "forge", None, 50, 1_000_300),
         ];
-        let report = build_report(&procs, "YELLOW", &SortBy::Memory);
+        let report = build_report(&procs, &gate("YELLOW", 2, "OK", "ADMIT"), &SortBy::Memory);
 
         assert_eq!(report.total_processes, 4);
         assert_eq!(report.total_memory_mb, 650);
@@ -328,7 +574,7 @@ mod tests {
     fn test_top_consumers_order_and_limit() {
         let procs: Vec<ProcessInfo> =
             (0u32..8).map(|i| make_proc(i, "proc", None, (i as u64 + 1) * 100, 0)).collect();
-        let report = build_report(&procs, "GREEN", &SortBy::Memory);
+        let report = build_report(&procs, &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Memory);
 
         assert_eq!(report.top_consumers.len(), 5);
         // First element must be the highest memory consumer
@@ -342,12 +588,15 @@ mod tests {
     #[test]
     fn test_json_roundtrip() {
         let procs = vec![make_proc(10, "claude", Some("proj-a"), 512, 1_700_000_000)];
-        let report = build_report(&procs, "RED", &SortBy::Memory);
+        let report = build_report(&procs, &gate("RED", 8, "REFUSE", "DENY"), &SortBy::Memory);
         let json = serde_json::to_string(&report).expect("serialize");
         let back: FleetReport = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.total_processes, report.total_processes);
         assert_eq!(back.total_memory_mb, report.total_memory_mb);
         assert_eq!(back.thermal_pressure, "RED");
+        assert_eq!(back.detected_agents, 8);
+        assert_eq!(back.agent_contention, "REFUSE");
+        assert_eq!(back.gate_decision, "DENY");
         let pa = back.by_project.get("proj-a").unwrap();
         assert_eq!(pa.count, 1);
         assert_eq!(pa.memory_mb, 512);
@@ -364,7 +613,7 @@ mod tests {
             make_proc(2, "alpha", None, 100, 0),
             make_proc(3, "mango", None, 300, 0),
         ];
-        let report = build_report(&procs, "GREEN", &SortBy::Name);
+        let report = build_report(&procs, &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Name);
         let names: Vec<&str> = report.top_consumers.iter().map(|c| c.name.as_str()).collect();
         assert_eq!(names, vec!["alpha", "mango", "zebra"]);
     }
@@ -376,7 +625,7 @@ mod tests {
             make_proc(2, "high", None, 900, 0),
             make_proc(3, "mid", None, 400, 0),
         ];
-        let report = build_report(&procs, "GREEN", &SortBy::Memory);
+        let report = build_report(&procs, &gate("GREEN", 0, "OK", "ADMIT"), &SortBy::Memory);
         let mems: Vec<u64> = report.top_consumers.iter().map(|c| c.memory_mb).collect();
         assert_eq!(mems, vec![900, 400, 50]);
     }
@@ -416,6 +665,58 @@ mod tests {
         assert_eq!(ReportFormat::from_str("TEXT").unwrap(), ReportFormat::Text);
         assert_eq!(ReportFormat::from_str("json").unwrap(), ReportFormat::Json);
         assert_eq!(ReportFormat::from_str("JSON").unwrap(), ReportFormat::Json);
+        assert_eq!(ReportFormat::from_str("csv").unwrap(), ReportFormat::Csv);
+        assert_eq!(ReportFormat::from_str("CSV").unwrap(), ReportFormat::Csv);
         assert!(ReportFormat::from_str("xml").is_err());
+    }
+
+    #[test]
+    fn test_render_report_csv_body() {
+        let mut by_project = HashMap::new();
+        by_project.insert("alpha".into(), ProjectBreakdown { count: 2, memory_mb: 400 });
+        let report = FleetReport {
+            timestamp: 1_700_000_000,
+            uptime_seconds: 3600,
+            total_processes: 2,
+            total_memory_mb: 400,
+            by_project,
+            top_consumers: vec![TopConsumer {
+                pid: 42,
+                name: "cargo".into(),
+                project: Some("alpha".into()),
+                memory_mb: 300,
+            }],
+            thermal_pressure: "GREEN".into(),
+            detected_agents: 1,
+            agent_contention: "OK".into(),
+            gate_decision: "ADMIT".into(),
+        };
+        let csv = render_report_csv_body(&report);
+        assert!(
+            csv.contains(
+                "record,timestamp,uptime_seconds,total_processes,total_memory_mb,thermal_pressure,detected_agents,agent_contention,gate_decision"
+            ),
+            "CSV body MUST include summary header; got: {csv}"
+        );
+        assert!(
+            csv.contains("summary,1700000000,3600,2,400,GREEN,1,OK,ADMIT"),
+            "CSV body MUST include summary row; got: {csv}"
+        );
+        assert!(
+            csv.contains("record,project,count,memory_mb"),
+            "CSV body MUST include project header; got: {csv}"
+        );
+        assert!(
+            csv.contains("project,alpha,2,400"),
+            "CSV body MUST include project row; got: {csv}"
+        );
+        assert!(
+            csv.contains("record,pid,name,project,memory_mb"),
+            "CSV body MUST include consumer header; got: {csv}"
+        );
+        assert!(
+            csv.contains("consumer,42,cargo,alpha,300"),
+            "CSV body MUST include consumer row; got: {csv}"
+        );
     }
 }

@@ -6,11 +6,13 @@
 //! all run `ruff check .`), only one execution actually runs; the other 7 block on an
 //! advisory `flock` and then read the result written by the winner.
 //!
-//! The three building blocks are:
+//! The building blocks are:
 //!
 //! 1. **[`command_key`]** — SHA-256 of (argv + cwd + relevant env) → deterministic hex key.
 //! 2. **[`CoalesceCache`]** — atomic JSON store: `lookup` / `store` / `with_lock`.
 //! 3. **[`CachedResult`]** — the serialisable exit_code + stdout + stderr bundle.
+//! 4. **[`SlotQueue`] / [`PriorityQueue`]** — N-slot concurrency limiter for mutating paths.
+//! 5. **[`has_nocache_arg`]** — Feb `nocache_args` detection (coalesce → queue fallback).
 //!
 //! # TTL + debounce (origin harness coalesce)
 //!
@@ -20,10 +22,30 @@
 //! - **Debounce** — on a miss, `with_lock` waits `debounce` then re-checks the cache so
 //!   a concurrent store completed in-window is shared instead of re-running (origin
 //!   harness `debounce_ms`; default off).
+//!
+//! # Queue + nocache (Feb harness FR-008)
+//!
+//! Mutating argv (`--fix`, `--force`, `--write`, …) MUST NOT hit [`CoalesceCache`].
+//! Use [`should_bypass_coalesce`] then [`SlotQueue::with_slot`]. Hypervisor callers:
+//! see `sharecli_core::Hypervisor::{queue, run}`.
 
 pub mod handler;
+pub mod nocache;
+pub mod queue;
 pub mod serve_lock;
 pub mod ws_client;
+
+pub use nocache::{
+    has_nocache_arg, parse_nocache_args_csv, should_bypass_coalesce, DEFAULT_NOCACHE_ARGS,
+};
+pub use queue::{
+    resolve_operator_queue_priority, PriorityQueue, QueuePriority, SlotQueue, QUEUE_PRIORITY_ENV,
+};
+pub use sharecli_fleet::{
+    global_coalesce_meters, global_slot_queue_meters, record_coalesce_hit_kind,
+    record_coalesce_lookup_hit, record_nocache_run, record_slot_acquire, record_slot_timeout,
+    record_slot_wait, CoalesceHitKind, CoalesceMeters, SlotQueueMeters,
+};
 
 use std::fs;
 use std::io::{self, Write};
@@ -144,11 +166,7 @@ impl CoalesceCache {
     /// `debounce` — on miss, wait this long then re-check before running the
     /// miss path (origin harness `debounce_ms`; `Duration::ZERO` disables).
     pub fn with_options(root: impl Into<PathBuf>, ttl: Duration, debounce: Duration) -> Self {
-        Self {
-            root: root.into(),
-            ttl,
-            debounce,
-        }
+        Self { root: root.into(), ttl, debounce }
     }
 
     /// Configured TTL for cache entries.
@@ -178,12 +196,9 @@ impl CoalesceCache {
     fn entry_age(&self, path: &Path) -> Result<Option<Duration>> {
         match fs::metadata(path) {
             Ok(meta) => {
-                let modified = meta
-                    .modified()
-                    .with_context(|| format!("mtime for {}", path.display()))?;
-                let age = SystemTime::now()
-                    .duration_since(modified)
-                    .unwrap_or(Duration::ZERO);
+                let modified =
+                    meta.modified().with_context(|| format!("mtime for {}", path.display()))?;
+                let age = SystemTime::now().duration_since(modified).unwrap_or(Duration::ZERO);
                 Ok(Some(age))
             }
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
@@ -209,7 +224,8 @@ impl CoalesceCache {
         };
 
         for entry in entries {
-            let entry = entry.with_context(|| format!("read dir entry in {}", self.root.display()))?;
+            let entry =
+                entry.with_context(|| format!("read dir entry in {}", self.root.display()))?;
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
@@ -256,13 +272,11 @@ impl CoalesceCache {
         // (same filesystem, no cross-device move).
         let mut tmp = tempfile::NamedTempFile::new_in(&self.root)
             .with_context(|| format!("create temp file in {}", self.root.display()))?;
-        tmp.write_all(&bytes)
-            .context("write cache bytes to temp file")?;
+        tmp.write_all(&bytes).context("write cache bytes to temp file")?;
         tmp.flush().context("flush temp file")?;
 
         let dest = self.entry_path(key);
-        tmp.persist(&dest)
-            .with_context(|| format!("persist cache entry to {}", dest.display()))?;
+        tmp.persist(&dest).with_context(|| format!("persist cache entry to {}", dest.display()))?;
 
         self.evict_stale()?;
 
@@ -286,6 +300,19 @@ impl CoalesceCache {
     where
         T: Into<CachedResult> + From<CachedResult>,
     {
+        self.with_lock_detailed(key, f).map(|(value, _)| value)
+    }
+
+    /// Like [`with_lock`][Self::with_lock] but reports whether the result came from
+    /// a lock/debounce re-check instead of the miss closure.
+    pub fn with_lock_detailed<T>(
+        &self,
+        key: &CommandKey,
+        f: impl FnOnce() -> Result<T>,
+    ) -> Result<(T, CoalesceHitKind)>
+    where
+        T: Into<CachedResult> + From<CachedResult>,
+    {
         self.ensure_root()?;
 
         let lock_path = self.lock_path(key);
@@ -303,7 +330,8 @@ impl CoalesceCache {
 
         // Re-check: a sibling may have stored the result while we were waiting.
         if let Some(cached) = self.lookup(key)? {
-            return Ok(T::from(cached));
+            record_coalesce_hit_kind(CoalesceHitKind::LockRecheck);
+            return Ok((T::from(cached), CoalesceHitKind::LockRecheck));
         }
 
         // Debounce window (origin harness coalesce debounce_ms): wait, then share
@@ -311,7 +339,8 @@ impl CoalesceCache {
         if !self.debounce.is_zero() {
             thread::sleep(self.debounce);
             if let Some(cached) = self.lookup(key)? {
-                return Ok(T::from(cached));
+                record_coalesce_hit_kind(CoalesceHitKind::DebounceRecheck);
+                return Ok((T::from(cached), CoalesceHitKind::DebounceRecheck));
             }
         }
 
@@ -319,9 +348,10 @@ impl CoalesceCache {
         let value = f()?;
         let cached: CachedResult = value.into();
         self.store(key, &cached)?;
+        record_coalesce_hit_kind(CoalesceHitKind::Miss);
 
         // Lock releases on drop.
-        Ok(T::from(cached))
+        Ok((T::from(cached), CoalesceHitKind::Miss))
     }
 }
 
@@ -387,16 +417,9 @@ mod tests {
         let key = command_key(&argv, Path::new("/workspace"), &[]);
 
         // Nothing stored yet.
-        assert!(
-            cache.lookup(&key).unwrap().is_none(),
-            "fresh cache should be empty"
-        );
+        assert!(cache.lookup(&key).unwrap().is_none(), "fresh cache should be empty");
 
-        let result = CachedResult {
-            exit_code: 0,
-            stdout: b"all good".to_vec(),
-            stderr: vec![],
-        };
+        let result = CachedResult { exit_code: 0, stdout: b"all good".to_vec(), stderr: vec![] };
 
         cache.store(&key, &result).expect("store");
 
@@ -423,11 +446,7 @@ mod tests {
         let r1: CachedResult = cache
             .with_lock(&key, || {
                 call_count += 1;
-                Ok(CachedResult {
-                    exit_code: 42,
-                    stdout: b"run1".to_vec(),
-                    stderr: vec![],
-                })
+                Ok(CachedResult { exit_code: 42, stdout: b"run1".to_vec(), stderr: vec![] })
             })
             .expect("first with_lock");
         assert_eq!(call_count, 1, "f() must run on first call");
@@ -437,11 +456,7 @@ mod tests {
         let r2: CachedResult = cache
             .with_lock(&key, || {
                 call_count += 1;
-                Ok(CachedResult {
-                    exit_code: 99,
-                    stdout: b"run2".to_vec(),
-                    stderr: vec![],
-                })
+                Ok(CachedResult { exit_code: 99, stdout: b"run2".to_vec(), stderr: vec![] })
             })
             .expect("second with_lock");
         assert_eq!(call_count, 1, "f() must NOT run when cache is populated");
@@ -466,11 +481,7 @@ mod tests {
         cache
             .store(
                 &stale_key,
-                &CachedResult {
-                    exit_code: 0,
-                    stdout: b"old".to_vec(),
-                    stderr: vec![],
-                },
+                &CachedResult { exit_code: 0, stdout: b"old".to_vec(), stderr: vec![] },
             )
             .expect("store stale candidate");
 
@@ -480,11 +491,7 @@ mod tests {
         cache
             .store(
                 &fresh_key,
-                &CachedResult {
-                    exit_code: 0,
-                    stdout: b"new".to_vec(),
-                    stderr: vec![],
-                },
+                &CachedResult { exit_code: 0, stdout: b"new".to_vec(), stderr: vec![] },
             )
             .expect("store triggers eviction");
 
@@ -512,29 +519,38 @@ mod tests {
             let bg = CoalesceCache::with_options(&root, Duration::from_secs(60), Duration::ZERO);
             bg.store(
                 &key_bg,
-                &CachedResult {
-                    exit_code: 0,
-                    stdout: b"from-bg".to_vec(),
-                    stderr: vec![],
-                },
+                &CachedResult { exit_code: 0, stdout: b"from-bg".to_vec(), stderr: vec![] },
             )
             .expect("bg store");
         });
 
         let mut ran = false;
-        let got: CachedResult = cache
-            .with_lock(&key, || {
+        let (got, kind) = cache
+            .with_lock_detailed(&key, || {
                 ran = true;
-                Ok(CachedResult {
-                    exit_code: 7,
-                    stdout: b"miss".to_vec(),
-                    stderr: vec![],
-                })
+                Ok(CachedResult { exit_code: 7, stdout: b"miss".to_vec(), stderr: vec![] })
             })
-            .expect("with_lock");
+            .expect("with_lock_detailed");
 
         producer.join().expect("join");
         assert!(!ran, "debounce MUST share bg store without miss path");
         assert_eq!(got.stdout, b"from-bg");
+        assert_eq!(kind, CoalesceHitKind::DebounceRecheck);
+    }
+
+    #[test]
+    fn global_coalesce_meters_record_hit_miss_and_nocache() {
+        let before = global_coalesce_meters();
+        record_coalesce_lookup_hit();
+        record_coalesce_hit_kind(CoalesceHitKind::Miss);
+        record_coalesce_hit_kind(CoalesceHitKind::LockRecheck);
+        record_nocache_run();
+        let after = global_coalesce_meters();
+        assert_eq!(after.hits, before.hits + 2);
+        assert_eq!(after.misses, before.misses + 1);
+        assert_eq!(after.nocache_runs, before.nocache_runs + 1);
+        let section = after.format_status_section();
+        assert!(section.contains("=== Hypervisor Coalesce ==="));
+        assert!(section.contains("Nocache runs:"));
     }
 }

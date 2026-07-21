@@ -23,10 +23,7 @@ pub async fn wait_for_shutdown_flag(mut rx: watch::Receiver<bool>) {
 }
 
 /// Drive graceful HTTP shutdown: SIGINT (Ctrl-C), thermal critical, or external cancel.
-pub async fn serve_shutdown_signal(
-    cancel: CancellationToken,
-    shutdown_rx: watch::Receiver<bool>,
-) {
+pub async fn serve_shutdown_signal(cancel: CancellationToken, shutdown_rx: watch::Receiver<bool>) {
     let child = cancel.child_token();
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {

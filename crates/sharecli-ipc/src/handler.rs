@@ -5,17 +5,24 @@
 //!   process.kill        → { pid }
 //!   process.kill_all    → {}
 //!   health.status       → HealthSnapshot
+//!   pool.status         → PoolSnapshot
+//!   status.snapshot     → StatusSnapshot
 //!   config.get          → Config
 //!   config.set          → { key, value }  (dot-path into TOML)
-//!   monitoring.report   → MonitoringReport
+//!   monitoring.report   → MonitoringReportSnapshot
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sharecli::commands::proc::{AgentProcRow, AgentProcSnapshot};
 use sharecli::config::Config;
+use sharecli::monitoring::HostResourceWatchJson;
+use sharecli::runtime::SharedRuntime;
 use sharecli::{ProcessInfo, ProcessPool};
+use sharecli_fleet::thermal::ThermalGovernor;
+use sharecli_fleet::{count_host_agents, gate_status_snapshot, GateStatusSnapshot};
 use tokio::sync::RwLock;
 
 // ---------------------------------------------------------------------------
@@ -72,12 +79,108 @@ impl From<ProcessInfo> for ProcessSummary {
     }
 }
 
+/// IPC `health.status` envelope (FR-007 / AC-007.45, pool/status AC-007.78).
+///
+/// Runtime health fields precede live `gate`, `host_watch`, `pool`, and `status`
+/// siblings (parity with `health --json` AC-007.77).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HealthSnapshot {
     pub managed_processes: usize,
     pub used_memory_mb: u64,
     pub total_memory_mb: u64,
     pub healthy: bool,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    pub pool: PoolSnapshot,
+    pub status: StatusSnapshot,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MonitoringProcessEntry {
+    pub pid: u32,
+    pub name: String,
+    pub memory_mb: u64,
+    pub project: Option<String>,
+    pub harness: Option<String>,
+}
+
+/// IPC `pool.status` envelope (FR-007 / AC-007.67, nested status AC-007.78).
+///
+/// Pool status fields precede live `gate`, `host_watch`, and nested `status` sibling
+/// (parity with `pool --json` AC-007.77).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PoolSnapshot {
+    pub node_total: usize,
+    pub node_idle: usize,
+    pub bun_total: usize,
+    pub bun_idle: usize,
+    pub max_per_type: usize,
+    pub healthy: bool,
+    pub issues: Vec<String>,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    /// Proc-scan status sibling; only emitted by `pool.status` (AC-007.78).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<Box<StatusSnapshot>>,
+}
+
+/// IPC `status.snapshot` envelope (FR-007 / AC-007.67, nested pool AC-007.78).
+///
+/// Status fields precede live `gate`, `host_watch`, and nested `pool` sibling
+/// (parity with `status --json` AC-007.77).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct StatusSnapshot {
+    pub total_processes: usize,
+    pub agents: Vec<AgentProcRow>,
+    pub scanned: usize,
+    pub watched: usize,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    /// Runtime pool sibling; only emitted by `status.snapshot` (AC-007.78).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool: Option<Box<PoolSnapshot>>,
+}
+
+/// IPC `monitoring.report` envelope (FR-007 / AC-007.46, pool/status AC-007.72).
+///
+/// Fleet monitoring fields precede live `gate`, `host_watch`, `pool`, and `status`
+/// siblings (parity with dashboard WS AC-007.70 key order within the operator envelope).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MonitoringReportSnapshot {
+    pub timestamp: u64,
+    pub total_processes: usize,
+    pub used_memory_mb: u64,
+    pub total_memory_mb: u64,
+    pub processes: Vec<MonitoringProcessEntry>,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    pub pool: PoolSnapshot,
+    pub status: StatusSnapshot,
+}
+
+/// Live thermal gate + host resource watch for IPC envelopes (FR-007 / AC-007.45).
+fn capture_gate_host_watch() -> Result<(GateStatusSnapshot, HostResourceWatchJson)> {
+    let gate = match ThermalGovernor::new().poll() {
+        Ok(level) => gate_status_snapshot(level, count_host_agents()),
+        Err(_) => GateStatusSnapshot {
+            thermal_pressure: "UNAVAILABLE".to_string(),
+            detected_agents: count_host_agents(),
+            agent_total_rss_bytes: 0,
+            agent_contention: "UNAVAILABLE".to_string(),
+            gate_decision: "UNAVAILABLE".to_string(),
+        },
+    };
+    let host_watch = HostResourceWatchJson::capture()?;
+    Ok((gate, host_watch))
+}
+
+static SHARED_RUNTIME: OnceLock<SharedRuntime> = OnceLock::new();
+
+fn shared_runtime() -> &'static SharedRuntime {
+    SHARED_RUNTIME.get_or_init(|| {
+        let max = Config::load().map(|c| c.pool.max_per_type).unwrap_or(4);
+        SharedRuntime::new(max)
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +197,43 @@ impl Handler {
         let pool = Arc::new(ProcessPool::new());
         let config = Arc::new(RwLock::new(Config::load().unwrap_or_default()));
         Ok(Self { pool, config })
+    }
+
+    async fn capture_pool_snapshot(
+        &self,
+        gate: GateStatusSnapshot,
+        host_watch: HostResourceWatchJson,
+    ) -> PoolSnapshot {
+        let runtime = shared_runtime();
+        let status = runtime.status().await;
+        let health = runtime.health_check().await;
+        PoolSnapshot {
+            node_total: status.node_total,
+            node_idle: status.node_idle,
+            bun_total: status.bun_total,
+            bun_idle: status.bun_idle,
+            max_per_type: status.max_per_type,
+            healthy: health.healthy,
+            issues: health.issues,
+            gate,
+            host_watch,
+            status: None,
+        }
+    }
+
+    async fn capture_status_snapshot(&self) -> Result<StatusSnapshot> {
+        self.pool.refresh().await;
+        let procs = self.pool.list().await;
+        let snapshot = AgentProcSnapshot::capture()?;
+        Ok(StatusSnapshot {
+            total_processes: procs.len(),
+            agents: snapshot.agents,
+            scanned: snapshot.scanned,
+            watched: snapshot.watched,
+            gate: snapshot.gate,
+            host_watch: snapshot.host_watch,
+            pool: None,
+        })
     }
 
     pub async fn dispatch(&self, raw: &str) -> Response {
@@ -134,12 +274,33 @@ impl Handler {
                 self.pool.refresh().await;
                 let procs = self.pool.list().await;
                 let (used, total) = self.pool.system_memory_usage().await;
+                let (gate, host_watch) = capture_gate_host_watch()?;
+                let pool = self.capture_pool_snapshot(gate.clone(), host_watch.clone()).await;
+                let status = self.capture_status_snapshot().await?;
                 let snap = HealthSnapshot {
                     managed_processes: procs.len(),
                     used_memory_mb: used,
                     total_memory_mb: total,
                     healthy: used < total / 2,
+                    gate,
+                    host_watch,
+                    pool,
+                    status,
                 };
+                Ok(serde_json::to_value(snap)?)
+            }
+
+            "pool.status" => {
+                let (gate, host_watch) = capture_gate_host_watch()?;
+                let mut snap = self.capture_pool_snapshot(gate, host_watch).await;
+                snap.status = Some(Box::new(self.capture_status_snapshot().await?));
+                Ok(serde_json::to_value(snap)?)
+            }
+
+            "status.snapshot" => {
+                let mut snap = self.capture_status_snapshot().await?;
+                let (gate, host_watch) = capture_gate_host_watch()?;
+                snap.pool = Some(Box::new(self.capture_pool_snapshot(gate, host_watch).await));
                 Ok(serde_json::to_value(snap)?)
             }
 
@@ -160,23 +321,33 @@ impl Handler {
                 self.pool.refresh().await;
                 let procs = self.pool.list().await;
                 let (used, total) = self.pool.system_memory_usage().await;
-                let report = serde_json::json!({
-                    "timestamp": std::time::SystemTime::now()
+                let (gate, host_watch) = capture_gate_host_watch()?;
+                let pool = self.capture_pool_snapshot(gate.clone(), host_watch.clone()).await;
+                let status = self.capture_status_snapshot().await?;
+                let snap = MonitoringReportSnapshot {
+                    timestamp: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap()
                         .as_secs(),
-                    "total_processes": procs.len(),
-                    "used_memory_mb": used,
-                    "total_memory_mb": total,
-                    "processes": procs.iter().map(|p| serde_json::json!({
-                        "pid": p.pid,
-                        "name": p.name.clone(),
-                        "memory_mb": p.memory_mb,
-                        "project": p.project.clone(),
-                        "harness": p.harness.clone(),
-                    })).collect::<Vec<_>>(),
-                });
-                Ok(report)
+                    total_processes: procs.len(),
+                    used_memory_mb: used,
+                    total_memory_mb: total,
+                    processes: procs
+                        .iter()
+                        .map(|p| MonitoringProcessEntry {
+                            pid: p.pid,
+                            name: p.name.clone(),
+                            memory_mb: p.memory_mb,
+                            project: p.project.clone(),
+                            harness: p.harness.clone(),
+                        })
+                        .collect(),
+                    gate,
+                    host_watch,
+                    pool,
+                    status,
+                };
+                Ok(serde_json::to_value(snap)?)
             }
 
             other => Err(anyhow::anyhow!("unknown method: {other}")),

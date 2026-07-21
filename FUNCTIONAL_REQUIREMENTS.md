@@ -154,7 +154,9 @@ FUSE intercept is enabled, IO paths used by coalesce.
 
 **Acceptance:**
 
-- `tests/fr007_resource_thermal_watch.rs` — AC-007.1..AC-007.3
+- `tests/fr007_resource_thermal_watch.rs` — AC-007.1..AC-007.8, AC-007.10
+- `tests/fr004_status_health.rs` — AC-007.10 (host resource watch in status)
+- `crates/sharecli-fleet/src/resource_watch.rs` — FD/net/RSS/load sampling + status section
 
 **Source:** `crates/sharecli-core`, `crates/sharecli-fleet`, `src/monitoring.rs`  
 **Detail:** PRD E2.
@@ -193,11 +195,19 @@ extend shared-read coalesce without wrapping vendor binaries.
 
 **MUST:** Provide `InterceptFs` / `mount` on Linux and macOS as the hypervisor
 IO intercept attach point; unsupported platforms MUST fail loudly (no silent
-fallback). Full coalesce / write-serialize hooks MAY land incrementally.
+fallback). Core VFS ops MUST passthrough to the backing path (inode map for
+non-root parents). In-process read content cache MUST coalesce redundant reads
+(keyed by path+mtime) with hit/miss meters. Concurrent writes to the same path
+MUST serialize via a per-path lock; staging CoW commit/discard MUST promote or
+drop staging copies (`NoPending` when none — loud, no silent success). Successful
+writes MUST stamp provenance xattrs. Missing-path lookups MUST use a TTL
+negative dentry cache with invalidate-on-create.
 
 **Acceptance:**
 
-- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.2
+- `tests/fr009_fuse_intercept.rs` — AC-009.1..AC-009.10
+- `tests/fr009_fuse_cli.rs` — AC-009.11 CLI provenance inspect
+- `crates/sharecli-fuse` unit tests — inode map, read cache, neg dentry, write-serialize, provenance, mount_smoke
 
 **Source:** `crates/sharecli-fuse`  
 **Detail:** PRD E3.3; origin Tier-3 FUSE.
@@ -211,14 +221,21 @@ coordination state (membership, registry subjects), **so that** agents share
 a coordination surface without a full Kanban / BFT stack in-product.
 
 **MUST:** Expose mesh membership or substrate coordination primitives
-(for example `FleetRegistry` subject namespace / device records); full mesh
-orchestration (tmux inject, consensus, blackboard) is out-of-band / deferred.
+(for example `FleetRegistry` subject namespace / device records), Maildir task
+queue (including operator `status` / `reclaim_owner` and `sharecli mesh`
+CLI), `SmartMerger` (mergiraf optional / git merge-file fallback), and
+`WorktreePool` (git worktree allocate/release; non-git fails loudly). Full
+mesh orchestration (tmux inject, consensus, blackboard) is out-of-band /
+deferred.
 
 **Acceptance:**
 
-- `tests/fr010_mesh_substrate.rs` — AC-010.1..AC-010.3
+- `tests/fr010_mesh_substrate.rs` — AC-010.1..AC-010.10
+- `tests/fr010_mesh_cli.rs` — AC-010.9..AC-010.10 CLI surface
 
-**Source:** `crates/sharecli-fleet` (`FleetRegistry`, `DeviceRecord`)  
+**Source:** `crates/sharecli-fleet` (`FleetRegistry`, `DeviceRecord`);
+`crates/sharecli-mesh` (`MaildirQueue`, `SmartMerger`, `WorktreePool`);
+`src/commands/mesh.rs` (`sharecli mesh status|reclaim`)  
 **Detail:** PRD E1.2; agent-mesh WBS Phase 11–12.
 
 ---

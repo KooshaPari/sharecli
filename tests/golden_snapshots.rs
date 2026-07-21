@@ -12,10 +12,39 @@ use std::process::Command;
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
+use sharecli_fleet::CoalesceMeters;
+use sharecli_fleet::ResourceWatchSample;
+use sharecli_fleet::SlotQueueMeters;
+use sharecli_fuse::{NegDentryMeters, ReadCacheMeters, WriteSerializeMeters};
+use sharecli_mesh::MaildirStatus;
 use sharecli_thermal_tui::{render, App};
 
 const TUI_W: u16 = 80;
-const TUI_H: u16 = 24;
+const TUI_H: u16 = 64;
+
+const GOLDEN_WATCH: ResourceWatchSample = ResourceWatchSample {
+    fd_count: 16,
+    net_rx_bytes: 1024,
+    net_tx_bytes: 512,
+    mem_rss_bytes: 1_048_576,
+    load_1m: 0.42,
+};
+
+const GOLDEN_FUSE: ReadCacheMeters = ReadCacheMeters { hits: 3, misses: 1 };
+const GOLDEN_NEG: NegDentryMeters = NegDentryMeters { hits: 2, misses: 1 };
+const GOLDEN_COALESCE: CoalesceMeters = CoalesceMeters { hits: 6, misses: 2, nocache_runs: 1 };
+const GOLDEN_WRITE_SERIALIZE: WriteSerializeMeters =
+    WriteSerializeMeters { passthrough_writes: 1, stages: 2, commits: 1, discards: 1 };
+const GOLDEN_SLOT_QUEUE: SlotQueueMeters = SlotQueueMeters { acquires: 2, waits: 1, timeouts: 0 };
+
+fn golden_mesh_maildir() -> MaildirStatus {
+    MaildirStatus {
+        path: std::path::PathBuf::from("/var/sharecli/mesh/queue"),
+        ready: 1,
+        in_flight: 0,
+        pending: 1,
+    }
+}
 
 fn golden_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("golden")
@@ -62,7 +91,16 @@ fn normalize_cli(stdout: &str) -> String {
 fn render_thermal(level: ThermalLevel, slots: u32) -> String {
     let backend = TestBackend::new(TUI_W, TUI_H);
     let mut terminal = Terminal::new(backend).expect("terminal");
-    let mut app = App::new(4);
+    let mut app = App::new(4)
+        .with_operator_meters(
+            Some(GOLDEN_WATCH),
+            GOLDEN_FUSE,
+            GOLDEN_NEG,
+            GOLDEN_COALESCE,
+            GOLDEN_SLOT_QUEUE,
+            GOLDEN_WRITE_SERIALIZE,
+        )
+        .with_maildir_status(Some(golden_mesh_maildir()));
     app.update(level, slots);
     terminal.draw(|f| render(f, &app)).expect("draw");
     let buf = terminal.backend().buffer();
@@ -121,5 +159,28 @@ fn golden_thermal_tui_levels() {
             }
         }
         assert!(actual.contains("sharecli thermal monitor"), "{name} MUST show TUI title");
+        assert!(
+            actual.contains("Host Resource Watch") && actual.contains("Hypervisor IO Meters"),
+            "{name} MUST include operator watch panels"
+        );
+        assert!(
+            actual.contains("Coalesce hits:"),
+            "{name} MUST include Hypervisor coalesce meters"
+        );
+        assert!(
+            actual.contains("Slot acquires:"),
+            "{name} MUST include Hypervisor SlotQueue meters"
+        );
+        assert!(actual.contains("Mesh ready:"), "{name} MUST include mesh Maildir depth meters");
+        assert!(actual.contains("Detected Agents"), "{name} MUST include proc-scan agent panel");
+        assert!(
+            actual.contains("Runtime Pool") || actual.contains(" pool unavailable"),
+            "{name} MUST include runtime pool operator panel (AC-007.71)"
+        );
+        assert!(
+            actual.contains("Proc Scan Status") || actual.contains(" status unavailable"),
+            "{name} MUST include proc-scan status operator panel (AC-007.71)"
+        );
+        assert!(actual.contains("Neg hits:"), "{name} MUST include neg dentry meters");
     }
 }

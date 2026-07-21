@@ -1,0 +1,20 @@
+[package]
+name = "teamcomm-protocol"
+version.workspace = true
+edition.workspace = true
+description = "teamcomm protocol — wire types for inter-agent coordination"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KooshaPari/phenotype-teamcomm"
+documentation = "https://docs.rs/teamcomm-protocol"
+keywords = ["phenotype", "teamcomm", "teamcomm"]
+categories = ["network-programming"]
+authors = ["kooshapari"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+serde_json = "1.0"

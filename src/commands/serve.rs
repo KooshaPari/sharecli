@@ -23,8 +23,12 @@ use axum::{
     routing::get,
     Router,
 };
+use std::collections::HashMap;
+
+use serde::Serialize;
 use serde_json::json;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli_fleet::GateStatusSnapshot;
 use tokio::sync::{broadcast, watch, RwLock};
 use tracing::{info, instrument, warn, Instrument};
 
@@ -35,6 +39,9 @@ use crate::error_envelope::ErrorEnvelope;
 use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
 use crate::notifier::Notifier;
+use crate::commands::proc::AgentProcSnapshot;
+use crate::commands::{PoolJson, StatusJson};
+use crate::monitoring::HostResourceWatchJson;
 use crate::runtime::ProcessPool;
 use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
@@ -233,6 +240,10 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
 
     let app = Router::new()
         .route("/", get(dashboard))
+        .route(
+            "/assets/dashboard/ui/{*path}",
+            get(crate::dashboard_assets::serve),
+        )
         .route("/healthz", get(healthz))
         .route("/readyz", get(readyz))
         .route("/config", get(config_handler))
@@ -377,9 +388,7 @@ async fn serve_rate_limit_middleware(
         let mut response = ErrorEnvelope::rate_limited("HTTP rate limit exceeded; retry later")
             .into_response(StatusCode::TOO_MANY_REQUESTS);
         if let Ok(val) = HeaderValue::from_str(&retry_after.to_string()) {
-            response
-                .headers_mut()
-                .insert(HeaderName::from_static("retry-after"), val);
+            response.headers_mut().insert(HeaderName::from_static("retry-after"), val);
         }
         return response;
     }
@@ -460,7 +469,13 @@ async fn handle_ws(mut socket: WebSocket, state: AppState) {
         tokio::select! {
             // Periodic process snapshot
             _ = snapshot_interval.tick() => {
-                let snapshot = build_snapshot().await;
+                let snapshot = match build_dashboard_ws_snapshot().await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        warn!("ws snapshot error: {e}");
+                        continue;
+                    }
+                };
                 let msg = match serde_json::to_string(&snapshot) {
                     Ok(s) => Message::Text(s.into()),
                     Err(e) => {
@@ -604,25 +619,84 @@ pub fn render_prometheus_metrics(
     out
 }
 
-async fn build_snapshot() -> serde_json::Value {
-    let pool = ProcessPool::new();
-    let procs = pool.list().await;
-    let summaries: Vec<_> = procs
+/// One managed process row in the dashboard WebSocket snapshot.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DashboardProcessRow {
+    pub pid: u32,
+    pub name: String,
+    pub cmd: Vec<String>,
+    pub memory_mb: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub harness: Option<String>,
+    pub start_time: u64,
+}
+
+/// Compact host-agent inventory for dashboard operator parity (AC-007.41).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DashboardAgentSummary {
+    pub scanned: usize,
+    pub watched: usize,
+    pub total_rss_bytes: u64,
+    pub families: HashMap<String, usize>,
+}
+
+/// WebSocket operator envelope: gate → host_watch → pool → status → agents → processes
+/// (AC-007.41 extended by AC-007.70 for pool/status IPC parity).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DashboardWsSnapshot {
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    pub pool: PoolJson,
+    pub status: StatusJson,
+    pub agents: DashboardAgentSummary,
+    pub processes: Vec<DashboardProcessRow>,
+}
+
+/// Build the live dashboard WebSocket snapshot (parity with CLI/IPC pool + status envelopes).
+pub async fn build_dashboard_ws_snapshot() -> anyhow::Result<DashboardWsSnapshot> {
+    let managed_pool = ProcessPool::new();
+    let (procs, pool_json, status_json) = tokio::join!(
+        managed_pool.list(),
+        crate::commands::build_pool_json(),
+        crate::commands::build_status_json(),
+    );
+    let agent_snap = AgentProcSnapshot::capture()?;
+
+    let mut families: HashMap<String, usize> = HashMap::new();
+    let mut total_rss_bytes = 0u64;
+    for row in &agent_snap.agents {
+        *families.entry(row.family.clone()).or_insert(0) += 1;
+        total_rss_bytes += row.mem_rss_bytes;
+    }
+
+    let processes = procs
         .iter()
-        .map(|p| {
-            json!({
-                "pid": p.pid,
-                "name": p.name,
-                "cmd": p.cmd,
-                "memory_mb": p.memory_mb,
-                "project": p.project,
-                "harness": p.harness,
-                "start_time": p.start_time,
-            })
+        .map(|p| DashboardProcessRow {
+            pid: p.pid,
+            name: p.name.clone(),
+            cmd: p.cmd.clone(),
+            memory_mb: p.memory_mb,
+            project: p.project.clone(),
+            harness: p.harness.clone(),
+            start_time: p.start_time,
         })
         .collect();
 
-    json!({ "processes": summaries })
+    Ok(DashboardWsSnapshot {
+        gate: agent_snap.gate,
+        host_watch: agent_snap.host_watch,
+        pool: pool_json?,
+        status: status_json?,
+        agents: DashboardAgentSummary {
+            scanned: agent_snap.scanned,
+            watched: agent_snap.watched,
+            total_rss_bytes,
+            families,
+        },
+        processes,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -937,5 +1011,94 @@ mod tests {
         tx.send(ThermalEvent::ThermalWarning { pressure: 2 }).unwrap();
         let received = rx.recv().await.unwrap();
         matches!(received, ThermalEvent::ThermalWarning { pressure: 2 });
+    }
+
+    const HOST_WATCH_KEYS: [&str; 5] =
+        ["fd_count", "net_rx_bytes", "net_tx_bytes", "mem_rss_bytes", "load_1m"];
+
+    fn ensure_test_config() {
+        let _ = crate::config::init_global();
+    }
+
+    /// FR-007 / AC-007.41 — dashboard WS snapshot carries gate + host_watch operator envelope.
+    #[tokio::test]
+    async fn dashboard_ws_snapshot_includes_gate_and_host_watch() {
+        ensure_test_config();
+        let snap = build_dashboard_ws_snapshot().await.expect("dashboard snapshot");
+        let raw = serde_json::to_string(&snap).expect("serialize dashboard snapshot");
+        let v: serde_json::Value = serde_json::from_str(&raw).expect("valid JSON");
+
+        assert!(
+            v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
+            "dashboard WS MUST include gate (AC-007.41); got: {v}"
+        );
+        let host = v
+            .get("host_watch")
+            .expect("dashboard WS MUST include host_watch (AC-007.41)");
+        for key in HOST_WATCH_KEYS {
+            assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.41)");
+        }
+        assert!(v.get("agents").is_some(), "dashboard WS MUST include agents summary (AC-007.41)");
+        assert!(v.get("processes").and_then(|p| p.as_array()).is_some());
+    }
+
+    /// FR-007 / AC-007.70 — dashboard WS snapshot carries pool + status IPC siblings.
+    #[tokio::test]
+    async fn dashboard_ws_snapshot_includes_pool_and_status() {
+        ensure_test_config();
+        let snap = build_dashboard_ws_snapshot().await.expect("dashboard snapshot");
+        let raw = serde_json::to_string(&snap).expect("serialize dashboard snapshot");
+        let v: serde_json::Value = serde_json::from_str(&raw).expect("valid JSON");
+
+        let pool = v.get("pool").expect("dashboard WS MUST include pool (AC-007.70)");
+        assert!(pool.get("node_total").is_some(), "pool MUST include node_total (AC-007.70)");
+        assert!(pool.get("healthy").is_some(), "pool MUST include healthy (AC-007.70)");
+        let status = v
+            .get("status")
+            .expect("dashboard WS MUST include status (AC-007.70)");
+        assert!(
+            status.get("total_processes").is_some(),
+            "status MUST include total_processes (AC-007.70)"
+        );
+        assert!(
+            status.get("scanned").is_some() && status.get("watched").is_some(),
+            "status MUST include scanned/watched (AC-007.70)"
+        );
+    }
+
+    /// FR-007 / AC-007.41 — dashboard WS snapshot preserves gate → host_watch key ordering.
+    #[tokio::test]
+    async fn dashboard_ws_snapshot_gate_before_host_watch() {
+        ensure_test_config();
+        let snap = build_dashboard_ws_snapshot().await.expect("dashboard snapshot");
+        let raw = serde_json::to_string(&snap).expect("serialize dashboard snapshot");
+        let gate_pos = raw.find("\"gate\"").expect("gate key in dashboard WS JSON");
+        let host_pos = raw.find("\"host_watch\"").expect("host_watch key in dashboard WS JSON");
+        assert!(
+            gate_pos < host_pos,
+            "dashboard WS MUST serialize gate before host_watch (AC-007.41); got: {raw}"
+        );
+    }
+
+    /// FR-007 / AC-007.70 — dashboard WS snapshot preserves gate → host_watch → pool → status → agents order.
+    #[tokio::test]
+    async fn dashboard_ws_snapshot_operator_key_order() {
+        ensure_test_config();
+        let snap = build_dashboard_ws_snapshot().await.expect("dashboard snapshot");
+        let raw = serde_json::to_string(&snap).expect("serialize dashboard snapshot");
+        let gate_pos = raw.find("\"gate\"").expect("gate key");
+        let host_pos = raw.find("\"host_watch\"").expect("host_watch key");
+        let pool_pos = raw.find("\"pool\"").expect("pool key (AC-007.70)");
+        let status_pos = raw.find("\"status\"").expect("status key (AC-007.70)");
+        let agents_pos = raw.find("\"agents\"").expect("agents key");
+        let processes_pos = raw.find("\"processes\"").expect("processes key");
+        assert!(
+            gate_pos < host_pos
+                && host_pos < pool_pos
+                && pool_pos < status_pos
+                && status_pos < agents_pos
+                && agents_pos < processes_pos,
+            "dashboard WS MUST serialize gate → host_watch → pool → status → agents → processes (AC-007.70); got: {raw}"
+        );
     }
 }

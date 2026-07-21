@@ -44,11 +44,109 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable {
     public let start_time: UInt64
 }
 
+public struct GateStatusSnapshot: Decodable, Hashable {
+    public let thermal_pressure: String
+    public let detected_agents: Int
+    public let agent_total_rss_bytes: UInt64
+    public let agent_contention: String
+    public let gate_decision: String
+}
+
+public struct HostResourceWatchJson: Decodable, Hashable {
+    public let fd_count: UInt64
+    public let net_rx_bytes: UInt64
+    public let net_tx_bytes: UInt64
+    public let mem_rss_bytes: UInt64
+    public let load_1m: Double
+}
+
 public struct HealthSnapshot: Decodable {
     public let managed_processes: Int
     public let used_memory_mb: UInt64
     public let total_memory_mb: UInt64
     public let healthy: Bool
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
+}
+
+public struct MonitoringProcessEntry: Decodable, Hashable {
+    public let pid: UInt32
+    public let name: String
+    public let memory_mb: UInt64
+    public let project: String?
+    public let harness: String?
+}
+
+public struct MonitoringReportSnapshot: Decodable {
+    public let timestamp: UInt64
+    public let total_processes: Int
+    public let used_memory_mb: UInt64
+    public let total_memory_mb: UInt64
+    public let processes: [MonitoringProcessEntry]
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
+    public let pool: PoolSnapshot
+    public let status: StatusSnapshot
+
+    /// Map fleet monitoring snapshot → tray health fields (parity with `health.status`).
+    public func asHealthSnapshot() -> HealthSnapshot {
+        HealthSnapshot(
+            managed_processes: total_processes,
+            used_memory_mb: used_memory_mb,
+            total_memory_mb: total_memory_mb,
+            healthy: used_memory_mb < total_memory_mb / 2,
+            gate: gate,
+            host_watch: host_watch
+        )
+    }
+
+    /// Map fleet monitoring processes → tray process rows (parity with `process.list`).
+    public func asProcessSummaries() -> [ProcessSummary] {
+        processes.map { entry in
+            ProcessSummary(
+                pid: entry.pid,
+                name: entry.name,
+                cmd: [],
+                memory_mb: entry.memory_mb,
+                project: entry.project,
+                harness: entry.harness,
+                start_time: 0
+            )
+        }
+    }
+}
+
+public struct AgentProcRow: Decodable, Hashable {
+    public let pid: UInt32
+    public let family: String
+    public let comm: String
+    public let state: String
+    public let mem_rss_bytes: UInt64
+    public let mem_rss: String
+    public let fd_count: UInt64?
+}
+
+/// IPC `pool.status` envelope (FR-007 / AC-007.67, tray wire AC-007.68).
+public struct PoolSnapshot: Decodable {
+    public let node_total: Int
+    public let node_idle: Int
+    public let bun_total: Int
+    public let bun_idle: Int
+    public let max_per_type: Int
+    public let healthy: Bool
+    public let issues: [String]
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
+}
+
+/// IPC `status.snapshot` envelope (FR-007 / AC-007.67, tray wire AC-007.68).
+public struct StatusSnapshot: Decodable {
+    public let total_processes: Int
+    public let agents: [AgentProcRow]
+    public let scanned: Int
+    public let watched: Int
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
 }
 
 // ---------------------------------------------------------------------------
@@ -103,6 +201,36 @@ public actor IPCClient {
         )
         guard let snap = resp.result else {
             throw IPCError.nilResult("health.status")
+        }
+        return snap
+    }
+
+    public func monitoringReport() async throws -> MonitoringReportSnapshot {
+        let resp: IPCResponse<MonitoringReportSnapshot> = try await call(
+            method: "monitoring.report", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("monitoring.report")
+        }
+        return snap
+    }
+
+    public func poolStatus() async throws -> PoolSnapshot {
+        let resp: IPCResponse<PoolSnapshot> = try await call(
+            method: "pool.status", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("pool.status")
+        }
+        return snap
+    }
+
+    public func statusSnapshot() async throws -> StatusSnapshot {
+        let resp: IPCResponse<StatusSnapshot> = try await call(
+            method: "status.snapshot", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("status.snapshot")
         }
         return snap
     }

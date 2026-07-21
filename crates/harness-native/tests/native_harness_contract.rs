@@ -3,6 +3,7 @@ use std::process::Command;
 
 use harness_native::find_real;
 use harness_native::strategies::{execute, ExecRequest, RuleOpts};
+use harness_native::{resolve_operator_queue_priority, QueuePriority, QUEUE_PRIORITY_ENV};
 
 // FR: FR-003 — native harness strategy coverage lift
 
@@ -211,4 +212,16 @@ fn cache_key_env_mode_includes_environment() {
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let hex = String::from_utf8_lossy(&output.stdout).trim();
     assert_eq!(hex.len(), 16, "expected 16-hex cache key, got: {hex}");
+
+/// FR-008 / AC-008.15 — harness rules.conf `priority=` maps through operator resolver.
+#[test]
+fn operator_queue_priority_honors_rules_conf() {
+    unsafe {
+        std::env::remove_var(QUEUE_PRIORITY_ENV);
+    }
+    assert_eq!(
+        resolve_operator_queue_priority(Some("critical")),
+        QueuePriority::Critical,
+        "AC-008.15: rules.conf priority MUST reach QueuePriority"
+    );
 }

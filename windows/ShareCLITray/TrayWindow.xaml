@@ -21,6 +21,31 @@
                 Text="sharecli Process Manager"
                 Style="{ThemeResource TitleTextBlockStyle}" />
             <TextBlock x:Name="HealthStatusText" Text="Checking health..." />
+            <TextBlock
+                x:Name="ThermalBadgeText"
+                Text=""
+                FontWeight="SemiBold"
+                FontFamily="Consolas" />
+            <TextBlock
+                x:Name="GateStatusText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
+            <TextBlock
+                x:Name="HostWatchStatusText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
+            <TextBlock
+                x:Name="PoolStatusText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
+            <TextBlock
+                x:Name="StatusSnapshotText"
+                Text=""
+                FontFamily="Consolas"
+                IsTextSelectionEnabled="True" />
         </StackPanel>
 
         <!-- Process List -->
@@ -47,6 +72,20 @@
                         Header="Project"
                         Binding="{Binding project}"
                         Width="150" />
+                    <controls:DataGridTextColumn
+                        Header="Harness"
+                        Binding="{Binding harness}"
+                        Width="100" />
+                    <controls:DataGridTemplateColumn Header="Actions" Width="80">
+                        <controls:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button
+                                    Content="Kill"
+                                    Click="OnKillProcessClick"
+                                    Tag="{Binding pid}" />
+                            </DataTemplate>
+                        </controls:DataGridTemplateColumn.CellTemplate>
+                    </controls:DataGridTemplateColumn>
                 </controls:DataGrid.Columns>
             </controls:DataGrid>
         </ScrollView>
@@ -58,6 +97,10 @@
             Spacing="8"
             HorizontalAlignment="Right">
             <Button Content="Refresh" Click="OnRefreshClick" />
+            <Button
+                Content="Kill All Managed"
+                Click="OnKillAllClick"
+                Foreground="Red" />
             <Button Content="Close" Click="OnCloseClick" />
         </StackPanel>
     </Grid>

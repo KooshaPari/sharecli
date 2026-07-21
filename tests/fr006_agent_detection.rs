@@ -6,7 +6,7 @@
 //! AC-006.3 Hypervisor runs argv as-is (no vendor-bin wrap)
 
 use sharecli_core::{
-    match_known_agent, FakeThermalGate, Hypervisor, SpawnRequest, ThermalDecision,
+    match_known_agent, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision,
     KNOWN_AGENT_FAMILIES,
 };
 use std::sync::Arc;
@@ -21,15 +21,12 @@ fn fr006_pattern_registry_matches_known_names() {
         ("gemini", &[], Some("gemini")),
         ("cursor-agent", &[], Some("cursor-agent")),
         ("aider", &[], Some("aider")),
+        ("amp", &[], Some("amp")),
         ("node", &["/opt/homebrew/bin/claude"], Some("claude")),
         ("python3", &["-m", "aider"], Some("aider")),
     ];
     for (comm, cmdline, expect) in cases {
-        assert_eq!(
-            match_known_agent(comm, cmdline),
-            expect,
-            "comm={comm:?} cmdline={cmdline:?}"
-        );
+        assert_eq!(match_known_agent(comm, cmdline), expect, "comm={comm:?} cmdline={cmdline:?}");
     }
     assert!(KNOWN_AGENT_FAMILIES.contains(&"claude"));
 }
@@ -52,27 +49,22 @@ async fn fr006_hypervisor_runs_argv_as_is() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "fr006-no-wrap".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "fr006-no-wrap".to_string(),
-    ];
+    let argv =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "fr006-no-wrap".to_string()];
 
     let outcome = hv
-        .run(SpawnRequest {
-            argv,
-            cwd: dir.path().to_path_buf(),
-            env: vec![],
-        })
+        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
         .await
         .expect("spawn argv as-is");
 
     assert_eq!(outcome.exit_code, 0);
     assert!(!outcome.from_cache);
-    let stdout = String::from_utf8_lossy(&outcome.stdout);
     assert!(
-        stdout.contains("fr006-no-wrap"),
-        "stdout must reflect argv payload, got {stdout:?}"
+        outcome.detected_agent.is_none(),
+        "test harness is not under a known agent; got {:?}",
+        outcome.detected_agent
     );
+    assert_eq!(outcome.agent_family(), None);
+    let stdout = String::from_utf8_lossy(&outcome.stdout);
+    assert!(stdout.contains("fr006-no-wrap"), "stdout must reflect argv payload, got {stdout:?}");
 }

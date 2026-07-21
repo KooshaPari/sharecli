@@ -16,11 +16,7 @@ pub struct WellKnownPaths {
 /// Collect the directories sharecli uses for persistent and runtime state.
 pub fn well_known_paths() -> WellKnownPaths {
     let config_dir = config_dir();
-    WellKnownPaths {
-        config_dir,
-        state_dir: state_dir(),
-        runtime_dir: runtime_dir(),
-    }
+    WellKnownPaths { config_dir, state_dir: state_dir(), runtime_dir: runtime_dir() }
 }
 
 fn config_dir() -> PathBuf {
@@ -47,9 +43,7 @@ fn state_dir() -> PathBuf {
 }
 
 fn runtime_dir() -> PathBuf {
-    std::env::var_os("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(std::env::temp_dir)
+    std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap_or_else(std::env::temp_dir)
 }
 
 /// Remove sharecli data directories when `purge_data` is true.

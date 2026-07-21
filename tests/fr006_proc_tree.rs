@@ -11,35 +11,28 @@ use sharecli_core::{
 
 fn fixture() -> FakeProcSource {
     FakeProcSource::new(vec![
-        ProcSnapshot {
-            pid: 1,
-            ppid: 0,
-            comm: "init".into(),
-            cmdline: vec![],
-        },
+        ProcSnapshot { pid: 1, ppid: 0, comm: "init".into(), cmdline: vec![], state: 'R' },
         ProcSnapshot {
             pid: 50,
             ppid: 1,
             comm: "cursor-agent".into(),
             cmdline: vec!["cursor-agent".into()],
+            state: 'R',
         },
         ProcSnapshot {
             pid: 51,
             ppid: 50,
             comm: "node".into(),
             cmdline: vec!["node".into(), "tool.js".into()],
+            state: 'R',
         },
-        ProcSnapshot {
-            pid: 60,
-            ppid: 1,
-            comm: "zsh".into(),
-            cmdline: vec!["-i".into()],
-        },
+        ProcSnapshot { pid: 60, ppid: 1, comm: "zsh".into(), cmdline: vec!["-i".into()], state: 'R' },
         ProcSnapshot {
             pid: 61,
             ppid: 60,
             comm: "cargo".into(),
             cmdline: vec!["cargo".into(), "test".into()],
+            state: 'R',
         },
     ])
 }

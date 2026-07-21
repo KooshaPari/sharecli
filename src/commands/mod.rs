@@ -1,14 +1,22 @@
 //! CLI commands for sharecli
 
 pub mod cast;
+pub mod fuse;
+pub mod mesh;
+pub mod proc;
 pub mod report;
 pub mod serve;
 pub mod uninstall;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
+use serde::Serialize;
 pub use serve::run as serve_run;
+
+use crate::monitoring::HostResourceWatchJson;
 
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
 use crate::progress::StepProgress;
@@ -16,9 +24,87 @@ use crate::runtime::{
     ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
+use sharecli_fleet::global_coalesce_meters;
+use sharecli_fleet::global_slot_queue_meters;
+use sharecli_fleet::thermal::ThermalGovernor;
+use sharecli_fleet::ResourceWatchSample;
+use sharecli_fleet::{
+    agent_label_for_pid, count_host_agents, format_gate_status_section, gate_status_snapshot,
+    scan_agents, watch_detected_agents, HostProcSource,
+};
+use sharecli_fuse::{
+    global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
+};
+use sharecli_mesh::capture_maildir_status;
 
 /// Shared runtime instance
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();
+
+/// Poll live thermal + proc-scan agent inventory and print the FR-011 gate section.
+pub(crate) fn print_live_gate_section() -> Result<()> {
+    let thermal = ThermalGovernor::new().poll()?;
+    let agent_count = count_host_agents();
+    print!("{}", format_gate_status_section(thermal, agent_count));
+    Ok(())
+}
+
+/// Poll live host FD/RSS/load/net watch and print the FR-007 status section.
+pub(crate) fn print_live_host_watch_section() -> Result<()> {
+    let resource_watch = ResourceWatchSample::capture()?;
+    print!("{}", resource_watch.format_status_section());
+    Ok(())
+}
+
+/// Runtime pool + proc-scan operator lines after gate → host_watch (FR-007 / AC-007.74–007.76).
+pub(crate) async fn print_live_pool_status_operator_sections() -> Result<()> {
+    use sharecli_fleet::{format_pool_operator_line, format_status_operator_line};
+
+    let (pool_json, status_json) = tokio::join!(build_pool_json(), build_status_json());
+    let pool_panel: sharecli_fleet::PoolOperatorPanel = pool_json?.into();
+    let status_panel: sharecli_fleet::StatusOperatorPanel = status_json?.into();
+    println!();
+    println!("{}", format_pool_operator_line(&pool_panel));
+    println!("{}", format_status_operator_line(&status_panel));
+    Ok(())
+}
+
+/// Gate + host watch text companions on stderr for NDJSON watch modes (AC-007.28 / AC-007.42).
+pub(crate) fn eprint_live_gate_host_watch_sections() -> Result<()> {
+    use crate::monitoring::HostResourceWatchJson;
+
+    let thermal = ThermalGovernor::new().poll()?;
+    let agent_count = count_host_agents();
+    eprint!("{}", format_gate_status_section(thermal, agent_count));
+    eprint!("{}", HostResourceWatchJson::capture()?.format_text_section());
+    let _ = std::io::stderr().flush();
+    Ok(())
+}
+
+/// Live thermal gate + host resource watch for JSON envelopes (FR-007 / AC-007.44).
+fn capture_live_gate_host_watch() -> Result<(sharecli_fleet::GateStatusSnapshot, HostResourceWatchJson)> {
+    let thermal = ThermalGovernor::new().poll()?;
+    let gate = gate_status_snapshot(thermal, count_host_agents());
+    let host_watch = HostResourceWatchJson::capture()?;
+    Ok((gate, host_watch))
+}
+
+/// Append gate → host_watch → pool → status CSV companion blocks (FR-007 / AC-007.79 / AC-007.82).
+pub(crate) async fn append_operator_csv_companions(
+    csv: String,
+    gate: &sharecli_fleet::GateStatusSnapshot,
+) -> Result<String> {
+    use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
+
+    let mut out = csv;
+    out.push_str(&gate.format_csv_companion());
+    out.push_str(&HostResourceWatchJson::capture()?.format_csv_companion());
+    let (pool_json, status_json) = fetch_operator_pool_status_siblings().await?;
+    let pool: PoolOperatorPanel = pool_json.into();
+    let status: StatusOperatorPanel = status_json.into();
+    out.push_str(&pool.format_csv_companion());
+    out.push_str(&status.format_csv_companion());
+    Ok(out)
+}
 
 fn get_shared_runtime() -> &'static SharedRuntime {
     SHARED_RUNTIME.get_or_init(|| {
@@ -34,8 +120,299 @@ fn get_project_resources() -> &'static ProjectResources {
     PROJECT_RESOURCES.get_or_init(ProjectResources::new)
 }
 
-/// List processes
-pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Result<()> {
+/// One managed pool row for `sharecli ps --all --json` (FR-007 / AC-007.43).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PsManagedProcessRow {
+    pub pid: u32,
+    pub name: String,
+    pub memory_mb: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub harness: Option<String>,
+    pub agent: String,
+}
+
+/// JSON envelope for `sharecli ps --all --json` (FR-007 / AC-007.43, pool/status AC-007.77).
+///
+/// Managed pool fields precede host agent inventory; live `gate`, `host_watch`, `pool`, and
+/// `status` siblings follow (parity with `report --format json` AC-007.73 key order).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PsAllJson {
+    pub processes: Vec<PsManagedProcessRow>,
+    pub total_memory_mb: u64,
+    pub agents: Vec<proc::AgentProcRow>,
+    pub scanned: usize,
+    pub watched: usize,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    /// Runtime pool operator panel (FR-007 / AC-007.77).
+    pub pool: PoolJson,
+    /// Proc-scan status operator panel (FR-007 / AC-007.77).
+    pub status: StatusJson,
+}
+
+/// One NDJSON watch line for `ps --all --watch --json` (FR-007 / AC-007.49).
+#[derive(Debug, Clone, Serialize)]
+pub struct PsAllNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: PsAllJson,
+}
+
+fn ps_unix_ts_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+}
+
+/// Emit one compact JSON line and flush (piped stdout is block-buffered; AC-007.49).
+fn emit_ps_ndjson_line<T: Serialize>(value: &T) -> Result<()> {
+    println!("{}", serde_json::to_string(value)?);
+    std::io::stdout().flush()?;
+    Ok(())
+}
+
+/// JSON envelope for `sharecli pool --json` (FR-007 / AC-007.44, status sibling AC-007.77).
+///
+/// Pool status fields precede live `gate` and `host_watch` siblings; `pool --json` adds a
+/// nested `status` sibling after `host_watch` (no redundant nested `pool` — top-level fields
+/// already are the pool panel).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PoolJson {
+    pub node_total: usize,
+    pub node_idle: usize,
+    pub bun_total: usize,
+    pub bun_idle: usize,
+    pub max_per_type: usize,
+    pub healthy: bool,
+    pub issues: Vec<String>,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    /// Proc-scan status sibling; only emitted by `pool --json` (AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<Box<StatusJson>>,
+}
+
+/// JSON envelope for `sharecli health --json` (FR-007 / AC-007.44, pool/status AC-007.77).
+///
+/// Runtime health fields precede live `gate`, `host_watch`, `pool`, and `status` siblings
+/// (parity with `report --format json` AC-007.73 key order).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct HealthJson {
+    pub healthy: bool,
+    pub issues: Vec<String>,
+    pub node_total: usize,
+    pub node_idle: usize,
+    pub node_in_use: usize,
+    pub bun_total: usize,
+    pub bun_idle: usize,
+    pub bun_in_use: usize,
+    pub max_per_type: usize,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    /// Runtime pool operator panel (FR-007 / AC-007.77).
+    pub pool: PoolJson,
+    /// Proc-scan status operator panel (FR-007 / AC-007.77).
+    pub status: StatusJson,
+}
+
+/// One NDJSON watch line for `health --watch --json` (FR-007 / AC-007.64).
+#[derive(Debug, Clone, Serialize)]
+pub struct HealthNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: HealthJson,
+}
+
+/// One NDJSON watch line for `pool --watch --json` (FR-007 / AC-007.65).
+#[derive(Debug, Clone, Serialize)]
+pub struct PoolNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: PoolJson,
+}
+
+/// JSON envelope for `sharecli status --json` (FR-007 / AC-007.25, pool sibling AC-007.77).
+///
+/// Proc-scan fields precede live `gate` and `host_watch`; `status --json` adds a nested `pool`
+/// sibling after `host_watch` (no redundant nested `status` — top-level fields already are the
+/// proc-scan panel).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct StatusJson {
+    pub total_processes: usize,
+    pub agents: Vec<proc::AgentProcRow>,
+    pub scanned: usize,
+    pub watched: usize,
+    pub gate: sharecli_fleet::GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+    /// Runtime pool sibling; only emitted by `status --json` (AC-007.77).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool: Option<Box<PoolJson>>,
+}
+
+impl From<PoolJson> for sharecli_fleet::PoolOperatorPanel {
+    fn from(p: PoolJson) -> Self {
+        Self {
+            node_total: p.node_total,
+            node_idle: p.node_idle,
+            bun_total: p.bun_total,
+            bun_idle: p.bun_idle,
+            max_per_type: p.max_per_type,
+            healthy: p.healthy,
+        }
+    }
+}
+
+impl From<StatusJson> for sharecli_fleet::StatusOperatorPanel {
+    fn from(s: StatusJson) -> Self {
+        Self {
+            scanned: s.scanned,
+            watched: s.watched,
+            total_processes: s.total_processes,
+            agent_rows: s.agents.len(),
+        }
+    }
+}
+
+/// Primary CSV body for `sharecli health --csv` (FR-007 / AC-007.82).
+pub fn render_health_csv_body(health: &HealthJson) -> String {
+    use proc::csv_escape_field;
+
+    let issues = csv_escape_field(&health.issues.join(";"));
+    format!(
+        "record,healthy,node_total,node_idle,node_in_use,bun_total,bun_idle,bun_in_use,max_per_type,issues\n\
+         health,{},{},{},{},{},{},{},{},{}\n",
+        health.healthy,
+        health.node_total,
+        health.node_idle,
+        health.node_in_use,
+        health.bun_total,
+        health.bun_idle,
+        health.bun_in_use,
+        health.max_per_type,
+        issues,
+    )
+}
+
+/// Primary CSV body for `sharecli pool --csv` (FR-007 / AC-007.82).
+pub fn render_pool_csv_body(pool: &PoolJson) -> String {
+    use proc::csv_escape_field;
+
+    let issues = csv_escape_field(&pool.issues.join(";"));
+    format!(
+        "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy,issues\n\
+         pool,{},{},{},{},{},{},{}\n",
+        pool.node_total,
+        pool.node_idle,
+        pool.bun_total,
+        pool.bun_idle,
+        pool.max_per_type,
+        pool.healthy,
+        issues,
+    )
+}
+
+/// Primary CSV body for `sharecli status --csv` (FR-007 / AC-007.82).
+pub fn render_status_csv_body(
+    summary: &sharecli_fleet::StatusOperatorPanel,
+    harness_rows: &[(String, usize, u64)],
+    pool_status: &crate::runtime::PoolStatus,
+    used_mb: u64,
+    total_mb: u64,
+) -> String {
+    use proc::csv_escape_field;
+
+    let mut out = format!(
+        "record,total_processes,scanned,watched,agent_rows\n\
+         status,{},{},{},{}\n",
+        summary.total_processes,
+        summary.scanned,
+        summary.watched,
+        summary.agent_rows,
+    );
+    out.push_str("\nrecord,harness,count,memory_mb\n");
+    for (h, count, mem) in harness_rows {
+        out.push_str(&format!(
+            "harness,{},{},{mem}\n",
+            csv_escape_field(h),
+            count,
+        ));
+    }
+    out.push_str("\nrecord,type,total,idle,max_per_type\n");
+    out.push_str(&format!(
+        "runtime_pool,node,{},{},{}\n",
+        pool_status.node_total, pool_status.node_idle, pool_status.max_per_type,
+    ));
+    out.push_str(&format!(
+        "runtime_pool,bun,{},{},{}\n",
+        pool_status.bun_total, pool_status.bun_idle, pool_status.max_per_type,
+    ));
+    let pct = if total_mb > 0 { (used_mb * 100) / total_mb } else { 0 };
+    out.push_str("\nrecord,used_mb,total_mb,used_pct\n");
+    out.push_str(&format!("system_memory,{used_mb},{total_mb},{pct}\n"));
+    out
+}
+
+/// Primary CSV body for `sharecli ps --all --csv` (FR-007 / AC-007.83).
+pub fn render_ps_all_csv_body(
+    processes: &[ProcessInfo],
+    proc_source: &HostProcSource,
+    agents: &[proc::AgentProcRow],
+    scanned: usize,
+    watched: usize,
+) -> String {
+    use proc::csv_escape_field;
+
+    let mut out = String::from(
+        "record,pid,name,memory_mb,project,harness,agent\n",
+    );
+    for proc in processes {
+        out.push_str(&format!(
+            "process,{},{},{},{},{},{}\n",
+            proc.pid,
+            csv_escape_field(&proc.name),
+            proc.memory_mb,
+            csv_escape_field(proc.project.as_deref().unwrap_or("-")),
+            csv_escape_field(proc.harness.as_deref().unwrap_or("-")),
+            csv_escape_field(&agent_label_for_pid(proc_source, proc.pid)),
+        ));
+    }
+    let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
+    out.push_str("\nrecord,process_count,total_memory_mb\n");
+    out.push_str(&format!("summary,{},{total_mem}\n", processes.len()));
+    out.push_str("\nrecord,scanned,watched\n");
+    out.push_str(&format!("agent_inventory,{scanned},{watched}\n"));
+    out.push_str("\npid,family,comm,state,mem_rss_bytes,mem_rss,fd_count\n");
+    for row in agents {
+        let fd = row
+            .fd_count
+            .map(|n| n.to_string())
+            .unwrap_or_default();
+        out.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            row.pid,
+            csv_escape_field(&row.family),
+            csv_escape_field(&row.comm),
+            csv_escape_field(&row.state),
+            row.mem_rss_bytes,
+            csv_escape_field(&row.mem_rss),
+            fd,
+        ));
+    }
+    out
+}
+
+/// One NDJSON watch line for `status --watch --json` (FR-007 / AC-007.66).
+#[derive(Debug, Clone, Serialize)]
+pub struct StatusNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: StatusJson,
+}
+
+async fn build_ps_all_json(
+    project: Option<&str>,
+    harness: Option<&str>,
+) -> Result<PsAllJson> {
     let pool = ProcessPool::new();
     let filter = if let Some(p) = project {
         ProcessFilter::ByProject(p.to_string())
@@ -44,24 +421,65 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
     } else {
         ProcessFilter::All
     };
-    let _ = all;
 
     let processes: Vec<ProcessInfo> = pool.find(filter).await;
+    let proc_source = HostProcSource;
+    let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
+    let managed: Vec<PsManagedProcessRow> = processes
+        .iter()
+        .map(|proc| PsManagedProcessRow {
+            pid: proc.pid,
+            name: proc.name.clone(),
+            memory_mb: proc.memory_mb,
+            project: proc.project.clone(),
+            harness: proc.harness.clone(),
+            agent: agent_label_for_pid(&proc_source, proc.pid).to_string(),
+        })
+        .collect();
+    let snapshot = proc::AgentProcSnapshot::capture()?;
+    let (pool_panel, status_panel) = fetch_operator_pool_status_siblings().await?;
+    Ok(PsAllJson {
+        processes: managed,
+        total_memory_mb: total_mem,
+        agents: snapshot.agents,
+        scanned: snapshot.scanned,
+        watched: snapshot.watched,
+        gate: snapshot.gate,
+        host_watch: snapshot.host_watch,
+        pool: pool_panel,
+        status: status_panel,
+    })
+}
 
-    println!("{:<8} {:<20} {:<12} {:<15} HARNESS", "PID", "NAME", "MEM(MB)", "PROJECT");
-    println!("{}", "-".repeat(70));
+fn print_ps_text_table(
+    processes: &[ProcessInfo],
+    proc_source: &HostProcSource,
+    project: Option<&str>,
+    harness: Option<&str>,
+    all: bool,
+) -> Result<()> {
+    println!(
+        "{:<8} {:<20} {:<12} {:<15} {:<14} HARNESS",
+        "PID", "NAME", "MEM(MB)", "PROJECT", "AGENT"
+    );
+    println!("{}", "-".repeat(84));
 
-    for proc in &processes {
+    for proc in processes {
         let project = proc.project.as_deref().unwrap_or("-");
         let harness = proc.harness.as_deref().unwrap_or("-");
+        let agent = agent_label_for_pid(proc_source, proc.pid);
         println!(
-            "{:<8} {:<20} {:<12.1} {:<15} {}",
-            proc.pid, proc.name, proc.memory_mb as f64, project, harness
+            "{:<8} {:<20} {:<12.1} {:<15} {:<14} {}",
+            proc.pid, proc.name, proc.memory_mb as f64, project, agent, harness
         );
     }
 
     let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
     println!("\nTotal: {} processes, {} MB memory", processes.len(), total_mem);
+
+    if all {
+        print_host_agent_scan(proc_source)?;
+    }
 
     if processes.is_empty() {
         print_ps_empty_hint(project, harness);
@@ -70,16 +488,170 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
     Ok(())
 }
 
+async fn render_ps_once(
+    project: Option<&str>,
+    harness: Option<&str>,
+    all: bool,
+    json: bool,
+    csv: bool,
+    ndjson: bool,
+) -> Result<()> {
+    if json {
+        let payload = build_ps_all_json(project, harness).await?;
+        if ndjson {
+            let line = PsAllNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
+        return Ok(());
+    }
+
+    if csv {
+        let payload = build_ps_all_json(project, harness).await?;
+        let pool = ProcessPool::new();
+        let filter = if let Some(p) = project {
+            ProcessFilter::ByProject(p.to_string())
+        } else if let Some(h) = harness {
+            ProcessFilter::ByHarness(h.to_string())
+        } else {
+            ProcessFilter::All
+        };
+        let processes: Vec<ProcessInfo> = pool.find(filter).await;
+        let proc_source = HostProcSource;
+        let body = render_ps_all_csv_body(
+            &processes,
+            &proc_source,
+            &payload.agents,
+            payload.scanned,
+            payload.watched,
+        );
+        let csv_out = append_operator_csv_companions(body, &payload.gate).await?;
+        print!("{csv_out}");
+        return Ok(());
+    }
+
+    let pool = ProcessPool::new();
+    let filter = if let Some(p) = project {
+        ProcessFilter::ByProject(p.to_string())
+    } else if let Some(h) = harness {
+        ProcessFilter::ByHarness(h.to_string())
+    } else {
+        ProcessFilter::All
+    };
+    let processes: Vec<ProcessInfo> = pool.find(filter).await;
+    let proc_source = HostProcSource;
+    print_ps_text_table(&processes, &proc_source, project, harness, all)?;
+    if all {
+        // AC-007.76: pool → proc-scan on stdout after gate → host_watch (ps --all text path).
+        print_live_pool_status_operator_sections().await?;
+    }
+    Ok(())
+}
+
+/// List processes
+pub async fn ps(
+    project: Option<&str>,
+    harness: Option<&str>,
+    all: bool,
+    json: bool,
+    csv: bool,
+    watch: Option<u64>,
+) -> Result<()> {
+    if json && !all {
+        anyhow::bail!(
+            "`sharecli ps --json` requires `--all` for host agent inventory parity (AC-007.43)"
+        );
+    }
+    if csv && !all {
+        anyhow::bail!(
+            "`sharecli ps --csv` requires `--all` for host agent inventory parity (AC-007.83)"
+        );
+    }
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
+    }
+    if watch.is_some() && json && !all {
+        anyhow::bail!(
+            "`sharecli ps --watch --json` requires `--all` for host agent inventory parity (AC-007.49)"
+        );
+    }
+
+    match watch {
+        None => render_ps_once(project, harness, all, json, csv, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_ps_once(project, harness, all, json, csv, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.50).
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
+}
+
+/// FR-006 host inventory printed by `sharecli ps --all`.
+fn print_host_agent_scan(source: &HostProcSource) -> Result<()> {
+    let agents = scan_agents(source);
+    let watched = watch_detected_agents(&agents);
+    let agent_pids: Vec<u32> = agents.iter().map(|a| a.pid).collect();
+    let state_by_pid = proc::build_agent_state_map(source, &agent_pids);
+    println!();
+    proc::render_agent_inventory(&watched, agents.len(), &state_by_pid);
+    if let Ok(thermal) = ThermalGovernor::new().poll() {
+        print!("{}", format_gate_status_section(thermal, agents.len()));
+    }
+    print_live_host_watch_section()?;
+    Ok(())
+}
+
 /// Actionable empty-pool copy for `ps` (C10 L100).
 fn print_ps_empty_hint(project: Option<&str>, harness: Option<&str>) {
     if let Some(p) = project {
-        println!(
-            "\nNo processes match project '{p}'. Try: sharecli start {p} <harness>"
-        );
+        println!("\nNo processes match project '{p}'. Try: sharecli start {p} <harness>");
     } else if let Some(h) = harness {
-        println!(
-            "\nNo processes match harness '{h}'. Try: sharecli start <project> {h}"
-        );
+        println!("\nNo processes match harness '{h}'. Try: sharecli start <project> {h}");
     } else {
         println!("\nNo managed processes yet. Get started: sharecli start <project> <harness>");
         println!("Or open the dashboard: sharecli serve");
@@ -157,10 +729,7 @@ pub async fn stop(
             force_kill_preview("all managed processes", count);
             return Ok(());
         }
-        println!(
-            "Stopping all managed processes{}...",
-            if force { " (force)" } else { "" }
-        );
+        println!("Stopping all managed processes{}...", if force { " (force)" } else { "" });
         pool.kill_all().await?;
         println!("All processes stopped.");
         return Ok(());
@@ -210,8 +779,77 @@ pub async fn stop(
     Ok(())
 }
 
-/// Check process status
-pub async fn status(verbose: bool) -> Result<()> {
+pub(crate) async fn build_status_json() -> Result<StatusJson> {
+    let pool = ProcessPool::new();
+    let processes: Vec<ProcessInfo> = pool.list().await;
+    let snapshot = proc::AgentProcSnapshot::capture()?;
+    Ok(StatusJson {
+        total_processes: processes.len(),
+        agents: snapshot.agents,
+        scanned: snapshot.scanned,
+        watched: snapshot.watched,
+        gate: snapshot.gate,
+        host_watch: snapshot.host_watch,
+        pool: None,
+    })
+}
+
+/// Fetch independent pool + status JSON panels for operator sibling embedding (AC-007.77).
+pub(crate) async fn fetch_operator_pool_status_siblings() -> Result<(PoolJson, StatusJson)> {
+    let (pool, status) = tokio::join!(build_pool_json(), build_status_json());
+    Ok((pool?, status?))
+}
+
+/// Render one status snapshot (one-shot or watch cycle).
+///
+/// One-shot `status --json` MUST NOT print gate/host_watch stderr companions (AC-007.32).
+/// One-shot `status` text MUST NOT print gate/host_watch stderr companions either (AC-007.36);
+/// gate/host_watch stay in text sections on stdout only (AC-007.27).
+async fn render_status_once(verbose: bool, json: bool, csv: bool, ndjson: bool) -> Result<()> {
+    if json {
+        let mut payload = build_status_json().await?;
+        payload.pool = Some(Box::new(build_pool_json().await?));
+        if ndjson {
+            let line = StatusNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
+        return Ok(());
+    }
+
+    if csv {
+        let status_json = build_status_json().await?;
+        let summary: sharecli_fleet::StatusOperatorPanel = status_json.clone().into();
+        let pool = ProcessPool::new();
+        let processes: Vec<ProcessInfo> = pool.list().await;
+        let mut by_harness: std::collections::HashMap<String, (usize, u64)> =
+            std::collections::HashMap::new();
+        for proc in &processes {
+            let h = proc.harness.as_deref().unwrap_or("unknown").to_string();
+            let entry = by_harness.entry(h).or_insert((0, 0));
+            entry.0 += 1;
+            entry.1 += proc.memory_mb;
+        }
+        let mut harness_rows: Vec<(String, usize, u64)> = by_harness
+            .into_iter()
+            .map(|(h, (count, mem))| (h, count, mem))
+            .collect();
+        harness_rows.sort_by(|a, b| a.0.cmp(&b.0));
+        let runtime = get_shared_runtime();
+        let pool_status = runtime.status().await;
+        let (used, total) = pool.system_memory_usage().await;
+        let body = render_status_csv_body(&summary, &harness_rows, &pool_status, used, total);
+        let (gate, _) = capture_live_gate_host_watch()?;
+        let csv_out = append_operator_csv_companions(body, &gate).await?;
+        print!("{csv_out}");
+        return Ok(());
+    }
+
     let pool = ProcessPool::new();
     let processes: Vec<ProcessInfo> = pool.list().await;
 
@@ -250,6 +888,26 @@ pub async fn status(verbose: bool) -> Result<()> {
     println!("\n=== System Memory ===\n");
     println!("Used: {} MB / {} MB ({}%)", used, total, (used * 100) / total);
 
+    print_live_gate_section()?;
+    print_live_host_watch_section()?;
+    print_live_pool_status_operator_sections().await?;
+
+    let fuse_meters = global_read_cache_meters();
+    print!("{}", fuse_meters.format_status_section());
+
+    let neg_meters = global_neg_dentry_meters();
+    print!("{}", neg_meters.format_status_section());
+
+    print!("{}", global_coalesce_meters().format_status_section());
+
+    print!("{}", global_slot_queue_meters().format_status_section());
+
+    if let Some(st) = capture_maildir_status()? {
+        print!("{}", st.format_status_section());
+    }
+
+    print!("{}", global_write_serialize_meters().format_status_section());
+
     if verbose {
         println!("\n=== Detailed Process List ===\n");
         for proc in &processes {
@@ -261,6 +919,61 @@ pub async fn status(verbose: bool) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Check process status.
+pub async fn status(verbose: bool, json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
+    }
+    match watch {
+        None => render_status_once(verbose, json, csv, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_status_once(verbose, json, csv, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.66).
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 /// Configuration management
@@ -545,10 +1258,56 @@ pub async fn run_pool(harness_type: &str, project: &str) -> Result<()> {
     Ok(())
 }
 
-/// Show pool status
-pub async fn pool_status() -> Result<()> {
+pub(crate) async fn build_pool_json() -> Result<PoolJson> {
     let runtime = get_shared_runtime();
     let status = runtime.status().await;
+    let health = runtime.health_check().await;
+    let (gate, host_watch) = capture_live_gate_host_watch()?;
+    Ok(PoolJson {
+        node_total: status.node_total,
+        node_idle: status.node_idle,
+        bun_total: status.bun_total,
+        bun_idle: status.bun_idle,
+        max_per_type: status.max_per_type,
+        healthy: health.healthy,
+        issues: health.issues,
+        gate,
+        host_watch,
+        status: None,
+    })
+}
+
+/// Render one pool snapshot (one-shot or watch cycle).
+///
+/// One-shot `pool --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
+async fn render_pool_once(json: bool, csv: bool, ndjson: bool) -> Result<()> {
+    if json {
+        let mut payload = build_pool_json().await?;
+        payload.status = Some(Box::new(build_status_json().await?));
+        if ndjson {
+            let line = PoolNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
+        return Ok(());
+    }
+
+    if csv {
+        let payload = build_pool_json().await?;
+        let body = render_pool_csv_body(&payload);
+        let csv_out = append_operator_csv_companions(body, &payload.gate).await?;
+        print!("{csv_out}");
+        return Ok(());
+    }
+
+    let runtime = get_shared_runtime();
+    let status = runtime.status().await;
+    let health = runtime.health_check().await;
 
     println!("=== Shared Runtime Pool Status ===\n");
     println!("{:<10} {:<10} {:<10} {:<10}", "TYPE", "TOTAL", "IDLE", "MAX");
@@ -564,7 +1323,6 @@ pub async fn pool_status() -> Result<()> {
     println!("\nMax per type: {}", status.max_per_type);
 
     // Health check
-    let health = runtime.health_check().await;
     println!("\n=== Health Check ===");
     if health.healthy {
         println!("Status: HEALTHY");
@@ -578,11 +1336,118 @@ pub async fn pool_status() -> Result<()> {
         }
     }
 
+    print_live_gate_section()?;
+    print_live_host_watch_section()?;
+    print_live_pool_status_operator_sections().await?;
+
     Ok(())
 }
 
-/// Run health probe for shared runtime
-pub async fn health(harness: Option<&str>) -> Result<()> {
+/// Show pool status
+pub async fn pool_status(json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
+    }
+    match watch {
+        None => render_pool_once(json, csv, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_pool_once(json, csv, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.65).
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
+}
+
+async fn build_health_json() -> Result<HealthJson> {
+    let runtime = get_shared_runtime();
+    let pool_status = runtime.status().await;
+    let health = runtime.health_check().await;
+    let (gate, host_watch) = capture_live_gate_host_watch()?;
+    let (pool_panel, status_panel) = fetch_operator_pool_status_siblings().await?;
+    Ok(HealthJson {
+        healthy: health.healthy,
+        issues: health.issues,
+        node_total: pool_status.node_total,
+        node_idle: pool_status.node_idle,
+        node_in_use: health.node_in_use,
+        bun_total: pool_status.bun_total,
+        bun_idle: pool_status.bun_idle,
+        bun_in_use: health.bun_in_use,
+        max_per_type: pool_status.max_per_type,
+        gate,
+        host_watch,
+        pool: pool_panel,
+        status: status_panel,
+    })
+}
+
+/// Render one health snapshot (one-shot or watch cycle).
+///
+/// One-shot `health --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
+async fn render_health_once(harness: Option<&str>, json: bool, csv: bool, ndjson: bool) -> Result<()> {
+    if json {
+        let payload = build_health_json().await?;
+        if ndjson {
+            let line = HealthNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
+        return Ok(());
+    }
+
+    if csv {
+        let payload = build_health_json().await?;
+        let body = render_health_csv_body(&payload);
+        let csv_out = append_operator_csv_companions(body, &payload.gate).await?;
+        print!("{csv_out}");
+        return Ok(());
+    }
+
     if let Some(h) = harness {
         println!("Health probe requested for harness '{}'.", h);
         if h != "node" && h != "bun" {
@@ -616,7 +1481,66 @@ pub async fn health(harness: Option<&str>) -> Result<()> {
     );
     println!("\nMax per harness type: {}", pool_status.max_per_type);
 
+    print_live_gate_section()?;
+    print_live_host_watch_section()?;
+    print_live_pool_status_operator_sections().await?;
+
     Ok(())
+}
+
+/// Run health probe for shared runtime
+pub async fn health(harness: Option<&str>, json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
+    }
+    match watch {
+        None => render_health_once(harness, json, csv, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_health_once(harness, json, csv, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.64).
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 /// Set project limits

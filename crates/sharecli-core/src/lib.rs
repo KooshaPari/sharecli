@@ -13,16 +13,17 @@
 //!                ├─ ThermalGate::poll() ─► Green/Yellow → proceed
 //!                │                         Red → sleep-retry (loud) or Err
 //!                │
+//!                ├─ ResourceWatchSample::capture() ─► FD/net watch on every run
+//!                │
+//!                ├─ nocache_args match? ─► SlotQueue::with_slot → spawn (no cache)
+//!                │
 //!                ├─ compute command_key (sharecli-ipc)
 //!                │
 //!                └─ CoalesceCache::with_lock
 //!                       │
 //!                       ├─ [cache hit]  → SpawnOutcome { from_cache: true }
 //!                       │
-//!                       └─ [cache miss] → tokio::process::Command::spawn
-//!                                             → capture stdout/stderr/exit_code
-//!                                             → store in cache
-//!                                             → SpawnOutcome { from_cache: false }
+//!                       └─ [cache miss] → spawn + store → from_cache: false
 //! ```
 //!
 //! # Thermal gate behaviour
@@ -55,21 +56,35 @@
 //!   idle periods and pre-populate the coalesce cache.
 
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use sharecli_fleet::agent_contention::{
+    agent_contention_tier, live_agent_contention_tier, AgentContentionThresholds,
+    AgentContentionTier,
+};
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
-use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
-use tracing::{debug, warn};
+use sharecli_ipc::{
+    command_key, has_nocache_arg, record_coalesce_lookup_hit, record_nocache_run, CachedResult,
+    CoalesceCache, CoalesceHitKind, CommandKey, SlotQueue, DEFAULT_NOCACHE_ARGS,
+};
+use tracing::{debug, error, warn};
 
 pub mod detect;
 pub mod proc_scan;
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{
-    is_under_agent, scan_agents, scan_host_agents, walk_agent_ancestors, DetectedAgent,
-    FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
+    agent_label_for_pid, detect_caller_agent, is_under_agent, scan_agents, scan_host_agents,
+    walk_agent_ancestors, DetectedAgent, FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
 };
+pub use sharecli_fleet::{
+    sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
+    ResourceWatchSample,
+};
+pub use sharecli_ipc::{resolve_operator_queue_priority, QueuePriority, QUEUE_PRIORITY_ENV};
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
@@ -111,6 +126,12 @@ pub struct SystemThermalGate {
     governor: ThermalGovernor,
 }
 
+impl Default for SystemThermalGate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemThermalGate {
     /// Create a new gate backed by the real [`ThermalGovernor`].
     pub fn new() -> Self {
@@ -132,6 +153,75 @@ impl ThermalGate for SystemThermalGate {
     }
 }
 
+/// Combine hardware thermal gate output with host agent-count contention (FR-011).
+pub fn combine_thermal_agent_decision(
+    thermal: ThermalDecision,
+    agents: AgentContentionTier,
+) -> ThermalDecision {
+    use AgentContentionTier::{Ok as AgentsOk, Refuse as AgentsRefuse, Warn as AgentsWarn};
+    use ThermalDecision::{Allow, Refuse, Warn};
+    match (thermal, agents) {
+        (Refuse, _) | (_, AgentsRefuse) => Refuse,
+        (Allow, AgentsWarn) => Warn,
+        (Allow, AgentsOk) => Allow,
+        (Warn, _) => Warn,
+    }
+}
+
+/// Production gate: thermal governor + live host agent inventory escalation.
+///
+/// Wraps an inner [`ThermalGate`] (typically [`SystemThermalGate`]) and escalates
+/// Allow→Warn or any→Refuse when proc-scan agent count or aggregate RSS crosses
+/// configured thresholds.
+pub struct AgentAwareThermalGate {
+    inner: Arc<dyn ThermalGate>,
+    agent_tier: Arc<dyn Fn() -> AgentContentionTier + Send + Sync>,
+}
+
+impl AgentAwareThermalGate {
+    /// Gate with live proc scan + resource samples on every check.
+    pub fn new(inner: Arc<dyn ThermalGate>, _thresholds: AgentContentionThresholds) -> Self {
+        Self { inner, agent_tier: Arc::new(live_agent_contention_tier) }
+    }
+
+    /// Test/injection hook — supply a deterministic agent-count-only tier fn.
+    pub fn with_agent_count(
+        inner: Arc<dyn ThermalGate>,
+        thresholds: AgentContentionThresholds,
+        agent_count: fn() -> usize,
+    ) -> Self {
+        Self {
+            inner,
+            agent_tier: Arc::new(move || agent_contention_tier(agent_count(), thresholds)),
+        }
+    }
+
+    /// Test/injection hook — supply an explicit contention tier source.
+    pub fn with_agent_tier(
+        inner: Arc<dyn ThermalGate>,
+        agent_tier: Arc<dyn Fn() -> AgentContentionTier + Send + Sync>,
+    ) -> Self {
+        Self { inner, agent_tier }
+    }
+}
+
+impl ThermalGate for AgentAwareThermalGate {
+    fn check(&self) -> ThermalDecision {
+        let base = self.inner.check();
+        let tier = (self.agent_tier)();
+        let effective = combine_thermal_agent_decision(base, tier);
+        if tier != AgentContentionTier::Ok && effective != base {
+            warn!(
+                ?tier,
+                ?base,
+                ?effective,
+                "thermal-gate: host agent contention escalated spawn decision"
+            );
+        }
+        effective
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Thermal gate — retry constants
 // ---------------------------------------------------------------------------
@@ -149,22 +239,71 @@ pub const THERMAL_RETRY_SLEEP: Duration = Duration::from_secs(2);
 // FUSE IO-intercept guard
 // ---------------------------------------------------------------------------
 
+/// Max time to wait for the FUSE mount to become readable after spawn.
+const FUSE_READY_TIMEOUT: Duration = Duration::from_secs(5);
+/// Poll interval while waiting for mount readiness.
+const FUSE_READY_POLL: Duration = Duration::from_millis(50);
+/// Marker filename written under `backing` and probed via the mountpoint.
+const FUSE_READY_MARKER: &str = ".sharecli-fuse-ready";
+
+/// Derive the FUSE write-provenance session id for a coalesce [`CommandKey`].
+///
+/// Hypervisor cache-miss FUSE mounts pass this to [`sharecli_fuse::mount_with_session`]
+/// so agent writes through the intercept layer correlate with the Lock-Wait-Cache key
+/// (AC-009.12).
+pub fn fuse_session_id_for_command_key(key: &CommandKey) -> String {
+    let prefix = key.0.get(..16).unwrap_or(key.0.as_str());
+    format!("hv-{prefix}")
+}
+
+/// Poll until `probe` is readable, `fail_rx` reports a mount error, or `timeout`.
+///
+/// Returns `Ok(())` when the probe path becomes a readable file. Returns `Err`
+/// with a loud, actionable message on mount failure or timeout — never silently
+/// treats an unmounted directory as ready.
+fn wait_fuse_mount_ready(
+    probe: &Path,
+    fail_rx: &mpsc::Receiver<String>,
+    timeout: Duration,
+    poll: Duration,
+) -> Result<(), String> {
+    let mut waited = Duration::ZERO;
+    while waited < timeout {
+        if probe.is_file() && std::fs::read(probe).is_ok() {
+            return Ok(());
+        }
+        if let Ok(msg) = fail_rx.try_recv() {
+            return Err(format!("sharecli-fuse mount failed: {msg}"));
+        }
+        thread::sleep(poll);
+        waited = waited.saturating_add(poll);
+    }
+    Err(format!(
+        "sharecli-fuse mount readiness timed out after {}ms waiting for {} \
+         (is FUSE installed and permitted?)",
+        timeout.as_millis(),
+        probe.display()
+    ))
+}
+
 /// RAII guard that manages a sharecli-fuse intercept mount lifetime.
 ///
 /// On construction (best-effort) it creates a temporary directory, spawns a
 /// background thread running the FUSE event loop that mirrors a backing path,
-/// and exposes the mountpoint via [`mountpoint()`][FuseGuard::mountpoint].
+/// polls until a readiness marker is visible through the mount, and exposes
+/// the mountpoint via [`mountpoint()`][FuseGuard::mountpoint].
 ///
 /// On drop the guard force-unmounts the FUSE filesystem and removes the
 /// temporary mountpoint directory.
 ///
 /// # Best-effort semantics
 ///
-/// [`FuseGuard::try_mount`] **never** returns an error.  If mounting fails
-/// (platform unsupported, FUSE kernel module not loaded, etc.) a no-op guard
-/// is returned and [`mountpoint()`][FuseGuard::mountpoint] returns `None`.
-/// Callers should always check `mountpoint()` and fall back to the original
-/// path when it returns `None`.
+/// [`FuseGuard::try_mount`] **never** returns an error to callers.  If mounting
+/// fails or readiness polling times out, a loud message is printed to stderr /
+/// the error log, a no-op guard is returned, and
+/// [`mountpoint()`][FuseGuard::mountpoint] returns `None`. Callers must check
+/// `mountpoint()` and fall back to the original path when it returns `None`.
+/// An unready mountpoint is **never** returned as `Some`.
 struct FuseGuard {
     /// Path to the temporary mountpoint directory.
     /// `None` when FUSE could not be started (no-op guard).
@@ -172,42 +311,102 @@ struct FuseGuard {
     /// Keep the TempDir alive so it is not cleaned up before the unmount in
     /// [`Drop`] runs.
     _tmpdir: Option<tempfile::TempDir>,
+    /// Readiness marker path on the backing tree (removed on drop).
+    readiness_marker: Option<PathBuf>,
 }
 
 impl FuseGuard {
     /// Attempt to mount a sharecli-fuse IO-intercept layer mirroring `backing`.
     ///
-    /// When FUSE is unavailable or the mount fails a no-op guard is returned
-    /// (the spawn proceeds without interception).
-    fn try_mount(backing: &Path) -> Self {
+    /// When FUSE is unavailable, the mount fails, or readiness never appears, a
+    /// no-op guard is returned (the spawn proceeds without interception) after a
+    /// loud failure report.
+    fn try_mount(backing: &Path, session_id: &str) -> Self {
         // Non-Linux/macOS: no-op guard — FUSE is not available.
         #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         {
-            let _ = backing;
-            return Self { mountpoint: None, _tmpdir: None };
+            let _ = (backing, session_id);
+            return Self { mountpoint: None, _tmpdir: None, readiness_marker: None };
         }
 
-        // Linux / macOS: try to start FUSE.
+        // Linux / macOS: try to start FUSE and wait until it is ready.
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             let tmpdir = match tempfile::tempdir() {
                 Ok(d) => d,
-                Err(_) => return Self { mountpoint: None, _tmpdir: None },
+                Err(e) => {
+                    let msg = format!(
+                        "sharecli-fuse: cannot create mount tempdir: {e} — proceeding without FUSE"
+                    );
+                    eprintln!("{msg}");
+                    error!("{msg}");
+                    return Self { mountpoint: None, _tmpdir: None, readiness_marker: None };
+                }
             };
             let mountpoint = tmpdir.path().to_path_buf();
             let backing = backing.to_path_buf();
-            let mp = mountpoint.clone();
 
+            // Unique marker under backing; InterceptFs mirrors it through the mount.
+            let marker_name = format!("{FUSE_READY_MARKER}-{}", std::process::id());
+            let marker_rel = Path::new(&marker_name);
+            let marker_backing = backing.join(marker_rel);
+            if let Err(e) = std::fs::write(&marker_backing, b"ready") {
+                let msg = format!(
+                    "sharecli-fuse: cannot write readiness marker {}: {e} — proceeding without FUSE",
+                    marker_backing.display()
+                );
+                eprintln!("{msg}");
+                error!("{msg}");
+                return Self { mountpoint: None, _tmpdir: None, readiness_marker: None };
+            }
+
+            let mp = mountpoint.clone();
+            let backing_for_mount = backing.clone();
+            let session = session_id.to_string();
+            let (fail_tx, fail_rx) = mpsc::channel::<String>();
             // Spawn the FUSE event loop on a background thread — it blocks
             // until unmounted.
-            std::thread::spawn(move || {
-                let _ = sharecli_fuse::mount(&mp, &backing);
+            thread::spawn(move || {
+                if let Err(err) =
+                    sharecli_fuse::mount_with_session(&mp, &backing_for_mount, &session)
+                {
+                    let _ = fail_tx.send(err.to_string());
+                }
             });
 
-            // Brief pause so the mount is ready when the child process spawns.
-            std::thread::sleep(Duration::from_millis(100));
-
-            Self { mountpoint: Some(mountpoint), _tmpdir: Some(tmpdir) }
+            let probe = mountpoint.join(marker_rel);
+            match wait_fuse_mount_ready(&probe, &fail_rx, FUSE_READY_TIMEOUT, FUSE_READY_POLL) {
+                Ok(()) => Self {
+                    mountpoint: Some(mountpoint),
+                    _tmpdir: Some(tmpdir),
+                    readiness_marker: Some(marker_backing),
+                },
+                Err(msg) => {
+                    let loud = format!("{msg} — proceeding without FUSE intercept");
+                    eprintln!("{loud}");
+                    error!("{loud}");
+                    // Best-effort unmount of a half-started mount before drop.
+                    #[cfg(target_os = "linux")]
+                    {
+                        let _ = std::process::Command::new("fusermount")
+                            .arg("-uz")
+                            .arg(&mountpoint)
+                            .stdout(std::process::Stdio::null())
+                            .stderr(std::process::Stdio::null())
+                            .status();
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        let _ = std::process::Command::new("umount")
+                            .arg(&mountpoint)
+                            .stdout(std::process::Stdio::null())
+                            .stderr(std::process::Stdio::null())
+                            .status();
+                    }
+                    let _ = std::fs::remove_file(&marker_backing);
+                    Self { mountpoint: None, _tmpdir: None, readiness_marker: None }
+                }
+            }
         }
     }
 
@@ -231,6 +430,9 @@ impl Drop for FuseGuard {
                 let _ = std::process::Command::new("umount").arg(mp).status();
             }
         }
+        if let Some(ref marker) = self.readiness_marker {
+            let _ = std::fs::remove_file(marker);
+        }
     }
 }
 
@@ -243,6 +445,17 @@ impl Drop for FuseGuard {
 pub struct HypervisorConfig {
     /// Root directory for the coalesce cache.
     pub cache_root: PathBuf,
+    /// Root directory for the mutating/nocache [`SlotQueue`].
+    pub queue_root: PathBuf,
+    /// Max parallel slots for queued (mutating) commands.
+    pub queue_max_concurrent: usize,
+    /// TTL for coalesce cache entries (origin harness rules.conf `ttl=`).
+    pub coalesce_ttl: Duration,
+    /// Debounce window for the coalesce miss path (origin harness `debounce_ms`).
+    ///
+    /// When non-zero, [`CoalesceCache::with_lock`] waits then re-checks so an
+    /// in-window sibling store is shared (AC-008.6). [`Duration::ZERO`] disables.
+    pub coalesce_debounce: Duration,
 }
 
 /// A request to spawn a managed process.
@@ -254,6 +467,39 @@ pub struct SpawnRequest {
     pub cwd: PathBuf,
     /// Environment variable overrides passed to the child.
     pub env: Vec<(String, String)>,
+    /// Nocache / mutating-path [`SlotQueue`] priority (FR-008 AC-008.14).
+    pub queue_priority: QueuePriority,
+}
+
+impl SpawnRequest {
+    /// Build a spawn request with operator-resolved nocache queue priority.
+    pub fn new(argv: Vec<String>, cwd: PathBuf, env: Vec<(String, String)>) -> Self {
+        Self::from_operator(argv, cwd, env, None)
+    }
+
+    /// Build from argv/cwd/env with optional rules.conf `priority=` fallback.
+    ///
+    /// Non-empty [`QUEUE_PRIORITY_ENV`] wins over `rule_priority` (FR-008 AC-008.15).
+    pub fn from_operator(
+        argv: Vec<String>,
+        cwd: PathBuf,
+        env: Vec<(String, String)>,
+        rule_priority: Option<&str>,
+    ) -> Self {
+        Self {
+            argv,
+            cwd,
+            env,
+            queue_priority: resolve_operator_queue_priority(rule_priority),
+        }
+    }
+
+    /// Override nocache queue priority for this spawn.
+    #[must_use]
+    pub fn with_queue_priority(mut self, priority: QueuePriority) -> Self {
+        self.queue_priority = priority;
+        self
+    }
 }
 
 /// The outcome of a [`Hypervisor::run`] call.
@@ -268,6 +514,55 @@ pub struct SpawnOutcome {
     /// `true` when the result was served from the coalesce cache without
     /// actually spawning a new process.
     pub from_cache: bool,
+    /// Live FD/net watch sample captured at [`Hypervisor::run`] entry (FR-007).
+    pub resource_watch: ResourceWatchSample,
+    /// Nearest known-agent ancestor for the hypervisor process at spawn time (FR-006).
+    pub detected_agent: Option<DetectedAgent>,
+    /// FUSE write-provenance session id when intercept was active for this run (AC-009.13).
+    ///
+    /// `None` for cache hits, nocache queue routing, or cache-miss spawns where FUSE
+    /// mount did not become ready.
+    pub fuse_session_id: Option<String>,
+    /// Original backing cwd before FUSE intercept remap (AC-009.14).
+    ///
+    /// `Some` only when [`fuse_intercept_active`] is true; pairs with
+    /// [`fuse_mountpoint`](Self::fuse_mountpoint) for [`remap_fuse_path`](Self::remap_fuse_path).
+    pub fuse_backing: Option<PathBuf>,
+    /// Ephemeral FUSE mountpoint used as the child cwd (AC-009.14).
+    pub fuse_mountpoint: Option<PathBuf>,
+}
+
+impl SpawnOutcome {
+    fn with_resource_watch(mut self, watch: ResourceWatchSample) -> Self {
+        self.resource_watch = watch;
+        self
+    }
+
+    fn with_detected_agent(mut self, agent: Option<DetectedAgent>) -> Self {
+        self.detected_agent = agent;
+        self
+    }
+
+    /// Nearest known-agent family from proc-scan ancestor walk, if any (FR-006).
+    pub fn agent_family(&self) -> Option<&'static str> {
+        self.detected_agent.as_ref().map(|a| a.family)
+    }
+
+    /// `true` when a FUSE intercept session was active for this spawn outcome (AC-009.13).
+    pub fn fuse_intercept_active(&self) -> bool {
+        self.fuse_session_id.is_some()
+    }
+
+    /// Remap an absolute or mount-relative path to its backing equivalent (AC-009.14).
+    ///
+    /// Returns `None` when FUSE intercept was inactive or `path` lies outside the
+    /// mount subtree.
+    pub fn remap_fuse_path(&self, path: &Path) -> Option<PathBuf> {
+        match (&self.fuse_mountpoint, &self.fuse_backing) {
+            (Some(mp), Some(bk)) => sharecli_fuse::remap_mount_to_backing(mp, bk, path),
+            _ => None,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +571,17 @@ pub struct SpawnOutcome {
 
 impl From<CachedResult> for SpawnOutcome {
     fn from(c: CachedResult) -> Self {
-        Self { exit_code: c.exit_code, stdout: c.stdout, stderr: c.stderr, from_cache: true }
+        Self {
+            exit_code: c.exit_code,
+            stdout: c.stdout,
+            stderr: c.stderr,
+            from_cache: true,
+            resource_watch: ResourceWatchSample::default(),
+            detected_agent: None,
+            fuse_session_id: None,
+            fuse_backing: None,
+            fuse_mountpoint: None,
+        }
     }
 }
 
@@ -302,6 +607,9 @@ impl From<SpawnOutcome> for CachedResult {
 /// explicit error rather than silently dropping or degrading the spawn.
 pub struct Hypervisor {
     cache: CoalesceCache,
+    queue: SlotQueue,
+    /// Mutating flags that force queue routing (Feb `nocache_args`).
+    nocache_args: Vec<String>,
     #[allow(dead_code)]
     config: HypervisorConfig,
     thermal_gate: Arc<dyn ThermalGate>,
@@ -309,9 +617,14 @@ pub struct Hypervisor {
 
 impl Hypervisor {
     /// Create a new `Hypervisor` with its coalesce cache rooted at `cache_root`
-    /// and the production [`SystemThermalGate`].
+    /// and the production thermal gate (hardware + host agent contention).
+    ///
+    /// Queue root defaults to `{cache_root}/queue` with `max_concurrent = 1`.
     pub fn new(cache_root: impl Into<PathBuf>) -> Self {
-        Self::with_thermal_gate(cache_root, Arc::new(SystemThermalGate::new()))
+        let inner = Arc::new(SystemThermalGate::new());
+        let gate =
+            Arc::new(AgentAwareThermalGate::new(inner, AgentContentionThresholds::default()));
+        Self::with_thermal_gate(cache_root, gate)
     }
 
     /// Create a `Hypervisor` with an explicit [`ThermalGate`] implementation.
@@ -320,8 +633,112 @@ impl Hypervisor {
     /// implementation) to exercise gate behaviour without real hardware.
     pub fn with_thermal_gate(cache_root: impl Into<PathBuf>, gate: Arc<dyn ThermalGate>) -> Self {
         let cache_root = cache_root.into();
-        let config = HypervisorConfig { cache_root: cache_root.clone() };
-        Self { cache: CoalesceCache::new(cache_root), config, thermal_gate: gate }
+        let queue_root = cache_root.join("queue");
+        Self::with_options(
+            HypervisorConfig {
+                cache_root,
+                queue_root,
+                queue_max_concurrent: 1,
+                coalesce_ttl: CoalesceCache::DEFAULT_TTL,
+                coalesce_debounce: Duration::ZERO,
+            },
+            gate,
+            DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect(),
+        )
+    }
+
+    /// Production hypervisor from a full [`HypervisorConfig`] (harness rules.conf wiring).
+    pub fn from_config(config: HypervisorConfig) -> Self {
+        let inner = Arc::new(SystemThermalGate::new());
+        let gate =
+            Arc::new(AgentAwareThermalGate::new(inner, AgentContentionThresholds::default()));
+        Self::with_options(
+            config,
+            gate,
+            DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect(),
+        )
+    }
+
+    /// Test / injection constructor with explicit config and thermal gate.
+    pub fn from_config_with_gate(config: HypervisorConfig, gate: Arc<dyn ThermalGate>) -> Self {
+        Self::with_options(config, gate, vec![])
+    }
+
+    /// Full constructor: coalesce cache + slot queue + nocache flag list + thermal gate.
+    ///
+    /// Hypervisor / external callers that need a custom queue root or mutating-flag
+    /// set should use this (or [`Self::queue`] after construction).
+    pub fn with_options(
+        config: HypervisorConfig,
+        gate: Arc<dyn ThermalGate>,
+        nocache_args: Vec<String>,
+    ) -> Self {
+        let cache = CoalesceCache::with_options(
+            config.cache_root.clone(),
+            config.coalesce_ttl,
+            config.coalesce_debounce,
+        );
+        let queue = SlotQueue::new(config.queue_root.clone(), config.queue_max_concurrent);
+        Self { cache, queue, nocache_args, config, thermal_gate: gate }
+    }
+
+    /// Borrow the mutating-path [`SlotQueue`] (Hypervisor API for external callers).
+    pub fn queue(&self) -> &SlotQueue {
+        &self.queue
+    }
+
+    /// Configured coalesce TTL. Wired into every [`Hypervisor::run`] coalesce path.
+    pub fn coalesce_ttl(&self) -> Duration {
+        self.cache.ttl()
+    }
+
+    /// Configured coalesce debounce window (zero = disabled). Wired into every
+    /// [`Hypervisor::run`] coalesce path via [`CoalesceCache::with_lock`].
+    pub fn coalesce_debounce(&self) -> Duration {
+        self.cache.debounce()
+    }
+
+    /// Configured SlotQueue parallelism (harness `max_concurrent=`).
+    pub fn queue_max_concurrent(&self) -> usize {
+        self.config.queue_max_concurrent
+    }
+
+    /// Configured nocache / mutating flags (Feb `nocache_args`).
+    pub fn nocache_args(&self) -> &[String] {
+        &self.nocache_args
+    }
+
+    /// Replace the nocache flag list (e.g. from a rules.conf fragment).
+    pub fn set_nocache_args(&mut self, flags: Vec<String>) {
+        self.nocache_args = flags;
+    }
+
+    /// Run exclusively through the SlotQueue lane (harness `queue` / `priority_queue`).
+    ///
+    /// Skips coalesce cache lookup regardless of argv. Used by harness-native
+    /// strategies that must serialize on the nocache lane (FR-008 AC-008.16).
+    pub async fn run_queued(&self, req: SpawnRequest, lane: &str) -> Result<SpawnOutcome> {
+        self.thermal_gate_check().await?;
+
+        let watch = ResourceWatchSample::capture()?;
+        let detected_agent = detect_caller_agent();
+        debug!(lane, argv = ?req.argv, "hypervisor::run_queued — queue lane");
+        record_nocache_run();
+        let outcome =
+            self.queue.with_slot(lane, req.queue_priority, || spawn_process_sync(&req))?;
+        Ok(SpawnOutcome {
+            exit_code: outcome.exit_code,
+            stdout: outcome.stdout,
+            stderr: outcome.stderr,
+            from_cache: false,
+            resource_watch: ResourceWatchSample::default(),
+            detected_agent: None,
+            fuse_session_id: None,
+            fuse_backing: None,
+            fuse_mountpoint: None,
+        }
+        .with_resource_watch(watch)
+        .with_detected_agent(detected_agent))
     }
 
     /// Run a managed spawn with Lock-Wait-Cache coalescing.
@@ -339,9 +756,10 @@ impl Hypervisor {
     ///
     /// # FUSE IO-intercept
     /// On a cache miss the hypervisor attempts to mount a sharecli-fuse intercept
-    /// layer over the child's `cwd`.  When the mount succeeds the child runs
-    /// against the FUSE mountpoint — all filesystem access goes through the
-    /// intercept layer for build-system cache sharing.  FUSE is **best-effort**:
+    /// layer over the child's `cwd`, using a write-provenance session id derived
+    /// from the coalesce [`CommandKey`] (AC-009.12).  When the mount succeeds the
+    /// child runs against the FUSE mountpoint — all filesystem access goes through
+    /// the intercept layer for build-system cache sharing.  FUSE is **best-effort**:
     /// if mounting fails the spawn proceeds without interception.
     ///
     /// # Coalescing behaviour
@@ -360,6 +778,33 @@ impl Hypervisor {
         // ── Thermal gate ─────────────────────────────────────────────────────
         self.thermal_gate_check().await?;
 
+        // ── Resource watch (FR-007 live hypervisor path) ───────────────────────
+        let watch = ResourceWatchSample::capture()?;
+        let detected_agent = detect_caller_agent();
+        if let Some(ref agent) = detected_agent {
+            debug!(
+                pid = agent.pid,
+                family = agent.family,
+                "hypervisor::run — caller under known agent"
+            );
+        }
+        debug!(
+            fd_count = watch.fd_count,
+            net_rx_bytes = watch.net_rx_bytes,
+            net_tx_bytes = watch.net_tx_bytes,
+            mem_rss_bytes = watch.mem_rss_bytes,
+            load_1m = watch.load_1m,
+            "hypervisor::run — resource watch sample"
+        );
+
+        // ── nocache_args → queue (never coalesce) ────────────────────────────
+        // Feb harness: if argv contains a mutating flag, fall back to queue.
+        if has_nocache_arg(&req.argv, &self.nocache_args) {
+            let lane = queue_lane_from_argv(&req.argv).to_string();
+            debug!(lane = %lane, argv = ?req.argv, "hypervisor::run — nocache → queue");
+            return self.run_queued(req, &lane).await;
+        }
+
         // ── Cache lookup ─────────────────────────────────────────────────────
         // NOTE: the cache key uses the *original* `req.cwd` so that identical
         // commands produce the same key regardless of whether FUSE is active.
@@ -370,19 +815,32 @@ impl Hypervisor {
         // accurately report `from_cache` for the caller.
         if let Some(cached) = self.cache.lookup(&key)? {
             debug!(key = %key.0, "hypervisor::run — cache hit");
+            record_coalesce_lookup_hit();
             return Ok(SpawnOutcome {
                 exit_code: cached.exit_code,
                 stdout: cached.stdout,
                 stderr: cached.stderr,
                 from_cache: true,
-            });
+                resource_watch: ResourceWatchSample::default(),
+                detected_agent: None,
+                fuse_session_id: None,
+                fuse_backing: None,
+                fuse_mountpoint: None,
+            }
+            .with_resource_watch(watch)
+            .with_detected_agent(detected_agent.clone()));
         }
 
         // ── FUSE intercept (cache-miss only) ─────────────────────────────────
         // Mount the IO-intercept layer over the child's working directory.
-        // `FuseGuard::try_mount` never fails — if FUSE is unavailable a no-op
-        // guard is returned and the spawn proceeds normally.
-        let fuse_guard = FuseGuard::try_mount(&req.cwd);
+        // `FuseGuard::try_mount` never fails the spawn — if FUSE is unavailable
+        // or readiness never appears, a loud error is reported and a no-op
+        // guard is returned so the spawn proceeds without interception.
+        let fuse_session = fuse_session_id_for_command_key(&key);
+        let fuse_guard = FuseGuard::try_mount(&req.cwd, &fuse_session);
+        let fuse_session_id = fuse_guard.mountpoint().map(|_| fuse_session.clone());
+        let fuse_backing = fuse_guard.mountpoint().map(|_| req.cwd.clone());
+        let fuse_mountpoint = fuse_guard.mountpoint().map(|p| p.to_path_buf());
 
         // Build an effective SpawnRequest whose cwd points at the FUSE
         // mountpoint (or the original cwd when FUSE is inactive).
@@ -404,25 +862,39 @@ impl Hypervisor {
         // Lock-Wait-Cache: spawn is the closure called only on a cache miss.
         // We use `effective_req` (with a potentially FUSE-wrapped cwd)
         // inside the closure to avoid any borrow conflict with `req`.
-        let cached: CachedResult = self.cache.with_lock(&key, || {
-            // Blocking spawn — `with_lock` is a sync callback.
-            // Uses `effective_req` (owned clone, not borrowing from `req`).
-            let outcome = spawn_process_sync(&effective_req)?;
+        let (cached, hit_kind) = self.coalesce_via_lock(&key, &effective_req)?;
+
+        Ok(SpawnOutcome {
+            exit_code: cached.exit_code,
+            stdout: cached.stdout,
+            stderr: cached.stderr,
+            from_cache: hit_kind.shared_from_cache(),
+            resource_watch: ResourceWatchSample::default(),
+            detected_agent: None,
+            fuse_session_id,
+            fuse_backing,
+            fuse_mountpoint,
+        }
+        .with_resource_watch(watch)
+        .with_detected_agent(detected_agent))
+    }
+
+    /// Coalesce miss path: advisory flock + debounce re-check + optional spawn.
+    ///
+    /// Every Hypervisor coalesce miss MUST flow through here so
+    /// [`CoalesceCache::with_lock_detailed`] applies the configured debounce window.
+    fn coalesce_via_lock(
+        &self,
+        key: &sharecli_ipc::CommandKey,
+        effective_req: &SpawnRequest,
+    ) -> Result<(CachedResult, CoalesceHitKind)> {
+        self.cache.with_lock_detailed(key, || {
+            let outcome = spawn_process_sync(effective_req)?;
             Ok(CachedResult {
                 exit_code: outcome.exit_code,
                 stdout: outcome.stdout,
                 stderr: outcome.stderr,
             })
-        })?;
-
-        // We came through `with_lock` — the result is fresh (spawned by us
-        // or by a sibling that held the lock; either way, not in the cache
-        // when we last checked before entering with_lock).
-        Ok(SpawnOutcome {
-            exit_code: cached.exit_code,
-            stdout: cached.stdout,
-            stderr: cached.stderr,
-            from_cache: false,
         })
     }
 
@@ -475,6 +947,16 @@ impl Hypervisor {
 // Process execution
 // ---------------------------------------------------------------------------
 
+/// Lane key for SlotQueue routing from argv (basename of argv[0]).
+fn queue_lane_from_argv(argv: &[String]) -> &str {
+    argv.first()
+        .map(|s| s.as_str())
+        .unwrap_or("unknown")
+        .rsplit('/')
+        .next()
+        .unwrap_or("unknown")
+}
+
 /// Spawn `req.argv` synchronously (blocking) and capture its output.
 ///
 /// Used inside `CoalesceCache::with_lock` which takes a synchronous closure.
@@ -490,7 +972,17 @@ fn spawn_process_sync(req: &SpawnRequest) -> Result<SpawnOutcome> {
         .with_context(|| format!("failed to spawn {:?}", req.argv))?;
 
     let exit_code = output.status.code().unwrap_or(-1);
-    Ok(SpawnOutcome { exit_code, stdout: output.stdout, stderr: output.stderr, from_cache: false })
+    Ok(SpawnOutcome {
+        exit_code,
+        stdout: output.stdout,
+        stderr: output.stderr,
+        from_cache: false,
+        resource_watch: ResourceWatchSample::default(),
+        detected_agent: None,
+        fuse_session_id: None,
+        fuse_backing: None,
+        fuse_mountpoint: None,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -539,6 +1031,11 @@ mod tests {
         return vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), msg.to_string()];
     }
 
+    /// Hypervisor with Allow gate and no agent-contention wrapper (unit tests).
+    fn allow_hypervisor(dir: &Path) -> Hypervisor {
+        Hypervisor::with_thermal_gate(dir, Arc::new(FakeThermalGate::new(ThermalDecision::Allow)))
+    }
+
     // ── Existing cache-coalescing tests ──────────────────────────────────────
 
     /// (a) Running a simple echo command for the first time should succeed with
@@ -546,10 +1043,10 @@ mod tests {
     #[tokio::test]
     async fn run_echo_fresh() {
         let dir = TempDir::new().expect("tempdir");
-        let hv = Hypervisor::new(dir.path());
+        let hv = allow_hypervisor(dir.path());
 
         let req =
-            SpawnRequest { argv: echo_argv("hello"), cwd: dir.path().to_path_buf(), env: vec![] };
+            SpawnRequest { argv: echo_argv("hello"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
 
         let outcome = hv.run(req).await.expect("run should succeed");
 
@@ -565,10 +1062,10 @@ mod tests {
     #[tokio::test]
     async fn run_echo_coalesces_on_second_call() {
         let dir = TempDir::new().expect("tempdir");
-        let hv = Hypervisor::new(dir.path());
+        let hv = allow_hypervisor(dir.path());
 
         let req =
-            SpawnRequest { argv: echo_argv("world"), cwd: dir.path().to_path_buf(), env: vec![] };
+            SpawnRequest { argv: echo_argv("world"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
 
         // First call — live spawn.
         let first = hv.run(req.clone()).await.expect("first run");
@@ -595,6 +1092,7 @@ mod tests {
             argv: echo_argv("green-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         let outcome = hv.run(req).await.expect("Green gate must allow spawn");
@@ -614,6 +1112,7 @@ mod tests {
             argv: echo_argv("yellow-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         // Yellow must not block or error.
@@ -636,6 +1135,7 @@ mod tests {
             argv: echo_argv("red-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         let result = hv.run(req).await;
@@ -680,7 +1180,7 @@ mod tests {
         let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
 
         let req =
-            SpawnRequest { argv: echo_argv("recover"), cwd: dir.path().to_path_buf(), env: vec![] };
+            SpawnRequest { argv: echo_argv("recover"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
 
         // With `start_paused` tokio::time::sleep resolves immediately in tests.
         let outcome = hv.run(req).await.expect("should succeed after one RED retry");
@@ -693,27 +1193,37 @@ mod tests {
 
     /// FuseGuard::try_mount never panics and returns a valid object on all
     /// platforms.  On non-FUSE platforms the guard is a no-op; on Linux/macOS
-    /// it may or may not succeed depending on the FUSE kernel module.
+    /// it may or may not succeed depending on the FUSE kernel module. When the
+    /// mount is not ready, mountpoint() MUST be None (never an unready Some).
     #[test]
     fn fuse_guard_try_mount_never_panics() {
         let dir = TempDir::new().expect("tempdir");
-        let guard = FuseGuard::try_mount(dir.path());
+        let guard = FuseGuard::try_mount(dir.path(), "hv-test-session");
         // The guard object is valid regardless of whether FUSE is active.
         // Dropping it must not panic.
         drop(guard);
     }
 
-    /// When FUSE is active the mountpoint must differ from the backing path.
-    /// When FUSE is inactive mountpoint() returns None — the no-op guard.
+    /// When FUSE is active the mountpoint must differ from the backing path
+    /// and the readiness marker must be readable through it. When FUSE is
+    /// inactive mountpoint() returns None — the no-op guard.
     #[test]
     fn fuse_guard_mountpoint_returns_path_or_none() {
         let dir = TempDir::new().expect("tempdir");
-        let guard = FuseGuard::try_mount(dir.path());
+        let guard = FuseGuard::try_mount(dir.path(), "hv-test-session");
         match guard.mountpoint() {
             Some(mp) => {
                 // FUSE is active — mountpoint must be different from backing.
                 assert_ne!(mp, dir.path(), "mountpoint must differ from backing");
                 assert!(mp.starts_with(std::env::temp_dir()), "mountpoint must be under temp dir");
+                let probe_found = std::fs::read_dir(mp)
+                    .expect("read mountpoint")
+                    .filter_map(|e| e.ok())
+                    .any(|e| e.file_name().to_string_lossy().starts_with(FUSE_READY_MARKER));
+                assert!(
+                    probe_found,
+                    "readiness marker must be visible through mountpoint before Some is returned"
+                );
             }
             None => {
                 // FUSE not available — best-effort, still valid.
@@ -721,17 +1231,147 @@ mod tests {
         }
     }
 
+    /// FR-009 / AC-009.14 — FuseGuard stays mounted until drop (spawn/teardown lifecycle).
+    #[test]
+    fn fuse_guard_teardown_after_drop() {
+        let dir = TempDir::new().expect("tempdir");
+        let mountpoint = {
+            let guard = FuseGuard::try_mount(dir.path(), "hv-teardown-session");
+            guard.mountpoint().map(|p| p.to_path_buf())
+        };
+        if let Some(mp) = mountpoint {
+            assert_ne!(mp, dir.path());
+            // Guard drop runs force-unmount; mount tempdir may remain but must not
+            // still expose the readiness marker tree as a live FUSE mount.
+            let still_mounted = std::fs::read_dir(&mp).ok().is_some_and(|mut rd| {
+                rd.any(|e| {
+                    e.ok().is_some_and(|ent| {
+                        ent.file_name().to_string_lossy().starts_with(FUSE_READY_MARKER)
+                    })
+                })
+            });
+            assert!(!still_mounted, "FUSE intercept MUST tear down on guard drop (AC-009.14)");
+        }
+    }
+
+    /// Readiness poll reports mount failure immediately when fail_rx fires.
+    #[test]
+    fn fuse_ready_poll_fails_loudly_on_mount_error() {
+        let (tx, rx) = mpsc::channel();
+        tx.send("simulated mount boom".into()).expect("send");
+        let probe = Path::new("/tmp/sharecli-fuse-ready-poll-never");
+        let err =
+            wait_fuse_mount_ready(probe, &rx, Duration::from_secs(2), Duration::from_millis(10))
+                .expect_err("must fail when mount reports error");
+        assert!(err.contains("mount failed"), "loud error must mention mount failure: {err}");
+        assert!(
+            err.contains("simulated mount boom"),
+            "loud error must include mount message: {err}"
+        );
+    }
+
+    /// Readiness poll times out with a loud message when the probe never appears.
+    #[test]
+    fn fuse_ready_poll_times_out_loudly_when_probe_missing() {
+        let (_tx, rx) = mpsc::channel::<String>();
+        let probe = Path::new("/tmp/sharecli-fuse-ready-poll-missing-xyz");
+        let err =
+            wait_fuse_mount_ready(probe, &rx, Duration::from_millis(80), Duration::from_millis(20))
+                .expect_err("must time out when probe never appears");
+        assert!(err.contains("timed out"), "loud error must mention timeout: {err}");
+        assert!(err.contains("sharecli-fuse"), "loud error must identify sharecli-fuse: {err}");
+    }
+
+    /// Readiness poll succeeds when the probe file becomes readable.
+    #[test]
+    fn fuse_ready_poll_succeeds_when_probe_appears() {
+        let dir = TempDir::new().expect("tempdir");
+        let probe = dir.path().join("appears.txt");
+        let (_tx, rx) = mpsc::channel::<String>();
+        let probe_bg = probe.clone();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(30));
+            std::fs::write(&probe_bg, b"ready").expect("write probe");
+        });
+        wait_fuse_mount_ready(&probe, &rx, Duration::from_secs(2), Duration::from_millis(10))
+            .expect("probe must become ready");
+    }
+
+    /// AC-009.12 — FUSE session id is deterministic and keyed from CommandKey prefix.
+    #[test]
+    fn fuse_session_id_for_command_key_is_deterministic() {
+        let key = command_key(&["cargo".into(), "build".into()], Path::new("/repo"), &[]);
+        let a = fuse_session_id_for_command_key(&key);
+        let b = fuse_session_id_for_command_key(&key);
+        assert_eq!(a, b);
+        assert!(a.starts_with("hv-"));
+        assert_eq!(a.len(), 19);
+    }
+
+    /// HypervisorConfig.coalesce_debounce is plumbed into CoalesceCache so every
+    /// Hypervisor::run coalesce path uses with_lock's debounce re-check (AC-008.6).
+    #[test]
+    fn hypervisor_coalesce_debounce_wired_from_config() {
+        let dir = TempDir::new().expect("tempdir");
+        let debounce = Duration::from_millis(75);
+        let hv = Hypervisor::with_options(
+            HypervisorConfig {
+                cache_root: dir.path().join("cache"),
+                queue_root: dir.path().join("queue"),
+                queue_max_concurrent: 1,
+                coalesce_ttl: CoalesceCache::DEFAULT_TTL,
+                coalesce_debounce: debounce,
+            },
+            Arc::new(FakeThermalGate::new(ThermalDecision::Allow)),
+            vec![],
+        );
+        assert_eq!(
+            hv.coalesce_debounce(),
+            debounce,
+            "AC-008.6: Hypervisor coalesce path MUST carry config debounce"
+        );
+    }
+
+    /// Default Hypervisor constructors leave debounce disabled (opt-in via config).
+    #[test]
+    fn hypervisor_default_debounce_is_zero() {
+        let dir = TempDir::new().expect("tempdir");
+        let hv = Hypervisor::new(dir.path());
+        assert_eq!(hv.coalesce_debounce(), Duration::ZERO);
+    }
+
+    /// FR-008 / AC-008.16 — `run_queued` never serves coalesce cache.
+    #[tokio::test]
+    async fn hypervisor_run_queued_skips_coalesce_cache() {
+        let dir = TempDir::new().expect("tempdir");
+        let hv = allow_hypervisor(dir.path());
+        let req = SpawnRequest::from_operator(
+            echo_argv("queued-twice"),
+            dir.path().to_path_buf(),
+            vec![],
+            None,
+        );
+
+        let first = hv.run_queued(req.clone(), "echo").await.expect("first run_queued");
+        assert!(!first.from_cache, "AC-008.16: run_queued MUST NOT use cache on first run");
+
+        let second = hv.run_queued(req, "echo").await.expect("second run_queued");
+        assert!(!second.from_cache, "AC-008.16: run_queued MUST NOT use cache on replay");
+        assert_eq!(second.exit_code, 0);
+    }
+
     /// With FUSE wired into the run() path, a spawn must still succeed
     /// regardless of whether the intercept is active.
     #[tokio::test]
     async fn fuse_io_run_succeeds_with_or_without_intercept() {
         let dir = TempDir::new().expect("tempdir");
-        let hv = Hypervisor::new(dir.path());
+        let hv = allow_hypervisor(dir.path());
 
         let req = SpawnRequest {
             argv: echo_argv("fuse-run"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
+        queue_priority: QueuePriority::Normal,
         };
 
         let outcome = hv.run(req).await.expect("run must succeed with fuse-io wiring");
@@ -757,5 +1397,53 @@ mod tests {
         let b = a;
         assert_eq!(a, b);
         assert_ne!(ThermalDecision::Allow, ThermalDecision::Refuse);
+    }
+
+    #[test]
+    fn combine_thermal_agent_decision_escalates_allow_to_warn() {
+        assert_eq!(
+            combine_thermal_agent_decision(ThermalDecision::Allow, AgentContentionTier::Warn),
+            ThermalDecision::Warn
+        );
+    }
+
+    #[test]
+    fn combine_thermal_agent_decision_agent_refuse_overrides_allow() {
+        assert_eq!(
+            combine_thermal_agent_decision(ThermalDecision::Allow, AgentContentionTier::Refuse),
+            ThermalDecision::Refuse
+        );
+    }
+
+    /// FR-011 / AC-011.4 — high agent inventory refuses spawn even when thermal Allows.
+    #[tokio::test(start_paused = true)]
+    async fn agent_aware_gate_refuses_at_contention_limit() {
+        fn eight_agents() -> usize {
+            8
+        }
+        let dir = TempDir::new().expect("tempdir");
+        let inner = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+        let gate = Arc::new(AgentAwareThermalGate::with_agent_count(
+            inner,
+            AgentContentionThresholds::default(),
+            eight_agents,
+        ));
+        let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
+
+        let err = hv
+            .run(SpawnRequest {
+                argv: echo_argv("gated"),
+                cwd: dir.path().to_path_buf(),
+                env: vec![],
+        queue_priority: QueuePriority::Normal,
+            })
+            .await
+            .expect_err("agent contention Refuse MUST err after retries");
+
+        let msg = err.to_string();
+        assert!(
+            msg.contains("thermally throttled"),
+            "error must mention thermally throttled, got: {msg}"
+        );
     }
 }

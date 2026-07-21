@@ -5,6 +5,7 @@ mod causal_order;
 mod circuit_breaker;
 mod coalesce;
 mod debounce;
+mod hypervisor_lane;
 mod incremental;
 mod jobserver;
 mod load_balance;
@@ -58,41 +59,61 @@ pub fn execute(req: ExecRequest<'_>) -> Result<i32, String> {
     let full_args: Vec<&str> = req.args.iter().map(|s| s.as_str()).collect();
 
     match req.strategy {
-        "passthrough" => coalesce::run(req.real_cmd, &full_args),
-        "coalesce" | "cache" => coalesce::run(req.real_cmd, &full_args),
-        "queue" | "priority_queue" => queue::run(req.real_cmd, &full_args),
-        "debounce" => debounce::run(req.real_cmd, req.opts.debounce_ms, &full_args),
+        "passthrough" => process::run_status(req.harness_home, req.real_cmd, &full_args, req.opts),
+        "coalesce" | "cache" => coalesce::run(
+            req.harness_home,
+            req.real_cmd,
+            req.cmd_name,
+            &full_args,
+            req.opts,
+        ),
+        "queue" | "priority_queue" => {
+            queue::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
+        }
+        "debounce" => debounce::run(
+            req.harness_home,
+            req.real_cmd,
+            req.cmd_name,
+            &full_args,
+            req.opts,
+        ),
         "retry" => retry::run(
+            req.harness_home,
             req.real_cmd,
             req.opts.retry_max,
             req.opts.retry_backoff_ms,
             req.opts.retry_jitter,
             &full_args,
+            req.opts,
         ),
-        "incremental" => incremental::run(req.real_cmd, &full_args),
+        "incremental" => incremental::run(req.harness_home, req.real_cmd, &full_args, req.opts),
         "circuit_breaker" => circuit_breaker::run(
+            req.harness_home,
             req.real_cmd,
             req.opts.breaker_threshold,
             req.opts.breaker_window,
             &full_args,
+            req.opts,
         ),
-        "resource_throttle" => resource_throttle::run(req.real_cmd, &full_args),
-        "jobserver" => jobserver::run(req.real_cmd, &full_args),
-        "load_balance" => load_balance::run(req.real_cmd, &full_args),
-        "speculative" => speculative::run(req.real_cmd, &full_args),
-        "proactive_warm" => proactive_warm::run(req.real_cmd, &full_args),
-        "batch" => batch::run(req.real_cmd, &full_args),
-        "causal_order" => causal_order::run(req.real_cmd, &full_args),
+        "resource_throttle" => {
+            resource_throttle::run(req.harness_home, req.real_cmd, &full_args, req.opts)
+        }
+        "jobserver" => jobserver::run(req.harness_home, req.real_cmd, &full_args, req.opts),
+        "load_balance" => load_balance::run(req.harness_home, req.real_cmd, &full_args, req.opts),
+        "speculative" => speculative::run(req.harness_home, req.real_cmd, &full_args, req.opts),
+        "proactive_warm" => {
+            proactive_warm::run(req.harness_home, req.real_cmd, &full_args, req.opts)
+        }
+        "batch" => batch::run(req.harness_home, req.real_cmd, &full_args, req.opts),
+        "causal_order" => causal_order::run(req.harness_home, req.real_cmd, &full_args, req.opts),
         _ => {
             let _ = (
-                req.harness_home,
                 req.cmd_name,
                 req.subcmd,
                 req.cache_key,
-                req.opts,
                 req.agent_name,
             );
-            coalesce::run(req.real_cmd, &full_args)
+            coalesce::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
         }
     }
 }

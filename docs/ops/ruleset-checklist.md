@@ -6,7 +6,7 @@ Audit-v38 **C04 L34** (signed commits) and **C04 L36** (maintainer 2FA) — org-
 
 | Pillar | Document | Current score |
 |--------|----------|---------------|
-| L34 Signed commits | [`signed-commits.md`](signed-commits.md) | 2 (soft CI + DCO/GPG docs; ruleset not applied) |
+| L34 Signed commits | [`signed-commits.md`](signed-commits.md), [`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md) | 2 (ruleset **19181236** active; Verified badge on `main` still pending) |
 | L36 Maintainer 2FA | [`maintainer-2fa.md`](maintainer-2fa.md) | 1 (project policy; org enforce pending) |
 
 ## Preconditions (do not skip)
@@ -49,11 +49,12 @@ Until org enforce is on, [`maintainer-2fa.md`](maintainer-2fa.md) remains the pr
 
 | Control | In-repo evidence | Enforced on GitHub |
 |---------|------------------|-------------------|
-| L34 DCO + soft verified CI | `CONTRIBUTING.md`, `dco-soft.yml`, `gpg-soft.yml`, [`signed-commits.md`](signed-commits.md) | Ruleset **Require signed commits** — pending |
+| L34 DCO + soft verified CI | `CONTRIBUTING.md`, `dco-soft.yml`, `gpg-soft.yml`, [`signed-commits.md`](signed-commits.md) | Ruleset **19181236** (`main-signed-commits`) — **active** |
+| L34 operator Verified lift | [`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md) | Green **Verified** badge on `main` — pending |
 | L34 ruleset runbook | This file | N/A (checklist only) |
 | L36 maintainer 2FA policy | [`maintainer-2fa.md`](maintainer-2fa.md), `SECURITY.md` | Org **Require 2FA** — pending |
 
 ## Score impact
 
-- **L34** remains **2** until the ruleset step is applied and verified on `main`.
+- **L34** remains **2** until a maintainer commit on `main` shows **Verified** (ruleset already applied; see [`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md)).
 - **L36** rises to **2** when org-wide 2FA enforce is active (or all owners use hardware keys with org policy documented).

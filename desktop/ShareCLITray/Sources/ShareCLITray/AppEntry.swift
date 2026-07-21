@@ -51,15 +51,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         btn.action = #selector(togglePopover)
         btn.target = self
 
-        // Keep title updated from live health
+        // Keep title + icon updated from live monitoring.report gate visuals (AC-007.57, AC-007.62).
         NotificationCenter.default.addObserver(
             forName: .sharecliHealthChanged,
             object: nil,
             queue: .main
         ) { [weak self] note in
-            guard let snap = note.object as? HealthSnapshot else { return }
-            self?.statusItem.button?.title =
-                " \(snap.managed_processes) | \(snap.used_memory_mb)M"
+            guard let self else { return }
+            let snap = note.object as? HealthSnapshot
+            let visual: TrayGateVisual
+            if let snap {
+                visual = OperatorDisplay.resolveTrayGateVisual(gate: snap.gate, connected: true)
+                self.statusItem.button?.title = OperatorDisplay.formatMenuBarTitleLine(
+                    visual: visual,
+                    health: snap
+                )
+            } else {
+                visual = OperatorDisplay.resolveTrayGateVisual(
+                    thermalPressure: "UNAVAILABLE",
+                    gateDecision: "UNAVAILABLE",
+                    connected: false
+                )
+                self.statusItem.button?.title = OperatorDisplay.formatMenuBarTitleOfflineLine(
+                    visual: visual
+                )
+            }
+            self.statusItem.button?.image = NSImage(
+                systemSymbolName: visual.swiftSymbolName,
+                accessibilityDescription: "ShareCLI \(visual.badgeLabel)"
+            )
+            switch visual.severity {
+            case .normal: self.statusItem.button?.contentTintColor = .systemGreen
+            case .warning, .offline: self.statusItem.button?.contentTintColor = .systemOrange
+            case .critical: self.statusItem.button?.contentTintColor = .systemRed
+            }
         }
     }
 

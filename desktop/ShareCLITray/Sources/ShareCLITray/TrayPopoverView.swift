@@ -14,6 +14,8 @@ struct TrayPopoverView: View {
             headerBar
             Divider()
             statsRow
+            operatorSection
+            poolStatusSection
             Divider()
             processPreview
             Divider()
@@ -27,11 +29,12 @@ struct TrayPopoverView: View {
 
     private var headerBar: some View {
         HStack {
-            Image(systemName: "cpu")
-                .foregroundStyle(.blue)
+            Image(systemName: gateVisual.swiftSymbolName)
+                .foregroundStyle(gateVisual.swiftColor)
             Text("ShareCLI")
                 .font(.headline)
             Spacer()
+            thermalBadge
             Circle()
                 .fill(state.isConnected ? Color.green : Color.red)
                 .frame(width: 8, height: 8)
@@ -41,6 +44,29 @@ struct TrayPopoverView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    private var gateVisual: TrayGateVisual {
+        if let h = state.health, state.isConnected {
+            return OperatorDisplay.resolveTrayGateVisual(gate: h.gate, connected: true)
+        }
+        return OperatorDisplay.resolveTrayGateVisual(
+            thermalPressure: "UNAVAILABLE",
+            gateDecision: "UNAVAILABLE",
+            connected: false
+        )
+    }
+
+    private var thermalBadge: some View {
+        Text(gateVisual.badgeLabel)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .foregroundStyle(gateVisual.swiftColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(gateVisual.swiftColor, lineWidth: 1)
+            )
     }
 
     // MARK: - Stats row
@@ -60,13 +86,47 @@ struct TrayPopoverView: View {
             )
             Divider().frame(height: 36)
             statCell(
-                icon: state.health?.healthy == true ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
-                value: state.health?.healthy == true ? "Healthy" : "Warning",
+                icon: gateVisual.swiftSymbolName,
+                value: gateVisual.badgeLabel,
                 label: "Status",
-                iconColor: state.health?.healthy == true ? .green : .orange
+                iconColor: gateVisual.swiftColor
             )
         }
         .padding(.vertical, 8)
+    }
+
+    // MARK: - Operator gate / host_watch (AC-007.56)
+
+    @ViewBuilder
+    private var operatorSection: some View {
+        if let h = state.health, state.isConnected {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(OperatorDisplay.formatOperatorTrayLines(gate: h.gate, host: h.host_watch), id: \.self) { line in
+                    Text(line)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+    }
+
+    @ViewBuilder
+    private var poolStatusSection: some View {
+        if let pool = state.poolStatus, let status = state.statusSnapshot, state.isConnected {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(OperatorDisplay.formatPoolStatusOperatorLines(pool: pool, status: status), id: \.self) { line in
+                    Text(line)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
     }
 
     private func statCell(

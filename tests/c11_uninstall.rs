@@ -7,10 +7,7 @@ use std::process::Command;
 #[test]
 fn fr003_uninstall_prints_package_manager_guidance() {
     let bin = env!("CARGO_BIN_EXE_sharecli");
-    let output = Command::new(bin)
-        .arg("uninstall")
-        .output()
-        .expect("run sharecli uninstall");
+    let output = Command::new(bin).arg("uninstall").output().expect("run sharecli uninstall");
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("cargo uninstall sharecli"));

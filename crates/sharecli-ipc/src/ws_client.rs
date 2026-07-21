@@ -158,7 +158,11 @@ mod tests {
     }
 
     fn make_health_json() -> String {
-        r#"{"type":"health_update","health":{"managed_processes":3,"used_memory_mb":512,"total_memory_mb":16384,"healthy":true}}"#.to_owned()
+        r#"{"type":"health_update","health":{"managed_processes":3,"used_memory_mb":512,"total_memory_mb":16384,"healthy":true,"gate":{"thermal_pressure":"GREEN","detected_agents":0,"agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},"host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,"mem_rss_bytes":4,"load_1m":0.5},"pool":{"node_total":2,"node_idle":1,"bun_total":1,"bun_idle":0,"max_per_type":4,"healthy":true,"issues":[],"gate":{"thermal_pressure":"GREEN","detected_agents":0,"agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},"host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,"mem_rss_bytes":4,"load_1m":0.5}},"status":{"total_processes":2,"agents":[],"scanned":50,"watched":1,"gate":{"thermal_pressure":"GREEN","detected_agents":0,"agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},"host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,"mem_rss_bytes":4,"load_1m":0.5}}}}"#.to_owned()
+    }
+
+    fn make_legacy_health_json() -> String {
+        r#"{"type":"health_update","health":{"managed_processes":3,"used_memory_mb":512,"total_memory_mb":16384,"healthy":true,"gate":{"thermal_pressure":"GREEN","detected_agents":0,"agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},"host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,"mem_rss_bytes":4,"load_1m":0.5}}}"#.to_owned()
     }
 
     fn make_thermal_json() -> String {
@@ -189,15 +193,40 @@ mod tests {
 
     #[test]
     fn deserialise_health_update() {
-        let msg = ClientMessage::from_json(&make_health_json());
+        let raw = make_health_json();
+        let msg = ClientMessage::from_json(&raw);
         match msg {
             ClientMessage::HealthUpdate(h) => {
                 assert_eq!(h.managed_processes, 3);
                 assert_eq!(h.used_memory_mb, 512);
                 assert!(h.healthy);
+                assert_eq!(h.gate.gate_decision, "ADMIT");
+                assert_eq!(h.host_watch.load_1m, 0.5);
+                assert_eq!(h.pool.node_total, 2);
+                assert!(h.pool.healthy);
+                assert_eq!(h.status.scanned, 50);
+                assert_eq!(h.status.watched, 1);
+                let gate_pos = raw.find("\"gate\"").expect("gate key in health_update JSON");
+                let host_pos = raw.find("\"host_watch\"").expect("host_watch key in health_update JSON");
+                let pool_pos = raw.find("\"pool\"").expect("pool key in health_update JSON (AC-007.80)");
+                let status_pos =
+                    raw.find("\"status\"").expect("status key in health_update JSON (AC-007.80)");
+                assert!(
+                    gate_pos < host_pos && host_pos < pool_pos && pool_pos < status_pos,
+                    "health_update health MUST serialize gate → host_watch → pool → status (AC-007.80); got: {raw}"
+                );
             }
             other => panic!("expected HealthUpdate, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn legacy_health_update_without_pool_status_yields_unknown() {
+        let msg = ClientMessage::from_json(&make_legacy_health_json());
+        assert!(
+            matches!(msg, ClientMessage::Unknown(_)),
+            "legacy health_update missing pool/status MUST NOT silently decode (AC-007.80)"
+        );
     }
 
     #[test]

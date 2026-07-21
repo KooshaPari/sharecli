@@ -2,15 +2,74 @@
 // These types are a stub reserved for future dashboard integration; none are
 // wired into the binary yet.  Suppress dead_code for the whole module rather
 // than scattering per-item allows across a placeholder.
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports)]
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::config;
+
+pub use sharecli_fleet::{
+    sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
+    ResourceWatchSample,
+};
+
+/// JSON surface for live host [`ResourceWatchSample`] (FR-007 / AC-007.13).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct HostResourceWatchJson {
+    pub fd_count: u64,
+    pub net_rx_bytes: u64,
+    pub net_tx_bytes: u64,
+    pub mem_rss_bytes: u64,
+    pub load_1m: f64,
+}
+
+impl HostResourceWatchJson {
+    /// Capture FD/RSS/load/net watch fields from the live host.
+    pub fn capture() -> Result<Self> {
+        Ok(ResourceWatchSample::capture()?.into())
+    }
+
+    /// Operator-facing text block for `sharecli proc` (FR-007 / AC-007.14).
+    pub fn format_text_section(self) -> String {
+        ResourceWatchSample {
+            fd_count: self.fd_count,
+            net_rx_bytes: self.net_rx_bytes,
+            net_tx_bytes: self.net_tx_bytes,
+            mem_rss_bytes: self.mem_rss_bytes,
+            load_1m: self.load_1m,
+        }
+        .format_status_section()
+    }
+
+    /// Companion CSV block appended after agent inventory rows (FR-007 / AC-007.14).
+    pub fn format_csv_companion(self) -> String {
+        format!(
+            "\nrecord,fd_count,net_rx_bytes,net_tx_bytes,mem_rss_bytes,load_1m\nhost,{},{},{},{},{:.2}\n",
+            self.fd_count,
+            self.net_rx_bytes,
+            self.net_tx_bytes,
+            self.mem_rss_bytes,
+            self.load_1m,
+        )
+    }
+}
+
+impl From<ResourceWatchSample> for HostResourceWatchJson {
+    fn from(sample: ResourceWatchSample) -> Self {
+        Self {
+            fd_count: sample.fd_count,
+            net_rx_bytes: sample.net_rx_bytes,
+            net_tx_bytes: sample.net_tx_bytes,
+            mem_rss_bytes: sample.mem_rss_bytes,
+            load_1m: sample.load_1m,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthStatus {
@@ -60,9 +119,50 @@ pub struct ProcessStats {
     pub cpu_percent: f32,
     pub start_time: u64,
     pub uptime_seconds: u64,
+    /// Live FD/net watch fields from a live OS sample.
+    pub fd_count: u64,
+    pub net_rx_bytes: u64,
+    pub net_tx_bytes: u64,
+    pub mem_rss_bytes: u64,
+    pub load_1m: f64,
 }
 
 impl ProcessStats {
+    /// Helper for tests and fixtures; resource watch fields default to zero.
+    pub fn new(
+        pid: u32,
+        name: impl Into<String>,
+        memory_mb: u64,
+        cpu_percent: f32,
+        start_time: u64,
+        uptime_seconds: u64,
+    ) -> Self {
+        Self {
+            pid,
+            name: name.into(),
+            memory_mb,
+            cpu_percent,
+            start_time,
+            uptime_seconds,
+            fd_count: 0,
+            net_rx_bytes: 0,
+            net_tx_bytes: 0,
+            mem_rss_bytes: 0,
+            load_1m: 0.0,
+        }
+    }
+
+    /// Populate resource watch fields from a live OS sample.
+    pub fn with_resource_watch(mut self) -> Result<Self> {
+        let sample = ResourceWatchSample::capture()?;
+        self.fd_count = sample.fd_count;
+        self.net_rx_bytes = sample.net_rx_bytes;
+        self.net_tx_bytes = sample.net_tx_bytes;
+        self.mem_rss_bytes = sample.mem_rss_bytes;
+        self.load_1m = sample.load_1m;
+        Ok(self)
+    }
+
     pub fn is_idle(&self, threshold_secs: u64) -> bool {
         self.uptime_seconds > threshold_secs && self.cpu_percent < 1.0
     }
@@ -161,6 +261,11 @@ mod tests {
                 cpu_percent: 0.5,
                 start_time: 1000,
                 uptime_seconds: 100,
+                fd_count: 0,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                mem_rss_bytes: 0,
+                load_1m: 0.0,
             },
             ProcessStats {
                 pid: 101,
@@ -169,6 +274,11 @@ mod tests {
                 cpu_percent: 0.3,
                 start_time: 1001,
                 uptime_seconds: 200,
+                fd_count: 0,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                mem_rss_bytes: 0,
+                load_1m: 0.0,
             },
             ProcessStats {
                 pid: 102,
@@ -177,6 +287,11 @@ mod tests {
                 cpu_percent: 2.0,
                 start_time: 1002,
                 uptime_seconds: 10,
+                fd_count: 0,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                mem_rss_bytes: 0,
+                load_1m: 0.0,
             },
         ];
 

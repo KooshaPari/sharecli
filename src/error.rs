@@ -2,6 +2,7 @@
 //!
 //! Operators map `SHARECLI_ERROR_CODE` in stderr to runbooks. HTTP serve
 //! surfaces use [`crate::error_envelope::ErrorEnvelope`] separately.
+#![allow(dead_code)]
 
 use std::fmt;
 use std::process::ExitCode;

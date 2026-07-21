@@ -10,6 +10,7 @@
 //! The event loop in [`run`] polls the [`ThermalGovernor`] on a configurable
 //! interval and redraws until the user presses `q` or `Ctrl-C`.
 
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -21,7 +22,21 @@ use ratatui::{
     widgets::{Block, Borders, Gauge, Paragraph},
     Frame,
 };
+use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli_fleet::{
+    build_host_agent_forests, build_host_agent_state_map, build_host_forest_state_map,
+    format_pool_operator_line, format_rss_bytes, format_status_operator_line,
+    gate_status_snapshot_with_rss, global_coalesce_meters, global_slot_queue_meters,
+    state_text_for_pid, sum_detected_agent_rss_bytes, watch_host_agents, AgentTreeNode,
+    CoalesceMeters, DetectedAgentWatch, GateStatusSnapshot, PoolOperatorPanel,
+    ResourceWatchSample, SlotQueueMeters, StatusOperatorPanel,
+};
+use sharecli_fuse::{
+    global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
+    NegDentryMeters, ReadCacheMeters, WriteSerializeMeters,
+};
+use sharecli_mesh::{capture_maildir_status, MaildirStatus};
 
 // ---------------------------------------------------------------------------
 // Pure transforms — unit-testable
@@ -35,6 +50,97 @@ pub fn is_quit_key(key: &KeyEvent) -> bool {
         _ => false,
     }
 }
+
+/// Keyboard-focusable operator panels (C09 L81.3): gate → pool → status → host watch → agents.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PanelFocus {
+    #[default]
+    Gate,
+    Pool,
+    Status,
+    HostWatch,
+    Agents,
+}
+
+impl PanelFocus {
+    const ORDER: [PanelFocus; 5] = [
+        PanelFocus::Gate,
+        PanelFocus::Pool,
+        PanelFocus::Status,
+        PanelFocus::HostWatch,
+        PanelFocus::Agents,
+    ];
+
+    /// Advance focus: gate → pool → status → host watch → agents → gate.
+    pub fn next(self) -> Self {
+        let idx = Self::ORDER.iter().position(|&p| p == self).unwrap_or(0);
+        Self::ORDER[(idx + 1) % Self::ORDER.len()]
+    }
+
+    /// Retreat focus: agents → host watch → status → pool → gate → agents.
+    pub fn prev(self) -> Self {
+        let idx = Self::ORDER.iter().position(|&p| p == self).unwrap_or(0);
+        Self::ORDER[(idx + Self::ORDER.len() - 1) % Self::ORDER.len()]
+    }
+
+    /// Map digit keys `1`–`5` to panels.
+    pub fn from_digit(ch: char) -> Option<Self> {
+        match ch {
+            '1' => Some(PanelFocus::Gate),
+            '2' => Some(PanelFocus::Pool),
+            '3' => Some(PanelFocus::Status),
+            '4' => Some(PanelFocus::HostWatch),
+            '5' => Some(PanelFocus::Agents),
+            _ => None,
+        }
+    }
+}
+
+/// Semantic action from a keyboard event in the thermal TUI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyAction {
+    Quit,
+    FocusNext,
+    FocusPrev,
+    FocusPanel(PanelFocus),
+    ForcePoll,
+    ToggleHelp,
+    Noop,
+}
+
+/// Pure keybinding matrix for the thermal TUI (C09 L81.3).
+pub fn handle_key(key: &KeyEvent) -> KeyAction {
+    if is_quit_key(key) {
+        return KeyAction::Quit;
+    }
+    match key.code {
+        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => KeyAction::FocusPrev,
+        KeyCode::Tab => KeyAction::FocusNext,
+        KeyCode::Char('1') => KeyAction::FocusPanel(PanelFocus::Gate),
+        KeyCode::Char('2') => KeyAction::FocusPanel(PanelFocus::Pool),
+        KeyCode::Char('3') => KeyAction::FocusPanel(PanelFocus::Status),
+        KeyCode::Char('4') => KeyAction::FocusPanel(PanelFocus::HostWatch),
+        KeyCode::Char('5') => KeyAction::FocusPanel(PanelFocus::Agents),
+        KeyCode::Char('r') => KeyAction::ForcePoll,
+        KeyCode::Char('?') => KeyAction::ToggleHelp,
+        _ => KeyAction::Noop,
+    }
+}
+
+/// Apply a non-quit [`KeyAction`] to live application state.
+pub fn apply_key_action(app: &mut App, action: KeyAction) {
+    match action {
+        KeyAction::FocusNext => app.focus = app.focus.next(),
+        KeyAction::FocusPrev => app.focus = app.focus.prev(),
+        KeyAction::FocusPanel(panel) => app.focus = panel,
+        KeyAction::ToggleHelp => app.show_help_overlay = !app.show_help_overlay,
+        KeyAction::Quit | KeyAction::ForcePoll | KeyAction::Noop => {}
+    }
+}
+
+/// Footer help overlay copy (shown when `?` toggles help).
+pub const HELP_OVERLAY_HINT: &str =
+    " Tab/Shift-Tab cycle  1 gate  2 pool  3 status  4 watch  5 agents  r poll  ? hide";
 
 /// Map a [`ThermalLevel`] to a human-readable label.
 pub fn level_label(level: ThermalLevel) -> &'static str {
@@ -115,6 +221,417 @@ pub fn is_compact(width: u16) -> bool {
     width < COMPACT_WIDTH
 }
 
+/// Lines for the thermal gate decision panel (FR-007 / AC-007.26 TUI slice).
+///
+/// Derives ADMIT/DENY from [`GateStatusSnapshot`] built with live agent count + RSS
+/// (parity with `sharecli proc` / `status --json` gate).
+pub fn gate_panel_lines(
+    snap: &GateStatusSnapshot,
+    thermal: ThermalLevel,
+    compact: bool,
+) -> Vec<Line<'static>> {
+    let decision = snap.gate_decision.as_str();
+    let color = if decision == "DENY" { Color::Red } else { decision_color(thermal) };
+    let decision_span = Span::styled(
+        format!("[ {decision} ]"),
+        Style::default().fg(color).add_modifier(Modifier::BOLD),
+    );
+
+    if compact {
+        return vec![Line::from(vec![
+            Span::raw(" Gate: "),
+            decision_span,
+            Span::raw(format!(
+                " RSS:{} {}",
+                snap.agent_total_rss_bytes,
+                snap.agent_contention
+            )),
+        ])];
+    }
+
+    let hint = if decision == "DENY" {
+        if thermal == ThermalLevel::Red {
+            "  — hypervisor will retry up to 5x before returning Err"
+        } else {
+            "  — agent contention limit reached; hypervisor will back-pressure"
+        }
+    } else {
+        ""
+    };
+
+    vec![
+        Line::from(vec![
+            Span::raw("  Gate decision: "),
+            decision_span,
+            Span::raw(hint),
+        ]),
+        Line::from(format!(
+            "  Agent RSS total: {} bytes ({})",
+            snap.agent_total_rss_bytes,
+            format_rss_bytes(snap.agent_total_rss_bytes)
+        )),
+        Line::from(format!("  Agent contention: {}", snap.agent_contention)),
+    ]
+}
+
+/// Lines for the runtime pool operator panel (FR-007 / AC-007.71 TUI slice).
+pub fn pool_panel_lines(pool: Option<PoolOperatorPanel>, compact: bool) -> Vec<Line<'static>> {
+    let Some(pool) = pool else {
+        let msg = if compact { " pool unavailable" } else { "  Runtime pool unavailable" };
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
+    };
+
+    let summary = format_pool_operator_line(&pool);
+    if compact {
+        return vec![Line::from(format!(" {summary}"))];
+    }
+
+    vec![
+        Line::from(format!("  Node idle/total: {}/{}", pool.node_idle, pool.node_total)),
+        Line::from(format!("  Bun idle/total:  {}/{}", pool.bun_idle, pool.bun_total)),
+        Line::from(format!(
+            "  Max per type: {} · {}",
+            pool.max_per_type,
+            if pool.healthy { "healthy" } else { "degraded" }
+        )),
+    ]
+}
+
+/// Lines for the proc-scan / status snapshot operator panel (FR-007 / AC-007.71 TUI slice).
+pub fn status_panel_lines(status: Option<StatusOperatorPanel>, compact: bool) -> Vec<Line<'static>> {
+    let Some(status) = status else {
+        let msg = if compact { " status unavailable" } else { "  Proc scan status unavailable" };
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
+    };
+
+    let summary = format_status_operator_line(&status);
+    if compact {
+        return vec![Line::from(format!(" {summary}"))];
+    }
+
+    vec![
+        Line::from(format!("  Scanned:  {}", status.scanned)),
+        Line::from(format!("  Watched:  {}", status.watched)),
+        Line::from(format!(
+            "  Managed:  {} · agent rows: {}",
+            status.total_processes, status.agent_rows
+        )),
+    ]
+}
+
+/// Lines for the host resource watch panel (FR-007 / AC-007.10, AC-007.12 TUI slice).
+pub fn resource_watch_lines(
+    sample: Option<ResourceWatchSample>,
+    compact: bool,
+) -> Vec<Line<'static>> {
+    let Some(sample) = sample else {
+        let msg = if compact {
+            " watch unavailable"
+        } else {
+            "  Resource watch unavailable on this host"
+        };
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::Red)))];
+    };
+
+    if compact {
+        return vec![Line::from(format!(
+            " FD:{} RSS:{} L:{:.1} RX:{} TX:{}",
+            sample.fd_count,
+            sample.mem_rss_bytes,
+            sample.load_1m,
+            sample.net_rx_bytes,
+            sample.net_tx_bytes,
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Open FDs:  {}", sample.fd_count)),
+        Line::from(format!("  RSS:       {} bytes", sample.mem_rss_bytes)),
+        Line::from(format!("  Load (1m): {:.2}", sample.load_1m)),
+        Line::from(format!("  Net RX:    {} bytes", sample.net_rx_bytes)),
+        Line::from(format!("  Net TX:    {} bytes", sample.net_tx_bytes)),
+    ]
+}
+
+/// Lines for host agent inventory (FR-006 / thermal operator panel).
+pub fn host_agent_lines(agents: &[DetectedAgent], compact: bool) -> Vec<Line<'static>> {
+    if agents.is_empty() {
+        let msg = if compact { " agents: none" } else { "  Host agents: none detected" };
+        return vec![Line::from(Span::raw(msg))];
+    }
+
+    if compact {
+        let summary =
+            agents.iter().map(|a| format!("{}:{}", a.family, a.pid)).collect::<Vec<_>>().join(" ");
+        return vec![Line::from(format!(" agents: {summary}"))];
+    }
+
+    let mut lines = vec![Line::from("  Host agents:")];
+    for agent in agents.iter().take(4) {
+        lines.push(Line::from(format!("    {} pid={} ({})", agent.family, agent.pid, agent.comm)));
+    }
+    if agents.len() > 4 {
+        lines.push(Line::from(format!("    … +{} more", agents.len() - 4)));
+    }
+    lines
+}
+
+/// Lines for the FUSE negative-dentry panel (FR-009 / AC-009.9 TUI slice).
+pub fn fuse_neg_dentry_lines(meters: NegDentryMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " neg:{} miss:{} {}%",
+            meters.hits,
+            meters.misses,
+            meters.hit_rate_pct()
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Neg hits:     {}", meters.hits)),
+        Line::from(format!("  Neg misses:   {}", meters.misses)),
+        Line::from(format!("  Hit rate:     {}%", meters.hit_rate_pct())),
+    ]
+}
+
+/// Lines for the Hypervisor coalesce cache panel (FR-008 / AC-008.11 TUI slice).
+pub fn hypervisor_coalesce_lines(meters: CoalesceMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " coalesce:{} miss:{} nocache:{} {}%",
+            meters.hits,
+            meters.misses,
+            meters.nocache_runs,
+            meters.hit_rate_pct()
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Coalesce hits:   {}", meters.hits)),
+        Line::from(format!("  Coalesce misses: {}", meters.misses)),
+        Line::from(format!("  Nocache runs:    {}", meters.nocache_runs)),
+        Line::from(format!("  Hit rate:        {}%", meters.hit_rate_pct())),
+    ]
+}
+
+/// Lines for the Hypervisor SlotQueue panel (FR-008 / AC-008.12 TUI slice).
+pub fn hypervisor_slot_queue_lines(meters: SlotQueueMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " slot:{} wait:{} to:{}",
+            meters.acquires, meters.waits, meters.timeouts
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Slot acquires: {}", meters.acquires)),
+        Line::from(format!("  Slot waits:    {}", meters.waits)),
+        Line::from(format!("  Slot timeouts: {}", meters.timeouts)),
+    ]
+}
+
+/// Lines for the mesh Maildir queue depth panel (FR-010 / AC-010.11 TUI slice).
+pub fn mesh_maildir_lines(status: Option<MaildirStatus>, compact: bool) -> Vec<Line<'static>> {
+    match status {
+        Some(st) if compact => {
+            vec![Line::from(format!(" mesh r:{} f:{} p:{}", st.ready, st.in_flight, st.pending))]
+        }
+        Some(st) => vec![
+            Line::from(format!("  Mesh ready:     {}", st.ready)),
+            Line::from(format!("  Mesh in-flight: {}", st.in_flight)),
+            Line::from(format!("  Mesh pending:   {}", st.pending)),
+        ],
+        None => vec![Line::from("  Mesh queue:     unavailable")],
+    }
+}
+
+/// Lines for the FUSE write-serialize / CoW panel (FR-009 / AC-009.10 TUI slice).
+pub fn fuse_write_serialize_lines(
+    meters: WriteSerializeMeters,
+    compact: bool,
+) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " wr:{} st:{} cm:{} ds:{}",
+            meters.passthrough_writes, meters.stages, meters.commits, meters.discards
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Passthrough:  {}", meters.passthrough_writes)),
+        Line::from(format!("  Stages:       {}", meters.stages)),
+        Line::from(format!("  Commits:      {}", meters.commits)),
+        Line::from(format!("  Discards:     {}", meters.discards)),
+    ]
+}
+
+/// Lines for the FUSE read-coalesce panel (FR-007 / AC-007.9 TUI slice).
+pub fn fuse_coalesce_lines(meters: ReadCacheMeters, compact: bool) -> Vec<Line<'static>> {
+    if compact {
+        return vec![Line::from(format!(
+            " hits:{} miss:{} {}%",
+            meters.hits,
+            meters.misses,
+            meters.hit_rate_pct()
+        ))];
+    }
+
+    vec![
+        Line::from(format!("  Cache hits:   {}", meters.hits)),
+        Line::from(format!("  Cache misses: {}", meters.misses)),
+        Line::from(format!("  Hit rate:     {}%", meters.hit_rate_pct())),
+    ]
+}
+
+/// Max agent rows rendered in the full-layout DetectedAgent panel.
+pub const MAX_AGENT_LINES: usize = 4;
+
+/// Lines for the host agent inventory panel (FR-006 / AC-006.9, AC-006.40 TUI slice).
+pub fn agent_lines(
+    agents: &[DetectedAgentWatch],
+    state_by_pid: &HashMap<u32, char>,
+    compact: bool,
+) -> Vec<Line<'static>> {
+    if agents.is_empty() {
+        let msg = if compact { " none" } else { "  No agent processes detected" };
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
+    }
+
+    if compact {
+        let summary: String = agents
+            .iter()
+            .take(2)
+            .map(|row| {
+                let state = state_text_for_pid(state_by_pid, row.agent.pid);
+                format!(
+                    "{}:{}:{}@{}",
+                    row.agent.family,
+                    row.agent.pid,
+                    state,
+                    format_rss_bytes(row.resource.mem_rss_bytes)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        let extra =
+            if agents.len() > 2 { format!(" +{}", agents.len() - 2) } else { String::new() };
+        return vec![Line::from(format!(" {summary}{extra}"))];
+    }
+
+    let mut lines = vec![Line::from(format!("  Agents: {}", agents.len()))];
+    for row in agents.iter().take(MAX_AGENT_LINES) {
+        let state = state_text_for_pid(state_by_pid, row.agent.pid);
+        let fd = row.resource.fd_count.map(|n| format!(" FD {n}")).unwrap_or_default();
+        lines.push(Line::from(format!(
+            "    PID {}  {}  {}  RSS {}{}  ({})",
+            row.agent.pid,
+            state,
+            row.agent.family,
+            format_rss_bytes(row.resource.mem_rss_bytes),
+            fd,
+            row.agent.comm
+        )));
+    }
+    if agents.len() > MAX_AGENT_LINES {
+        lines.push(Line::from(format!("    … +{} more", agents.len() - MAX_AGENT_LINES)));
+    }
+    lines
+}
+
+/// Max tree lines rendered in the full-layout DetectedAgent panel (AC-006.22).
+pub const MAX_AGENT_TREE_LINES: usize = 4;
+
+fn format_tree_node_line(
+    node: &AgentTreeNode,
+    rss_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
+) -> String {
+    let family = node.family.map(|f| format!("{f} ")).unwrap_or_default();
+    let state = state_text_for_pid(state_by_pid, node.pid);
+    let rss = rss_by_pid
+        .get(&node.pid)
+        .map(|bytes| format!(" RSS {}", format_rss_bytes(*bytes)))
+        .unwrap_or_default();
+    format!("[{}] {state} {family}{}{}", node.pid, rss, format_comm_suffix(&node.comm))
+}
+
+fn format_comm_suffix(comm: &str) -> String {
+    if comm.is_empty() { String::new() } else { format!(" ({comm})") }
+}
+
+fn append_agent_tree_lines(
+    node: &AgentTreeNode,
+    prefix: &str,
+    is_last: bool,
+    rss_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
+    lines: &mut Vec<Line<'static>>,
+    budget: &mut usize,
+) {
+    if *budget == 0 {
+        return;
+    }
+    let connector = if prefix.is_empty() {
+        String::new()
+    } else if is_last {
+        "└── ".to_string()
+    } else {
+        "├── ".to_string()
+    };
+    let lead = if prefix.is_empty() { "  " } else { prefix };
+    lines.push(Line::from(format!(
+        "{lead}{connector}{}",
+        format_tree_node_line(node, rss_by_pid, state_by_pid)
+    )));
+    *budget -= 1;
+
+    let child_prefix = if prefix.is_empty() {
+        "    ".to_string()
+    } else {
+        format!("{}{}", prefix, if is_last { "    " } else { "│   " })
+    };
+    for (i, child) in node.children.iter().enumerate() {
+        append_agent_tree_lines(
+            child,
+            &child_prefix,
+            i + 1 == node.children.len(),
+            rss_by_pid,
+            state_by_pid,
+            lines,
+            budget,
+        );
+        if *budget == 0 {
+            break;
+        }
+    }
+}
+
+/// Lines for the host agent inventory panel — tree when forests are present (AC-006.22, AC-006.39).
+pub fn agent_forest_lines(
+    forests: &[AgentTreeNode],
+    watched: &[DetectedAgentWatch],
+    state_by_pid: &HashMap<u32, char>,
+    compact: bool,
+) -> Vec<Line<'static>> {
+    if compact || forests.is_empty() {
+        return agent_lines(watched, state_by_pid, compact);
+    }
+    let rss_by_pid: HashMap<u32, u64> =
+        watched.iter().map(|row| (row.agent.pid, row.resource.mem_rss_bytes)).collect();
+    let mut lines = vec![Line::from(format!("  Forests: {}", forests.len()))];
+    let mut budget = MAX_AGENT_TREE_LINES;
+    for (i, root) in forests.iter().enumerate() {
+        if budget == 0 {
+            if i < forests.len() {
+                lines.push(Line::from(format!("    … +{} more roots", forests.len() - i)));
+            }
+            break;
+        }
+        append_agent_tree_lines(root, "", true, &rss_by_pid, state_by_pid, &mut lines, &mut budget);
+    }
+    lines
+}
+
 /// Short pressure blurb for compact terminals; full sentence otherwise.
 pub fn thermal_blurb(level: ThermalLevel, compact: bool) -> &'static str {
     if compact {
@@ -154,6 +671,34 @@ pub struct App {
     pub last_poll: Instant,
     /// Total number of polls performed.
     pub poll_count: u64,
+    /// Latest host resource watch sample (None when capture fails on this host).
+    pub resource_watch: Option<ResourceWatchSample>,
+    /// Process-wide FUSE read-coalesce meters.
+    pub fuse_meters: ReadCacheMeters,
+    /// Process-wide FUSE negative-dentry meters.
+    pub neg_dentry_meters: NegDentryMeters,
+    /// Process-wide Hypervisor coalesce cache meters.
+    pub coalesce_meters: CoalesceMeters,
+    /// Process-wide Hypervisor SlotQueue meters.
+    pub slot_queue_meters: SlotQueueMeters,
+    /// Process-wide FUSE write-serialize / CoW meters.
+    pub write_serialize_meters: WriteSerializeMeters,
+    /// Mesh Maildir queue depth snapshot (FR-010 / AC-010.11).
+    pub maildir_status: Option<MaildirStatus>,
+    /// Host agent inventory with per-PID resource watch (FR-006 × FR-007).
+    pub detected_agents: Vec<DetectedAgentWatch>,
+    /// Agent-rooted process forests from proc scan (FR-006 / AC-006.22).
+    pub agent_forests: Vec<AgentTreeNode>,
+    /// Pinned forest-wide process state for tests; live render resolves via proc scan when unset.
+    forest_state_by_pid: Option<HashMap<u32, char>>,
+    /// Runtime pool operator panel (FR-007 / AC-007.71).
+    pub pool_panel: Option<PoolOperatorPanel>,
+    /// Proc-scan / managed-process operator panel (FR-007 / AC-007.71).
+    pub status_panel: Option<StatusOperatorPanel>,
+    /// Focused operator panel for keyboard navigation (C09 L81.3).
+    pub focus: PanelFocus,
+    /// When true, footer shows extended keybinding help.
+    pub show_help_overlay: bool,
 }
 
 impl App {
@@ -165,6 +710,20 @@ impl App {
             slot_cap,
             last_poll: Instant::now(),
             poll_count: 0,
+            resource_watch: None,
+            fuse_meters: ReadCacheMeters::default(),
+            neg_dentry_meters: NegDentryMeters::default(),
+            coalesce_meters: CoalesceMeters::default(),
+            slot_queue_meters: SlotQueueMeters::default(),
+            write_serialize_meters: WriteSerializeMeters::default(),
+            maildir_status: None,
+            detected_agents: Vec::new(),
+            agent_forests: Vec::new(),
+            forest_state_by_pid: None,
+            pool_panel: None,
+            status_panel: None,
+            focus: PanelFocus::default(),
+            show_help_overlay: false,
         }
     }
 
@@ -174,6 +733,95 @@ impl App {
         self.active_slots = active_slots;
         self.last_poll = Instant::now();
         self.poll_count += 1;
+    }
+
+    /// Refresh operator watch panels from live OS samples + global FUSE meters.
+    pub fn poll_operator_meters(&mut self) {
+        self.resource_watch = ResourceWatchSample::capture().ok();
+        self.fuse_meters = global_read_cache_meters();
+        self.neg_dentry_meters = global_neg_dentry_meters();
+        self.coalesce_meters = global_coalesce_meters();
+        self.slot_queue_meters = global_slot_queue_meters();
+        self.write_serialize_meters = global_write_serialize_meters();
+        self.maildir_status = capture_maildir_status().ok().flatten();
+        self.detected_agents = watch_host_agents();
+        self.agent_forests = build_host_agent_forests();
+        self.forest_state_by_pid = None;
+    }
+
+    /// Apply pool + proc-scan operator panels from CLI/IPC-shaped snapshots (AC-007.71).
+    pub fn apply_pool_status_panels(
+        &mut self,
+        pool: Option<PoolOperatorPanel>,
+        status: Option<StatusOperatorPanel>,
+    ) {
+        self.pool_panel = pool;
+        self.status_panel = status;
+    }
+
+    /// Test helper — pin pool/status operator panels for headless render tests.
+    pub fn with_pool_status_panels(
+        mut self,
+        pool: Option<PoolOperatorPanel>,
+        status: Option<StatusOperatorPanel>,
+    ) -> Self {
+        self.pool_panel = pool;
+        self.status_panel = status;
+        self
+    }
+
+    /// Test/golden helper — pin deterministic operator panel values.
+    pub fn with_operator_meters(
+        mut self,
+        watch: Option<ResourceWatchSample>,
+        fuse: ReadCacheMeters,
+        neg: NegDentryMeters,
+        coalesce: CoalesceMeters,
+        slot_queue: SlotQueueMeters,
+        write_serialize: WriteSerializeMeters,
+    ) -> Self {
+        self.resource_watch = watch;
+        self.fuse_meters = fuse;
+        self.neg_dentry_meters = neg;
+        self.coalesce_meters = coalesce;
+        self.slot_queue_meters = slot_queue;
+        self.write_serialize_meters = write_serialize;
+        self
+    }
+
+    /// Pin mesh Maildir depth for tests / goldens (FR-010 / AC-010.11).
+    pub fn with_maildir_status(mut self, status: Option<MaildirStatus>) -> Self {
+        self.maildir_status = status;
+        self
+    }
+
+    /// Test helper — pin deterministic agent inventory for headless render tests.
+    pub fn with_detected_agents(mut self, agents: Vec<DetectedAgentWatch>) -> Self {
+        self.detected_agents = agents;
+        self
+    }
+
+    /// Test helper — pin agent process forests for headless render tests (AC-006.22).
+    pub fn with_agent_forests(mut self, forests: Vec<AgentTreeNode>) -> Self {
+        self.agent_forests = forests;
+        self
+    }
+
+    /// Test helper — pin forest-wide process state letters (AC-006.39).
+    pub fn with_agent_forest_state(mut self, state_by_pid: HashMap<u32, char>) -> Self {
+        self.forest_state_by_pid = Some(state_by_pid);
+        self
+    }
+
+    fn agent_panel_state_by_pid(&self) -> HashMap<u32, char> {
+        if let Some(map) = &self.forest_state_by_pid {
+            return map.clone();
+        }
+        if !self.agent_forests.is_empty() {
+            return build_host_forest_state_map(&self.agent_forests);
+        }
+        let pids: Vec<u32> = self.detected_agents.iter().map(|row| row.agent.pid).collect();
+        build_host_agent_state_map(&pids)
     }
 }
 
@@ -206,8 +854,15 @@ pub fn count_cargo_builds() -> u32 {
 pub fn render(frame: &mut Frame, app: &App) {
     let area = frame.area();
     let compact = is_compact(area.width);
-    let margin = if compact { 0 } else { 1 };
+    let cramped = area.height < 58;
+    let margin = if compact || area.height < 40 { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
+    let gate_h = if compact { 4 } else { 5 };
+    let pool_h = if compact { 3 } else { 4 };
+    let status_h = if compact { 3 } else { 4 };
+    let agents_h = if compact { 3 } else { 6 };
+    let watch_h = if compact { 3 } else { 7 };
+    let io_min = if compact { 8 } else { 6 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -215,8 +870,13 @@ pub fn render(frame: &mut Frame, app: &App) {
         .constraints([
             Constraint::Length(3),         // title
             Constraint::Length(thermal_h), // thermal pressure block
-            Constraint::Length(3),         // gate decision
+            Constraint::Length(gate_h),    // gate decision
             Constraint::Length(3),         // slot gauge
+            Constraint::Length(pool_h),    // runtime pool
+            Constraint::Length(status_h),  // proc scan status
+            Constraint::Length(agents_h),  // host agent inventory
+            Constraint::Length(watch_h),   // host resource watch
+            Constraint::Min(io_min),       // hypervisor + FUSE IO meters (flex)
             Constraint::Length(3),         // footer
         ])
         .split(area);
@@ -225,7 +885,12 @@ pub fn render(frame: &mut Frame, app: &App) {
     render_thermal(frame, chunks[1], app, compact);
     render_decision(frame, chunks[2], app, compact);
     render_slots(frame, chunks[3], app, compact);
-    render_footer(frame, chunks[4], app, compact);
+    render_pool_panel(frame, chunks[4], app, compact);
+    render_status_panel(frame, chunks[5], app, compact);
+    render_agents(frame, chunks[6], app, compact);
+    render_resource_watch(frame, chunks[7], app, compact);
+    render_fuse_coalesce(frame, chunks[8], app, compact || cramped);
+    render_footer(frame, chunks[9], app, compact);
 }
 
 fn render_title(frame: &mut Frame, area: Rect, compact: bool) {
@@ -254,9 +919,6 @@ fn render_thermal(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
         Span::raw(if compact { " P: " } else { "  Pressure level: " }),
         Span::styled(pressure, Style::default().fg(color).add_modifier(Modifier::BOLD)),
     ])];
-    if !compact {
-        lines.push(Line::from(""));
-    }
     lines.push(Line::from(vec![
         Span::raw("  "),
         Span::styled(thermal_blurb(level, compact), Style::default().fg(color)),
@@ -268,31 +930,25 @@ fn render_thermal(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     frame.render_widget(para, area);
 }
 
+fn focused_block(title: &str, focused: bool) -> Block<'_> {
+    let block = Block::default().borders(Borders::ALL).title(title);
+    if focused {
+        block.border_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+    } else {
+        block
+    }
+}
+
 fn render_decision(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let level = app.thermal_level;
-    let decision = gate_decision(level);
-    let color = decision_color(level);
-
-    let hint = if compact {
-        ""
-    } else if level == ThermalLevel::Red {
-        "  — hypervisor will retry up to 5x before returning Err"
-    } else {
-        ""
-    };
-
-    let line = Line::from(vec![
-        Span::raw(if compact { " Gate: " } else { "  Gate decision: " }),
-        Span::styled(
-            format!("[ {decision} ]"),
-            Style::default().fg(color).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(hint),
-    ]);
+    let agent_count = app.detected_agents.len();
+    let total_rss = sum_detected_agent_rss_bytes(&app.detected_agents);
+    let snap = gate_status_snapshot_with_rss(level, agent_count, total_rss);
+    let lines = gate_panel_lines(&snap, level, compact);
 
     let title = if compact { " Gate " } else { " Gate Decision " };
-    let block = Block::default().borders(Borders::ALL).title(title);
-    let para = Paragraph::new(line).block(block);
+    let block = focused_block(title, app.focus == PanelFocus::Gate);
+    let para = Paragraph::new(lines).block(block);
     frame.render_widget(para, area);
 }
 
@@ -314,7 +970,57 @@ fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     frame.render_widget(gauge, area);
 }
 
+fn render_pool_panel(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Pool " } else { " Runtime Pool " };
+    let lines = pool_panel_lines(app.pool_panel, compact);
+    let block = focused_block(title, app.focus == PanelFocus::Pool);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn render_status_panel(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Status " } else { " Proc Scan Status " };
+    let lines = status_panel_lines(app.status_panel, compact);
+    let block = focused_block(title, app.focus == PanelFocus::Status);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Agents " } else { " Detected Agents " };
+    let state_by_pid = app.agent_panel_state_by_pid();
+    let lines = agent_forest_lines(&app.agent_forests, &app.detected_agents, &state_by_pid, compact);
+    let block = focused_block(title, app.focus == PanelFocus::Agents);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn render_resource_watch(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Watch " } else { " Host Resource Watch " };
+    let lines = resource_watch_lines(app.resource_watch, compact);
+    let block = focused_block(title, app.focus == PanelFocus::HostWatch);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " IO " } else { " Hypervisor IO Meters " };
+    let mut lines = hypervisor_coalesce_lines(app.coalesce_meters, compact);
+    lines.extend(hypervisor_slot_queue_lines(app.slot_queue_meters, compact));
+    lines.extend(mesh_maildir_lines(app.maildir_status.clone(), compact));
+    lines.extend(fuse_coalesce_lines(app.fuse_meters, compact));
+    lines.extend(fuse_neg_dentry_lines(app.neg_dentry_meters, compact));
+    lines.extend(fuse_write_serialize_lines(app.write_serialize_meters, compact));
+    let block = Block::default().borders(Borders::ALL).title(title);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
 fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    if app.show_help_overlay {
+        let help = Paragraph::new(Line::from(vec![
+            Span::styled(HELP_OVERLAY_HINT, Style::default().fg(Color::Yellow)),
+        ]))
+        .block(Block::default().borders(Borders::ALL).title(" help "));
+        frame.render_widget(help, area);
+        return;
+    }
+
     let elapsed = app.last_poll.elapsed().as_secs();
     let meta = if compact {
         format!(" polls:{} last:{}s", app.poll_count, elapsed)
@@ -331,6 +1037,8 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
         Span::raw(" quit  "),
         Span::styled(" Ctrl-C", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" quit  "),
+        Span::styled(" ?", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(" help  "),
         Span::raw(meta),
     ]))
     .block(Block::default().borders(Borders::ALL));
@@ -341,10 +1049,32 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 // Event loop
 // ---------------------------------------------------------------------------
 
+/// Supplementary pool/status poll hook (CLI/IPC-shaped snapshots for AC-007.71).
+pub type PoolStatusPollFn = dyn FnMut() -> (Option<PoolOperatorPanel>, Option<StatusOperatorPanel>);
+
+fn poll_pool_status_panels(
+    app: &mut App,
+    poll_pool_status: Option<&mut PoolStatusPollFn>,
+) {
+    if let Some(poll) = poll_pool_status {
+        let (pool, status) = poll();
+        app.apply_pool_status_panels(pool, status);
+    }
+}
+
 /// Launch the TUI, polling `governor` every [`POLL_INTERVAL`].
 ///
 /// Returns when the user presses `q` or `Ctrl-C`.
 pub fn run(governor: &ThermalGovernor, slot_cap: u32) -> Result<()> {
+    run_with_pool_status(governor, slot_cap, None)
+}
+
+/// Launch the TUI with optional live pool/status operator panel refresh (AC-007.71).
+pub fn run_with_pool_status(
+    governor: &ThermalGovernor,
+    slot_cap: u32,
+    mut poll_pool_status: Option<Box<PoolStatusPollFn>>,
+) -> Result<()> {
     use std::io;
 
     use crossterm::{
@@ -367,8 +1097,10 @@ pub fn run(governor: &ThermalGovernor, slot_cap: u32) -> Result<()> {
     let initial_level = governor.poll().unwrap_or(ThermalLevel::Green);
     let initial_slots = count_cargo_builds();
     app.update(initial_level, initial_slots);
+    app.poll_operator_meters();
+    poll_pool_status_panels(&mut app, poll_pool_status.as_deref_mut());
 
-    let result = event_loop(&mut terminal, &mut app, governor);
+    let result = event_loop(&mut terminal, &mut app, governor, poll_pool_status.as_deref_mut());
 
     // Always restore terminal even on error.
     disable_raw_mode()?;
@@ -382,6 +1114,7 @@ fn event_loop(
     terminal: &mut ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
     governor: &ThermalGovernor,
+    mut poll_pool_status: Option<&mut PoolStatusPollFn>,
 ) -> Result<()> {
     loop {
         terminal.draw(|f| render(f, app))?;
@@ -390,7 +1123,17 @@ fn event_loop(
         // Also accept Resize so layout reflows when COLUMNS / terminal size changes.
         if event::poll(POLL_INTERVAL)? {
             match event::read()? {
-                Event::Key(key) if is_quit_key(&key) => break,
+                Event::Key(key) => match handle_key(&key) {
+                    KeyAction::Quit => break,
+                    KeyAction::ForcePoll => {
+                        let level = governor.poll().unwrap_or(ThermalLevel::Green);
+                        let slots = count_cargo_builds();
+                        app.update(level, slots);
+                        app.poll_operator_meters();
+                        poll_pool_status_panels(app, poll_pool_status.as_deref_mut());
+                    }
+                    action => apply_key_action(app, action),
+                },
                 Event::Resize(_, _) => {
                     // Next draw uses the new frame.area().width (compact vs full).
                 }
@@ -402,6 +1145,8 @@ fn event_loop(
         let level = governor.poll().unwrap_or(ThermalLevel::Green);
         let slots = count_cargo_builds();
         app.update(level, slots);
+        app.poll_operator_meters();
+        poll_pool_status_panels(app, poll_pool_status.as_deref_mut());
     }
     Ok(())
 }
@@ -450,6 +1195,173 @@ mod tests {
     fn test_is_quit_key_other_ignored() {
         assert!(!is_quit_key(&key_event(KeyCode::Char('a'), KeyModifiers::NONE)));
         assert!(!is_quit_key(&key_event(KeyCode::Char('c'), KeyModifiers::NONE)));
+    }
+
+    // --- handle_key matrix (C09 L81.3) ---
+    #[test]
+    fn test_handle_key_tab_cycles_focus_forward() {
+        assert_eq!(handle_key(&key_event(KeyCode::Tab, KeyModifiers::NONE)), KeyAction::FocusNext);
+    }
+
+    #[test]
+    fn test_handle_key_shift_tab_cycles_focus_backward() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Tab, KeyModifiers::SHIFT)),
+            KeyAction::FocusPrev
+        );
+    }
+
+    #[test]
+    fn test_handle_key_digit_jumps_to_panel() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('1'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::Gate)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('2'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::Pool)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('3'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::Status)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('4'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::HostWatch)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('5'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::Agents)
+        );
+    }
+
+    #[test]
+    fn test_handle_key_r_force_poll() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('r'), KeyModifiers::NONE)),
+            KeyAction::ForcePoll
+        );
+    }
+
+    #[test]
+    fn test_handle_key_question_toggle_help() {
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('?'), KeyModifiers::NONE)),
+            KeyAction::ToggleHelp
+        );
+    }
+
+    #[test]
+    fn test_panel_focus_tab_cycle_order() {
+        let mut focus = PanelFocus::Gate;
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::Pool);
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::Status);
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::HostWatch);
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::Agents);
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::Gate);
+
+        focus = focus.prev();
+        assert_eq!(focus, PanelFocus::Agents);
+    }
+
+    #[test]
+    fn test_apply_key_action_toggles_help_overlay() {
+        let mut app = App::new(4);
+        assert!(!app.show_help_overlay);
+        apply_key_action(&mut app, KeyAction::ToggleHelp);
+        assert!(app.show_help_overlay);
+        apply_key_action(&mut app, KeyAction::ToggleHelp);
+        assert!(!app.show_help_overlay);
+    }
+
+    #[test]
+    fn test_render_footer_shows_help_hint() {
+        use ratatui::{backend::TestBackend, Terminal};
+        let backend = TestBackend::new(120, 64);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let app = App::new(4);
+        terminal.draw(|f| render(f, &app)).unwrap();
+        let buf = terminal.backend().buffer().clone();
+        let rendered: String = buf.content.iter().map(|c| c.symbol().to_string()).collect();
+        assert!(rendered.contains("help"), "footer must document ? help; got: {rendered}");
+    }
+
+    #[test]
+    fn test_render_help_overlay_when_enabled() {
+        use ratatui::{backend::TestBackend, Terminal};
+        let backend = TestBackend::new(120, 64);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(4);
+        app.show_help_overlay = true;
+        terminal.draw(|f| render(f, &app)).unwrap();
+        let buf = terminal.backend().buffer().clone();
+        let rendered: String = buf.content.iter().map(|c| c.symbol().to_string()).collect();
+        assert!(
+            rendered.contains("Tab"),
+            "help overlay must list Tab cycle; got: {rendered}"
+        );
+        assert!(rendered.contains("agents"), "help overlay must list agents panel");
+    }
+
+    #[test]
+    fn test_pool_panel_lines_full() {
+        let pool = PoolOperatorPanel {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 0,
+            max_per_type: 4,
+            healthy: true,
+        };
+        let lines = pool_panel_lines(Some(pool), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("Node idle/total: 1/2"));
+        assert!(text.contains("Bun idle/total:  0/1"));
+        assert!(text.contains("Max per type: 4 · healthy"));
+    }
+
+    #[test]
+    fn test_status_panel_lines_full() {
+        let status = StatusOperatorPanel {
+            scanned: 50,
+            watched: 1,
+            total_processes: 2,
+            agent_rows: 1,
+        };
+        let lines = status_panel_lines(Some(status), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("Scanned:  50"));
+        assert!(text.contains("Watched:  1"));
+        assert!(text.contains("Managed:  2 · agent rows: 1"));
+    }
+
+    #[test]
+    fn test_pool_status_panel_lines_compact_match_tray() {
+        let pool = PoolOperatorPanel {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 0,
+            max_per_type: 4,
+            healthy: true,
+        };
+        let status = StatusOperatorPanel {
+            scanned: 50,
+            watched: 1,
+            total_processes: 2,
+            agent_rows: 1,
+        };
+        let pool_text: String =
+            pool_panel_lines(Some(pool), true).iter().map(|l| l.to_string()).collect();
+        let status_text: String =
+            status_panel_lines(Some(status), true).iter().map(|l| l.to_string()).collect();
+        assert!(pool_text.contains("Pool node 2/1 idle · bun 1/0 idle · max 4 · healthy"));
+        assert!(status_text.contains("Proc scan 50 · watched 1 · 2 managed · 1 agent row(s)"));
     }
 
     // --- level_label ---
@@ -504,6 +1416,48 @@ mod tests {
     #[test]
     fn test_decision_green_admit() {
         assert_eq!(gate_decision(ThermalLevel::Green), "ADMIT");
+    }
+
+    // --- gate_panel_lines (AC-007.26) ---
+    #[test]
+    fn test_gate_panel_lines_rss_refuse_denies_on_green() {
+        const RSS_REFUSE: u64 = 32 * 1_073_741_824;
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Green, 1, RSS_REFUSE);
+        assert_eq!(snap.gate_decision, "DENY");
+        assert_eq!(snap.agent_contention, "REFUSE");
+
+        let lines = gate_panel_lines(&snap, ThermalLevel::Green, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("DENY"), "full gate panel MUST show DENY; got: {text}");
+        assert!(
+            text.contains(&RSS_REFUSE.to_string()),
+            "full gate panel MUST show agent RSS total; got: {text}"
+        );
+        assert!(text.contains("REFUSE"), "full gate panel MUST show contention; got: {text}");
+
+        let compact = gate_panel_lines(&snap, ThermalLevel::Green, true);
+        let compact_text: String = compact.iter().map(|l| l.to_string()).collect();
+        assert!(compact_text.contains("DENY"), "compact gate MUST show DENY; got: {compact_text}");
+        assert!(
+            compact_text.contains(&RSS_REFUSE.to_string()),
+            "compact gate MUST show agent RSS total; got: {compact_text}"
+        );
+        assert!(
+            compact_text.contains("REFUSE"),
+            "compact gate MUST show contention; got: {compact_text}"
+        );
+    }
+
+    #[test]
+    fn test_gate_panel_lines_count_only_warn_still_admits() {
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Green, 4, 0);
+        assert_eq!(snap.gate_decision, "ADMIT");
+        assert_eq!(snap.agent_contention, "WARN");
+
+        let lines = gate_panel_lines(&snap, ThermalLevel::Green, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("ADMIT"));
+        assert!(text.contains("WARN"));
     }
 
     #[test]
@@ -612,13 +1566,140 @@ mod tests {
         assert_eq!(app.active_slots, 3);
     }
 
+    use sharecli_fleet::AgentResourceSample;
+
+    fn agent_watch(
+        pid: u32,
+        family: &'static str,
+        comm: &str,
+        rss: u64,
+        fds: Option<u64>,
+    ) -> DetectedAgentWatch {
+        DetectedAgentWatch {
+            agent: DetectedAgent { pid, family, comm: comm.into() },
+            resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: fds },
+        }
+    }
+
+    #[test]
+    fn test_agent_lines_empty_full() {
+        let lines = agent_lines(&[], &HashMap::new(), false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("No agent processes detected"));
+    }
+
+    #[test]
+    fn test_agent_lines_lists_detected_agents() {
+        let agents = vec![
+            agent_watch(100, "claude", "claude", 52_428_800, Some(42)),
+            agent_watch(200, "cursor", "cursor-agent", 104_857_600, None),
+        ];
+        let mut state = HashMap::new();
+        state.insert(100, 'S');
+        state.insert(200, 'R');
+        let lines = agent_lines(&agents, &state, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Agents: 2"));
+        assert!(rendered.contains("PID 100  S  claude"));
+        assert!(rendered.contains("RSS 50M"));
+        assert!(rendered.contains("FD 42"));
+        assert!(rendered.contains("PID 200  R  cursor"));
+    }
+
+    #[test]
+    fn test_agent_lines_truncates_overflow() {
+        let agents: Vec<DetectedAgentWatch> = (0..6)
+            .map(|i| agent_watch(100 + i, "claude", &format!("claude-{i}"), 1_048_576, None))
+            .collect();
+        let lines = agent_lines(&agents, &HashMap::new(), false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("+2 more"));
+    }
+
+    #[test]
+    fn test_agent_lines_missing_state_dash() {
+        let agents = vec![agent_watch(100, "claude", "claude", 1_048_576, None)];
+        let lines = agent_lines(&agents, &HashMap::new(), false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("PID 100  -  claude"), "missing state MUST show `-`");
+    }
+
+    #[test]
+    fn test_agent_lines_compact_includes_state() {
+        let agents = vec![agent_watch(100, "claude", "claude", 52_428_800, None)];
+        let mut state = HashMap::new();
+        state.insert(100, 'S');
+        let lines = agent_lines(&agents, &state, true);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("claude:100:S@"), "compact MUST show state after PID");
+    }
+
+    #[test]
+    fn test_resource_watch_lines_full() {
+        let sample = ResourceWatchSample {
+            fd_count: 42,
+            net_rx_bytes: 8192,
+            net_tx_bytes: 4096,
+            mem_rss_bytes: 1_048_576,
+            load_1m: 1.25,
+        };
+        let lines = resource_watch_lines(Some(sample), false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Open FDs:") && rendered.contains("42"));
+        assert!(rendered.contains("RSS:") && rendered.contains("1048576"));
+        assert!(rendered.contains("Load (1m):"));
+        assert!(rendered.contains("Net RX:") && rendered.contains("8192"));
+        assert!(rendered.contains("Net TX:") && rendered.contains("4096"));
+    }
+
+    #[test]
+    fn test_fuse_coalesce_lines_full() {
+        let meters = ReadCacheMeters { hits: 7, misses: 3 };
+        let lines = fuse_coalesce_lines(meters, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Cache hits:") && rendered.contains("7"));
+        assert!(rendered.contains("Cache misses:") && rendered.contains("3"));
+        assert!(rendered.contains("Hit rate:") && rendered.contains("70"));
+    }
+
+    #[test]
+    fn test_resource_watch_lines_unavailable() {
+        let lines = resource_watch_lines(None, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("unavailable"));
+    }
+
     // --- Headless render smoke test (FakeThermalGate via ThermalGovernor mock) ---
+    #[test]
+    fn test_host_agent_lines_full() {
+        let agents = vec![DetectedAgent { pid: 42, family: "claude", comm: "claude".into() }];
+        let lines = host_agent_lines(&agents, false);
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(rendered.contains("Host agents:") && rendered.contains("claude"));
+    }
+
     #[test]
     fn test_render_green_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 30);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(4);
+        let sample = ResourceWatchSample {
+            fd_count: 12,
+            net_rx_bytes: 100,
+            net_tx_bytes: 50,
+            mem_rss_bytes: 4096,
+            load_1m: 0.5,
+        };
+        let mut app = App::new(4)
+            .with_operator_meters(
+                Some(sample),
+                ReadCacheMeters { hits: 2, misses: 1 },
+                NegDentryMeters { hits: 1, misses: 0 },
+                CoalesceMeters { hits: 4, misses: 1, nocache_runs: 2 },
+                SlotQueueMeters { acquires: 3, waits: 2, timeouts: 0 },
+                WriteSerializeMeters { passthrough_writes: 2, stages: 1, commits: 1, discards: 0 },
+            )
+            .with_detected_agents(vec![agent_watch(4242, "claude", "claude", 4_096, Some(12))]);
         app.update(ThermalLevel::Green, 0);
         // Should not panic.
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -627,14 +1708,40 @@ mod tests {
         let rendered: String = buf.content.iter().map(|c| c.symbol().to_string()).collect();
         assert!(rendered.contains("GREEN"), "expected GREEN in rendered output");
         assert!(rendered.contains("ADMIT"), "expected ADMIT in rendered output");
+        assert!(rendered.contains("Host Resource Watch"), "expected watch panel");
+        assert!(rendered.contains("Runtime Pool"), "expected pool panel (AC-007.71)");
+        assert!(rendered.contains("Proc Scan Status"), "expected status panel (AC-007.71)");
+        assert!(rendered.contains("Detected Agents"), "expected agent panel");
+        assert!(rendered.contains("PID 4242"), "expected agent row");
+        assert!(rendered.contains("RSS"), "expected per-agent RSS in agent panel");
+        assert!(rendered.contains("Hypervisor IO Meters"), "expected io panel");
+        assert!(rendered.contains("Open FDs:"), "expected FD watch line");
+        assert!(rendered.contains("Coalesce hits:"), "expected coalesce meters");
+        assert!(rendered.contains("Slot acquires:"), "expected slot queue meters");
+        assert!(rendered.contains("Cache hits:"), "expected fuse meters");
+        assert!(rendered.contains("Neg hits:"), "expected neg dentry meters");
+        assert!(rendered.contains("Passthrough:"), "expected write-serialize meters");
     }
 
     #[test]
     fn test_render_red_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 30);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(4);
+        let mut app = App::new(4).with_operator_meters(
+            Some(ResourceWatchSample {
+                fd_count: 8,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                mem_rss_bytes: 8192,
+                load_1m: 2.0,
+            }),
+            ReadCacheMeters { hits: 0, misses: 0 },
+            NegDentryMeters { hits: 0, misses: 0 },
+            CoalesceMeters::default(),
+            SlotQueueMeters::default(),
+            WriteSerializeMeters::default(),
+        );
         app.update(ThermalLevel::Red, 4);
         terminal.draw(|f| render(f, &app)).unwrap();
         let buf = terminal.backend().buffer().clone();
@@ -646,9 +1753,22 @@ mod tests {
     #[test]
     fn test_render_yellow_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 30);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(4);
+        let mut app = App::new(4).with_operator_meters(
+            Some(ResourceWatchSample {
+                fd_count: 16,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                mem_rss_bytes: 2048,
+                load_1m: 1.0,
+            }),
+            ReadCacheMeters { hits: 1, misses: 1 },
+            NegDentryMeters { hits: 0, misses: 1 },
+            CoalesceMeters::default(),
+            SlotQueueMeters::default(),
+            WriteSerializeMeters::default(),
+        );
         app.update(ThermalLevel::Yellow, 2);
         terminal.draw(|f| render(f, &app)).unwrap();
         let buf = terminal.backend().buffer().clone();

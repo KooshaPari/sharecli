@@ -4,10 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>sharecli dashboard</title>
+<link rel="icon" href="/assets/dashboard/ui/favicons/phenotype.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/dashboard/ui/favicons/phenotype_32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/dashboard/ui/favicons/phenotype_16.png">
+<link rel="apple-touch-icon" sizes="128x128" href="/assets/dashboard/ui/favicons/phenotype_128.png">
 <style>
+  :root {
+    --bb2-graphite: #0a0d12;
+    --bb2-panel: #161b22;
+    --bb2-pulse-green: #3fb950;
+    --bb2-warm-amber: #d29922;
+    --bb2-muted: #94a3b8;
+    --bb2-border: #2d333b;
+    --motion-duration-fast: 150ms;
+    --motion-duration: 300ms;
+    --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: #1a1a2e;
+    background: var(--bb2-graphite);
     color: #e2e8f0;
     font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
     font-size: 13px;
@@ -19,7 +34,16 @@
     gap: 12px;
     margin-bottom: 20px;
   }
-  h1 { font-size: 18px; color: #a78bfa; letter-spacing: 0.05em; }
+  .dashboard-banner {
+    width: 100%;
+    max-height: 120px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 6px;
+    border: 1px solid var(--bb2-border);
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 18px; color: #e2e8f0; letter-spacing: 0.05em; }
   #status-dot {
     width: 10px; height: 10px;
     border-radius: 50%;
@@ -28,14 +52,58 @@
     transition: background var(--motion-duration, 0.3s) var(--motion-ease, ease);
   }
   #status-dot.connected { background: #22c55e; }
-  #status-label { font-size: 11px; color: #94a3b8; }
+  #status-dot.connecting {
+    background: #a371f7;
+    animation: pulse 1.2s var(--motion-ease, ease) infinite;
+  }
+  #status-label { font-size: 11px; color: var(--bb2-muted); }
+  #operator-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .operator-panel {
+    background: var(--bb2-panel);
+    border: 1px solid var(--bb2-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .operator-panel h2 {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--bb2-muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .operator-panel dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    font-size: 12px;
+  }
+  .operator-panel dt { color: var(--bb2-muted); }
+  .operator-panel dd { color: #e2e8f0; text-align: right; margin: 0; }
+  .operator-panel dd .skeleton-bar { float: right; }
+  .gate-admit { color: var(--bb2-pulse-green); }
+  .gate-deny { color: #f85149; }
+  .gate-unavailable { color: var(--bb2-warm-amber); }
+  .families-list {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--bb2-muted);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .families-list .skeleton-bar { width: 100%; max-width: 12rem; }
   table {
     width: 100%;
     border-collapse: collapse;
   }
   thead th {
-    background: #161b22;
-    color: #a371f7;
+    background: var(--bb2-panel);
+    color: var(--bb2-muted);
     text-align: left;
     padding: 8px 12px;
     font-size: 11px;
@@ -56,11 +124,28 @@
   td.pid { color: #94a3b8; }
   td.mem { color: #f59e0b; }
   td.status { color: #22c55e; }
-  #loading-row td {
-    color: #94a3b8;
-    text-align: center;
-    padding: 24px;
-    font-style: italic;
+  .skeleton-row:hover { background: transparent; }
+  .skeleton-bar {
+    display: inline-block;
+    height: 0.85em;
+    border-radius: 4px;
+    background: linear-gradient(
+      90deg,
+      #161b22 0%,
+      rgba(163, 113, 247, 0.35) 50%,
+      #161b22 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s var(--motion-ease, ease) infinite;
+    vertical-align: middle;
+  }
+  .skeleton-bar--sm { width: 3rem; max-width: 40%; }
+  .skeleton-bar--md { width: 4.5rem; max-width: 55%; }
+  .skeleton-bar--lg { width: 6.5rem; max-width: 72%; }
+  .skeleton-bar--xl { width: 5rem; max-width: 65%; }
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
   .empty-state {
     text-align: center;
@@ -70,10 +155,14 @@
     background: #161b22;
   }
   .empty-state-icon {
-    font-size: 28px;
-    color: #a371f7;
-    line-height: 1;
     margin-bottom: 12px;
+    line-height: 0;
+  }
+  .empty-state-icon img,
+  .error-state-icon img {
+    width: min(240px, 80vw);
+    height: auto;
+    display: inline-block;
   }
   .empty-state-title {
     font-size: 14px;
@@ -115,10 +204,8 @@
     background: #1c1017;
   }
   .error-state-icon {
-    font-size: 28px;
-    color: #ef4444;
-    line-height: 1;
     margin-bottom: 12px;
+    line-height: 0;
   }
   .error-state-title {
     font-size: 14px;
@@ -203,6 +290,8 @@
       scroll-behavior: auto !important;
     }
     #thermal-status.critical { animation: none; }
+    #status-dot.connecting { animation: none; }
+    .skeleton-bar { animation: none; background: #161b22; }
   }
   .skip-link {
     position: absolute;
@@ -240,9 +329,18 @@
 <body>
 <a class="skip-link" href="#main-content">Skip to process table</a>
 
+<img
+  class="dashboard-banner"
+  src="/assets/dashboard/ui/banners/dashboard_1280x320.png"
+  alt=""
+  width="1280"
+  height="320"
+  decoding="async"
+>
+
 <nav aria-label="Dashboard status">
   <header>
-    <div id="status-dot" role="status" aria-hidden="true"></div>
+    <div id="status-dot" class="connecting" role="status" aria-hidden="true"></div>
     <h1 id="dashboard-title">sharecli</h1>
     <span id="status-label" aria-live="polite">connecting...</span>
     <span id="thermal-status" role="status" aria-live="polite">&#x1F321; Normal</span>
@@ -250,6 +348,54 @@
 </nav>
 
 <main id="main-content" tabindex="-1" aria-labelledby="dashboard-title">
+<section id="operator-panels" aria-label="Operator status" data-operator-panels>
+  <div class="operator-panel" id="panel-gate" aria-labelledby="panel-gate-title">
+    <h2 id="panel-gate-title">Thermal gate</h2>
+    <dl>
+      <dt>Pressure</dt><dd id="gate-pressure">—</dd>
+      <dt>Decision</dt><dd id="gate-decision" class="gate-unavailable">—</dd>
+      <dt>Agents</dt><dd id="gate-agents">—</dd>
+      <dt>Contention</dt><dd id="gate-contention">—</dd>
+    </dl>
+  </div>
+  <div class="operator-panel" id="panel-host-watch" aria-labelledby="panel-host-title">
+    <h2 id="panel-host-title">Host watch</h2>
+    <dl>
+      <dt>FDs</dt><dd id="host-fds">—</dd>
+      <dt>RSS</dt><dd id="host-rss">—</dd>
+      <dt>Load 1m</dt><dd id="host-load">—</dd>
+      <dt>Net RX/TX</dt><dd id="host-net">—</dd>
+    </dl>
+  </div>
+  <div class="operator-panel" id="panel-pool" aria-labelledby="panel-pool-title">
+    <h2 id="panel-pool-title">Runtime pool</h2>
+    <dl>
+      <dt>Node</dt><dd id="pool-node">—</dd>
+      <dt>Bun</dt><dd id="pool-bun">—</dd>
+      <dt>Max/type</dt><dd id="pool-max">—</dd>
+      <dt>Health</dt><dd id="pool-health">—</dd>
+    </dl>
+    <div class="families-list" id="pool-issues" aria-live="polite">—</div>
+  </div>
+  <div class="operator-panel" id="panel-status" aria-labelledby="panel-status-title">
+    <h2 id="panel-status-title">Proc scan</h2>
+    <dl>
+      <dt>Managed</dt><dd id="status-managed">—</dd>
+      <dt>Scanned</dt><dd id="status-scanned">—</dd>
+      <dt>Watched</dt><dd id="status-watched">—</dd>
+      <dt>Agent rows</dt><dd id="status-agent-rows">—</dd>
+    </dl>
+  </div>
+  <div class="operator-panel" id="panel-agents" aria-labelledby="panel-agents-title">
+    <h2 id="panel-agents-title">Host agents</h2>
+    <dl>
+      <dt>Scanned</dt><dd id="agents-scanned">—</dd>
+      <dt>Watched</dt><dd id="agents-watched">—</dd>
+      <dt>Total RSS</dt><dd id="agents-rss">—</dd>
+    </dl>
+    <div class="families-list" id="agents-families" aria-live="polite">—</div>
+  </div>
+</section>
 <table aria-label="Managed processes">
   <thead>
     <tr>
@@ -260,8 +406,7 @@
       <th scope="col">Status</th>
     </tr>
   </thead>
-  <tbody id="proc-body">
-    <tr id="loading-row"><td colspan="5">waiting for data...</td></tr>
+  <tbody id="proc-body" aria-busy="true" aria-live="polite">
   </tbody>
 </table>
 <div id="last-update" aria-live="polite"></div>
@@ -271,11 +416,14 @@
   const dot = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
   const body = document.getElementById('proc-body');
+  const operatorPanels = document.getElementById('operator-panels');
   const lastUpdate = document.getElementById('last-update');
   let reconnectTimer = null;
   let hadProcesses = false;
   let disconnectShown = false;
   const traceparent = document.documentElement.dataset.traceparent || '';
+
+  const ASSET_BASE = '/assets/dashboard/ui';
 
   const EMPTY_STATES = {
     'first-run': {
@@ -283,12 +431,16 @@
       body: 'Start your first harness to see live status in this table.',
       cta: 'sharecli start &lt;project&gt; &lt;harness&gt;',
       href: 'https://github.com/KooshaPari/sharecli#quick-start',
+      image: '/assets/dashboard/ui/empty-states/no-data.svg',
+      imageAlt: 'No data yet',
     },
     cleared: {
       title: 'All processes stopped',
       body: 'Processes were running earlier but the pool is empty now.',
       cta: 'sharecli ps',
       href: '#main-content',
+      image: '/assets/dashboard/ui/empty-states/no-results.svg',
+      imageAlt: 'No results',
     },
   };
 
@@ -307,12 +459,99 @@
     } catch (_) {}
   }
 
+  const SKELETON_ROWS = 3;
+  const SKELETON_LAYOUT = [
+    ['lg', 'sm', 'md', 'lg', 'sm'],
+    ['xl', 'sm', 'md', 'md', 'sm'],
+    ['lg', 'sm', 'md', 'xl', 'sm'],
+  ];
+  const OPERATOR_SKELETON_LAYOUT = {
+    gate: ['md', 'sm', 'sm', 'lg'],
+    host: ['sm', 'md', 'sm', 'xl'],
+    pool: ['md', 'md', 'sm', 'sm'],
+    status: ['sm', 'sm', 'sm', 'sm'],
+    agents: ['sm', 'sm', 'md'],
+  };
+
+  function skeletonCell(size) {
+    return `<span class="skeleton-bar skeleton-bar--${size}"></span>`;
+  }
+
+  function renderOperatorPanelSkeletons() {
+    operatorPanels.setAttribute('aria-busy', 'true');
+    const gateDds = ['gate-pressure', 'gate-decision', 'gate-agents', 'gate-contention'];
+    gateDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = '';
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.gate[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const hostDds = ['host-fds', 'host-rss', 'host-load', 'host-net'];
+    hostDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.host[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const poolDds = ['pool-node', 'pool-bun', 'pool-max', 'pool-health'];
+    poolDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = '';
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.pool[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const poolIssues = document.getElementById('pool-issues');
+    poolIssues.innerHTML = skeletonCell('lg');
+    poolIssues.setAttribute('data-loading-kind', 'panel-value');
+    const statusDds = ['status-managed', 'status-scanned', 'status-watched', 'status-agent-rows'];
+    statusDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.status[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const agentDds = ['agents-scanned', 'agents-watched', 'agents-rss'];
+    agentDds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.innerHTML = skeletonCell(OPERATOR_SKELETON_LAYOUT.agents[i]);
+      el.setAttribute('data-loading-kind', 'panel-value');
+    });
+    const families = document.getElementById('agents-families');
+    families.innerHTML = skeletonCell('lg');
+    families.setAttribute('data-loading-kind', 'panel-value');
+  }
+
+  function clearOperatorPanelSkeletons() {
+    operatorPanels.removeAttribute('aria-busy');
+    document.querySelectorAll('[data-loading-kind="panel-value"]').forEach((el) => {
+      el.removeAttribute('data-loading-kind');
+    });
+  }
+
+  function renderSkeletonRows() {
+    body.setAttribute('aria-busy', 'true');
+    body.innerHTML = SKELETON_LAYOUT.map((cols, rowIdx) => `<tr class="skeleton-row" data-loading-kind="table-row">
+      <td>${skeletonCell(cols[0])}</td>
+      <td class="pid">${skeletonCell(cols[1])}</td>
+      <td class="mem">${skeletonCell(cols[2])}</td>
+      <td>${skeletonCell(cols[3])}</td>
+      <td class="status">${skeletonCell(cols[4])}</td>
+    </tr>`).join('');
+  }
+
+  function setConnecting(active) {
+    dot.classList.toggle('connecting', active);
+  }
+
   function connect() {
+    setConnecting(true);
+    label.textContent = 'connecting…';
+    renderOperatorPanelSkeletons();
+    renderSkeletonRows();
     const ws = new WebSocket('ws://localhost:9000/ws');
 
     ws.onopen = () => {
+      dot.classList.remove('connecting');
       dot.classList.add('connected');
-      label.textContent = 'connected';
+      label.textContent = 'connected — loading processes…';
       disconnectShown = false;
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     };
@@ -327,6 +566,9 @@
       if (data.event === 'thermal_critical') {
         setThermal('critical', '🔴 Critical');
         return;
+      }
+      if (data.gate || data.host_watch || data.pool || data.status || data.agents) {
+        renderOperatorPanels(data);
       }
       const procs = Array.isArray(data.processes) ? data.processes : [];
       renderTable(procs);
@@ -346,9 +588,13 @@
   function renderDisconnectError() {
     if (disconnectShown) return;
     disconnectShown = true;
+    clearOperatorPanelSkeletons();
+    body.removeAttribute('aria-busy');
     body.innerHTML = `<tr><td colspan="5">
       <div class="error-state" role="alert" data-error-kind="disconnect" aria-live="assertive">
-        <div class="error-state-icon" aria-hidden="true">&#x26A0;</div>
+        <div class="error-state-icon" aria-hidden="true">
+          <img src="/assets/dashboard/ui/empty-states/error.svg" alt="" width="240" height="180" decoding="async">
+        </div>
         <div class="error-state-title">Dashboard disconnected</div>
         <p class="error-state-body">
           Cannot reach the WebSocket feed. Confirm <code>sharecli serve</code> is running on this host.
@@ -370,10 +616,14 @@
   }
 
   function renderEmptyState(kind) {
+    body.removeAttribute('aria-busy');
+    label.textContent = 'connected';
     const spec = EMPTY_STATES[kind] || EMPTY_STATES['first-run'];
     body.innerHTML = `<tr><td colspan="5">
       <div class="empty-state" role="status" data-empty-kind="${kind}" aria-live="polite">
-        <div class="empty-state-icon" aria-hidden="true">&#x25C8;</div>
+        <div class="empty-state-icon" aria-hidden="true">
+          <img src="${spec.image}" alt="${spec.imageAlt}" width="240" height="180" decoding="async">
+        </div>
         <div class="empty-state-title">${spec.title}</div>
         <p class="empty-state-body">${spec.body}</p>
         <code class="empty-state-cta" role="button" tabindex="0">${spec.cta}</code>
@@ -382,6 +632,8 @@
   }
 
   function renderTable(procs) {
+    body.removeAttribute('aria-busy');
+    label.textContent = 'connected';
     if (procs.length === 0) {
       const kind = hadProcesses ? 'cleared' : 'first-run';
       renderEmptyState(kind);
@@ -405,6 +657,98 @@
   }
 
   const thermalEl = document.getElementById('thermal-status');
+
+  function formatBytes(n) {
+    if (n == null || Number.isNaN(Number(n))) return '—';
+    const v = Number(n);
+    if (v < 1024) return v + ' B';
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KiB';
+    if (v < 1024 * 1024 * 1024) return (v / (1024 * 1024)).toFixed(1) + ' MiB';
+    return (v / (1024 * 1024 * 1024)).toFixed(2) + ' GiB';
+  }
+
+  function renderOperatorPanels(data) {
+    clearOperatorPanelSkeletons();
+    const gate = data.gate || {};
+    const host = data.host_watch || {};
+    const agents = data.agents || {};
+
+    const pressure = gate.thermal_pressure ?? '—';
+    document.getElementById('gate-pressure').textContent = pressure;
+    const decisionEl = document.getElementById('gate-decision');
+    const decision = gate.gate_decision ?? '—';
+    decisionEl.textContent = decision;
+    decisionEl.className = decision === 'ADMIT' ? 'gate-admit'
+      : decision === 'DENY' ? 'gate-deny' : 'gate-unavailable';
+    document.getElementById('gate-agents').textContent =
+      gate.detected_agents != null ? String(gate.detected_agents) : '—';
+    document.getElementById('gate-contention').textContent = gate.agent_contention ?? '—';
+
+    document.getElementById('host-fds').textContent =
+      host.fd_count != null ? String(host.fd_count) : '—';
+    document.getElementById('host-rss').textContent = formatBytes(host.mem_rss_bytes);
+    document.getElementById('host-load').textContent =
+      host.load_1m != null ? Number(host.load_1m).toFixed(2) : '—';
+    const rx = host.net_rx_bytes != null ? formatBytes(host.net_rx_bytes) : '—';
+    const tx = host.net_tx_bytes != null ? formatBytes(host.net_tx_bytes) : '—';
+    document.getElementById('host-net').textContent = rx + ' / ' + tx;
+
+    const pool = data.pool || {};
+    document.getElementById('pool-node').textContent =
+      (pool.node_total != null && pool.node_idle != null)
+        ? `${pool.node_idle}/${pool.node_total} idle`
+        : '—';
+    document.getElementById('pool-bun').textContent =
+      (pool.bun_total != null && pool.bun_idle != null)
+        ? `${pool.bun_idle}/${pool.bun_total} idle`
+        : '—';
+    document.getElementById('pool-max').textContent =
+      pool.max_per_type != null ? String(pool.max_per_type) : '—';
+    const poolHealthEl = document.getElementById('pool-health');
+    if (pool.healthy === true) {
+      poolHealthEl.textContent = 'healthy';
+      poolHealthEl.className = 'gate-admit';
+    } else if (pool.healthy === false) {
+      poolHealthEl.textContent = 'degraded';
+      poolHealthEl.className = 'gate-deny';
+    } else {
+      poolHealthEl.textContent = '—';
+      poolHealthEl.className = '';
+    }
+    const issues = Array.isArray(pool.issues) ? pool.issues : [];
+    document.getElementById('pool-issues').textContent = issues.length
+      ? issues.join(' · ')
+      : 'no issues';
+
+    const status = data.status || {};
+    document.getElementById('status-managed').textContent =
+      status.total_processes != null ? String(status.total_processes) : '—';
+    document.getElementById('status-scanned').textContent =
+      status.scanned != null ? String(status.scanned) : '—';
+    document.getElementById('status-watched').textContent =
+      status.watched != null ? String(status.watched) : '—';
+    const agentRows = Array.isArray(status.agents) ? status.agents.length : null;
+    document.getElementById('status-agent-rows').textContent =
+      agentRows != null ? String(agentRows) : '—';
+
+    document.getElementById('agents-scanned').textContent =
+      agents.scanned != null ? String(agents.scanned) : '—';
+    document.getElementById('agents-watched').textContent =
+      agents.watched != null ? String(agents.watched) : '—';
+    document.getElementById('agents-rss').textContent = formatBytes(agents.total_rss_bytes);
+
+    const families = agents.families || {};
+    const famKeys = Object.keys(families);
+    document.getElementById('agents-families').textContent = famKeys.length
+      ? famKeys.map(k => k + ':' + families[k]).join(' · ')
+      : 'no families';
+
+    if (pressure === 'GREEN') setThermal('', 'Normal');
+    else if (pressure === 'YELLOW') setThermal('warning', 'Warning');
+    else if (pressure === 'RED') setThermal('critical', 'Critical');
+    else if (pressure === 'UNAVAILABLE') setThermal('warning', 'Unavailable');
+  }
+
   function setThermal(cls, text) {
     thermalEl.className = cls;
     thermalEl.textContent = text;

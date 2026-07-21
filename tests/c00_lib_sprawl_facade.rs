@@ -85,11 +85,8 @@ fn fr003_root_pub_mods_are_product_plus_util_only() {
         mods.iter().any(|m| m == "util"),
         "expected `pub mod util` umbrella (lib-sprawl Phase 1)"
     );
-    let unexpected: Vec<_> = mods
-        .iter()
-        .filter(|m| !ROOT_PUB_MOD_ALLOWLIST.contains(&m.as_str()))
-        .cloned()
-        .collect();
+    let unexpected: Vec<_> =
+        mods.iter().filter(|m| !ROOT_PUB_MOD_ALLOWLIST.contains(&m.as_str())).cloned().collect();
     assert!(
         unexpected.is_empty(),
         "root pub mod sprawl still present: {unexpected:?} (count={})",

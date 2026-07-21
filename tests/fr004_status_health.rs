@@ -1,12 +1,23 @@
 //! FR-004 — Process & Pool Health Status (status / HealthStatus / ProcessStats)
 //! FR: FR-004
 //!
-//! Covers AC-004.1, AC-004.4, AC-004.5.
+//! Covers AC-004.1, AC-004.4, AC-004.5, AC-007.9 (FUSE read-coalesce in status),
+//! AC-007.10 (host resource watch in status), AC-009.9 (FUSE neg dentry in status),
+//! AC-008.11 (Hypervisor coalesce in status), AC-009.10 (FUSE write-serialize in status),
+//! AC-010.11 (mesh Maildir depth in status),
+//! AC-011.5 (thermal+agent gate in status).
 
 use std::collections::HashMap;
 
-use sharecli::monitoring::{HealthStatus, ProcessStats};
+use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
 use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
+use sharecli_fleet::format_gate_status_section;
+use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
+use sharecli_fuse::{
+    global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
+};
+use sharecli_ipc::{global_coalesce_meters, global_slot_queue_meters};
+use sharecli_mesh::{capture_maildir_status, MESH_QUEUE_ENV};
 
 /// Mirror of the per-harness aggregation + status tables in `commands::status`.
 fn format_status(
@@ -47,6 +58,19 @@ fn format_status(
     let pct = used_mb.saturating_mul(100).checked_div(total_mb).unwrap_or(0);
     out.push_str("\n=== System Memory ===\n\n");
     out.push_str(&format!("Used: {used_mb} MB / {total_mb} MB ({pct}%)\n"));
+    let thermal =
+        ThermalGovernor::with_mock(ThermalLevel::Green).poll().expect("mock thermal poll");
+    out.push_str(&format_gate_status_section(thermal, 0));
+    let resource_watch = ResourceWatchSample::capture().expect("resource watch capture");
+    out.push_str(&resource_watch.format_status_section());
+    out.push_str(&global_read_cache_meters().format_status_section());
+    out.push_str(&global_neg_dentry_meters().format_status_section());
+    out.push_str(&global_coalesce_meters().format_status_section());
+    out.push_str(&global_slot_queue_meters().format_status_section());
+    if let Ok(Some(st)) = capture_maildir_status() {
+        out.push_str(&st.format_status_section());
+    }
+    out.push_str(&global_write_serialize_meters().format_status_section());
     out
 }
 
@@ -102,6 +126,81 @@ async fn fr004_status_prints_harness_table() {
         "status MUST include system-memory line; got: {out}"
     );
     assert!(total_mb > 0, "system_memory_usage MUST report a non-zero total");
+    assert!(
+        out.contains("=== Host Resource Watch ===")
+            && out.contains("Open FDs:")
+            && out.contains("RSS:")
+            && out.contains("Load (1m):")
+            && out.contains("Net RX:")
+            && out.contains("Net TX:"),
+        "status MUST surface host resource watch (AC-007.10); got: {out}"
+    );
+    assert!(
+        out.contains("=== FUSE Read Coalesce ===")
+            && out.contains("Cache hits:")
+            && out.contains("Cache misses:")
+            && out.contains("Hit rate:"),
+        "status MUST surface FUSE read-coalesce meters (AC-007.9); got: {out}"
+    );
+    assert!(
+        out.contains("=== FUSE Negative Dentry ===")
+            && out.contains("Neg hits:")
+            && out.contains("Neg misses:"),
+        "status MUST surface FUSE negative-dentry meters (AC-009.9); got: {out}"
+    );
+    assert!(
+        out.contains("=== Hypervisor Coalesce ===")
+            && out.contains("Cache hits:")
+            && out.contains("Cache misses:")
+            && out.contains("Nocache runs:")
+            && out.contains("Hit rate:"),
+        "status MUST surface Hypervisor coalesce meters (AC-008.11); got: {out}"
+    );
+    assert!(
+        out.contains("=== Hypervisor SlotQueue ===")
+            && out.contains("Acquires:")
+            && out.contains("Waits:")
+            && out.contains("Timeouts:"),
+        "status MUST surface Hypervisor SlotQueue meters (AC-008.12); got: {out}"
+    );
+
+    // AC-010.11 — when mesh queue is configured, status surfaces Maildir depth.
+    let mesh_dir = tempfile::tempdir().expect("mesh tempdir");
+    {
+        use serde_json::json;
+        use sharecli_mesh::MaildirQueue;
+        let q = MaildirQueue::open(mesh_dir.path()).expect("open mesh queue");
+        q.enqueue(json!({"probe": true}), 0).expect("enqueue");
+    }
+    unsafe {
+        std::env::set_var(MESH_QUEUE_ENV, mesh_dir.path());
+    }
+    let mesh_out = format_status(&processes, &pool_status, used_mb, total_mb);
+    assert!(
+        mesh_out.contains("=== Mesh Maildir Queue ===")
+            && mesh_out.contains("Ready:")
+            && mesh_out.contains("In-flight:")
+            && mesh_out.contains("Pending:"),
+        "status MUST surface mesh Maildir depth when queue exists (AC-010.11); got: {mesh_out}"
+    );
+    unsafe {
+        std::env::remove_var(MESH_QUEUE_ENV);
+    }
+
+    assert!(
+        out.contains("=== FUSE Write Serialize ===")
+            && out.contains("Passthrough:")
+            && out.contains("Stages:")
+            && out.contains("Commits:")
+            && out.contains("Discards:"),
+        "status MUST surface FUSE write-serialize meters (AC-009.10); got: {out}"
+    );
+    assert!(
+        out.contains("=== Thermal Gate (FR-011) ===")
+            && out.contains("Thermal level: GREEN")
+            && out.contains("Gate decision: [ADMIT]"),
+        "status MUST surface thermal+agent gate section (AC-011.5); got: {out}"
+    );
 }
 
 /// FR-004 / AC-004.4 — `HealthStatus::mark_unhealthy` increments `checks_failed`.
@@ -135,6 +234,11 @@ fn fr004_process_stats_idle_threshold() {
         cpu_percent: 0.5,
         start_time: 1_000,
         uptime_seconds: threshold + 1,
+        fd_count: 0,
+        net_rx_bytes: 0,
+        net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(idle.is_idle(threshold), "uptime>threshold and cpu<1.0 MUST be idle");
 
@@ -145,6 +249,11 @@ fn fr004_process_stats_idle_threshold() {
         cpu_percent: 1.0,
         start_time: 1_000,
         uptime_seconds: threshold + 100,
+        fd_count: 0,
+        net_rx_bytes: 0,
+        net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(!busy_cpu.is_idle(threshold), "cpu_percent >= 1.0 MUST NOT be idle");
 
@@ -155,6 +264,11 @@ fn fr004_process_stats_idle_threshold() {
         cpu_percent: 0.0,
         start_time: 1_000,
         uptime_seconds: threshold,
+        fd_count: 0,
+        net_rx_bytes: 0,
+        net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(!too_young.is_idle(threshold), "uptime_seconds <= threshold MUST NOT be idle");
 
@@ -165,6 +279,11 @@ fn fr004_process_stats_idle_threshold() {
         cpu_percent: 0.99,
         start_time: 1_000,
         uptime_seconds: threshold + 1,
+        fd_count: 0,
+        net_rx_bytes: 0,
+        net_tx_bytes: 0,
+        mem_rss_bytes: 0,
+        load_1m: 0.0,
     };
     assert!(boundary_ok.is_idle(threshold));
 }

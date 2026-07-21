@@ -331,6 +331,7 @@ fn tokens_equal(a: &str, b: &str) -> bool {
 /// Paths that remain reachable without AuthN (liveness/readiness).
 pub fn is_public_path(path: &str) -> bool {
     matches!(path, "/healthz" | "/readyz")
+        || crate::dashboard_assets::is_dashboard_asset_path(path)
 }
 
 /// Axum middleware: enforce bearer or JWT when configured.
@@ -422,6 +423,7 @@ mod tests {
     fn public_paths() {
         assert!(is_public_path("/healthz"));
         assert!(is_public_path("/readyz"));
+        assert!(is_public_path("/assets/dashboard/ui/favicons/phenotype.ico"));
         assert!(!is_public_path("/metrics/prometheus"));
         assert!(!is_public_path("/config"));
     }
@@ -452,13 +454,12 @@ mod tests {
         unsafe {
             std::env::set_var("SHARECLI_SERVE_TOKEN", "from-env");
         }
-        let cfg =
-            ServeConfig {
-                bearer_token: Some("from-config".into()),
-                auth_mode: None,
-                jwt: None,
-                ..ServeConfig::default()
-            };
+        let cfg = ServeConfig {
+            bearer_token: Some("from-config".into()),
+            auth_mode: None,
+            jwt: None,
+            ..ServeConfig::default()
+        };
         let auth = ServeAuth::from_env_or_config(&cfg).unwrap();
         assert!(auth.check_bearer(Some("Bearer from-env")));
         unsafe {

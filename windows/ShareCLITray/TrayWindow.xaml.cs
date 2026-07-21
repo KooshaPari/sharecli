@@ -1,7 +1,8 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ShareCLITray;
@@ -9,70 +10,78 @@ namespace ShareCLITray;
 public sealed partial class TrayWindow : Window
 {
     private List<ProcessInfo> m_processes = [];
+    private DispatcherQueueTimer? _pollTimer;
 
     public TrayWindow()
     {
         InitializeComponent();
 
-        // Set up event handlers and load initial data.
+        StartPeriodicPolling();
         _ = RefreshDataAsync();
+    }
+
+    private void StartPeriodicPolling()
+    {
+        var queue = DispatcherQueue.GetForCurrentThread();
+        _pollTimer = queue.CreateTimer();
+        _pollTimer.Interval = TimeSpan.FromSeconds(TrayPoll.IntervalSeconds);
+        _pollTimer.Tick += async (_, _) => await RefreshDataAsync();
+        _pollTimer.Start();
     }
 
     private async Task RefreshDataAsync()
     {
-        // Fetch health snapshot.
-        var healthJson = ShareCLIInterop.GetHealthJson();
-        if (healthJson != null)
+        // Single `monitoring.report` round-trip drives operator gate/host_watch + process
+        // inventory (AC-007.51); avoids split `health.status` + `process.list` polls.
+        var reportJson = ShareCLIInterop.SendRequest(
+            "{\"id\": 1, \"method\": \"monitoring.report\", \"params\": {}}");
+        var report = MonitoringReportSnapshot.TryParseIpcResponse(reportJson);
+        if (report == null)
         {
-            try
+            var offlineVisual = OperatorDisplay.ResolveTrayGateVisual("", "", connected: false);
+            DispatcherQueue?.TryEnqueue(() =>
             {
-                var doc = JsonDocument.Parse(healthJson);
-                var root = doc.RootElement;
-                int managedCount = root.GetProperty("managed_processes").GetInt32();
-                ulong usedMem = root.GetProperty("used_memory_mb").GetUInt64();
-                bool healthy = root.GetProperty("healthy").GetBoolean();
-
-                DispatcherQueue?.TryEnqueue(() =>
-                {
-                    HealthStatusText.Text =
-                        $"Health: {(healthy ? "✓ OK" : "✗ Unhealthy")} | " +
-                        $"Managed: {managedCount} | " +
-                        $"Memory: {usedMem} MB";
-                });
-            }
-            catch { }
+                HealthStatusText.Text = OperatorDisplay.FormatHealthStatusOfflineLine(
+                    offlineVisual,
+                    "Daemon offline or monitoring.report failed");
+                HealthStatusText.Foreground = OperatorDisplay.SeverityBrush(offlineVisual.Severity);
+                ThermalBadgeText.Text = "Offline";
+                ThermalBadgeText.Foreground = OperatorDisplay.SeverityBrush(
+                    OperatorDisplay.TrayGateSeverity.Offline);
+                GateStatusText.Text = "";
+                HostWatchStatusText.Text = "";
+                PoolStatusText.Text = "";
+                StatusSnapshotText.Text = "";
+                ProcessGrid.ItemsSource = null;
+            });
+            return;
         }
 
-        // Fetch process list.
-        var listJson = ShareCLIInterop.SendRequest("{\"id\": 1, \"method\": \"process.list\", \"params\": {}}");
-        if (listJson != null)
-        {
-            try
-            {
-                var doc = JsonDocument.Parse(listJson);
-                var root = doc.RootElement;
-                if (root.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Array)
-                {
-                    m_processes.Clear();
-                    foreach (var proc in result.EnumerateArray())
-                    {
-                        m_processes.Add(new ProcessInfo
-                        {
-                            pid = proc.GetProperty("pid").GetUInt32(),
-                            name = proc.GetProperty("name").GetString() ?? "?",
-                            memory_mb = proc.GetProperty("memory_mb").GetUInt64(),
-                            project = proc.TryGetProperty("project", out var p) ? p.GetString() : null,
-                        });
-                    }
+        var health = report.AsHealthSnapshot();
+        m_processes = report.AsProcessSummaries();
+        var visual = OperatorDisplay.ResolveTrayGateVisual(health.Gate, connected: true);
+        var pool = report.Pool;
+        var status = report.Status;
 
-                    DispatcherQueue?.TryEnqueue(() =>
-                    {
-                        ProcessGrid.ItemsSource = m_processes;
-                    });
-                }
-            }
-            catch { }
-        }
+        DispatcherQueue?.TryEnqueue(() =>
+        {
+            HealthStatusText.Text = OperatorDisplay.FormatHealthStatusLine(
+                visual, health.Gate, health);
+            HealthStatusText.Foreground = OperatorDisplay.SeverityBrush(visual.Severity);
+            ThermalBadgeText.Text =
+                $"{visual.BadgeLabel} · {health.Gate.ThermalPressure} · {health.Gate.GateDecision}";
+            ThermalBadgeText.Foreground = OperatorDisplay.SeverityBrush(visual.Severity);
+            GateStatusText.Text =
+                $"{OperatorDisplay.FormatGateTrayLine(health.Gate)} | " +
+                OperatorDisplay.FormatGateRssTrayLine(health.Gate);
+            GateStatusText.Foreground = OperatorDisplay.SeverityBrush(visual.Severity);
+            HostWatchStatusText.Text =
+                $"{OperatorDisplay.FormatHostWatchTrayLine(health.HostWatch)} | " +
+                OperatorDisplay.FormatHostNetTrayLine(health.HostWatch);
+            PoolStatusText.Text = OperatorDisplay.FormatPoolTrayLine(pool);
+            StatusSnapshotText.Text = OperatorDisplay.FormatStatusSnapshotTrayLine(status);
+            ProcessGrid.ItemsSource = m_processes;
+        });
     }
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e)
@@ -80,8 +89,24 @@ public sealed partial class TrayWindow : Window
         await RefreshDataAsync();
     }
 
+    private async void OnKillProcessClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: uint pid })
+        {
+            IpcKill.TryKill(pid);
+            await RefreshDataAsync();
+        }
+    }
+
+    private async void OnKillAllClick(object sender, RoutedEventArgs e)
+    {
+        IpcKill.TryKillAll();
+        await RefreshDataAsync();
+    }
+
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {
+        _pollTimer?.Stop();
         Close();
     }
 }
@@ -92,4 +117,5 @@ public record ProcessInfo
     public string name { get; set; } = "";
     public ulong memory_mb { get; set; }
     public string? project { get; set; }
+    public string? harness { get; set; }
 }

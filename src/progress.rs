@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn progress_min_items_is_reasonable() {
-        assert!(PROGRESS_MIN_ITEMS >= 2);
+        const { assert!(PROGRESS_MIN_ITEMS >= 2) };
     }
 
     #[test]

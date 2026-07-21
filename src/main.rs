@@ -2,8 +2,8 @@
 mod alloc;
 mod plugins;
 
-use anyhow::Result;
 use crate::error::SharecliError;
+use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use sharecli_thermal_tui as thermal_tui;
@@ -17,6 +17,7 @@ mod config;
 mod config_validator;
 mod config_watcher;
 mod crc64;
+mod dashboard_assets;
 mod csv_writer;
 mod error;
 mod error_envelope;
@@ -51,8 +52,9 @@ mod xxhash3;
 mod xxtea;
 
 use commands::{
-    cast as cast_cmd, check_limits, config as config_cmd, health, pool_status,
-    project as project_cmd, ps, run_pool, serve_run, set_limits, start, status, stop,
+    cast as cast_cmd, check_limits, config as config_cmd, fuse as fuse_cmd, health,
+    mesh as mesh_cmd, pool_status, project as project_cmd, ps, run_pool, serve_run, set_limits,
+    start, status, stop,
 };
 use progress::StepProgress;
 use runtime::ProcessPool;
@@ -99,6 +101,18 @@ enum Commands {
         /// Show all processes including system ones
         #[arg(short, long)]
         all: bool,
+
+        /// Emit JSON (requires `--all` for host agent inventory parity; AC-007.43)
+        #[arg(long)]
+        json: bool,
+
+        /// Emit CSV (requires `--all` for host agent inventory parity; AC-007.83)
+        #[arg(long)]
+        csv: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.49 with --all --json)
+        #[arg(short, long)]
+        watch: Option<u64>,
     },
 
     /// Start a harness process
@@ -151,6 +165,89 @@ enum Commands {
         /// Detailed output
         #[arg(short, long)]
         verbose: bool,
+
+        /// Emit machine-readable JSON (includes detected agent inventory)
+        #[arg(long)]
+        json: bool,
+
+        /// Emit operator snapshot as CSV (header + rows; AC-007.82)
+        #[arg(long)]
+        csv: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.66 with --json)
+        #[arg(short, long)]
+        watch: Option<u64>,
+    },
+
+    /// List host-detected coding agents (proc scan + RSS/FD samples)
+    Proc {
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Emit flat agent inventory as CSV (header + rows)
+        #[arg(long)]
+        csv: bool,
+
+        /// Show parent-child process forests rooted at detected agents
+        #[arg(long)]
+        tree: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode)
+        #[arg(short, long)]
+        watch: Option<u64>,
+
+        /// Keep only agents matching this family id (case-insensitive)
+        #[arg(long)]
+        family: Option<String>,
+
+        /// Drop agents matching this family id (case-insensitive; negates --family)
+        #[arg(long)]
+        exclude_family: Option<String>,
+
+        /// Keep only agents whose COMM contains this substring (case-insensitive)
+        #[arg(long)]
+        comm: Option<String>,
+
+        /// Keep only agents whose joined argv/cmdline contains this substring (case-insensitive)
+        #[arg(long)]
+        cmdline: Option<String>,
+
+        /// Keep only agents in this process state (R|S|D|Z|T|t|…)
+        #[arg(long)]
+        state: Option<String>,
+
+        /// Keep only agents at or above this RSS (bytes or K/M/G suffix)
+        #[arg(long)]
+        min_rss: Option<String>,
+
+        /// Keep only agents at or below this RSS (bytes or K/M/G suffix)
+        #[arg(long)]
+        max_rss: Option<String>,
+
+        /// Keep only agents at or above this open-FD count
+        #[arg(long)]
+        min_fd: Option<String>,
+
+        /// Keep only agents at or below this open-FD count
+        #[arg(long)]
+        max_fd: Option<String>,
+
+        /// Sort inventory rows or tree roots: rss (desc), fd (desc), pid (asc), state (asc)
+        #[arg(long)]
+        sort: Option<String>,
+
+        /// Cap inventory rows or tree root forests after filter/sort (N >= 1)
+        #[arg(long)]
+        limit: Option<u64>,
+
+        /// Show RSS/FD/cmdline/parent detail for one live host PID
+        #[arg(long)]
+        pid: Option<u32>,
+
+        /// Keep only agents whose parent PID equals N
+        #[arg(long)]
+        ppid: Option<u32>,
     },
 
     /// Run a runtime health probe
@@ -158,6 +255,18 @@ enum Commands {
         /// Optional harness type hint (node, bun, etc.)
         #[arg(long)]
         harness: Option<String>,
+
+        /// Emit JSON (gate → host_watch siblings; AC-007.44)
+        #[arg(long)]
+        json: bool,
+
+        /// Emit operator snapshot as CSV (header + rows; AC-007.82)
+        #[arg(long)]
+        csv: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.64 with --json)
+        #[arg(short, long)]
+        watch: Option<u64>,
     },
 
     /// Configuration management
@@ -195,6 +304,18 @@ enum Commands {
         /// Harness type to check (node, bun)
         #[arg(long)]
         harness: Option<String>,
+
+        /// Emit JSON (gate → host_watch siblings; AC-007.44)
+        #[arg(long)]
+        json: bool,
+
+        /// Emit operator snapshot as CSV (header + rows; AC-007.82)
+        #[arg(long)]
+        csv: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.65 with --json)
+        #[arg(short, long)]
+        watch: Option<u64>,
     },
 
     /// Run using pooled runtime
@@ -254,7 +375,7 @@ enum Commands {
 
     /// Print a fleet analytics snapshot (one-shot or live watch mode)
     Report {
-        /// Output format: text (default) or json
+        /// Output format: text (default), json, or csv
         #[arg(long, default_value = "text")]
         format: String,
 
@@ -271,6 +392,16 @@ enum Commands {
     Fleet {
         #[command(subcommand)]
         cmd: FleetCmd,
+    },
+    /// Maildir mesh task-queue operator surface (status / reclaim)
+    Mesh {
+        #[command(subcommand)]
+        cmd: MeshCmd,
+    },
+    /// FUSE IO intercept operator surface (provenance inspect)
+    Fuse {
+        #[command(subcommand)]
+        cmd: FuseCmd,
     },
     /// Cross-machine text injection into registered terminal panes
     Cast {
@@ -341,6 +472,40 @@ enum FleetCmd {
 }
 
 #[derive(Subcommand, Debug)]
+enum FuseCmd {
+    /// Read write-provenance xattrs (`user.sharecli.session`, `user.sharecli.written_at`)
+    Provenance {
+        /// Backing file path (need not be under a live FUSE mount)
+        path: std::path::PathBuf,
+        /// Emit JSON instead of text (`null` when attrs absent)
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum MeshCmd {
+    /// Show Maildir queue depth (ready / in_flight / pending)
+    Status {
+        /// Path to Maildir queue root (`tmp/` `new/` `cur/`)
+        #[arg(long, short = 'Q')]
+        queue: std::path::PathBuf,
+        /// Emit JSON [`sharecli_mesh::MaildirStatus`] instead of text
+        #[arg(long)]
+        json: bool,
+    },
+    /// Return in-flight (`cur/`) tasks for an owner back to `new/`
+    Reclaim {
+        /// Path to Maildir queue root
+        #[arg(long, short = 'Q')]
+        queue: std::path::PathBuf,
+        /// Owner string stamped at claim time
+        #[arg(long)]
+        owner: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
 enum CastCmd {
     /// Register a pane: `cast register <name> <address>`
     Register {
@@ -404,17 +569,23 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
+    use std::io::IsTerminal;
+
     #[cfg(feature = "dhat-heap")]
     let _dhat_profiler = dhat::Profiler::new_heap();
 
     let cli = Cli::parse();
-    let tokens = theme::Tokens::from_name(&cli.theme).ok_or_else(|| {
-        SharecliError::user_input(format!(
-            "unknown theme '{}': expected backbone-2 / bb2 / dark or backbone-2-light / light",
-            cli.theme,
-        ))
-    }).map_err(|e| anyhow::Error::new(e))?;
-    eprintln!("{}", tokens.panel.ansi_fg());
+    let tokens = theme::Tokens::from_name(&cli.theme)
+        .ok_or_else(|| {
+            SharecliError::user_input(format!(
+                "unknown theme '{}': expected backbone-2 / bb2 / dark or backbone-2-light / light",
+                cli.theme,
+            ))
+        })
+        .map_err(|e| anyhow::Error::new(e))?;
+    if std::io::stderr().is_terminal() && !is_no_color() {
+        eprintln!("{}", tokens.panel.ansi_fg());
+    }
 
     // Initialise global config (must happen before any command handler)
     let cfg = config::init_global();
@@ -427,7 +598,7 @@ async fn run() -> Result<()> {
         }
     }
 
-    if !cli.quiet {
+    if !cli.quiet && (cli.verbose || std::io::stderr().is_terminal()) {
         use tracing_subscriber::prelude::*;
 
         crate::otel::ensure_trace_context_propagator();
@@ -462,8 +633,16 @@ async fn run() -> Result<()> {
     }
 
     match &cli.command {
-        Commands::Ps { project, harness, all } => {
-            ps(project.as_deref(), harness.as_deref(), *all).await?
+        Commands::Ps { project, harness, all, json, csv, watch } => {
+            ps(
+                project.as_deref(),
+                harness.as_deref(),
+                *all,
+                *json,
+                *csv,
+                *watch,
+            )
+            .await?
         }
         Commands::Start { project, harness, cwd, args } => {
             start(project, harness, cwd.as_deref(), args).await?
@@ -471,15 +650,41 @@ async fn run() -> Result<()> {
         Commands::Stop { pid, project, harness, all, force, yes } => {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
-        Commands::Status { verbose } => status(*verbose).await?,
+        Commands::Status { verbose, json, csv, watch } => {
+            status(*verbose, *json, *csv, *watch).await?
+        }
+        Commands::Proc { json, csv, tree, watch, family, exclude_family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
+            commands::proc::run(
+                *json,
+                *csv,
+                *tree,
+                *watch,
+                family.clone(),
+                exclude_family.clone(),
+                comm.clone(),
+                cmdline.clone(),
+                state.clone(),
+                min_rss.clone(),
+                max_rss.clone(),
+                min_fd.clone(),
+                max_fd.clone(),
+                sort.clone(),
+                *limit,
+                *pid,
+                *ppid,
+            )
+            .await?
+        }
         Commands::Config { cmd } => config_cmd(cmd)?,
         Commands::Project { cmd } => project_cmd(cmd).await?,
         Commands::Optimize { apply } => optimize(*apply).await?,
         Commands::Prune { idle_seconds, force } => {
             prune(idle_seconds.unwrap_or(config::global().spawn.prune_idle_seconds), *force).await?
         }
-        Commands::Pool { harness: _ } => pool_status().await?,
-        Commands::Health { harness } => health(harness.as_deref()).await?,
+        Commands::Pool { harness: _, json, csv, watch } => pool_status(*json, *csv, *watch).await?,
+        Commands::Health { harness, json, csv, watch } => {
+            health(harness.as_deref(), *json, *csv, *watch).await?
+        }
         Commands::Run { harness, project } => run_pool(harness, project).await?,
         Commands::Limits { project, memory, processes } => {
             set_limits(project, *memory, *processes).await?
@@ -502,13 +707,28 @@ async fn run() -> Result<()> {
         }
         Commands::Thermal { cap } => {
             let gov = sharecli_fleet::thermal::ThermalGovernor::new();
-            thermal_tui::run(&gov, *cap)?;
+            let poll_pool_status = move || {
+                let handle = tokio::runtime::Handle::current();
+                handle.block_on(async {
+                    let pool = crate::commands::build_pool_json().await.ok().map(Into::into);
+                    let status = crate::commands::build_status_json().await.ok().map(Into::into);
+                    (pool, status)
+                })
+            };
+            thermal_tui::run_with_pool_status(&gov, *cap, Some(Box::new(poll_pool_status)))?;
         }
         Commands::Fleet { cmd } => match cmd {
             FleetCmd::Status => fleet_status().await?,
             FleetCmd::Register { name, coordinator } => {
                 fleet_register(name.as_deref(), coordinator).await?
             }
+        },
+        Commands::Mesh { cmd } => match cmd {
+            MeshCmd::Status { queue, json } => mesh_cmd::status(queue, *json)?,
+            MeshCmd::Reclaim { queue, owner } => mesh_cmd::reclaim(queue, owner)?,
+        },
+        Commands::Fuse { cmd } => match cmd {
+            FuseCmd::Provenance { path, json } => fuse_cmd::provenance(path, *json)?,
         },
         Commands::Cast { cmd } => match cmd {
             CastCmd::Register { name, address } => cast_cmd::register(name, address)?,
@@ -542,8 +762,7 @@ fn cli_man(install: bool) -> Result<()> {
 
     let man = Man::new(Cli::command());
     let mut buffer: Vec<u8> = Vec::new();
-    man.render(&mut buffer)
-        .map_err(|e| anyhow::anyhow!("man page render failed: {e}"))?;
+    man.render(&mut buffer).map_err(|e| anyhow::anyhow!("man page render failed: {e}"))?;
     let rendered = String::from_utf8(buffer).map_err(|e| anyhow::anyhow!("man page utf-8: {e}"))?;
 
     if install {
@@ -576,6 +795,17 @@ fn cli_list(as_json: bool) -> Result<()> {
         ("where", "Show the on-disk path of the pane-map file"),
     ];
 
+    let mesh_modules: &[(&str, &str)] = &[
+        ("status", "Show Maildir queue depth (`mesh status --queue <path>`)"),
+        (
+            "reclaim",
+            "Return in-flight tasks for an owner (`mesh reclaim --queue <path> --owner <id>`)",
+        ),
+    ];
+
+    let fuse_modules: &[(&str, &str)] =
+        &[("provenance", "Read FUSE write xattrs on a backing file (`fuse provenance <path>`)")];
+
     let util_modules: &[(&str, &str)] = &[
         ("base85", "Base85 encode / decode"),
         ("csv", "Build a CSV row from --row entries"),
@@ -594,6 +824,8 @@ fn cli_list(as_json: bool) -> Result<()> {
     if as_json {
         let payload = serde_json::json!({
             "cast": cast_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
+            "mesh": mesh_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
+            "fuse": fuse_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
             "util": util_modules.iter().map(|(n, d)| serde_json::json!({"name": n, "desc": d})).collect::<Vec<_>>(),
         });
         println!("{}", serde_json::to_string_pretty(&payload)?);
@@ -604,6 +836,16 @@ fn cli_list(as_json: bool) -> Result<()> {
     println!();
     println!("cast <subcommand>  -- pane casting ({} subcommands)", cast_modules.len());
     for (n, d) in cast_modules {
+        println!("  - {:<11} {}", n, d);
+    }
+    println!();
+    println!("mesh <subcommand>  -- Maildir task queue ({} subcommands)", mesh_modules.len());
+    for (n, d) in mesh_modules {
+        println!("  - {:<11} {}", n, d);
+    }
+    println!();
+    println!("fuse <subcommand>  -- FUSE IO intercept ({} subcommands)", fuse_modules.len());
+    for (n, d) in fuse_modules {
         println!("  - {:<11} {}", n, d);
     }
     println!();

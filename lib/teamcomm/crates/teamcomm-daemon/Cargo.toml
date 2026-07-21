@@ -1,0 +1,42 @@
+[package]
+name = "teamcomm-daemon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "teamcomm daemon — long-running multi-agent coordinator"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KooshaPari/phenotype-teamcomm"
+documentation = "https://docs.rs/teamcomm-daemon"
+keywords = ["phenotype", "teamcomm", "teamcomm"]
+categories = ["network-programming", "system"]
+authors = ["kooshapari"]
+
+[[bin]]
+name = "teamcomm-daemon"
+path = "src/main.rs"
+
+[lib]
+name = "teamcomm_daemon"
+path = "src/lib.rs"
+
+[dependencies]
+teamcomm-protocol = { path = "../teamcomm-protocol" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
+thiserror = "1.0"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dirs = { workspace = true }
+rusqlite = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["full", "test-util"] }
+
+[lints]
+workspace = true

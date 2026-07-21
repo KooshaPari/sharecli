@@ -46,10 +46,7 @@ fn dashboard_sr_table_and_skip_link() {
         html.contains(r#"aria-labelledby="dashboard-title""#),
         "main should be labelled by the page title"
     );
-    assert!(
-        html.matches("scope=\"col\"").count() >= 5,
-        "every column header needs scope=col"
-    );
+    assert!(html.matches("scope=\"col\"").count() >= 5, "every column header needs scope=col");
     assert!(
         html.contains("href=\"#main-content\"") && html.contains("Skip to process table"),
         "skip link must target main content"

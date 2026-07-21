@@ -63,6 +63,21 @@ it via FR / product scope.
 Phases 2–3 soft CI/soak no longer live in sharecli. Phase 4 still needs maintainer
 sign-off after an explicit FR or product-scope claim.
 
+## Phase 1 formalization (FR-003)
+
+**Status:** DONE (2026-07-19) — governance-only; ADR 0002 remains authoritative.
+
+| Artifact | Action |
+|----------|--------|
+| `audit/.lane-c08/C08.md` | L71/L76 EXTERNAL + GAP-QA cross-ref; L76 score **1** |
+| `audit/SCORECARD-v38.md` | Reconcile v3/v4 L76 interim lifts superseded; EXTRACTED/N/A formalize entry |
+| `docs/ops/governance/GAP-QA-MATRIX.md` | Harbor stub/soak rows → `Status: EXTRACTED / N/A (sharecli)` |
+| `WORK_DAG.md` T-650 | Seven-day soak → tracked in benchora/`portage-temp`, not sharecli `main` |
+| `docs/eval/GOVERNANCE.md` | L76 N/A + ADR 0005 EXTRACTED destination table |
+
+**Auditor rule:** Missing in-repo Harbor paths are **not** product gaps. Score L76 as **1**
+until Phase 4 supersede trigger fires with an explicit FR or product-scope claim.
+
 ## Consequences
 
 - C08 agent-eval lifts come only after Phase 4 and lane re-score (L76 target 1→2+);

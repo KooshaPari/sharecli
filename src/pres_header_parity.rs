@@ -114,8 +114,8 @@ pub fn build_v3_default_fixture() -> Vec<u8> {
 /// inspected via `overlay_encrypted`.
 pub fn assert_round_trip(input: &[u8]) {
     assert_eq!(input.len(), 512, "header must be 512 bytes, got {}", input.len());
-    let parsed =
-        crate::util::pres_header_parse::parse(input).expect("header must round-trip through parser");
+    let parsed = crate::util::pres_header_parse::parse(input)
+        .expect("header must round-trip through parser");
     assert_eq!(parsed.header_size, 512, "header_size must be 512");
     assert_eq!(
         parsed.magic,

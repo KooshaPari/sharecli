@@ -1,0 +1,251 @@
+name: Nightly Bench
+
+# Nightly benchmark suite with Slack/Discord notification.
+#
+# Runs Criterion + hyperfine benchmarks on a nightly schedule,
+# then posts a summary to Slack and/or Discord via webhooks.
+#
+# Required secrets:
+#   SLACK_WEBHOOK_URL  — Slack incoming webhook URL (optional if not using Slack)
+#   DISCORD_WEBHOOK_URL — Discord webhook URL (optional if not using Discord)
+#
+# The notification fires on every completed run (success or failure)
+# so the team always gets visibility into nightly perf trends.
+
+on:
+  schedule:
+    # Nightly at 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      post_results:
+        description: "Post results to Slack/Discord after run"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+concurrency:
+  group: nightly-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  SHARECLI_BENCH_SEED: "42"
+  BENCH_RESULT_FILE: "bench-results.json"
+
+jobs:
+  bench:
+    name: Nightly Benchmarks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      bench_status: ${{ steps.bench.outcome }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Record run metadata
+        id: meta
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "rustc=$(rustc --version)" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
+          echo "Run on $(date -u '+%Y-%m-%d %H:%M UTC') | $(git rev-parse --short HEAD)"
+
+      - name: Run Criterion benches (nightly sample sizes)
+        id: bench
+        continue-on-error: true
+        run: |
+          cargo bench --locked --bench config_parse -- --sample-size 50 --warm-up-time 2 --measurement-time 5 2>&1 | tee bench-criterion.log
+          cargo bench --locked --bench pool_list -- --sample-size 50 --warm-up-time 2 --measurement-time 5 2>&1 | tee -a bench-criterion.log
+          cargo bench --locked --bench prometheus_render -- --sample-size 50 --warm-up-time 2 --measurement-time 5 2>&1 | tee -a bench-criterion.log
+          cargo bench --locked --bench jwt_auth_validate -- --sample-size 50 --warm-up-time 2 --measurement-time 5 2>&1 | tee -a bench-criterion.log
+
+      - name: Export benchmark results to JSON
+        if: always()
+        run: |
+          python3 scripts/bench/export-trend.py \
+            --criterion-dir target/criterion \
+            --out "${{ env.BENCH_RESULT_FILE }}" \
+            --sha "${{ steps.meta.outputs.sha }}" \
+            2>/dev/null || echo '{"error": "export script not found, skipping"}' > "${{ env.BENCH_RESULT_FILE }}"
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nightly-bench-${{ steps.meta.outputs.sha_short }}
+          path: |
+            ${{ env.BENCH_RESULT_FILE }}
+            bench-criterion.log
+            target/criterion/**/estimates.json
+            target/criterion/**/sample.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Install hyperfine
+        uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # v2.83.0
+        with:
+          tool: hyperfine
+
+      - name: Build release binary
+        run: cargo build --locked --release -p sharecli
+
+      - name: Run hyperfine latency bench
+        if: always()
+        env:
+          SHARECLI_HYPERFINE_RUNS: "25"
+          SHARECLI_HYPERFINE_WARMUP: "5"
+        run: |
+          ./target/release/sharecli serve --bind 127.0.0.1:9000 &
+          serve_pid=$!
+          trap 'kill $serve_pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:9000/healthz; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:9000/healthz
+          bash scripts/bench/hyperfine-healthz.sh
+          echo '{"hyperfine": "completed"}' >> "${{ env.BENCH_RESULT_FILE }}"
+
+  # ── Notification ────────────────────────────────────────────────────
+  notify:
+    name: Post Results
+    needs: [bench]
+    if: always() && (github.event_name == 'schedule' || github.event.inputs.post_results == 'true')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: |
+            ${{ github.workflow }}.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Build notification payload
+        id: payload
+        env:
+          BENCH_STATUS: ${{ needs.bench.outputs.bench_status }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHORT_SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::8}"
+          TIMESTAMP="$(date -u '+%Y-%m-%d %H:%M UTC')"
+          REPO_NAME="${REPO##*/}"
+
+          if [ "$BENCH_STATUS" = "success" ]; then
+            EMOJI=":white_check_mark:"
+            STATUS_TEXT="passed"
+            COLOR="#2ea44f"
+          else
+            EMOJI=":x:"
+            STATUS_TEXT="failed"
+            COLOR="#cf222e"
+          fi
+
+          # ── Slack payload (Block Kit) ──
+          cat > /tmp/slack-payload.json <<SLACK_EOF
+          {
+            "attachments": [
+              {
+                "color": "${COLOR}",
+                "blocks": [
+                  {
+                    "type": "header",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "${EMOJI} Nightly Bench — ${STATUS_TEXT}",
+                      "emoji": true
+                    }
+                  },
+                  {
+                    "type": "section",
+                    "fields": [
+                      { "type": "mrkdwn", "text": "*Repository:*\n${REPO_NAME}" },
+                      { "type": "mrkdwn", "text": "*Commit:*\n\`${SHORT_SHA}\`" },
+                      { "type": "mrkdwn", "text": "*Status:*\n${EMOJI} ${STATUS_TEXT}" },
+                      { "type": "mrkdwn", "text": "*Time:*\n${TIMESTAMP}" }
+                    ]
+                  },
+                  {
+                    "type": "actions",
+                    "elements": [
+                      {
+                        "type": "button",
+                        "text": { "type": "plain_text", "text": "View Run" },
+                        "url": "${WORKFLOW_URL}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+          SLACK_EOF
+
+          # ── Discord payload (Embed) ──
+          if [ "$BENCH_STATUS" = "success" ]; then
+            DISCORD_COLOR=3066993
+          else
+            DISCORD_COLOR=15158332
+          fi
+
+          cat > /tmp/discord-payload.json <<DISCORD_EOF
+          {
+            "embeds": [
+              {
+                "title": "${EMOJI} Nightly Bench — ${STATUS_TEXT}",
+                "description": "Benchmarks ran on **${REPO_NAME}** and **${STATUS_TEXT}**.",
+                "color": ${DISCORD_COLOR},
+                "fields": [
+                  { "name": "Commit", "value": "\`${SHORT_SHA}\`", "inline": true },
+                  { "name": "Status", "value": "${STATUS_TEXT}", "inline": true },
+                  { "name": "Time", "value": "${TIMESTAMP}", "inline": true }
+                ],
+                "url": "${WORKFLOW_URL}",
+                "footer": { "text": "Nightly Bench CI" }
+              }
+            ]
+          }
+          DISCORD_EOF
+
+          echo "Built notification payloads"
+
+      - name: Post to Slack
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d @/tmp/slack-payload.json \
+            "${SLACK_WEBHOOK_URL}"
+
+      - name: Post to Discord
+        if: env.DISCORD_WEBHOOK_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d @/tmp/discord-payload.json \
+            "${DISCORD_WEBHOOK_URL}"
