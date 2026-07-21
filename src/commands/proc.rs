@@ -643,7 +643,8 @@ fn print_host_watch_text_footer() -> Result<()> {
 }
 
 /// Gate + host watch text companions on stderr for NDJSON watch only (AC-007.28 / AC-007.29).
-/// One-shot `proc --json` / `proc --tree --json` MUST NOT call this helper (AC-007.30).
+/// One-shot `proc --json`, `proc --tree --json`, and `proc --pid N --json` MUST NOT call
+/// this helper (AC-007.30 / AC-007.31).
 fn eprint_gate_host_watch_stderr_companions(
     thermal: ThermalLevel,
     agent_count: usize,
@@ -794,6 +795,7 @@ fn format_cmdline(cmdline: &[String]) -> String {
 }
 
 /// Render one process detail snapshot (text or JSON, AC-006.23).
+/// One-shot `proc --pid N --json` MUST NOT print gate/host_watch stderr companions (AC-007.31).
 pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()> {
     if json {
         println!("{}", serde_json::to_string_pretty(detail)?);

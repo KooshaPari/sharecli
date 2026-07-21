@@ -3,6 +3,7 @@
 //!
 //! AC-007.30 `proc --json` and `proc --tree --json` (no `--watch`) MUST NOT print gate or
 //! host_watch text companions on stderr; gate/host_watch stay in the JSON body only.
+//! AC-007.31 extends the same contract to `proc --pid N --json`.
 
 use std::process::Command;
 
@@ -77,4 +78,23 @@ fn fr007_proc_tree_json_stderr_silent() {
     assert_stderr_silent(&out.stderr, "proc --tree --json");
     assert_stderr_no_companion_markers(&out.stderr, "proc --tree --json");
     assert_json_body_has_gate_and_host_watch(&out.stdout, "proc --tree --json");
+}
+
+/// FR-007 / AC-007.31 — one-shot proc --pid --json keeps stderr silent; gate/host_watch in JSON only.
+#[test]
+#[serial_test::serial]
+fn fr007_proc_pid_json_stderr_silent() {
+    let pid = std::process::id();
+    let out = bin()
+        .args(["proc", "--pid", &pid.to_string(), "--json"])
+        .output()
+        .expect("spawn sharecli proc --pid --json");
+    assert!(
+        out.status.success(),
+        "proc --pid --json MUST exit 0; stderr: {:?}",
+        out.stderr
+    );
+    assert_stderr_silent(&out.stderr, "proc --pid --json");
+    assert_stderr_no_companion_markers(&out.stderr, "proc --pid --json");
+    assert_json_body_has_gate_and_host_watch(&out.stdout, "proc --pid --json");
 }

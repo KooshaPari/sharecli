@@ -162,6 +162,7 @@
 | AC-007.28   | `tests/fr007_proc_watch_stderr_footer.rs`; `src/commands/proc.rs` (`eprint_gate_host_watch_stderr_companions`, `render_once` NDJSON path) | proc watch NDJSON stderr gate → host_watch companions; stdout pipe-clean |
 | AC-007.29   | `tests/fr007_proc_tree_watch_stderr_footer.rs`; `src/commands/proc.rs` (`eprint_gate_host_watch_stderr_companions`, `render_once` tree NDJSON path) | proc tree watch NDJSON stderr gate → host_watch companions; stdout pipe-clean |
 | AC-007.30   | `tests/fr007_proc_json_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot JSON paths) | proc one-shot JSON stderr silent; gate/host_watch JSON body only |
+| AC-007.31   | `tests/fr007_proc_json_stderr_silent.rs`; `src/commands/proc.rs` (`render_proc_detail` JSON path) | proc --pid one-shot JSON stderr silent; gate/host_watch JSON body only |
 
 ### FR-008 — Coalesce
 
@@ -231,6 +232,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc pid one-shot JSON stderr silence:** `sharecli proc --pid N --json`
+  (no `--watch`) MUST NOT print gate/host_watch text companions on stderr; gate and
+  `host_watch` stay in the JSON body only (AC-007.31); extends AC-007.30 to pid detail.
 - **2026-07-20 — FR-007 proc one-shot JSON stderr silence:** `sharecli proc --json` and
   `proc --tree --json` (no `--watch`) MUST NOT print gate/host_watch text companions on
   stderr; gate and `host_watch` stay in the JSON body only (AC-007.30); inverse contract of
