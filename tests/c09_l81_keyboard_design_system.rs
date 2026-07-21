@@ -26,7 +26,7 @@ fn fr004_l81_3_thermal_tui_keyboard_matrix() {
     let mut app = App::new(4);
     assert_eq!(app.focus, PanelFocus::Gate);
     apply_key_action(&mut app, KeyAction::FocusNext);
-    assert_eq!(app.focus, PanelFocus::HostWatch);
+    assert_eq!(app.focus, PanelFocus::Pool);
     apply_key_action(&mut app, KeyAction::FocusPanel(PanelFocus::Agents));
     assert_eq!(app.focus, PanelFocus::Agents);
     apply_key_action(&mut app, KeyAction::ToggleHelp);

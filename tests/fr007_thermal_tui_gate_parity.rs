@@ -35,7 +35,7 @@ fn fr007_thermal_tui_gate_parity_rss_refuse() {
         "gate panel lines MUST include REFUSE contention; got: {panel_text}"
     );
 
-    let backend = TestBackend::new(120, 52);
+    let backend = TestBackend::new(120, 64);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4).with_detected_agents(vec![DetectedAgentWatch {
         agent: DetectedAgent { pid: 4242, family: "claude", comm: "claude".into() },

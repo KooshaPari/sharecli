@@ -26,9 +26,11 @@ use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
     build_host_agent_forests, build_host_agent_state_map, build_host_forest_state_map,
-    format_rss_bytes, gate_status_snapshot_with_rss, global_coalesce_meters, global_slot_queue_meters,
+    format_pool_operator_line, format_rss_bytes, format_status_operator_line,
+    gate_status_snapshot_with_rss, global_coalesce_meters, global_slot_queue_meters,
     state_text_for_pid, sum_detected_agent_rss_bytes, watch_host_agents, AgentTreeNode,
-    CoalesceMeters, DetectedAgentWatch, GateStatusSnapshot, ResourceWatchSample, SlotQueueMeters,
+    CoalesceMeters, DetectedAgentWatch, GateStatusSnapshot, PoolOperatorPanel,
+    ResourceWatchSample, SlotQueueMeters, StatusOperatorPanel,
 };
 use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
@@ -49,37 +51,46 @@ pub fn is_quit_key(key: &KeyEvent) -> bool {
     }
 }
 
-/// Keyboard-focusable operator panels (C09 L81.3): gate → host watch → agents.
+/// Keyboard-focusable operator panels (C09 L81.3): gate → pool → status → host watch → agents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PanelFocus {
     #[default]
     Gate,
+    Pool,
+    Status,
     HostWatch,
     Agents,
 }
 
 impl PanelFocus {
-    const ORDER: [PanelFocus; 3] =
-        [PanelFocus::Gate, PanelFocus::HostWatch, PanelFocus::Agents];
+    const ORDER: [PanelFocus; 5] = [
+        PanelFocus::Gate,
+        PanelFocus::Pool,
+        PanelFocus::Status,
+        PanelFocus::HostWatch,
+        PanelFocus::Agents,
+    ];
 
-    /// Advance focus: gate → host watch → agents → gate.
+    /// Advance focus: gate → pool → status → host watch → agents → gate.
     pub fn next(self) -> Self {
         let idx = Self::ORDER.iter().position(|&p| p == self).unwrap_or(0);
         Self::ORDER[(idx + 1) % Self::ORDER.len()]
     }
 
-    /// Retreat focus: agents → host watch → gate → agents.
+    /// Retreat focus: agents → host watch → status → pool → gate → agents.
     pub fn prev(self) -> Self {
         let idx = Self::ORDER.iter().position(|&p| p == self).unwrap_or(0);
         Self::ORDER[(idx + Self::ORDER.len() - 1) % Self::ORDER.len()]
     }
 
-    /// Map digit keys `1` / `2` / `3` to panels.
+    /// Map digit keys `1`–`5` to panels.
     pub fn from_digit(ch: char) -> Option<Self> {
         match ch {
             '1' => Some(PanelFocus::Gate),
-            '2' => Some(PanelFocus::HostWatch),
-            '3' => Some(PanelFocus::Agents),
+            '2' => Some(PanelFocus::Pool),
+            '3' => Some(PanelFocus::Status),
+            '4' => Some(PanelFocus::HostWatch),
+            '5' => Some(PanelFocus::Agents),
             _ => None,
         }
     }
@@ -106,8 +117,10 @@ pub fn handle_key(key: &KeyEvent) -> KeyAction {
         KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => KeyAction::FocusPrev,
         KeyCode::Tab => KeyAction::FocusNext,
         KeyCode::Char('1') => KeyAction::FocusPanel(PanelFocus::Gate),
-        KeyCode::Char('2') => KeyAction::FocusPanel(PanelFocus::HostWatch),
-        KeyCode::Char('3') => KeyAction::FocusPanel(PanelFocus::Agents),
+        KeyCode::Char('2') => KeyAction::FocusPanel(PanelFocus::Pool),
+        KeyCode::Char('3') => KeyAction::FocusPanel(PanelFocus::Status),
+        KeyCode::Char('4') => KeyAction::FocusPanel(PanelFocus::HostWatch),
+        KeyCode::Char('5') => KeyAction::FocusPanel(PanelFocus::Agents),
         KeyCode::Char('r') => KeyAction::ForcePoll,
         KeyCode::Char('?') => KeyAction::ToggleHelp,
         _ => KeyAction::Noop,
@@ -127,7 +140,7 @@ pub fn apply_key_action(app: &mut App, action: KeyAction) {
 
 /// Footer help overlay copy (shown when `?` toggles help).
 pub const HELP_OVERLAY_HINT: &str =
-    " Tab/Shift-Tab cycle  1 gate  2 watch  3 agents  r poll  ? hide";
+    " Tab/Shift-Tab cycle  1 gate  2 pool  3 status  4 watch  5 agents  r poll  ? hide";
 
 /// Map a [`ThermalLevel`] to a human-readable label.
 pub fn level_label(level: ThermalLevel) -> &'static str {
@@ -258,6 +271,51 @@ pub fn gate_panel_lines(
             format_rss_bytes(snap.agent_total_rss_bytes)
         )),
         Line::from(format!("  Agent contention: {}", snap.agent_contention)),
+    ]
+}
+
+/// Lines for the runtime pool operator panel (FR-007 / AC-007.71 TUI slice).
+pub fn pool_panel_lines(pool: Option<PoolOperatorPanel>, compact: bool) -> Vec<Line<'static>> {
+    let Some(pool) = pool else {
+        let msg = if compact { " pool unavailable" } else { "  Runtime pool unavailable" };
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
+    };
+
+    let summary = format_pool_operator_line(&pool);
+    if compact {
+        return vec![Line::from(format!(" {summary}"))];
+    }
+
+    vec![
+        Line::from(format!("  Node idle/total: {}/{}", pool.node_idle, pool.node_total)),
+        Line::from(format!("  Bun idle/total:  {}/{}", pool.bun_idle, pool.bun_total)),
+        Line::from(format!(
+            "  Max per type: {} · {}",
+            pool.max_per_type,
+            if pool.healthy { "healthy" } else { "degraded" }
+        )),
+    ]
+}
+
+/// Lines for the proc-scan / status snapshot operator panel (FR-007 / AC-007.71 TUI slice).
+pub fn status_panel_lines(status: Option<StatusOperatorPanel>, compact: bool) -> Vec<Line<'static>> {
+    let Some(status) = status else {
+        let msg = if compact { " status unavailable" } else { "  Proc scan status unavailable" };
+        return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
+    };
+
+    let summary = format_status_operator_line(&status);
+    if compact {
+        return vec![Line::from(format!(" {summary}"))];
+    }
+
+    vec![
+        Line::from(format!("  Scanned:  {}", status.scanned)),
+        Line::from(format!("  Watched:  {}", status.watched)),
+        Line::from(format!(
+            "  Managed:  {} · agent rows: {}",
+            status.total_processes, status.agent_rows
+        )),
     ]
 }
 
@@ -633,6 +691,10 @@ pub struct App {
     pub agent_forests: Vec<AgentTreeNode>,
     /// Pinned forest-wide process state for tests; live render resolves via proc scan when unset.
     forest_state_by_pid: Option<HashMap<u32, char>>,
+    /// Runtime pool operator panel (FR-007 / AC-007.71).
+    pub pool_panel: Option<PoolOperatorPanel>,
+    /// Proc-scan / managed-process operator panel (FR-007 / AC-007.71).
+    pub status_panel: Option<StatusOperatorPanel>,
     /// Focused operator panel for keyboard navigation (C09 L81.3).
     pub focus: PanelFocus,
     /// When true, footer shows extended keybinding help.
@@ -658,6 +720,8 @@ impl App {
             detected_agents: Vec::new(),
             agent_forests: Vec::new(),
             forest_state_by_pid: None,
+            pool_panel: None,
+            status_panel: None,
             focus: PanelFocus::default(),
             show_help_overlay: false,
         }
@@ -683,6 +747,27 @@ impl App {
         self.detected_agents = watch_host_agents();
         self.agent_forests = build_host_agent_forests();
         self.forest_state_by_pid = None;
+    }
+
+    /// Apply pool + proc-scan operator panels from CLI/IPC-shaped snapshots (AC-007.71).
+    pub fn apply_pool_status_panels(
+        &mut self,
+        pool: Option<PoolOperatorPanel>,
+        status: Option<StatusOperatorPanel>,
+    ) {
+        self.pool_panel = pool;
+        self.status_panel = status;
+    }
+
+    /// Test helper — pin pool/status operator panels for headless render tests.
+    pub fn with_pool_status_panels(
+        mut self,
+        pool: Option<PoolOperatorPanel>,
+        status: Option<StatusOperatorPanel>,
+    ) -> Self {
+        self.pool_panel = pool;
+        self.status_panel = status;
+        self
     }
 
     /// Test/golden helper — pin deterministic operator panel values.
@@ -769,12 +854,15 @@ pub fn count_cargo_builds() -> u32 {
 pub fn render(frame: &mut Frame, app: &App) {
     let area = frame.area();
     let compact = is_compact(area.width);
-    let margin = if compact || area.height < 33 { 0 } else { 1 };
+    let cramped = area.height < 58;
+    let margin = if compact || area.height < 40 { 0 } else { 1 };
     let thermal_h = if compact { 4 } else { 5 };
     let gate_h = if compact { 4 } else { 5 };
+    let pool_h = if compact { 3 } else { 4 };
+    let status_h = if compact { 3 } else { 4 };
     let agents_h = if compact { 3 } else { 6 };
     let watch_h = if compact { 3 } else { 7 };
-    let fuse_h = if compact { 8 } else { 21 };
+    let io_min = if compact { 8 } else { 6 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -784,9 +872,11 @@ pub fn render(frame: &mut Frame, app: &App) {
             Constraint::Length(thermal_h), // thermal pressure block
             Constraint::Length(gate_h),    // gate decision
             Constraint::Length(3),         // slot gauge
+            Constraint::Length(pool_h),    // runtime pool
+            Constraint::Length(status_h),  // proc scan status
             Constraint::Length(agents_h),  // host agent inventory
             Constraint::Length(watch_h),   // host resource watch
-            Constraint::Length(fuse_h),    // FUSE read coalesce
+            Constraint::Min(io_min),       // hypervisor + FUSE IO meters (flex)
             Constraint::Length(3),         // footer
         ])
         .split(area);
@@ -795,10 +885,12 @@ pub fn render(frame: &mut Frame, app: &App) {
     render_thermal(frame, chunks[1], app, compact);
     render_decision(frame, chunks[2], app, compact);
     render_slots(frame, chunks[3], app, compact);
-    render_agents(frame, chunks[4], app, compact);
-    render_resource_watch(frame, chunks[5], app, compact);
-    render_fuse_coalesce(frame, chunks[6], app, compact);
-    render_footer(frame, chunks[7], app, compact);
+    render_pool_panel(frame, chunks[4], app, compact);
+    render_status_panel(frame, chunks[5], app, compact);
+    render_agents(frame, chunks[6], app, compact);
+    render_resource_watch(frame, chunks[7], app, compact);
+    render_fuse_coalesce(frame, chunks[8], app, compact || cramped);
+    render_footer(frame, chunks[9], app, compact);
 }
 
 fn render_title(frame: &mut Frame, area: Rect, compact: bool) {
@@ -878,6 +970,20 @@ fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     frame.render_widget(gauge, area);
 }
 
+fn render_pool_panel(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Pool " } else { " Runtime Pool " };
+    let lines = pool_panel_lines(app.pool_panel, compact);
+    let block = focused_block(title, app.focus == PanelFocus::Pool);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn render_status_panel(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
+    let title = if compact { " Status " } else { " Proc Scan Status " };
+    let lines = status_panel_lines(app.status_panel, compact);
+    let block = focused_block(title, app.focus == PanelFocus::Status);
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
 fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " Agents " } else { " Detected Agents " };
     let state_by_pid = app.agent_panel_state_by_pid();
@@ -943,10 +1049,32 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 // Event loop
 // ---------------------------------------------------------------------------
 
+/// Supplementary pool/status poll hook (CLI/IPC-shaped snapshots for AC-007.71).
+pub type PoolStatusPollFn = dyn FnMut() -> (Option<PoolOperatorPanel>, Option<StatusOperatorPanel>);
+
+fn poll_pool_status_panels(
+    app: &mut App,
+    poll_pool_status: Option<&mut PoolStatusPollFn>,
+) {
+    if let Some(poll) = poll_pool_status {
+        let (pool, status) = poll();
+        app.apply_pool_status_panels(pool, status);
+    }
+}
+
 /// Launch the TUI, polling `governor` every [`POLL_INTERVAL`].
 ///
 /// Returns when the user presses `q` or `Ctrl-C`.
 pub fn run(governor: &ThermalGovernor, slot_cap: u32) -> Result<()> {
+    run_with_pool_status(governor, slot_cap, None)
+}
+
+/// Launch the TUI with optional live pool/status operator panel refresh (AC-007.71).
+pub fn run_with_pool_status(
+    governor: &ThermalGovernor,
+    slot_cap: u32,
+    mut poll_pool_status: Option<Box<PoolStatusPollFn>>,
+) -> Result<()> {
     use std::io;
 
     use crossterm::{
@@ -970,8 +1098,9 @@ pub fn run(governor: &ThermalGovernor, slot_cap: u32) -> Result<()> {
     let initial_slots = count_cargo_builds();
     app.update(initial_level, initial_slots);
     app.poll_operator_meters();
+    poll_pool_status_panels(&mut app, poll_pool_status.as_deref_mut());
 
-    let result = event_loop(&mut terminal, &mut app, governor);
+    let result = event_loop(&mut terminal, &mut app, governor, poll_pool_status.as_deref_mut());
 
     // Always restore terminal even on error.
     disable_raw_mode()?;
@@ -985,6 +1114,7 @@ fn event_loop(
     terminal: &mut ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
     governor: &ThermalGovernor,
+    mut poll_pool_status: Option<&mut PoolStatusPollFn>,
 ) -> Result<()> {
     loop {
         terminal.draw(|f| render(f, app))?;
@@ -1000,6 +1130,7 @@ fn event_loop(
                         let slots = count_cargo_builds();
                         app.update(level, slots);
                         app.poll_operator_meters();
+                        poll_pool_status_panels(app, poll_pool_status.as_deref_mut());
                     }
                     action => apply_key_action(app, action),
                 },
@@ -1015,6 +1146,7 @@ fn event_loop(
         let slots = count_cargo_builds();
         app.update(level, slots);
         app.poll_operator_meters();
+        poll_pool_status_panels(app, poll_pool_status.as_deref_mut());
     }
     Ok(())
 }
@@ -1087,10 +1219,18 @@ mod tests {
         );
         assert_eq!(
             handle_key(&key_event(KeyCode::Char('2'), KeyModifiers::NONE)),
-            KeyAction::FocusPanel(PanelFocus::HostWatch)
+            KeyAction::FocusPanel(PanelFocus::Pool)
         );
         assert_eq!(
             handle_key(&key_event(KeyCode::Char('3'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::Status)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('4'), KeyModifiers::NONE)),
+            KeyAction::FocusPanel(PanelFocus::HostWatch)
+        );
+        assert_eq!(
+            handle_key(&key_event(KeyCode::Char('5'), KeyModifiers::NONE)),
             KeyAction::FocusPanel(PanelFocus::Agents)
         );
     }
@@ -1115,6 +1255,10 @@ mod tests {
     fn test_panel_focus_tab_cycle_order() {
         let mut focus = PanelFocus::Gate;
         focus = focus.next();
+        assert_eq!(focus, PanelFocus::Pool);
+        focus = focus.next();
+        assert_eq!(focus, PanelFocus::Status);
+        focus = focus.next();
         assert_eq!(focus, PanelFocus::HostWatch);
         focus = focus.next();
         assert_eq!(focus, PanelFocus::Agents);
@@ -1138,7 +1282,7 @@ mod tests {
     #[test]
     fn test_render_footer_shows_help_hint() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 52);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
         let app = App::new(4);
         terminal.draw(|f| render(f, &app)).unwrap();
@@ -1150,7 +1294,7 @@ mod tests {
     #[test]
     fn test_render_help_overlay_when_enabled() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 52);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(4);
         app.show_help_overlay = true;
@@ -1162,6 +1306,62 @@ mod tests {
             "help overlay must list Tab cycle; got: {rendered}"
         );
         assert!(rendered.contains("agents"), "help overlay must list agents panel");
+    }
+
+    #[test]
+    fn test_pool_panel_lines_full() {
+        let pool = PoolOperatorPanel {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 0,
+            max_per_type: 4,
+            healthy: true,
+        };
+        let lines = pool_panel_lines(Some(pool), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("Node idle/total: 1/2"));
+        assert!(text.contains("Bun idle/total:  0/1"));
+        assert!(text.contains("Max per type: 4 · healthy"));
+    }
+
+    #[test]
+    fn test_status_panel_lines_full() {
+        let status = StatusOperatorPanel {
+            scanned: 50,
+            watched: 1,
+            total_processes: 2,
+            agent_rows: 1,
+        };
+        let lines = status_panel_lines(Some(status), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("Scanned:  50"));
+        assert!(text.contains("Watched:  1"));
+        assert!(text.contains("Managed:  2 · agent rows: 1"));
+    }
+
+    #[test]
+    fn test_pool_status_panel_lines_compact_match_tray() {
+        let pool = PoolOperatorPanel {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 0,
+            max_per_type: 4,
+            healthy: true,
+        };
+        let status = StatusOperatorPanel {
+            scanned: 50,
+            watched: 1,
+            total_processes: 2,
+            agent_rows: 1,
+        };
+        let pool_text: String =
+            pool_panel_lines(Some(pool), true).iter().map(|l| l.to_string()).collect();
+        let status_text: String =
+            status_panel_lines(Some(status), true).iter().map(|l| l.to_string()).collect();
+        assert!(pool_text.contains("Pool node 2/1 idle · bun 1/0 idle · max 4 · healthy"));
+        assert!(status_text.contains("Proc scan 50 · watched 1 · 2 managed · 1 agent row(s)"));
     }
 
     // --- level_label ---
@@ -1366,7 +1566,6 @@ mod tests {
         assert_eq!(app.active_slots, 3);
     }
 
-    use super::*;
     use sharecli_fleet::AgentResourceSample;
 
     fn agent_watch(
@@ -1482,7 +1681,7 @@ mod tests {
     #[test]
     fn test_render_green_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 52);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
         let sample = ResourceWatchSample {
             fd_count: 12,
@@ -1510,6 +1709,8 @@ mod tests {
         assert!(rendered.contains("GREEN"), "expected GREEN in rendered output");
         assert!(rendered.contains("ADMIT"), "expected ADMIT in rendered output");
         assert!(rendered.contains("Host Resource Watch"), "expected watch panel");
+        assert!(rendered.contains("Runtime Pool"), "expected pool panel (AC-007.71)");
+        assert!(rendered.contains("Proc Scan Status"), "expected status panel (AC-007.71)");
         assert!(rendered.contains("Detected Agents"), "expected agent panel");
         assert!(rendered.contains("PID 4242"), "expected agent row");
         assert!(rendered.contains("RSS"), "expected per-agent RSS in agent panel");
@@ -1525,7 +1726,7 @@ mod tests {
     #[test]
     fn test_render_red_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 52);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(4).with_operator_meters(
             Some(ResourceWatchSample {
@@ -1552,7 +1753,7 @@ mod tests {
     #[test]
     fn test_render_yellow_headless() {
         use ratatui::{backend::TestBackend, Terminal};
-        let backend = TestBackend::new(120, 52);
+        let backend = TestBackend::new(120, 64);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(4).with_operator_meters(
             Some(ResourceWatchSample {

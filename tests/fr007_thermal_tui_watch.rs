@@ -156,7 +156,7 @@ fn fr006_thermal_tui_host_agent_lines() {
 /// FR-007 / AC-007.9 + AC-007.10 + FR-009 AC-009.9 — headless thermal render includes panels.
 #[test]
 fn fr007_thermal_tui_render_includes_operator_panels() {
-    let backend = TestBackend::new(120, 52);
+    let backend = TestBackend::new(120, 64);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
         .with_operator_meters(

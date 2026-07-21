@@ -6,6 +6,7 @@
 pub mod agent_contention;
 pub mod coalesce_meters;
 pub mod detect;
+pub mod operator_pool_status;
 pub mod proc_scan;
 pub mod registry;
 pub mod resource_watch;
@@ -26,6 +27,9 @@ pub use coalesce_meters::{
     record_nocache_run, CoalesceHitKind, CoalesceMeters,
 };
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
+pub use operator_pool_status::{
+    format_pool_operator_line, format_status_operator_line, PoolOperatorPanel, StatusOperatorPanel,
+};
 pub use proc_scan::{
     agent_label_for_pid, build_agent_forests, build_agent_state_map, build_forest_state_map,
     build_host_agent_forests, build_host_agent_state_map, build_host_forest_state_map,

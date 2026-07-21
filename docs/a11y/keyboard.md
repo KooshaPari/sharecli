@@ -6,9 +6,9 @@
 |-----|--------|----------------|
 | `q` | Quit TUI, restore terminal | `sharecli-thermal-tui` `is_quit_key` |
 | `Ctrl-C` | Quit TUI (same as `q`) | `sharecli-thermal-tui` `is_quit_key` |
-| `Tab` | Cycle focus forward: gate → host watch → agents | `handle_key` → `KeyAction::FocusNext` |
+| `Tab` | Cycle focus forward: gate → pool → status → host watch → agents | `handle_key` → `KeyAction::FocusNext` |
 | `Shift-Tab` | Cycle focus backward | `handle_key` → `KeyAction::FocusPrev` |
-| `1` / `2` / `3` | Jump focus to gate / host watch / agents panel | `handle_key` → `KeyAction::FocusPanel` |
+| `1`–`5` | Jump focus to gate / pool / status / host watch / agents panel | `handle_key` → `KeyAction::FocusPanel` |
 | `r` | Force immediate governor + operator poll | `handle_key` → `KeyAction::ForcePoll` |
 | `?` | Toggle footer help overlay | `handle_key` → `KeyAction::ToggleHelp` |
 
