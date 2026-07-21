@@ -440,8 +440,13 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   [`GateStatusSnapshot`](crates/sharecli-fleet/src/agent_contention.rs) fields on
   [`AgentTreeSnapshot`](src/commands/proc.rs) (parity with flat `gate` from AC-006.13 and
   pid `gate` from AC-007.17); MUST fail loudly via `?` when thermal poll errors.
+- **AC-007.19:** `sharecli proc --csv` (flat and `--tree`) MUST append a companion
+  `gate` CSV record after agent rows and before the `host` companion from AC-007.14 via
+  [`GateStatusSnapshot::format_csv_companion`](crates/sharecli-fleet/src/agent_contention.rs)
+  (parity with text gate section from AC-006.11 and JSON `gate` from AC-006.13 / AC-007.18);
+  MUST fail loudly via `?` when thermal poll errors.
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`
 
 ---
 

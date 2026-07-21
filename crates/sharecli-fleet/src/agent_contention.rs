@@ -190,6 +190,21 @@ pub fn gate_status_snapshot_with_rss(
     }
 }
 
+impl GateStatusSnapshot {
+    /// Companion CSV block appended after agent inventory rows (FR-007 / AC-007.19).
+    pub fn format_csv_companion(&self) -> String {
+        format!(
+            "\nrecord,thermal_pressure,detected_agents,agent_total_rss_bytes,agent_contention,gate_decision\n\
+             gate,{},{},{},{},{}\n",
+            self.thermal_pressure,
+            self.detected_agents,
+            self.agent_total_rss_bytes,
+            self.agent_contention,
+            self.gate_decision,
+        )
+    }
+}
+
 /// Operator status section from a captured gate snapshot (FR-007 / AC-007.17).
 pub fn format_gate_status_from_snapshot(snap: &GateStatusSnapshot) -> String {
     let count_thresholds = AgentContentionThresholds::default();
@@ -284,6 +299,14 @@ mod tests {
         assert!(section.contains("Detected agents: 8"));
         assert!(section.contains("Agent contention: REFUSE"));
         assert!(section.contains("Gate decision: [DENY]"));
+    }
+
+    #[test]
+    fn gate_status_snapshot_format_csv_companion() {
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Green, 3, 1024);
+        let csv = snap.format_csv_companion();
+        assert!(csv.contains("record,thermal_pressure,detected_agents"));
+        assert!(csv.contains("gate,GREEN,3,1024"));
     }
 
     #[test]
