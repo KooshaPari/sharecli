@@ -55,7 +55,7 @@ pub(crate) fn print_live_host_watch_section() -> Result<()> {
     Ok(())
 }
 
-/// Runtime pool + proc-scan operator lines after gate → host_watch (FR-007 / AC-007.74).
+/// Runtime pool + proc-scan operator lines after gate → host_watch (FR-007 / AC-007.74 / AC-007.75).
 pub(crate) async fn print_live_pool_status_operator_sections() -> Result<()> {
     use sharecli_fleet::{format_pool_operator_line, format_status_operator_line};
 

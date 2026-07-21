@@ -1007,7 +1007,7 @@ pub fn render_agent_tree(forests: &[AgentTreeNode], state_by_pid: &HashMap<u32, 
 }
 
 /// Render one host agent inventory snapshot (text or JSON).
-pub fn render_once(
+pub async fn render_once(
     json: bool,
     csv: bool,
     tree: bool,
@@ -1078,6 +1078,8 @@ pub fn render_once(
         render_agent_tree(&forests, &tree_state_by_pid);
         print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
         print_host_watch_text_footer()?;
+        // AC-007.34 / AC-007.75: gate → host_watch → pool → proc-scan on stdout after tree body.
+        super::print_live_pool_status_operator_sections().await?;
         return Ok(());
     }
 
@@ -1124,6 +1126,8 @@ pub fn render_once(
     render_agent_inventory(&watched, scanned_agents.len(), &state_by_pid);
     print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
     print_host_watch_text_footer()?;
+    // AC-007.34 / AC-007.75: gate → host_watch → pool → proc-scan on stdout after inventory body.
+    super::print_live_pool_status_operator_sections().await?;
     Ok(())
 }
 
@@ -1182,7 +1186,7 @@ pub async fn run(
     let sort_key = ProcSort::from_cli(sort.as_deref())?;
     let row_limit = parse_proc_limit(limit)?;
     match watch {
-        None => render_once(json, csv, tree, &filter, false, sort_key, row_limit),
+        None => render_once(json, csv, tree, &filter, false, sort_key, row_limit).await,
         Some(interval_secs) => {
             if interval_secs == 0 {
                 bail!("--watch interval must be >= 1 second");
@@ -1194,7 +1198,7 @@ pub async fn run(
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_once(json, csv, tree, &filter, ndjson, sort_key, row_limit)?;
+                render_once(json, csv, tree, &filter, ndjson, sort_key, row_limit).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
