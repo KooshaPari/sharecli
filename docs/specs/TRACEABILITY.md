@@ -188,6 +188,7 @@
 | AC-007.54   | `crates/sharecli-tray-windows/src/ipc.rs` (`IPC_METHOD_KILL`, `kill_request_json`, `kill_all_request_json`); `windows/ShareCLITray/IpcKill.cs` (`TryKill`, `TryKillAll`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`OnKillProcessClick`, `OnKillAllClick`, `RefreshDataAsync`); `crates/sharecli-tray-linux/src/ipc.rs` (`kill`, `kill_all`); `crates/sharecli-tray-linux/src/main.rs` (Kill submenu + Kill All Managed); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift` (`kill`, `killAll`); `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift`; `tests/fr007_tray_windows_kill.rs`; `tests/fr007_tray_linux_kill.rs`; `tests/fr007_tray_swift_kill.rs` | Windows tray Kill + Kill All Managed → IPC process.kill/kill_all + post-kill monitoring.report refresh; parity with Linux/Swift tray operator kill paths |
 | AC-007.55   | `crates/sharecli-tray-windows/src/ipc.rs` (`process_summaries`, `ProcessSummary.harness`); `windows/ShareCLITray/MonitoringReportSnapshot.cs` (`AsProcessSummaries`, `MonitoringProcessEntry.Harness`); `windows/ShareCLITray/TrayWindow.xaml.cs` (`ProcessInfo.harness`); `windows/ShareCLITray/TrayWindow.xaml` (Harness DataGrid column); `tests/fr007_tray_windows_harness.rs`; `tests/fr007_tray_windows_monitoring_report_consume.rs` | Windows tray process grid harness column parity; monitoring.report harness → ProcessInfo + DataGrid; Linux submenu + Swift DashboardView reference |
 | AC-007.56   | `crates/sharecli-tray-linux/src/operator_display.rs`; `crates/sharecli-tray-linux/src/main.rs` (menu + tooltip); `crates/sharecli-tray-windows/src/operator_display.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift` (`HealthView`); `windows/ShareCLITray/OperatorDisplay.cs`; `windows/ShareCLITray/TrayWindow.xaml` (`GateStatusText`, `HostWatchStatusText`); `windows/ShareCLITray/TrayWindow.xaml.cs`; `tests/fr007_tray_gate_host_watch_ui.rs` | Tray gate → host_watch UI parity across Linux/Swift/Windows; reusable format helpers map thermal gate + host watch fields into tray display strings; extends AC-007.48/AC-007.51 monitoring.report consume |
+| AC-007.57   | `crates/sharecli-tray-linux/src/operator_display.rs` (`resolve_tray_gate_visual`, `TrayGateVisual`); `crates/sharecli-tray-windows/src/operator_display.rs`; `crates/sharecli-tray-linux/src/main.rs` (`icon_name`, `status`, `gate_visual`); `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/AppEntry.swift`; `desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift`; `windows/ShareCLITray/OperatorDisplay.cs`; `windows/ShareCLITray/TrayWindow.xaml`; `tests/fr007_tray_thermal_visual.rs` | Tray icon/badge/color from thermal_pressure + gate_decision; dashboard CSS token parity; golden severity matrix |
 
 ### FR-008 — Coalesce
 
@@ -257,6 +258,13 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 tray thermal gate visual indicator parity:** Linux tray `icon_name` +
+  SNI `NeedsAttention`, Swift menu bar icon tint + popover thermal badge, and WinUI
+  `ThermalBadgeText` + colored gate row derive from `gate.thermal_pressure` +
+  `gate_decision` via shared `resolve_tray_gate_visual` helpers (AC-007.57); dashboard
+  `gate-admit` / `gate-deny` / `gate-unavailable` + `#thermal-status` CSS token parity;
+  golden severity matrix in `tests/fr007_tray_thermal_visual.rs`; extends AC-007.56 /
+  AC-007.48 monitoring.report refresh path.
 - **2026-07-21 — FR-007 tray gate/host_watch UI parity:** Linux tray menu + tooltip, Swift
   `TrayPopoverView` + `HealthView`, and WinUI `TrayWindow` gate/host rows surface thermal gate +
   host_watch operator metadata from each `monitoring.report` refresh (AC-007.56); reusable

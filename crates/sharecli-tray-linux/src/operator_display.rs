@@ -1,8 +1,124 @@
-//! Compact gate / host_watch strings for tray operator UI (FR-007 / AC-007.56).
+//! Compact gate / host_watch strings + thermal gate visuals for tray operator UI
+//! (FR-007 / AC-007.56 text, AC-007.57 icon/badge/color).
 //!
 //! Mirrors dashboard operator panels and proc/status text sections; testable without GUI.
 
 use crate::ipc::{GateStatusSnapshot, HostResourceWatchJson};
+
+/// Tray thermal/gate severity bucket (dashboard `#thermal-status` + gate decision).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrayGateSeverity {
+    Normal,
+    Warning,
+    Critical,
+    Offline,
+}
+
+/// Visual tokens for tray icon / badge / color (parity with `src/dashboard.html`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrayGateVisual {
+    pub severity: TrayGateSeverity,
+    /// Dashboard gate CSS class: `gate-admit` | `gate-deny` | `gate-unavailable`.
+    pub decision_class: &'static str,
+    /// Dashboard thermal CSS suffix: `""` | `warning` | `critical`.
+    pub thermal_class: &'static str,
+    /// Dashboard design-token hex (`--bb2-pulse-green`, deny red, warm amber).
+    pub color_hex: &'static str,
+    /// Compact badge label (`Normal`, `Warning`, `Critical`, `Offline`, `Unavailable`).
+    pub badge_label: &'static str,
+    /// freedesktop icon name for Linux StatusNotifierItem.
+    pub linux_icon_name: &'static str,
+    /// SF Symbol name for macOS menu bar (Swift parity).
+    pub swift_symbol_name: &'static str,
+}
+
+/// Map `gate_decision` → dashboard gate CSS class (AC-007.41 / AC-007.57).
+pub fn resolve_gate_decision_class(gate_decision: &str) -> &'static str {
+    match gate_decision {
+        "ADMIT" => "gate-admit",
+        "DENY" => "gate-deny",
+        _ => "gate-unavailable",
+    }
+}
+
+/// Map `thermal_pressure` → dashboard `#thermal-status` CSS suffix.
+pub fn resolve_thermal_class(thermal_pressure: &str) -> &'static str {
+    match thermal_pressure {
+        "GREEN" => "",
+        "YELLOW" => "warning",
+        "RED" => "critical",
+        _ => "warning",
+    }
+}
+
+/// Resolve tray icon/badge/color from live gate fields (AC-007.57).
+pub fn resolve_tray_gate_visual(
+    thermal_pressure: &str,
+    gate_decision: &str,
+    connected: bool,
+) -> TrayGateVisual {
+    if !connected {
+        return TrayGateVisual {
+            severity: TrayGateSeverity::Offline,
+            decision_class: "gate-unavailable",
+            thermal_class: "warning",
+            color_hex: "#d29922",
+            badge_label: "Offline",
+            linux_icon_name: "network-offline",
+            swift_symbol_name: "wifi.slash",
+        };
+    }
+
+    let decision_class = resolve_gate_decision_class(gate_decision);
+    let thermal_class = resolve_thermal_class(thermal_pressure);
+
+    let severity = if gate_decision == "DENY" || thermal_pressure == "RED" {
+        TrayGateSeverity::Critical
+    } else if gate_decision == "THROTTLE"
+        || thermal_pressure == "YELLOW"
+        || thermal_pressure == "UNAVAILABLE"
+        || decision_class == "gate-unavailable"
+    {
+        TrayGateSeverity::Warning
+    } else {
+        TrayGateSeverity::Normal
+    };
+
+    let (color_hex, badge_label, linux_icon_name, swift_symbol_name) = match severity {
+        TrayGateSeverity::Critical => ("#f85149", "Critical", "dialog-error", "flame.fill"),
+        TrayGateSeverity::Warning => {
+            let label = if thermal_pressure == "UNAVAILABLE" {
+                "Unavailable"
+            } else {
+                "Warning"
+            };
+            ("#d29922", label, "dialog-warning", "exclamationmark.triangle.fill")
+        }
+        TrayGateSeverity::Normal => ("#3fb950", "Normal", "utilities-system-monitor", "cpu"),
+        TrayGateSeverity::Offline => unreachable!("handled above"),
+    };
+
+    TrayGateVisual {
+        severity,
+        decision_class,
+        thermal_class,
+        color_hex,
+        badge_label,
+        linux_icon_name,
+        swift_symbol_name,
+    }
+}
+
+/// Convenience: derive visuals from a gate snapshot + IPC connectivity.
+pub fn resolve_tray_gate_visual_from_gate(gate: &GateStatusSnapshot, connected: bool) -> TrayGateVisual {
+    resolve_tray_gate_visual(&gate.thermal_pressure, &gate.gate_decision, connected)
+}
+
+impl Default for TrayGateVisual {
+    fn default() -> Self {
+        resolve_tray_gate_visual("UNAVAILABLE", "UNAVAILABLE", false)
+    }
+}
 
 /// Human-readable byte count for tray lines (parity with dashboard `formatBytes`).
 pub fn format_bytes_compact(n: u64) -> String {
@@ -128,5 +244,41 @@ mod tests {
         assert!(lines[1].starts_with("Agent RSS:"));
         assert!(lines[2].starts_with("Host load"));
         assert!(lines[3].starts_with("Net RX"));
+    }
+
+    #[test]
+    fn resolve_tray_gate_visual_admit_green_normal() {
+        let v = resolve_tray_gate_visual("GREEN", "ADMIT", true);
+        assert_eq!(v.severity, TrayGateSeverity::Normal);
+        assert_eq!(v.decision_class, "gate-admit");
+        assert_eq!(v.thermal_class, "");
+        assert_eq!(v.color_hex, "#3fb950");
+        assert_eq!(v.badge_label, "Normal");
+        assert_eq!(v.linux_icon_name, "utilities-system-monitor");
+    }
+
+    #[test]
+    fn resolve_tray_gate_visual_deny_red_critical() {
+        let v = resolve_tray_gate_visual("RED", "DENY", true);
+        assert_eq!(v.severity, TrayGateSeverity::Critical);
+        assert_eq!(v.decision_class, "gate-deny");
+        assert_eq!(v.thermal_class, "critical");
+        assert_eq!(v.badge_label, "Critical");
+        assert_eq!(v.linux_icon_name, "dialog-error");
+    }
+
+    #[test]
+    fn resolve_tray_gate_visual_throttle_warning() {
+        let v = resolve_tray_gate_visual("GREEN", "THROTTLE", true);
+        assert_eq!(v.severity, TrayGateSeverity::Warning);
+        assert_eq!(v.decision_class, "gate-unavailable");
+        assert_eq!(v.badge_label, "Warning");
+    }
+
+    #[test]
+    fn resolve_tray_gate_visual_offline_when_disconnected() {
+        let v = resolve_tray_gate_visual("GREEN", "ADMIT", false);
+        assert_eq!(v.severity, TrayGateSeverity::Offline);
+        assert_eq!(v.badge_label, "Offline");
     }
 }

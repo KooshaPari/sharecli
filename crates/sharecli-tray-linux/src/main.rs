@@ -35,6 +35,7 @@ mod linux {
         processes: Vec<ipc::ProcessSummary>,
         health: Option<ipc::HealthSnapshot>,
         connected: bool,
+        gate_visual: operator_display::TrayGateVisual,
     }
 
     impl ksni::Tray for ShareCliTray {
@@ -46,13 +47,18 @@ mod linux {
             "ShareCLI".into()
         }
 
-        // Prefer a themed icon; fall back to a stock name shipped by every icon
-        // theme so the tray is never blank.
+        // Icon reflects thermal gate severity from monitoring.report (AC-007.57).
         fn icon_name(&self) -> String {
-            if self.connected {
-                "utilities-system-monitor".into()
-            } else {
-                "dialog-warning".into()
+            self.gate_visual.linux_icon_name.into()
+        }
+
+        fn status(&self) -> ksni::IconStatus {
+            use ksni::IconStatus;
+            match self.gate_visual.severity {
+                operator_display::TrayGateSeverity::Normal => IconStatus::Passive,
+                operator_display::TrayGateSeverity::Warning => IconStatus::NeedsAttention,
+                operator_display::TrayGateSeverity::Critical => IconStatus::NeedsAttention,
+                operator_display::TrayGateSeverity::Offline => IconStatus::NeedsAttention,
             }
         }
 
@@ -97,6 +103,17 @@ mod linux {
 
             if let Some(h) = &self.health {
                 if self.connected {
+                    items.push(
+                        StandardItem {
+                            label: format!(
+                                "Thermal: {} [{}]",
+                                self.gate_visual.badge_label, h.gate.gate_decision
+                            ),
+                            enabled: false,
+                            ..Default::default()
+                        }
+                        .into(),
+                    );
                     for line in operator_display::format_operator_tray_lines(&h.gate, &h.host_watch) {
                         items.push(
                             StandardItem { label: line, enabled: false, ..Default::default() }.into(),
@@ -207,12 +224,18 @@ mod linux {
                 tray.health = Some(snap.health_snapshot());
                 tray.processes = snap.process_summaries();
                 tray.connected = true;
+                tray.gate_visual = operator_display::resolve_tray_gate_visual_from_gate(
+                    &snap.gate,
+                    true,
+                );
             }
             Err(e) => {
                 tracing::debug!("monitoring.report poll failed: {e}");
                 tray.connected = false;
                 tray.health = None;
                 tray.processes.clear();
+                tray.gate_visual =
+                    operator_display::resolve_tray_gate_visual("UNAVAILABLE", "UNAVAILABLE", false);
             }
         }
     }
