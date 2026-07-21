@@ -333,9 +333,10 @@ async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Resu
     match format {
         ReportFormat::Text => {
             render_text(&report);
-            // AC-007.39: gate → host_watch text sections on stdout after report body.
+            // AC-007.39 / AC-007.74: gate → host_watch → pool → proc-scan on stdout after report body.
             super::print_live_gate_section()?;
             super::print_live_host_watch_section()?;
+            super::print_live_pool_status_operator_sections().await?;
         }
         ReportFormat::Json => {
             // AC-007.40/AC-007.73 one-shot / AC-007.42 watch NDJSON: gate → host_watch → pool → status.

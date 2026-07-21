@@ -55,6 +55,19 @@ pub(crate) fn print_live_host_watch_section() -> Result<()> {
     Ok(())
 }
 
+/// Runtime pool + proc-scan operator lines after gate → host_watch (FR-007 / AC-007.74).
+pub(crate) async fn print_live_pool_status_operator_sections() -> Result<()> {
+    use sharecli_fleet::{format_pool_operator_line, format_status_operator_line};
+
+    let (pool_json, status_json) = tokio::join!(build_pool_json(), build_status_json());
+    let pool_panel: sharecli_fleet::PoolOperatorPanel = pool_json?.into();
+    let status_panel: sharecli_fleet::StatusOperatorPanel = status_json?.into();
+    println!();
+    println!("{}", format_pool_operator_line(&pool_panel));
+    println!("{}", format_status_operator_line(&status_panel));
+    Ok(())
+}
+
 /// Gate + host watch text companions on stderr for NDJSON watch modes (AC-007.28 / AC-007.42).
 pub(crate) fn eprint_live_gate_host_watch_sections() -> Result<()> {
     use crate::monitoring::HostResourceWatchJson;

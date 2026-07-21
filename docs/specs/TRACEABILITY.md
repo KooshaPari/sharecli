@@ -205,6 +205,7 @@
 | AC-007.71   | `tests/fr007_thermal_tui_pool_status.rs`; `crates/sharecli-fleet/src/operator_pool_status.rs`; `crates/sharecli-thermal-tui/src/lib.rs` (`pool_panel_lines`, `status_panel_lines`, `run_with_pool_status`); `src/main.rs` (`build_pool_json` / `build_status_json` poll hook); `src/commands/mod.rs` (`From<PoolJson>`, `From<StatusJson>`) | Thermal TUI pool + proc-scan operator panels parity with tray AC-007.69 / dashboard AC-007.70 |
 | AC-007.72   | `tests/fr007_ipc_monitoring_report_pool_status.rs`; `tests/fr007_tray_pool_status_consume.rs`; `crates/sharecli-ipc/src/handler.rs` (`MonitoringReportSnapshot`, `monitoring.report`); `crates/sharecli-tray-linux/src/ipc.rs`; `crates/sharecli-tray-windows/src/ipc.rs`; `crates/sharecli-tray-linux/src/main.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift`; `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift`; `windows/ShareCLITray/MonitoringReportSnapshot.cs`; `windows/ShareCLITray/TrayWindow.xaml.cs` | IPC monitoring.report embeds gate → host_watch → pool → status; tray refresh single round-trip (no supplementary pool.status / status.snapshot) |
 | AC-007.73   | `tests/fr007_report_json_pool_status.rs`; `tests/fr007_report_json_gate_host_watch.rs`; `tests/fr007_report_watch_json_gate_host_watch.rs`; `src/commands/report.rs` (`FleetReportJson`, `FleetReportNdjsonLine`, `render_once` JSON path); `src/commands/mod.rs` (`build_pool_json`, `build_status_json`, `PoolJson`, `StatusJson`) | report --format json gate → host_watch → pool → status top-level siblings; watch NDJSON parity; stderr silent on one-shot success |
+| AC-007.74   | `tests/fr007_report_text_pool_status.rs`; `tests/fr007_report_text_stderr_silent.rs`; `src/commands/report.rs` (`render_once` text path); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`); `crates/sharecli-fleet/src/operator_pool_status.rs` | report text one-shot + --watch gate → host_watch → pool → proc-scan operator lines on stdout; stderr silent on success |
 
 ### FR-008 — Coalesce
 
@@ -274,6 +275,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 report text pool/proc-scan operator lines (AC-007.74):** `sharecli report`
+  (text, one-shot + `--watch`) prints `format_pool_operator_line` / `format_status_operator_line`
+  on stdout after gate → `host_watch` (parity with AC-007.73 JSON sibling order); stderr silent on
+  success.
 - **2026-07-21 — FR-007 report JSON embedded pool/status (AC-007.73):** `sharecli report --format json`
   / `FleetReportJson` embed top-level `pool` + `status` siblings after `gate` → `host_watch`
   (parity with `monitoring.report` AC-007.72 / dashboard WS AC-007.70); `report --watch --format json`
