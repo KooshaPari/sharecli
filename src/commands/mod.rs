@@ -43,6 +43,13 @@ fn print_live_gate_section() -> Result<()> {
     Ok(())
 }
 
+/// Poll live host FD/RSS/load/net watch and print the FR-007 status section.
+fn print_live_host_watch_section() -> Result<()> {
+    let resource_watch = ResourceWatchSample::capture()?;
+    print!("{}", resource_watch.format_status_section());
+    Ok(())
+}
+
 fn get_shared_runtime() -> &'static SharedRuntime {
     SHARED_RUNTIME.get_or_init(|| {
         let max = config::global().pool.max_per_type;
@@ -307,9 +314,7 @@ pub async fn status(verbose: bool, json: bool) -> Result<()> {
     println!("Used: {} MB / {} MB ({}%)", used, total, (used * 100) / total);
 
     print_live_gate_section()?;
-
-    let resource_watch = ResourceWatchSample::capture()?;
-    print!("{}", resource_watch.format_status_section());
+    print_live_host_watch_section()?;
 
     let fuse_meters = global_read_cache_meters();
     print!("{}", fuse_meters.format_status_section());
@@ -656,6 +661,7 @@ pub async fn pool_status() -> Result<()> {
     }
 
     print_live_gate_section()?;
+    print_live_host_watch_section()?;
 
     Ok(())
 }
@@ -696,6 +702,7 @@ pub async fn health(harness: Option<&str>) -> Result<()> {
     println!("\nMax per harness type: {}", pool_status.max_per_type);
 
     print_live_gate_section()?;
+    print_live_host_watch_section()?;
 
     Ok(())
 }

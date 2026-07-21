@@ -168,6 +168,7 @@
 | AC-007.34   | `tests/fr007_proc_text_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` one-shot text paths, `render_proc_detail` text path) | proc one-shot text stderr silent; gate/host_watch stdout text sections only |
 | AC-007.35   | `tests/fr007_proc_watch_text_stderr_silent.rs`; `src/commands/proc.rs` (`run` watch loop text path, `render_once` text paths) | proc watch text stderr silent; gate/host_watch + `[watch]` footer stdout only |
 | AC-007.36   | `tests/fr007_status_text_stderr_silent.rs`; `src/commands/mod.rs` (`status` text path) | status one-shot text stderr silent; gate/host_watch stdout text sections only |
+| AC-007.37   | `tests/fr007_health_pool_text_stderr_silent.rs`; `src/commands/mod.rs` (`health`, `pool`) | health/pool one-shot text gate → host_watch on stdout; stderr silent on success |
 
 ### FR-008 — Coalesce
 
@@ -237,6 +238,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 health/pool one-shot text host watch parity:** `sharecli health` and
+  `sharecli pool` print gate → `host_watch` text sections on stdout after pool/runtime health
+  output (AC-007.37); stderr silent on success (parity with AC-007.36 status / AC-007.34 proc).
 - **2026-07-20 — FR-007 status one-shot text stderr silence:** `sharecli status` (no `--json`)
   MUST NOT print gate/host_watch text companions on stderr; gate and `host_watch` stay in text
   sections on stdout only (AC-007.36); extends AC-007.27 text gate ordering with pipe-clean
