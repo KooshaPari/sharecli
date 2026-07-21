@@ -152,6 +152,8 @@
 | AC-007.18   | `tests/fr007_proc_tree_json_gate.rs`; `src/commands/proc.rs` (`AgentTreeSnapshot::gate`) | proc tree JSON/NDJSON thermal gate parity |
 | AC-007.19   | `tests/fr007_proc_text_csv_gate.rs`; `src/commands/proc.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/agent_contention.rs` (`GateStatusSnapshot::format_csv_companion`) | proc flat/tree CSV thermal gate companion parity |
 | AC-007.20   | `tests/fr007_proc_tree_text_gate.rs`; `src/commands/proc.rs` (`render_once` tree text path) | proc tree text thermal gate section before host watch footer |
+| AC-007.21   | `tests/fr007_proc_text_gate.rs`; `src/commands/proc.rs` (`render_once` flat text path) | proc flat text thermal gate section before host watch footer |
+| AC-007.22   | `tests/fr007_proc_watch_gate_order.rs`; `src/commands/proc.rs` (`run` watch loop + `render_once`) | proc watch text/NDJSON gate → host_watch ordering per refresh |
 
 ### FR-008 — Coalesce
 
@@ -215,6 +217,12 @@
 
 ## Change log
 
+- **2026-07-20 — FR-007 proc watch gate ordering:** `sharecli proc --watch` text and
+  NDJSON preserve gate → `host_watch` ordering on every refresh (AC-007.22); locks watch
+  parity with one-shot proc gate sections.
+- **2026-07-20 — FR-007 proc flat text gate ordering:** `sharecli proc` flat text prints
+  thermal gate section before host watch footer (AC-007.21); completes proc text gate
+  coverage across flat/tree/pid surfaces.
 - **2026-07-20 — FR-007 proc tree text gate ordering:** `sharecli proc --tree` text
   prints thermal gate section before host watch footer (AC-007.20); completes proc text
   gate coverage across flat/tree/pid surfaces.
