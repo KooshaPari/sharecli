@@ -5,8 +5,32 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
+use sharecli_thermal_tui::{apply_key_action, App, KeyAction, PanelFocus};
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
+#[test]
+fn fr004_l81_3_thermal_tui_keyboard_matrix() {
+    let doc = fs::read_to_string(repo_root().join("docs/a11y/keyboard.md"))
+        .expect("read keyboard.md");
+    for needle in ["Tab", "Shift-Tab", "`r`", "`?`", "handle_key"] {
+        assert!(doc.contains(needle), "keyboard.md must document {needle}");
+    }
+
+    let design = fs::read_to_string(repo_root().join("docs/a11y/design-system.md"))
+        .expect("read design-system.md");
+    assert!(design.contains("handle_key"), "design-system must reference handle_key");
+
+    let mut app = App::new(4);
+    assert_eq!(app.focus, PanelFocus::Gate);
+    apply_key_action(&mut app, KeyAction::FocusNext);
+    assert_eq!(app.focus, PanelFocus::HostWatch);
+    apply_key_action(&mut app, KeyAction::FocusPanel(PanelFocus::Agents));
+    assert_eq!(app.focus, PanelFocus::Agents);
+    apply_key_action(&mut app, KeyAction::ToggleHelp);
+    assert!(app.show_help_overlay);
 }
 
 #[test]
