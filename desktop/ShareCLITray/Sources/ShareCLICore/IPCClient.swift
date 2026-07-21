@@ -69,6 +69,24 @@ public struct HealthSnapshot: Decodable {
     public let host_watch: HostResourceWatchJson
 }
 
+public struct MonitoringProcessEntry: Decodable, Hashable {
+    public let pid: UInt32
+    public let name: String
+    public let memory_mb: UInt64
+    public let project: String?
+    public let harness: String?
+}
+
+public struct MonitoringReportSnapshot: Decodable {
+    public let timestamp: UInt64
+    public let total_processes: Int
+    public let used_memory_mb: UInt64
+    public let total_memory_mb: UInt64
+    public let processes: [MonitoringProcessEntry]
+    public let gate: GateStatusSnapshot
+    public let host_watch: HostResourceWatchJson
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -121,6 +139,16 @@ public actor IPCClient {
         )
         guard let snap = resp.result else {
             throw IPCError.nilResult("health.status")
+        }
+        return snap
+    }
+
+    public func monitoringReport() async throws -> MonitoringReportSnapshot {
+        let resp: IPCResponse<MonitoringReportSnapshot> = try await call(
+            method: "monitoring.report", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("monitoring.report")
         }
         return snap
     }
