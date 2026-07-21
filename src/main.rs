@@ -106,6 +106,10 @@ enum Commands {
         #[arg(long)]
         json: bool,
 
+        /// Emit CSV (requires `--all` for host agent inventory parity; AC-007.83)
+        #[arg(long)]
+        csv: bool,
+
         /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.49 with --all --json)
         #[arg(short, long)]
         watch: Option<u64>,
@@ -629,12 +633,13 @@ async fn run() -> Result<()> {
     }
 
     match &cli.command {
-        Commands::Ps { project, harness, all, json, watch } => {
+        Commands::Ps { project, harness, all, json, csv, watch } => {
             ps(
                 project.as_deref(),
                 harness.as_deref(),
                 *all,
                 *json,
+                *csv,
                 *watch,
             )
             .await?

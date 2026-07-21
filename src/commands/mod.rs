@@ -352,6 +352,55 @@ pub fn render_status_csv_body(
     out
 }
 
+/// Primary CSV body for `sharecli ps --all --csv` (FR-007 / AC-007.83).
+pub fn render_ps_all_csv_body(
+    processes: &[ProcessInfo],
+    proc_source: &HostProcSource,
+    agents: &[proc::AgentProcRow],
+    scanned: usize,
+    watched: usize,
+) -> String {
+    use proc::csv_escape_field;
+
+    let mut out = String::from(
+        "record,pid,name,memory_mb,project,harness,agent\n",
+    );
+    for proc in processes {
+        out.push_str(&format!(
+            "process,{},{},{},{},{},{}\n",
+            proc.pid,
+            csv_escape_field(&proc.name),
+            proc.memory_mb,
+            csv_escape_field(proc.project.as_deref().unwrap_or("-")),
+            csv_escape_field(proc.harness.as_deref().unwrap_or("-")),
+            csv_escape_field(&agent_label_for_pid(proc_source, proc.pid)),
+        ));
+    }
+    let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
+    out.push_str("\nrecord,process_count,total_memory_mb\n");
+    out.push_str(&format!("summary,{},{total_mem}\n", processes.len()));
+    out.push_str("\nrecord,scanned,watched\n");
+    out.push_str(&format!("agent_inventory,{scanned},{watched}\n"));
+    out.push_str("\npid,family,comm,state,mem_rss_bytes,mem_rss,fd_count\n");
+    for row in agents {
+        let fd = row
+            .fd_count
+            .map(|n| n.to_string())
+            .unwrap_or_default();
+        out.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            row.pid,
+            csv_escape_field(&row.family),
+            csv_escape_field(&row.comm),
+            csv_escape_field(&row.state),
+            row.mem_rss_bytes,
+            csv_escape_field(&row.mem_rss),
+            fd,
+        ));
+    }
+    out
+}
+
 /// One NDJSON watch line for `status --watch --json` (FR-007 / AC-007.66).
 #[derive(Debug, Clone, Serialize)]
 pub struct StatusNdjsonLine {
@@ -444,6 +493,7 @@ async fn render_ps_once(
     harness: Option<&str>,
     all: bool,
     json: bool,
+    csv: bool,
     ndjson: bool,
 ) -> Result<()> {
     if json {
@@ -458,6 +508,30 @@ async fn render_ps_once(
         } else {
             println!("{}", serde_json::to_string_pretty(&payload)?);
         }
+        return Ok(());
+    }
+
+    if csv {
+        let payload = build_ps_all_json(project, harness).await?;
+        let pool = ProcessPool::new();
+        let filter = if let Some(p) = project {
+            ProcessFilter::ByProject(p.to_string())
+        } else if let Some(h) = harness {
+            ProcessFilter::ByHarness(h.to_string())
+        } else {
+            ProcessFilter::All
+        };
+        let processes: Vec<ProcessInfo> = pool.find(filter).await;
+        let proc_source = HostProcSource;
+        let body = render_ps_all_csv_body(
+            &processes,
+            &proc_source,
+            &payload.agents,
+            payload.scanned,
+            payload.watched,
+        );
+        let csv_out = append_operator_csv_companions(body, &payload.gate).await?;
+        print!("{csv_out}");
         return Ok(());
     }
 
@@ -485,12 +559,26 @@ pub async fn ps(
     harness: Option<&str>,
     all: bool,
     json: bool,
+    csv: bool,
     watch: Option<u64>,
 ) -> Result<()> {
     if json && !all {
         anyhow::bail!(
             "`sharecli ps --json` requires `--all` for host agent inventory parity (AC-007.43)"
         );
+    }
+    if csv && !all {
+        anyhow::bail!(
+            "`sharecli ps --csv` requires `--all` for host agent inventory parity (AC-007.83)"
+        );
+    }
+    if csv {
+        if json {
+            anyhow::bail!("--csv cannot be combined with --json");
+        }
+        if watch.is_some() {
+            anyhow::bail!("--csv cannot be combined with --watch");
+        }
     }
     if watch.is_some() && json && !all {
         anyhow::bail!(
@@ -499,7 +587,7 @@ pub async fn ps(
     }
 
     match watch {
-        None => render_ps_once(project, harness, all, json, false).await,
+        None => render_ps_once(project, harness, all, json, csv, false).await,
         Some(interval_secs) => {
             if interval_secs == 0 {
                 anyhow::bail!("--watch interval must be >= 1 second");
@@ -510,7 +598,7 @@ pub async fn ps(
                 if !ndjson {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_ps_once(project, harness, all, json, ndjson).await?;
+                render_ps_once(project, harness, all, json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
