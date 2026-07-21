@@ -101,6 +101,10 @@ enum Commands {
         /// Show all processes including system ones
         #[arg(short, long)]
         all: bool,
+
+        /// Emit JSON (requires `--all` for host agent inventory parity; AC-007.43)
+        #[arg(long)]
+        json: bool,
     },
 
     /// Start a harness process
@@ -589,8 +593,8 @@ async fn run() -> Result<()> {
     }
 
     match &cli.command {
-        Commands::Ps { project, harness, all } => {
-            ps(project.as_deref(), harness.as_deref(), *all).await?
+        Commands::Ps { project, harness, all, json } => {
+            ps(project.as_deref(), harness.as_deref(), *all, *json).await?
         }
         Commands::Start { project, harness, cwd, args } => {
             start(project, harness, cwd.as_deref(), args).await?
