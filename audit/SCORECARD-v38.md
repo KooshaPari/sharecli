@@ -52,6 +52,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ## Post-audit remediations
 
+<<<<<<< HEAD
 ### 2026-07-19/20 (docs — GPG Verified L34 guide + Feb recovery status)
 
 - Feb recovery [#397](https://github.com/KooshaPari/sharecli/pull/397) + CoW/`smart_merge`/worktree mesh [#400](https://github.com/KooshaPari/sharecli/pull/400) landed on `main` (product depth).
@@ -59,6 +60,15 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **L34 stays 2** until a green **Verified** badge lands on `main` — do **not** bump to 3 yet (ruleset 19181236 already active).
 - **C11 L112** still blocked on codesign/notarize secrets.
 - Highest-leverage remaining: L34 Verified evidence; C11 codesign secrets.
+=======
+### 2026-07-19 (scorecard reconcile v5 — Wave14 #337–#340 + lifts through #391)
+
+- **Wave14 hard gates:** T-630 chaos ci-success (#337); T-620/T-625 coverage snapshot (#338); T-600 visual hard (#339); T-610 tray HTTP trace (#340).
+- **Cluster lifts #364–#391:** C07 proptest T-650 (#364); C09 keyboard/Vale/FAQ (#365–#377); C01 FR SSOT (#368); C03 100% A (#370); C04 dual scanners (#374–#375); C10 empty/error states (#378, #383); C05 MWMB (#380); C06 netblock + C07 dev seed + C11 systemd (#382); C07 e2e tier (#384); C08 Harbor N/A rescore (#386); product lifts #387–#391 (detect, deploy, ipc, tray-macos FFI).
+- **WORK_DAG T-650 dedupe:** Harbor soak → **T-675** EXTRACTED/N/A; proptest retains **T-650**.
+- **Governance:** T-680 Wave14 closeout sync (WBS/GAP/DAG/RC/SCORECARD).
+- Overall unweighted **89.8% B** (1078/12); tier-1 weighted **91% A** (1458/16) from Category Scores table.
+>>>>>>> 858358d (chore(governance): Wave14 closeout sync after #337-#391 (FR-003))
 
 ### 2026-07-19 (C08 Harbor EXTRACTED/N/A formalize — FR-003)
 

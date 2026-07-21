@@ -5,6 +5,10 @@
 - Score: L76 **1** (seeded N/A); C08 **22/30 (73% C)** unchanged; reconcile v3/v4 L76 interim lifts superseded
 - Sync: `audit/.lane-c08/C08.md` · `SCORECARD-v38.md` · `GAP-QA-MATRIX.md` · `WORK_DAG.md` T-650 · `RC-audit-v38-80B.md` · `GOVERNANCE.md`
 - FR: FR-003 · C08 L71/L76 · ADR 0005
+## 2026-07-19 (Wave14 governance closeout — T-680 / FR-003)
+- Status: DONE — reconcile WBS/GAP/DAG/RC/SCORECARD after Wave14 #337–#340 + cluster lifts through #391; WORK_DAG T-650 dedupe (Harbor → T-675 EXTRACTED)
+- Score: unweighted **89.8% B**; tier-1 weighted **91% A** (pin `0fa1fd0`)
+- FR: FR-003 · T-680
 
 ## 2026-07-19 (C03 L30.1/L30.3/L30.9 stale re-score — T-311 / FR-003)
 - Status: DONE — L30.1/L30.3/L30.9 2→3; `tests/c03_l30_agent_readiness_gate.rs`; lane + SCORECARD sync

@@ -5,6 +5,7 @@
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
 **Last sync:** 2026-07-19 (C08 Harbor EXTRACTED/N/A formalize FR-003; L76 N/A=1; C08 73% C)
+**Last sync:** 2026-07-19 (Wave14 #337–#340 + cluster lifts through #391; unweighted ~89.8% B / tier-1 ~91% A)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -56,7 +57,7 @@
 | C02 | L27 | AuthN/HTTP burn alerts | Med | W5.2 | Status: Closed | `docs/ops/alertmanager/sharecli.yml` + `src/http_red.rs` | maintainer |
 | C08 | L76 | Harbor Phase 3 soak evidence plan | Med | W12.5 · T-440 · #326 | Status: EXTRACTED / N/A (sharecli) | Destination: `phenotype-tooling/crates/benchora/harbor-soft` · `portage-temp` · ADR 0005 | agent-c08 |
 | C08 | L76 | Harbor Phase 3 soak execution scaffold | Med | W13.3 · T-520 · #333 | Status: EXTRACTED / N/A (sharecli) | Destination: benchora `harbor-soft` · `KooshaPari/portage-temp` | agent-c08 |
-| C08 | L76 | Seven-day Harbor soak log completion | Med | W14.2 · T-650 | Status: EXTRACTED / N/A (sharecli) | Tracked in benchora/`portage-temp` — not sharecli `main` | agent-c08 |
+| C08 | L76 | Seven-day Harbor soak log completion | Med | W14.2 · T-675 | Status: EXTRACTED / N/A (sharecli) | Tracked in benchora/`portage-temp` — not sharecli `main` | agent-c08 |
 | C08 | L74 | Tighter bench thresholds | Low | Wave2 · FR-003 | Status: Closed | `docs/eval/TRENDS.md` (0.50→0.25; max CSV p-t-p 3.20%); `criterion-baseline.json`; `bench.yml` | agent-c08 |
 | C06 | L52 | Bit-identical repro-check CI | Med | FR-002 · W6.1 | Status: Closed | `scripts/repro-check.sh` · `repro-check.yml` | agent-c06 |
 | C06 | L55 | Dependency confusion / deny sources | Med | W6.2 | Status: Closed | `deny.toml` · `deny.yml` | agent-c06 |

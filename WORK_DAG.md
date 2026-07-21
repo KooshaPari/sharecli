@@ -73,7 +73,7 @@ flowchart TD
 | — | Phased org+project WBS | `docs/ops/governance/WBS-PHASED.md` |
 | — | Gap/QA matrix | `docs/ops/governance/GAP-QA-MATRIX.md` |
 | — | PERT + parallel DAG Wave12 | `docs/ops/governance/PERT-DAG-W12.md` |
-| — | RC snapshot ~82% B | `docs/ops/governance/RC-audit-v38-80B.md` |
+| — | RC snapshot ~91% A weighted | `docs/ops/governance/RC-audit-v38-80B.md` |
 | T-450 | Governance sync WBS/GAP/DAG/RC/PERT (#325) | DONE (2026-07-17) |
 | T-400 | Unify serve error envelope JSON (#330) | DONE (2026-07-18) |
 | T-410 | proptest config roundtrip dep (#329) | DONE (2026-07-17) |
@@ -85,12 +85,17 @@ flowchart TD
 | T-520 | Harbor Phase 3 soak execution scaffold (#333) | DONE (2026-07-18) |
 | T-530 | Trace IPC + tray injectors (#334) | DONE (2026-07-18) |
 | T-550 | Wave13 governance closeout (#336) | DONE (2026-07-18) |
-| T-600 | Deterministic dashboard visual hard gate | DONE (2026-07-18) |
-| T-620 | Coverage evidence pin + llvm-cov snapshot artifact | DONE (2026-07-18) |
+| T-600 | Deterministic dashboard visual hard gate (#339) | DONE (2026-07-19) |
+| T-620 | Coverage llvm-cov snapshot artifact (#338) | DONE (2026-07-19) |
 | T-640 | cargo-mutants soft→hard gate (C07 L65) | DONE (2026-07-18) |
 | T-645 | Sync audit_scorecard.json to live SCORECARD | DONE (2026-07-19) |
 | T-670 | C01 L12 FR SSOT gate | DONE (2026-07-19) |
-| T-650 | C07 L66 proptest boundary + registry + replay | DONE (2026-07-19) |
+| T-650 | C07 L66 proptest boundary + registry + replay (#364) | DONE (2026-07-19) |
+| T-655 | OSV/GHSA hard gate (C04 L38) | DONE (2026-07-19) |
+| T-660 | GHCR cosign sign/attest hard publish (C06 L56) | DONE (2026-07-18) |
+| T-630 | Chaos restart ci-success hard gate (#337) | DONE (2026-07-19) |
+| T-625 | Broad-workspace coverage numeric pin (C01 L11) | DONE (2026-07-19) |
+| T-610 | Tray dashboard HTTP traceparent inject (#340) | DONE (2026-07-19) |
 
 ## Wave13 backlog (DONE)
 
@@ -98,7 +103,7 @@ flowchart TD
 |----|------|-------------|------|--------|--------|-----------|
 | T-550 | Governance sync WBS/GAP/DAG/RC | audit | Wave13 W13.1–W13.4 | S | DONE | W13 rows match SCORECARD |
 
-## Wave14 backlog (IN_PROGRESS)
+## Wave14 backlog (DONE)
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
@@ -117,6 +122,8 @@ flowchart TD
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
 | T-620 | Pin measured coverage evidence and automate snapshot | FR-003 / C01 L11 | T-550 | S | DONE | Matrix cites a successful base-SHA run without inventing a percentage; CI retains machine-readable llvm-cov totals |
+| T-680 | Governance sync WBS/GAP/DAG/RC/SCORECARD | audit | Wave14 W14.1–W14.5 | S | DONE | W14 rows + lifts through #391 match SCORECARD |
+| T-675 | Seven-day Harbor soak log completion (W14.2) | FR-003 / C08 L76 | T-520 | M | EXTRACTED | Tracked in benchora/`portage-temp` — not sharecli `main` (ADR 0002/0005) |
 
 ## Ownership notes
 
