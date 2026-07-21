@@ -64,6 +64,42 @@ pub struct HealthSnapshot {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct AgentProcRow {
+    pub pid: u32,
+    pub family: String,
+    pub comm: String,
+    pub state: String,
+    pub mem_rss_bytes: u64,
+    pub mem_rss: String,
+    pub fd_count: Option<u64>,
+}
+
+/// IPC `pool.status` envelope (FR-007 / AC-007.67, tray wire AC-007.68).
+#[derive(Debug, Clone, Deserialize)]
+pub struct PoolSnapshot {
+    pub node_total: usize,
+    pub node_idle: usize,
+    pub bun_total: usize,
+    pub bun_idle: usize,
+    pub max_per_type: usize,
+    pub healthy: bool,
+    pub issues: Vec<String>,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
+/// IPC `status.snapshot` envelope (FR-007 / AC-007.67, tray wire AC-007.68).
+#[derive(Debug, Clone, Deserialize)]
+pub struct StatusSnapshot {
+    pub total_processes: usize,
+    pub agents: Vec<AgentProcRow>,
+    pub scanned: usize,
+    pub watched: usize,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct MonitoringProcessEntry {
     pub pid: u32,
     pub name: String,
@@ -149,6 +185,39 @@ mod tests {
         assert_eq!(v["id"], 8);
         assert_eq!(v["method"], "process.kill_all");
         assert_eq!(v["params"], serde_json::json!({}));
+    }
+
+    #[test]
+    fn pool_snapshot_matches_server_wire_shape() {
+        let raw = r#"{"node_total":2,"node_idle":1,"bun_total":1,"bun_idle":0,"max_per_type":4,
+            "healthy":true,"issues":[],
+            "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+            "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}}"#;
+        let snap: PoolSnapshot = serde_json::from_str(raw).unwrap();
+        assert_eq!(snap.node_total, 2);
+        assert_eq!(snap.bun_idle, 0);
+        assert!(snap.healthy);
+        assert_eq!(snap.gate.gate_decision, "ADMIT");
+        assert_eq!(snap.host_watch.load_1m, 0.5);
+    }
+
+    #[test]
+    fn status_snapshot_matches_server_wire_shape() {
+        let raw = r#"{"total_processes":2,"agents":[{"pid":99,"family":"claude","comm":"claude",
+            "state":"S","mem_rss_bytes":4096,"mem_rss":"4.0M","fd_count":12}],
+            "scanned":50,"watched":1,
+            "gate":{"thermal_pressure":"GREEN","detected_agents":1,
+            "agent_total_rss_bytes":4096,"agent_contention":"OK","gate_decision":"ADMIT"},
+            "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+            "mem_rss_bytes":4,"load_1m":0.5}}"#;
+        let snap: StatusSnapshot = serde_json::from_str(raw).unwrap();
+        assert_eq!(snap.total_processes, 2);
+        assert_eq!(snap.agents[0].pid, 99);
+        assert_eq!(snap.scanned, 50);
+        assert_eq!(snap.gate.gate_decision, "ADMIT");
+        assert_eq!(snap.host_watch.load_1m, 0.5);
     }
 
     #[test]
