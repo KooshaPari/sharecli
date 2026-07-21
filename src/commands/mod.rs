@@ -9,6 +9,7 @@ pub mod serve;
 pub mod uninstall;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::io::Write;
 
 use anyhow::Result;
 pub use serve::run as serve_run;
@@ -47,6 +48,18 @@ pub(crate) fn print_live_gate_section() -> Result<()> {
 pub(crate) fn print_live_host_watch_section() -> Result<()> {
     let resource_watch = ResourceWatchSample::capture()?;
     print!("{}", resource_watch.format_status_section());
+    Ok(())
+}
+
+/// Gate + host watch text companions on stderr for NDJSON watch modes (AC-007.28 / AC-007.42).
+pub(crate) fn eprint_live_gate_host_watch_sections() -> Result<()> {
+    use crate::monitoring::HostResourceWatchJson;
+
+    let thermal = ThermalGovernor::new().poll()?;
+    let agent_count = count_host_agents();
+    eprint!("{}", format_gate_status_section(thermal, agent_count));
+    eprint!("{}", HostResourceWatchJson::capture()?.format_text_section());
+    let _ = std::io::stderr().flush();
     Ok(())
 }
 

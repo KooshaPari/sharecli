@@ -6,9 +6,10 @@
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::io::Write;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use sharecli_fleet::GateStatusSnapshot;
 
@@ -147,6 +148,25 @@ impl FleetReportJson {
     }
 }
 
+/// One NDJSON watch line for `report --watch --format json` (FR-007 / AC-007.42).
+#[derive(Debug, Clone, Serialize)]
+pub struct FleetReportNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: FleetReportJson,
+}
+
+fn unix_ts_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+}
+
+/// Emit one compact JSON line and flush (piped stdout is block-buffered; AC-007.42).
+fn emit_ndjson_line<T: Serialize>(value: &T) -> Result<()> {
+    println!("{}", serde_json::to_string(value)?);
+    std::io::stdout().flush()?;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Aggregation logic (pure function — easy to unit-test)
 // ---------------------------------------------------------------------------
@@ -275,7 +295,7 @@ fn render_json(
 // ---------------------------------------------------------------------------
 
 /// Render one snapshot and print it according to `format`.
-async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
+async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Result<()> {
     let pool = ProcessPool::new();
     let processes = pool.list().await;
 
@@ -306,9 +326,16 @@ async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
             super::print_live_host_watch_section()?;
         }
         ReportFormat::Json => {
-            // AC-007.40: gate → host_watch JSON siblings after report body; stderr silent.
+            // AC-007.40 one-shot / AC-007.42 watch NDJSON: gate → host_watch JSON siblings.
             let host_watch = HostResourceWatchJson::capture()?;
-            render_json(&report, &gate, &host_watch)?;
+            if ndjson {
+                let payload = FleetReportJson::from_parts(&report, gate.clone(), host_watch);
+                let line = FleetReportNdjsonLine { ts: unix_ts_secs(), snapshot: payload };
+                emit_ndjson_line(&line)?;
+                super::eprint_live_gate_host_watch_sections()?;
+            } else {
+                render_json(&report, &gate, &host_watch)?;
+            }
         }
     }
 
@@ -322,20 +349,40 @@ async fn render_once(format: &ReportFormat, sort: &SortBy) -> Result<()> {
 /// - `sort`: controls ordering of the top-consumers section.
 pub async fn run(format: ReportFormat, watch: Option<u64>, sort: SortBy) -> Result<()> {
     match watch {
-        None => render_once(&format, &sort).await,
+        None => render_once(&format, &sort, false).await,
         Some(interval_secs) => {
+            if interval_secs == 0 {
+                bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = format == ReportFormat::Json;
             loop {
-                // Clear terminal (ANSI: erase screen + move cursor to top-left)
-                print!("\x1b[2J\x1b[H");
-
-                render_once(&format, &sort).await?;
-
-                println!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
-
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_once(&format, &sort, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
                 tokio::select! {
-                    _ = tokio::time::sleep(Duration::from_secs(interval_secs)) => {},
+                    _ = tokio::time::sleep(sleep_for) => {},
                     _ = tokio::signal::ctrl_c() => {
-                        println!("\nExiting watch mode.");
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
                         break;
                     }
                 }

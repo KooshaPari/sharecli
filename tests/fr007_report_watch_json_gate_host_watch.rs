@@ -1,0 +1,170 @@
+//! FR-007 — `sharecli report --watch --format json` NDJSON gate + host_watch parity
+//! FR: FR-007
+//!
+//! AC-007.42 `report --watch --format json` streams NDJSON with gate → host_watch on
+//! every refresh; stderr carries text companions (parity with proc watch AC-007.28).
+
+use std::io::Read;
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::Duration;
+
+fn bin() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_sharecli"))
+}
+
+const GATE_MARKER: &str = "=== Thermal Gate (FR-011) ===";
+const WATCH_MARKER: &str = "=== Host Resource Watch ===";
+
+const HOST_WATCH_KEYS: [&str; 5] =
+    ["fd_count", "net_rx_bytes", "net_tx_bytes", "mem_rss_bytes", "load_1m"];
+
+fn assert_gate_before_watch(segment: &str, context: &str) {
+    let gate_pos = segment
+        .find(GATE_MARKER)
+        .unwrap_or_else(|| panic!("{context} MUST include gate section; got: {segment}"));
+    let watch_pos = segment
+        .find(WATCH_MARKER)
+        .unwrap_or_else(|| panic!("{context} MUST include host watch section; got: {segment}"));
+    assert!(
+        gate_pos < watch_pos,
+        "{context} MUST print gate before host watch (AC-007.42); got: {segment}"
+    );
+}
+
+fn assert_ndjson_gate_before_host_watch(line: &str, context: &str) {
+    let v: serde_json::Value =
+        serde_json::from_str(line.trim()).expect("watch NDJSON line MUST be valid JSON");
+    assert!(v.get("ts").is_some(), "{context} MUST include ts (AC-007.42)");
+    assert!(v.get("gate").is_some(), "{context} MUST include gate (AC-007.42)");
+    assert!(
+        v.get("host_watch").is_some(),
+        "{context} MUST include host_watch (AC-007.42)"
+    );
+    let gate_pos = line.find("\"gate\"").expect("gate key in NDJSON line");
+    let host_pos = line.find("\"host_watch\"").expect("host_watch key in NDJSON line");
+    assert!(
+        gate_pos < host_pos,
+        "{context} MUST serialize gate before host_watch (AC-007.42); got: {line}"
+    );
+    let host = v.get("host_watch").expect("host_watch object");
+    for key in HOST_WATCH_KEYS {
+        assert!(
+            host.get(key).is_some(),
+            "{context} host_watch MUST include {key} (AC-007.42); got: {host}"
+        );
+    }
+}
+
+fn drain_stdout_after_watch(child: &mut std::process::Child, dwell: Duration) -> String {
+    let stdout = child.stdout.take().expect("piped stdout");
+    let reader = thread::spawn(move || {
+        let mut buf = String::new();
+        let mut out = stdout;
+        let _ = out.read_to_string(&mut buf);
+        buf
+    });
+    thread::sleep(dwell);
+    let _ = child.kill();
+    let _ = child.wait();
+    reader.join().expect("stdout drain thread")
+}
+
+/// FR-007 / AC-007.42 — watch NDJSON stderr carries gate before host_watch companions.
+#[test]
+#[serial_test::serial]
+fn fr007_report_watch_ndjson_stderr_gate_before_host_watch() {
+    let mut child = bin()
+        .args(["report", "--format", "json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli report --format json --watch 1");
+
+    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(3_500));
+    let _ = stdout;
+
+    let mut stderr = String::new();
+    if let Some(mut err) = child.stderr.take() {
+        let _ = err.read_to_string(&mut stderr);
+    }
+
+    assert!(
+        stderr.contains(GATE_MARKER),
+        "report watch NDJSON stderr MUST include gate companion (AC-007.42); stderr: {stderr}"
+    );
+    assert!(
+        stderr.contains(WATCH_MARKER),
+        "report watch NDJSON stderr MUST include host watch companion (AC-007.42); stderr: {stderr}"
+    );
+    assert_gate_before_watch(&stderr, "report watch NDJSON stderr");
+    assert!(
+        stderr.contains("[watch]"),
+        "report watch NDJSON stderr MUST include [watch] footer (AC-007.42); stderr: {stderr}"
+    );
+}
+
+/// FR-007 / AC-007.42 — watch NDJSON stdout stays pipe-clean.
+#[test]
+#[serial_test::serial]
+fn fr007_report_watch_ndjson_stdout_no_companion_leak() {
+    let mut child = bin()
+        .args(["report", "--format", "json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli report --format json --watch 1");
+
+    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(3_500));
+
+    let mut stderr = String::new();
+    if let Some(mut err) = child.stderr.take() {
+        let _ = err.read_to_string(&mut stderr);
+    }
+    let _ = stderr; // stderr may carry companions; stdout contract is under test
+
+    assert!(
+        !stdout.contains(GATE_MARKER),
+        "report NDJSON stdout MUST NOT leak gate companion (AC-007.42); got: {stdout}"
+    );
+    assert!(
+        !stdout.contains(WATCH_MARKER),
+        "report NDJSON stdout MUST NOT leak host watch companion (AC-007.42); got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("[watch]"),
+        "report NDJSON stdout MUST NOT contain watch footer (AC-007.42); got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("\x1b[2J"),
+        "report NDJSON stdout MUST NOT contain terminal clear sequences (AC-007.42)"
+    );
+
+    for line in stdout.lines().filter(|l| !l.is_empty()) {
+        let _: serde_json::Value =
+            serde_json::from_str(line).expect("each report NDJSON stdout line MUST parse");
+    }
+}
+
+/// FR-007 / AC-007.42 — watch NDJSON lines embed gate before host_watch on every snapshot.
+#[test]
+#[serial_test::serial]
+fn fr007_report_watch_ndjson_gate_ordering() {
+    let mut child = bin()
+        .args(["report", "--format", "json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli report --format json --watch 1");
+
+    let stdout = drain_stdout_after_watch(&mut child, Duration::from_millis(3_500));
+
+    let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    assert!(
+        lines.len() >= 2,
+        "report watch --json MUST emit at least two NDJSON lines in ~3.5s; got: {stdout}"
+    );
+    for (idx, line) in lines.iter().enumerate() {
+        assert_ndjson_gate_before_host_watch(line, &format!("report NDJSON line {}", idx + 1));
+    }
+}
