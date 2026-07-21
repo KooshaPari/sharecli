@@ -209,6 +209,7 @@
 | AC-007.75   | `tests/fr007_proc_text_pool_status.rs`; `tests/fr007_proc_text_stderr_silent.rs`; `tests/fr007_proc_watch_text_stderr_silent.rs`; `src/commands/proc.rs` (`render_once` text path); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`); `crates/sharecli-fleet/src/operator_pool_status.rs` | proc + proc --tree text one-shot + --watch gate → host_watch → pool → proc-scan operator lines on stdout; stderr silent on success |
 | AC-007.76   | `tests/fr007_health_pool_status_ps_text_pool_status.rs`; `tests/fr007_health_pool_text_stderr_silent.rs`; `tests/fr007_health_watch_text_stderr_silent.rs`; `tests/fr007_pool_watch_text_stderr_silent.rs`; `tests/fr007_status_watch_text_stderr_silent.rs`; `tests/fr007_ps_all_text_stderr_silent.rs`; `tests/fr007_ps_all_watch_text_stderr_silent.rs`; `src/commands/mod.rs` (`render_health_once`, `render_pool_once`, `render_status_once`, `render_ps_once`, `print_live_pool_status_operator_sections`); `crates/sharecli-fleet/src/operator_pool_status.rs` | health/pool/status/ps --all text one-shot + --watch gate → host_watch → pool → proc-scan operator lines on stdout; stderr silent on success |
 | AC-007.77   | `tests/fr007_operator_json_pool_status.rs`; `tests/fr007_health_pool_json_gate_host_watch.rs`; `tests/fr007_pool_watch_json_gate_host_watch.rs`; `tests/fr007_status_watch_json_gate_host_watch.rs`; `tests/fr007_ps_all_json_gate_host_watch.rs`; `tests/fr007_ps_all_watch_json_gate_host_watch.rs`; `tests/fr007_proc_json_gate_order.rs`; `src/commands/mod.rs` (`HealthJson`, `PoolJson`, `StatusJson`, `PsAllJson`, `fetch_operator_pool_status_siblings`, `build_health_json`, `render_pool_once`, `render_status_once`, `build_ps_all_json`); `src/commands/proc.rs` (`AgentProcSnapshot`, `AgentTreeSnapshot`, `render_once` JSON path) | health/ps/proc --json gate → host_watch → pool → status; pool --json adds nested status only; status --json adds nested pool only; watch NDJSON parity; stderr silent on one-shot success |
+| AC-007.78   | `tests/fr007_ipc_health_pool_status.rs`; `tests/fr007_ipc_health_status_gate_host_watch.rs`; `tests/fr007_ipc_pool_status_snapshot.rs`; `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`, `PoolSnapshot`, `StatusSnapshot`, `health.status`, `pool.status`, `status.snapshot`, `capture_pool_snapshot`, `capture_status_snapshot`) | IPC health.status embeds pool + status; pool.status nested status only; status.snapshot nested pool only; gate → host_watch → siblings key order; no cross-sibling recursion |
 
 ### FR-008 — Coalesce
 
@@ -280,8 +281,11 @@
 
 - **2026-07-21 — FR-007 operator CLI JSON embedded pool/status siblings (AC-007.77):**
   `health --json`, `ps --all --json`, and `proc --json` embed gate → host_watch → pool → status;
-  `pool --json` adds nested `status` only; `status --json` adds nested `pool` only (no redundant
-  self-nesting); `--watch --json` NDJSON parity; stderr silent on one-shot success.
+  `pool --json` / `status --json` add nested sibling only; watch NDJSON parity; stderr silent on
+  one-shot success.
+- **2026-07-21 — FR-007 IPC health/pool/status embedded pool/status siblings (AC-007.78):**
+  IPC `health.status` embeds top-level `pool` + `status`; `pool.status` nested `status` only;
+  `status.snapshot` nested `pool` only; parity with CLI AC-007.77 and monitoring.report AC-007.72.
 - **2026-07-21 — FR-007 health/pool/status/ps --all text pool/proc-scan operator lines (AC-007.76):**
   `sharecli health`, `pool`, `status`, and `ps --all` (text, one-shot + `--watch`) print
   `format_pool_operator_line` / `format_status_operator_line` on stdout after gate → `host_watch`
