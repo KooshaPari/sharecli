@@ -105,6 +105,10 @@ enum Commands {
         /// Emit JSON (requires `--all` for host agent inventory parity; AC-007.43)
         #[arg(long)]
         json: bool,
+
+        /// Re-render every N seconds until Ctrl-C (live watch mode; AC-007.49 with --all --json)
+        #[arg(short, long)]
+        watch: Option<u64>,
     },
 
     /// Start a harness process
@@ -601,8 +605,15 @@ async fn run() -> Result<()> {
     }
 
     match &cli.command {
-        Commands::Ps { project, harness, all, json } => {
-            ps(project.as_deref(), harness.as_deref(), *all, *json).await?
+        Commands::Ps { project, harness, all, json, watch } => {
+            ps(
+                project.as_deref(),
+                harness.as_deref(),
+                *all,
+                *json,
+                *watch,
+            )
+            .await?
         }
         Commands::Start { project, harness, cwd, args } => {
             start(project, harness, cwd.as_deref(), args).await?

@@ -7,9 +7,10 @@ pub mod proc;
 pub mod report;
 pub mod serve;
 pub mod uninstall;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::io::Write;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use serde::Serialize;
@@ -116,6 +117,25 @@ pub struct PsAllJson {
     pub host_watch: HostResourceWatchJson,
 }
 
+/// One NDJSON watch line for `ps --all --watch --json` (FR-007 / AC-007.49).
+#[derive(Debug, Clone, Serialize)]
+pub struct PsAllNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: PsAllJson,
+}
+
+fn ps_unix_ts_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+}
+
+/// Emit one compact JSON line and flush (piped stdout is block-buffered; AC-007.49).
+fn emit_ps_ndjson_line<T: Serialize>(value: &T) -> Result<()> {
+    println!("{}", serde_json::to_string(value)?);
+    std::io::stdout().flush()?;
+    Ok(())
+}
+
 /// JSON envelope for `sharecli pool --json` (FR-007 / AC-007.44).
 ///
 /// Pool status fields precede live `gate` and `host_watch` siblings
@@ -152,19 +172,10 @@ pub struct HealthJson {
     pub host_watch: HostResourceWatchJson,
 }
 
-/// List processes
-pub async fn ps(
+async fn build_ps_all_json(
     project: Option<&str>,
     harness: Option<&str>,
-    all: bool,
-    json: bool,
-) -> Result<()> {
-    if json && !all {
-        anyhow::bail!(
-            "`sharecli ps --json` requires `--all` for host agent inventory parity (AC-007.43)"
-        );
-    }
-
+) -> Result<PsAllJson> {
     let pool = ProcessPool::new();
     let filter = if let Some(p) = project {
         ProcessFilter::ByProject(p.to_string())
@@ -176,44 +187,47 @@ pub async fn ps(
 
     let processes: Vec<ProcessInfo> = pool.find(filter).await;
     let proc_source = HostProcSource;
+    let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
+    let managed: Vec<PsManagedProcessRow> = processes
+        .iter()
+        .map(|proc| PsManagedProcessRow {
+            pid: proc.pid,
+            name: proc.name.clone(),
+            memory_mb: proc.memory_mb,
+            project: proc.project.clone(),
+            harness: proc.harness.clone(),
+            agent: agent_label_for_pid(&proc_source, proc.pid).to_string(),
+        })
+        .collect();
+    let snapshot = proc::AgentProcSnapshot::capture()?;
+    Ok(PsAllJson {
+        processes: managed,
+        total_memory_mb: total_mem,
+        agents: snapshot.agents,
+        scanned: snapshot.scanned,
+        watched: snapshot.watched,
+        gate: snapshot.gate,
+        host_watch: snapshot.host_watch,
+    })
+}
 
-    if json {
-        let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
-        let managed: Vec<PsManagedProcessRow> = processes
-            .iter()
-            .map(|proc| PsManagedProcessRow {
-                pid: proc.pid,
-                name: proc.name.clone(),
-                memory_mb: proc.memory_mb,
-                project: proc.project.clone(),
-                harness: proc.harness.clone(),
-                agent: agent_label_for_pid(&proc_source, proc.pid).to_string(),
-            })
-            .collect();
-        let snapshot = proc::AgentProcSnapshot::capture()?;
-        let payload = PsAllJson {
-            processes: managed,
-            total_memory_mb: total_mem,
-            agents: snapshot.agents,
-            scanned: snapshot.scanned,
-            watched: snapshot.watched,
-            gate: snapshot.gate,
-            host_watch: snapshot.host_watch,
-        };
-        println!("{}", serde_json::to_string_pretty(&payload)?);
-        return Ok(());
-    }
-
+fn print_ps_text_table(
+    processes: &[ProcessInfo],
+    proc_source: &HostProcSource,
+    project: Option<&str>,
+    harness: Option<&str>,
+    all: bool,
+) -> Result<()> {
     println!(
         "{:<8} {:<20} {:<12} {:<15} {:<14} HARNESS",
         "PID", "NAME", "MEM(MB)", "PROJECT", "AGENT"
     );
     println!("{}", "-".repeat(84));
 
-    for proc in &processes {
+    for proc in processes {
         let project = proc.project.as_deref().unwrap_or("-");
         let harness = proc.harness.as_deref().unwrap_or("-");
-        let agent = agent_label_for_pid(&proc_source, proc.pid);
+        let agent = agent_label_for_pid(proc_source, proc.pid);
         println!(
             "{:<8} {:<20} {:<12.1} {:<15} {:<14} {}",
             proc.pid, proc.name, proc.memory_mb as f64, project, agent, harness
@@ -224,7 +238,7 @@ pub async fn ps(
     println!("\nTotal: {} processes, {} MB memory", processes.len(), total_mem);
 
     if all {
-        print_host_agent_scan(&proc_source)?;
+        print_host_agent_scan(proc_source)?;
     }
 
     if processes.is_empty() {
@@ -232,6 +246,104 @@ pub async fn ps(
     }
 
     Ok(())
+}
+
+async fn render_ps_once(
+    project: Option<&str>,
+    harness: Option<&str>,
+    all: bool,
+    json: bool,
+    ndjson: bool,
+) -> Result<()> {
+    if json {
+        let payload = build_ps_all_json(project, harness).await?;
+        if ndjson {
+            let line = PsAllNdjsonLine {
+                ts: ps_unix_ts_secs(),
+                snapshot: payload,
+            };
+            emit_ps_ndjson_line(&line)?;
+            eprint_live_gate_host_watch_sections()?;
+        } else {
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
+        return Ok(());
+    }
+
+    let pool = ProcessPool::new();
+    let filter = if let Some(p) = project {
+        ProcessFilter::ByProject(p.to_string())
+    } else if let Some(h) = harness {
+        ProcessFilter::ByHarness(h.to_string())
+    } else {
+        ProcessFilter::All
+    };
+    let processes: Vec<ProcessInfo> = pool.find(filter).await;
+    let proc_source = HostProcSource;
+    print_ps_text_table(&processes, &proc_source, project, harness, all)
+}
+
+/// List processes
+pub async fn ps(
+    project: Option<&str>,
+    harness: Option<&str>,
+    all: bool,
+    json: bool,
+    watch: Option<u64>,
+) -> Result<()> {
+    if json && !all {
+        anyhow::bail!(
+            "`sharecli ps --json` requires `--all` for host agent inventory parity (AC-007.43)"
+        );
+    }
+    if watch.is_some() && json && !all {
+        anyhow::bail!(
+            "`sharecli ps --watch --json` requires `--all` for host agent inventory parity (AC-007.49)"
+        );
+    }
+
+    match watch {
+        None => render_ps_once(project, harness, all, json, false).await,
+        Some(interval_secs) => {
+            if interval_secs == 0 {
+                anyhow::bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_ps_once(project, harness, all, json, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer =
+                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    println!("{footer}");
+                }
+                let idle = cycle_start.elapsed();
+                let period = Duration::from_secs(interval_secs);
+                let sleep_for = period.saturating_sub(idle);
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 /// FR-006 host inventory printed by `sharecli ps --all`.

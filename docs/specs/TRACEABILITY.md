@@ -180,6 +180,7 @@
 | AC-007.46   | `tests/fr007_ipc_monitoring_report_gate_host_watch.rs`; `crates/sharecli-ipc/src/handler.rs` (`MonitoringReportSnapshot`, `monitoring.report`) | IPC monitoring.report gate → host_watch after fleet monitoring fields; parity with report --json AC-007.40 and health.status AC-007.45 |
 | AC-007.47   | `crates/sharecli-tray-linux/src/ipc.rs` (`MonitoringReportSnapshot`, `monitoring_report`); `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`monitoringReport`); `tests/fr007_ipc_monitoring_report_gate_host_watch.rs` | Tray/desktop wire parity for monitoring.report; decode gate + host_watch via IPC RPC without report --json shell-out |
 | AC-007.48   | `crates/sharecli-tray-linux/src/ipc.rs` (`health_snapshot`, `process_summaries`); `crates/sharecli-tray-linux/src/main.rs` (`refresh`); `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift` (`refresh`); `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift` (`asHealthSnapshot`, `asProcessSummaries`); `tests/fr007_tray_monitoring_report_consume.rs` | Tray refresh single monitoring.report snapshot drives gate/host_watch + process inventory; no split health + process.list polls |
+| AC-007.49   | `tests/fr007_ps_all_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`PsAllNdjsonLine`, `ps --all --watch --json`, `render_ps_once` watch NDJSON path); `src/commands/mod.rs` (`eprint_live_gate_host_watch_sections`) | ps --all --watch --json NDJSON gate → host_watch per refresh; stderr text companions; --watch --json requires --all |
 
 ### FR-008 — Coalesce
 
@@ -249,6 +250,10 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 ps --all watch NDJSON gate/host_watch parity:** `sharecli ps --all --watch --json`
+  streams NDJSON with `ts` + managed pool + agent inventory + gate → `host_watch` per refresh
+  (AC-007.49); stderr text companions + `[watch]` footer; stdout pipe-clean; parity with
+  `report --watch --format json` AC-007.42 and one-shot `ps --all --json` AC-007.43.
 - **2026-07-21 — FR-007 tray refresh consumes monitoring.report snapshot:** Swift `AppState.refresh`
   and Linux tray `refresh` drive operator gate/host_watch + process inventory from one
   `monitoring.report` IPC poll (AC-007.48); mapping helpers on `MonitoringReportSnapshot`; no split
