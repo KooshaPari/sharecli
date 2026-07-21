@@ -183,3 +183,33 @@ fn fr007_tray_thermal_visual_windows_wires_operator_display() {
         "TrayWindow MUST color gate row by severity (AC-007.57)"
     );
 }
+
+/// FR-007 / AC-007.58 — Swift HealthView metric cards + thermal gate detail use gate visual.
+#[test]
+fn fr007_tray_thermal_visual_swift_health_view_wires_gate_visual() {
+    let health = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift");
+    assert!(
+        health.contains("resolveTrayGateVisual"),
+        "HealthView MUST resolve tray gate visual (AC-007.58)"
+    );
+    assert!(
+        health.contains("gateVisual"),
+        "HealthView MUST expose gateVisual computed property (AC-007.58)"
+    );
+    assert!(
+        health.contains("thermalGateBadge"),
+        "HealthView MUST show thermal gate badge chip (AC-007.58)"
+    );
+    assert!(
+        health.contains("gateVisual.swiftColor"),
+        "HealthView metric cards MUST use severity colors (AC-007.58)"
+    );
+    assert!(
+        health.contains("gateVisual.badgeLabel"),
+        "HealthView Thermal Gate card MUST show badge label (AC-007.58)"
+    );
+    assert!(
+        !health.contains("h.healthy ? \"Healthy\""),
+        "HealthView MUST NOT use generic healthy/warning Status card (AC-007.58)"
+    );
+}
