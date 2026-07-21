@@ -85,6 +85,33 @@ public struct MonitoringReportSnapshot: Decodable {
     public let processes: [MonitoringProcessEntry]
     public let gate: GateStatusSnapshot
     public let host_watch: HostResourceWatchJson
+
+    /// Map fleet monitoring snapshot → tray health fields (parity with `health.status`).
+    public func asHealthSnapshot() -> HealthSnapshot {
+        HealthSnapshot(
+            managed_processes: total_processes,
+            used_memory_mb: used_memory_mb,
+            total_memory_mb: total_memory_mb,
+            healthy: used_memory_mb < total_memory_mb / 2,
+            gate: gate,
+            host_watch: host_watch
+        )
+    }
+
+    /// Map fleet monitoring processes → tray process rows (parity with `process.list`).
+    public func asProcessSummaries() -> [ProcessSummary] {
+        processes.map { entry in
+            ProcessSummary(
+                pid: entry.pid,
+                name: entry.name,
+                cmd: [],
+                memory_mb: entry.memory_mb,
+                project: entry.project,
+                harness: entry.harness,
+                start_time: 0
+            )
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

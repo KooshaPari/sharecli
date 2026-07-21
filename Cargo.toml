@@ -113,6 +113,7 @@ sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
 sharecli-fleet = { path = "crates/sharecli-fleet" }
 sharecli-core = { path = "crates/sharecli-core" }
 sharecli-ipc = { path = "crates/sharecli-ipc" }
+sharecli-tray-linux = { path = "crates/sharecli-tray-linux" }
 sharecli-fuse = { path = "crates/sharecli-fuse" }
 # sharecli-mesh is a normal dependency (mesh CLI); re-export not needed in dev-deps
 ratatui = "0.30"

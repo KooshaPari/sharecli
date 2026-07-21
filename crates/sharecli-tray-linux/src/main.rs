@@ -8,8 +8,6 @@
 //! Non-Linux targets get a stub `main` so `cargo build --workspace` stays green
 //! everywhere; the SNI protocol only exists on freedesktop desktops.
 
-mod ipc;
-
 #[cfg(target_os = "linux")]
 fn main() {
     linux::run();
@@ -28,7 +26,7 @@ mod linux {
 
     use ksni::blocking::{Handle, TrayMethods};
 
-    use crate::ipc;
+    use sharecli_tray_linux::ipc;
 
     const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
@@ -186,22 +184,20 @@ mod linux {
     }
 
     /// Pull the latest state from the IPC daemon into the tray struct.
+    ///
+    /// Single `monitoring.report` round-trip drives operator gate/host_watch + process
+    /// inventory (AC-007.48); avoids split `health.status` + `process.list` polls.
     fn refresh(tray: &mut ShareCliTray) {
-        match ipc::health() {
-            Ok(h) => {
-                tray.health = Some(h);
+        match ipc::monitoring_report() {
+            Ok(snap) => {
+                tray.health = Some(snap.health_snapshot());
+                tray.processes = snap.process_summaries();
                 tray.connected = true;
             }
             Err(e) => {
-                tracing::debug!("health poll failed: {e}");
+                tracing::debug!("monitoring.report poll failed: {e}");
                 tray.connected = false;
                 tray.health = None;
-            }
-        }
-        match ipc::list_processes() {
-            Ok(procs) => tray.processes = procs,
-            Err(e) => {
-                tracing::debug!("process.list poll failed: {e}");
                 tray.processes.clear();
             }
         }

@@ -4383,6 +4383,7 @@ dependencies = [
  "sharecli-mesh",
  "sharecli-sync",
  "sharecli-thermal-tui",
+ "sharecli-tray-linux",
  "spawn-core-sys",
  "substrate",
  "sysinfo",
