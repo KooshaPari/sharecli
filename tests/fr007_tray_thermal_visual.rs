@@ -235,3 +235,31 @@ fn fr007_tray_thermal_visual_swift_popover_stats_row_wires_gate_visual() {
         "Tray popover stats row MUST NOT use generic healthy/warning Status cell (AC-007.59)"
     );
 }
+
+/// FR-007 / AC-007.60 — Windows HealthStatusText uses gate visual tokens.
+#[test]
+fn fr007_tray_thermal_visual_windows_health_status_wires_gate_visual() {
+    let op = include_str!("../windows/ShareCLITray/OperatorDisplay.cs");
+    assert!(
+        op.contains("FormatHealthStatusLine"),
+        "C# OperatorDisplay MUST expose health summary formatter (AC-007.60)"
+    );
+    assert!(
+        op.contains("FormatHealthStatusOfflineLine"),
+        "C# OperatorDisplay MUST expose offline health summary formatter (AC-007.60)"
+    );
+
+    let code = include_str!("../windows/ShareCLITray/TrayWindow.xaml.cs");
+    assert!(
+        code.contains("FormatHealthStatusLine"),
+        "TrayWindow MUST bind HealthStatusText from gate visual (AC-007.60)"
+    );
+    assert!(
+        code.contains("HealthStatusText.Foreground"),
+        "TrayWindow MUST color HealthStatusText by severity (AC-007.60)"
+    );
+    assert!(
+        !code.contains("health.Healthy ? \"✓ OK\""),
+        "TrayWindow MUST NOT use generic OK/Unhealthy health summary (AC-007.60)"
+    );
+}

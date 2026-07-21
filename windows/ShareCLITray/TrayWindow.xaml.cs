@@ -38,9 +38,13 @@ public sealed partial class TrayWindow : Window
         var report = MonitoringReportSnapshot.TryParseIpcResponse(reportJson);
         if (report == null)
         {
+            var offlineVisual = OperatorDisplay.ResolveTrayGateVisual("", "", connected: false);
             DispatcherQueue?.TryEnqueue(() =>
             {
-                HealthStatusText.Text = "Daemon offline or monitoring.report failed";
+                HealthStatusText.Text = OperatorDisplay.FormatHealthStatusOfflineLine(
+                    offlineVisual,
+                    "Daemon offline or monitoring.report failed");
+                HealthStatusText.Foreground = OperatorDisplay.SeverityBrush(offlineVisual.Severity);
                 ThermalBadgeText.Text = "Offline";
                 ThermalBadgeText.Foreground = OperatorDisplay.SeverityBrush(
                     OperatorDisplay.TrayGateSeverity.Offline);
@@ -57,10 +61,9 @@ public sealed partial class TrayWindow : Window
 
         DispatcherQueue?.TryEnqueue(() =>
         {
-            HealthStatusText.Text =
-                $"Health: {(health.Healthy ? "✓ OK" : "✗ Unhealthy")} | " +
-                $"Managed: {health.ManagedProcesses} | " +
-                $"Memory: {health.UsedMemoryMb} / {health.TotalMemoryMb} MB";
+            HealthStatusText.Text = OperatorDisplay.FormatHealthStatusLine(
+                visual, health.Gate, health);
+            HealthStatusText.Foreground = OperatorDisplay.SeverityBrush(visual.Severity);
             ThermalBadgeText.Text =
                 $"{visual.BadgeLabel} · {health.Gate.ThermalPressure} · {health.Gate.GateDecision}";
             ThermalBadgeText.Foreground = OperatorDisplay.SeverityBrush(visual.Severity);
