@@ -5,17 +5,21 @@
 //!   process.kill        → { pid }
 //!   process.kill_all    → {}
 //!   health.status       → HealthSnapshot
+//!   pool.status         → PoolSnapshot
+//!   status.snapshot     → StatusSnapshot
 //!   config.get          → Config
 //!   config.set          → { key, value }  (dot-path into TOML)
 //!   monitoring.report   → MonitoringReportSnapshot
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sharecli::commands::proc::{AgentProcRow, AgentProcSnapshot};
 use sharecli::config::Config;
 use sharecli::monitoring::HostResourceWatchJson;
+use sharecli::runtime::SharedRuntime;
 use sharecli::{ProcessInfo, ProcessPool};
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{count_host_agents, gate_status_snapshot, GateStatusSnapshot};
@@ -98,6 +102,37 @@ pub struct MonitoringProcessEntry {
     pub harness: Option<String>,
 }
 
+/// IPC `pool.status` envelope (FR-007 / AC-007.67).
+///
+/// Pool status fields precede live `gate` and `host_watch` siblings
+/// (parity with `pool --json` AC-007.44).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PoolSnapshot {
+    pub node_total: usize,
+    pub node_idle: usize,
+    pub bun_total: usize,
+    pub bun_idle: usize,
+    pub max_per_type: usize,
+    pub healthy: bool,
+    pub issues: Vec<String>,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
+/// IPC `status.snapshot` envelope (FR-007 / AC-007.67).
+///
+/// Status fields precede live `gate` and `host_watch` siblings
+/// (parity with `status --json` AC-007.25).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct StatusSnapshot {
+    pub total_processes: usize,
+    pub agents: Vec<AgentProcRow>,
+    pub scanned: usize,
+    pub watched: usize,
+    pub gate: GateStatusSnapshot,
+    pub host_watch: HostResourceWatchJson,
+}
+
 /// IPC `monitoring.report` envelope (FR-007 / AC-007.46).
 ///
 /// Fleet monitoring fields precede live `gate` and `host_watch` siblings
@@ -127,6 +162,15 @@ fn capture_gate_host_watch() -> Result<(GateStatusSnapshot, HostResourceWatchJso
     };
     let host_watch = HostResourceWatchJson::capture()?;
     Ok((gate, host_watch))
+}
+
+static SHARED_RUNTIME: OnceLock<SharedRuntime> = OnceLock::new();
+
+fn shared_runtime() -> &'static SharedRuntime {
+    SHARED_RUNTIME.get_or_init(|| {
+        let max = Config::load().map(|c| c.pool.max_per_type).unwrap_or(4);
+        SharedRuntime::new(max)
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -191,6 +235,40 @@ impl Handler {
                     healthy: used < total / 2,
                     gate,
                     host_watch,
+                };
+                Ok(serde_json::to_value(snap)?)
+            }
+
+            "pool.status" => {
+                let runtime = shared_runtime();
+                let status = runtime.status().await;
+                let health = runtime.health_check().await;
+                let (gate, host_watch) = capture_gate_host_watch()?;
+                let snap = PoolSnapshot {
+                    node_total: status.node_total,
+                    node_idle: status.node_idle,
+                    bun_total: status.bun_total,
+                    bun_idle: status.bun_idle,
+                    max_per_type: status.max_per_type,
+                    healthy: health.healthy,
+                    issues: health.issues,
+                    gate,
+                    host_watch,
+                };
+                Ok(serde_json::to_value(snap)?)
+            }
+
+            "status.snapshot" => {
+                self.pool.refresh().await;
+                let procs = self.pool.list().await;
+                let snapshot = AgentProcSnapshot::capture()?;
+                let snap = StatusSnapshot {
+                    total_processes: procs.len(),
+                    agents: snapshot.agents,
+                    scanned: snapshot.scanned,
+                    watched: snapshot.watched,
+                    gate: snapshot.gate,
+                    host_watch: snapshot.host_watch,
                 };
                 Ok(serde_json::to_value(snap)?)
             }

@@ -198,6 +198,7 @@
 | AC-007.64   | `tests/fr007_health_watch_text_stderr_silent.rs`; `tests/fr007_health_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`HealthNdjsonLine`, `render_health_once`, `health --watch`, `health --watch --json`); `src/main.rs` (`Health.watch`) | health --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only; health --watch --json NDJSON gate → host_watch per refresh with stderr text companions |
 | AC-007.65   | `tests/fr007_pool_watch_text_stderr_silent.rs`; `tests/fr007_pool_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`PoolNdjsonLine`, `render_pool_once`, `pool --watch`, `pool --watch --json`); `src/main.rs` (`Pool.watch`) | pool --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only; pool --watch --json NDJSON gate → host_watch per refresh with stderr text companions |
 | AC-007.66   | `tests/fr007_status_watch_text_stderr_silent.rs`; `tests/fr007_status_watch_json_gate_host_watch.rs`; `src/commands/mod.rs` (`StatusJson`, `StatusNdjsonLine`, `render_status_once`, `status --watch`, `status --watch --json`); `src/main.rs` (`Status.watch`) | status --watch text stderr silent; gate/host_watch + `[watch]` footer stdout only; status --watch --json NDJSON gate → host_watch per refresh with stderr text companions |
+| AC-007.67   | `tests/fr007_ipc_pool_status_snapshot.rs`; `crates/sharecli-ipc/src/handler.rs` (`PoolSnapshot`, `StatusSnapshot`, `pool.status`, `status.snapshot`); `src/commands/proc.rs` (`AgentProcRow` Deserialize for wire roundtrip) | IPC pool.status + status.snapshot gate → host_watch after pool/status fields; parity with pool --json AC-007.44 and status --json AC-007.25 |
 
 ### FR-008 — Coalesce
 
@@ -267,6 +268,11 @@
 
 ## Change log
 
+- **2026-07-21 — FR-007 IPC pool.status + status.snapshot gate/host_watch parity:** IPC
+  `pool.status` / `PoolSnapshot` and `status.snapshot` / `StatusSnapshot` emit top-level `gate` +
+  `host_watch` siblings after pool/status fields (AC-007.67); parity with `pool --json` AC-007.44
+  and `status --json` AC-007.25; completes IPC operator snapshot surface alongside
+  `health.status` AC-007.45 and `monitoring.report` AC-007.46.
 - **2026-07-21 — FR-007 status --watch gate/host_watch parity:** `sharecli status --watch`
   (text, no `--json`) MUST NOT print gate/host_watch text companions or `[watch]` footer on
   stderr during refresh cycles (AC-007.66); gate → `host_watch` and footer stay on stdout only;
