@@ -98,7 +98,7 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
     println!("\nTotal: {} processes, {} MB memory", processes.len(), total_mem);
 
     if all {
-        print_host_agent_scan(&proc_source);
+        print_host_agent_scan(&proc_source)?;
     }
 
     if processes.is_empty() {
@@ -109,7 +109,7 @@ pub async fn ps(project: Option<&str>, harness: Option<&str>, all: bool) -> Resu
 }
 
 /// FR-006 host inventory printed by `sharecli ps --all`.
-fn print_host_agent_scan(source: &HostProcSource) {
+fn print_host_agent_scan(source: &HostProcSource) -> Result<()> {
     let agents = scan_agents(source);
     let watched = watch_detected_agents(&agents);
     let agent_pids: Vec<u32> = agents.iter().map(|a| a.pid).collect();
@@ -119,6 +119,8 @@ fn print_host_agent_scan(source: &HostProcSource) {
     if let Ok(thermal) = ThermalGovernor::new().poll() {
         print!("{}", format_gate_status_section(thermal, agents.len()));
     }
+    print_live_host_watch_section()?;
+    Ok(())
 }
 
 /// Actionable empty-pool copy for `ps` (C10 L100).
