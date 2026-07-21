@@ -70,7 +70,13 @@ pub fn execute(req: ExecRequest<'_>) -> Result<i32, String> {
         "queue" | "priority_queue" => {
             queue::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
         }
-        "debounce" => debounce::run(req.real_cmd, req.opts.debounce_ms, &full_args),
+        "debounce" => debounce::run(
+            req.harness_home,
+            req.real_cmd,
+            req.cmd_name,
+            &full_args,
+            req.opts,
+        ),
         "retry" => retry::run(
             req.real_cmd,
             req.opts.retry_max,

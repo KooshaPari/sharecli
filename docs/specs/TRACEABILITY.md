@@ -173,6 +173,7 @@
 | AC-008.15 | `tests/fr008_queue_priority_operator.rs`; `crates/sharecli-ipc/src/queue.rs` (`resolve_operator_queue_priority`, `QUEUE_PRIORITY_ENV`); `crates/sharecli-core/src/lib.rs` (`SpawnRequest::from_operator`, `SpawnRequest::new`); `crates/harness-native/tests/native_harness_contract.rs` (`operator_queue_priority_honors_rules_conf`) | operator env + rules.conf → SpawnRequest queue priority |
 | AC-008.16 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::run_queued`, `hypervisor_run_queued_skips_coalesce_cache`); `crates/harness-native/src/strategies/queue.rs` (`queue_strategy_executes_via_hypervisor`, `priority_queue_strategy_executes_via_hypervisor`) | harness queue/priority_queue → Hypervisor nocache lane via `from_operator` |
 | AC-008.17 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::from_config`, `HypervisorConfig::coalesce_ttl`, `coalesce_ttl`); `crates/harness-native/src/strategies/coalesce.rs` (`coalesce_strategy_executes_via_hypervisor`, `coalesce_strategy_serves_cache_on_replay`, `cache_strategy_executes_via_hypervisor`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_hypervisor_config`, `config_from_rule_opts`) | harness coalesce/cache → Hypervisor::run via from_operator + RuleOpts ttl/debounce/max_concurrent |
+| AC-008.18 | `crates/harness-native/src/strategies/debounce.rs` (`debounce_strategy_executes_via_hypervisor`, `debounce_strategy_serves_cache_on_replay`, `debounce_strategy_shares_in_window_store`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`config_from_rule_opts`, `build_hypervisor`) | harness debounce → Hypervisor::run via hypervisor_lane + debounce_ms → coalesce_debounce |
 
 ### FR-009 — FUSE
 
@@ -278,6 +279,9 @@
   coalesce-derived session id to `mount_with_session` (AC-009.12).
 - **2026-07-20 — FR-009 fuse provenance CLI:** `sharecli fuse provenance`
   reads backing write xattrs via `read_provenance` (AC-009.11).
+- **2026-07-20 — FR-008 harness debounce Hypervisor:** harness-native `debounce`
+  strategy routes through `Hypervisor::run` with `debounce_ms` →
+  `HypervisorConfig::coalesce_debounce` via `hypervisor_lane` (AC-008.18).
 - **2026-07-20 — FR-008 harness coalesce Hypervisor:** harness-native `coalesce` /
   `cache` strategies route through `Hypervisor::run` with `SpawnRequest::from_operator`
   and `{harness_home}/var/sharecli-hypervisor` cache root; `RuleOpts` ttl/debounce/
