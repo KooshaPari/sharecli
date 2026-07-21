@@ -646,7 +646,9 @@ fn print_host_watch_text_footer() -> Result<()> {
 /// One-shot `proc --json`, `proc --tree --json`, and `proc --pid N --json` MUST NOT call
 /// this helper (AC-007.30 / AC-007.31). One-shot `proc --csv` and `proc --tree --csv` MUST NOT
 /// call this helper either (AC-007.33); gate/host_watch stay in CSV companion rows on stdout
-/// only (AC-007.19).
+/// only (AC-007.19). One-shot text `proc`, `proc --tree`, and `proc --pid N` MUST NOT call
+/// this helper either (AC-007.34); gate/host_watch stay in text sections on stdout only
+/// (AC-007.17 / AC-007.20 / AC-007.21).
 fn eprint_gate_host_watch_stderr_companions(
     thermal: ThermalLevel,
     agent_count: usize,
@@ -798,6 +800,8 @@ fn format_cmdline(cmdline: &[String]) -> String {
 
 /// Render one process detail snapshot (text or JSON, AC-006.23).
 /// One-shot `proc --pid N --json` MUST NOT print gate/host_watch stderr companions (AC-007.31).
+/// One-shot `proc --pid N` text MUST NOT print gate/host_watch stderr companions either
+/// (AC-007.34); gate/host_watch stay in text sections on stdout only (AC-007.17).
 pub fn render_proc_detail(detail: &ProcDetailSnapshot, json: bool) -> Result<()> {
     if json {
         println!("{}", serde_json::to_string_pretty(detail)?);
@@ -1068,6 +1072,7 @@ pub fn render_once(
             println!("{}", serde_json::to_string_pretty(&snap)?);
             return Ok(());
         }
+        // One-shot `proc --tree` text MUST NOT print gate/host_watch stderr companions (AC-007.34).
         render_agent_tree(&forests, &tree_state_by_pid);
         print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
         print_host_watch_text_footer()?;
@@ -1113,6 +1118,7 @@ pub fn render_once(
         println!("{}", serde_json::to_string_pretty(&snap)?);
         return Ok(());
     }
+    // One-shot `proc` text MUST NOT print gate/host_watch stderr companions (AC-007.34).
     render_agent_inventory(&watched, scanned_agents.len(), &state_by_pid);
     print!("{}", format_gate_status_section(thermal, scanned_agents.len()));
     print_host_watch_text_footer()?;
