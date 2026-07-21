@@ -209,6 +209,8 @@ pub enum ProcSort {
     Rss,
     /// Descending open FD count (highest first; missing FD treated as 0); PID tie-break.
     Fd,
+    /// Ascending process state letter; missing state sorts last; PID tie-break.
+    State,
 }
 
 /// Parse `--limit N` for proc inventory (AC-006.21).
@@ -259,15 +261,22 @@ impl std::str::FromStr for ProcSort {
             "pid" => Ok(Self::Pid),
             "rss" => Ok(Self::Rss),
             "fd" => Ok(Self::Fd),
-            other => bail!("unknown sort key '{other}'; expected 'rss', 'fd', or 'pid'"),
+            "state" => Ok(Self::State),
+            other => bail!("unknown sort key '{other}'; expected 'rss', 'fd', 'pid', or 'state'"),
         }
     }
 }
 
-/// Order watched agent rows for text/JSON inventory (`--sort`, AC-006.19).
+/// State letter for sort ordering; missing/unknown sorts after all known letters (AC-006.36).
+fn state_sort_letter(state_by_pid: &HashMap<u32, char>, pid: u32) -> char {
+    state_by_pid.get(&pid).copied().unwrap_or(char::MAX)
+}
+
+/// Order watched agent rows for text/JSON inventory (`--sort`, AC-006.19, AC-006.36).
 pub fn sort_watched_agents(
     watched: &[DetectedAgentWatch],
     sort: ProcSort,
+    state_by_pid: &HashMap<u32, char>,
 ) -> Vec<DetectedAgentWatch> {
     let mut rows = watched.to_vec();
     match sort {
@@ -287,16 +296,24 @@ pub fn sort_watched_agents(
                 fd_b.cmp(&fd_a).then_with(|| a.agent.pid.cmp(&b.agent.pid))
             });
         }
+        ProcSort::State => {
+            rows.sort_by(|a, b| {
+                state_sort_letter(state_by_pid, a.agent.pid)
+                    .cmp(&state_sort_letter(state_by_pid, b.agent.pid))
+                    .then_with(|| a.agent.pid.cmp(&b.agent.pid))
+            });
+        }
     }
     rows
 }
 
-/// Order tree root forests by live RSS/FD/PID samples (`--sort`, AC-006.19).
+/// Order tree root forests by live RSS/FD/PID/state samples (`--sort`, AC-006.19, AC-006.36).
 pub fn sort_agent_forests(
     forests: &[AgentTreeNode],
     sort: ProcSort,
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> Vec<AgentTreeNode> {
     let mut roots = forests.to_vec();
     match sort {
@@ -313,6 +330,13 @@ pub fn sort_agent_forests(
                 let fd_a = fd_by_pid.get(&a.pid).copied().unwrap_or(0);
                 let fd_b = fd_by_pid.get(&b.pid).copied().unwrap_or(0);
                 fd_b.cmp(&fd_a).then_with(|| a.pid.cmp(&b.pid))
+            });
+        }
+        ProcSort::State => {
+            roots.sort_by(|a, b| {
+                state_sort_letter(state_by_pid, a.pid)
+                    .cmp(&state_sort_letter(state_by_pid, b.pid))
+                    .then_with(|| a.pid.cmp(&b.pid))
             });
         }
     }
@@ -407,9 +431,10 @@ fn fd_map_from_watched(watched: &[DetectedAgentWatch]) -> HashMap<u32, u64> {
 fn apply_sort_watched(
     watched: Vec<DetectedAgentWatch>,
     sort: Option<ProcSort>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> Vec<DetectedAgentWatch> {
     match sort {
-        Some(key) => sort_watched_agents(&watched, key),
+        Some(key) => sort_watched_agents(&watched, key, state_by_pid),
         None => watched,
     }
 }
@@ -419,9 +444,10 @@ fn apply_sort_forests(
     sort: Option<ProcSort>,
     rss_by_pid: &HashMap<u32, u64>,
     fd_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
 ) -> Vec<AgentTreeNode> {
     match sort {
-        Some(key) => sort_agent_forests(&forests, key, rss_by_pid, fd_by_pid),
+        Some(key) => sort_agent_forests(&forests, key, rss_by_pid, fd_by_pid, state_by_pid),
         None => forests,
     }
 }
@@ -949,7 +975,7 @@ pub fn render_once(
             &cmdline_by_pid,
             &state_by_pid,
         );
-        let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid);
+        let forests = apply_sort_forests(forests, sort, &rss_by_pid, &fd_by_pid, &state_by_pid);
         let forests = limit_agent_forests(forests, limit);
         let tree_state_by_pid = build_forest_state_map(&HostProcSource, &forests);
         let snap = AgentTreeSnapshot {
@@ -981,6 +1007,7 @@ pub fn render_once(
         apply_sort_watched(
             filter_watched_agents(&watched_all, filter, &ppid_by_pid, &cmdline_by_pid, &state_by_pid),
             sort,
+            &state_by_pid,
         ),
         limit,
     );

@@ -234,11 +234,12 @@ replacing vendor agent executables as the primary detection path.
   inventory or tree fields). Watch footer and exit messages go to stderr; stdout
   MUST stay pipe-clean (no ANSI clear, no pretty-print). One-shot `--json`
   without `--watch` remains pretty-printed multi-line JSON without `ts`.
-- **AC-006.19:** `sharecli proc --sort rss|fd|pid` orders flat inventory rows
+- **AC-006.19:** `sharecli proc --sort rss|fd|pid|state` orders flat inventory rows
   and `--tree` root forests after filters apply: `rss` and `fd` descending
-  (missing FD counts as zero; PID ascending tie-break), `pid` ascending.
-  `--json` / NDJSON `agents` arrays and text tables MUST reflect the chosen
-  order; invalid sort keys fail loudly.
+  (missing FD counts as zero; PID ascending tie-break), `pid` ascending,
+  `state` ascending by process state letter (missing state sorts last; PID
+  ascending tie-break). `--json` / NDJSON `agents` arrays and text tables MUST
+  reflect the chosen order; invalid sort keys fail loudly.
 - **AC-006.20:** [`match_known_agent`](crates/sharecli-fleet/src/detect.rs) adds
   the `amp` family and expands cmdline fingerprints for `codex`, `aider`, and
   `cursor-agent` (node/npx/python wrapper argv). Generic `codex-` path prefixes
@@ -319,6 +320,11 @@ replacing vendor agent executables as the primary detection path.
   `build_forest_state_map`, so `--tree` text/JSON/CSV surfaces child process state
   without relying only on scanned-agent PIDs in `state_by_pid`; composes with all
   proc tree flags including `--watch`.
+- **AC-006.36:** `sharecli proc --sort state` orders flat inventory rows and
+  `--tree` root forests by process state letter (ascending), composed with all
+  existing filters and export flags; missing state sorts last; equal letters
+  tie-break by ascending PID; `--json`, NDJSON, CSV, and text surfaces reflect
+  the chosen order.
 
 **Test refs:** `tests/fr006_agent_detection.rs`, `tests/fr006_proc_tree.rs`, `tests/fr006_ps_agent_column.rs`, `tests/fr006_thermal_tui_agents.rs`, `tests/fr006_thermal_tui_agent_tree.rs`, `tests/fr006_agent_pid_watch.rs`, `tests/fr006_proc_cli.rs`, `tests/fr006_proc_fingerprints.rs`, `tests/fr006_proc_fingerprints_ext.rs`, `tests/fr006_agent_rss_gate.rs`, `tests/fr006_proc_watch.rs`, `tests/fr006_proc_tree_cli.rs`, `tests/fr006_proc_filters.rs`, `tests/fr006_proc_ndjson.rs`, `tests/fr006_proc_sort.rs`, `tests/fr006_proc_limit.rs`, `tests/fr006_proc_pid_detail.rs`, `tests/fr006_proc_csv.rs`, `tests/fr006_proc_ppid.rs`, `tests/fr006_proc_tree_csv.rs`, `tests/fr006_proc_comm.rs`, `tests/fr006_proc_cmdline.rs`, `tests/fr006_proc_state.rs`, `tests/fr006_proc_state_export.rs`, `tests/fr006_proc_state_text.rs`, `tests/fr006_proc_tree_state.rs`
 
