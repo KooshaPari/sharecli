@@ -22,6 +22,36 @@ pub struct StatusOperatorPanel {
     pub agent_rows: usize,
 }
 
+impl PoolOperatorPanel {
+    /// Companion CSV block appended after gate/host_watch records (FR-007 / AC-007.79).
+    pub fn format_csv_companion(&self) -> String {
+        format!(
+            "\nrecord,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy\n\
+             pool,{},{},{},{},{},{}\n",
+            self.node_total,
+            self.node_idle,
+            self.bun_total,
+            self.bun_idle,
+            self.max_per_type,
+            self.healthy,
+        )
+    }
+}
+
+impl StatusOperatorPanel {
+    /// Companion CSV block appended after pool record (FR-007 / AC-007.79).
+    pub fn format_csv_companion(&self) -> String {
+        format!(
+            "\nrecord,scanned,watched,total_processes,agent_rows\n\
+             status,{},{},{},{}\n",
+            self.scanned,
+            self.watched,
+            self.total_processes,
+            self.agent_rows,
+        )
+    }
+}
+
 /// Tray/dashboard pool operator line (AC-007.69).
 pub fn format_pool_operator_line(pool: &PoolOperatorPanel) -> String {
     format!(
@@ -44,4 +74,49 @@ pub fn format_status_operator_line(status: &StatusOperatorPanel) -> String {
         status.total_processes,
         status.agent_rows,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pool_operator_panel_format_csv_companion() {
+        let csv = PoolOperatorPanel {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 3,
+            bun_idle: 2,
+            max_per_type: 4,
+            healthy: true,
+        }
+        .format_csv_companion();
+        assert!(
+            csv.contains("record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy"),
+            "CSV companion MUST include pool header; got: {csv}"
+        );
+        assert!(
+            csv.trim().ends_with("pool,2,1,3,2,4,true"),
+            "CSV companion MUST include pool data row; got: {csv}"
+        );
+    }
+
+    #[test]
+    fn status_operator_panel_format_csv_companion() {
+        let csv = StatusOperatorPanel {
+            scanned: 5,
+            watched: 3,
+            total_processes: 12,
+            agent_rows: 3,
+        }
+        .format_csv_companion();
+        assert!(
+            csv.contains("record,scanned,watched,total_processes,agent_rows"),
+            "CSV companion MUST include status header; got: {csv}"
+        );
+        assert!(
+            csv.trim().ends_with("status,5,3,12,3"),
+            "CSV companion MUST include status data row; got: {csv}"
+        );
+    }
 }
