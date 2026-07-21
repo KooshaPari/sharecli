@@ -126,6 +126,7 @@
 | AC-006.36   | `tests/fr006_proc_sort.rs`; `src/commands/proc.rs` (`ProcSort::State`, `sort_watched_agents`, `sort_agent_forests`) | `sharecli proc --sort state` process-state letter ordering |
 | AC-006.37   | `tests/fr006_proc_ndjson.rs`; `src/commands/proc.rs` (`emit_ndjson_line`, `AgentProcNdjsonLine`, `agent_row_from_watch`) | NDJSON watch agent rows include `state` (AC-006.32 parity); flushed stdout + stderr footer |
 | AC-006.38   | `tests/fr006_proc_filters.rs`; `src/commands/proc.rs` | `sharecli proc --exclude-family` negates `--family` |
+| AC-006.39   | `tests/fr006_thermal_tui_agent_tree.rs`; `crates/sharecli-thermal-tui/src/lib.rs`; `crates/sharecli-fleet/src/proc_scan.rs` (`build_host_forest_state_map`, `state_text_for_pid`) | thermal TUI agent-tree process state letters |
 | AC-006.12   | `tests/fr006_agent_rss_gate.rs`; `crates/sharecli-fleet/src/agent_contention.rs` | RSS-aware gate |
 
 ### FR-007 — Resource Watch
@@ -204,6 +205,9 @@
 
 ## Change log
 
+- **2026-07-20 — FR-006 thermal TUI agent-tree state:** full-layout Detected Agents
+  tree nodes show process state letters via `build_host_forest_state_map` (AC-006.39);
+  forest helpers lifted to `sharecli-fleet` for proc/TUI parity.
 - **2026-07-20 — FR-009 FUSE path remap + lifecycle:** SpawnOutcome exposes
   `fuse_backing` / `fuse_mountpoint`; `remap_mount_to_backing` + guard teardown
   on drop (AC-009.14).

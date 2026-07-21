@@ -25,9 +25,10 @@ use ratatui::{
 use sharecli_fleet::proc_scan::DetectedAgent;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::{
-    build_host_agent_forests, effective_gate_decision, format_rss_bytes, global_coalesce_meters,
-    global_slot_queue_meters, watch_host_agents, AgentTreeNode, CoalesceMeters, DetectedAgentWatch,
-    ResourceWatchSample, SlotQueueMeters,
+    build_host_agent_forests, build_host_forest_state_map, effective_gate_decision,
+    format_rss_bytes, global_coalesce_meters, global_slot_queue_meters, state_text_for_pid,
+    watch_host_agents, AgentTreeNode, CoalesceMeters, DetectedAgentWatch, ResourceWatchSample,
+    SlotQueueMeters,
 };
 use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
@@ -335,13 +336,18 @@ pub fn agent_lines(agents: &[DetectedAgentWatch], compact: bool) -> Vec<Line<'st
 /// Max tree lines rendered in the full-layout DetectedAgent panel (AC-006.22).
 pub const MAX_AGENT_TREE_LINES: usize = 4;
 
-fn format_tree_node_line(node: &AgentTreeNode, rss_by_pid: &HashMap<u32, u64>) -> String {
+fn format_tree_node_line(
+    node: &AgentTreeNode,
+    rss_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
+) -> String {
     let family = node.family.map(|f| format!("{f} ")).unwrap_or_default();
+    let state = state_text_for_pid(state_by_pid, node.pid);
     let rss = rss_by_pid
         .get(&node.pid)
         .map(|bytes| format!(" RSS {}", format_rss_bytes(*bytes)))
         .unwrap_or_default();
-    format!("[{}] {family}{}{}", node.pid, rss, format_comm_suffix(&node.comm))
+    format!("[{}] {state} {family}{}{}", node.pid, rss, format_comm_suffix(&node.comm))
 }
 
 fn format_comm_suffix(comm: &str) -> String {
@@ -353,6 +359,7 @@ fn append_agent_tree_lines(
     prefix: &str,
     is_last: bool,
     rss_by_pid: &HashMap<u32, u64>,
+    state_by_pid: &HashMap<u32, char>,
     lines: &mut Vec<Line<'static>>,
     budget: &mut usize,
 ) {
@@ -369,7 +376,7 @@ fn append_agent_tree_lines(
     let lead = if prefix.is_empty() { "  " } else { prefix };
     lines.push(Line::from(format!(
         "{lead}{connector}{}",
-        format_tree_node_line(node, rss_by_pid)
+        format_tree_node_line(node, rss_by_pid, state_by_pid)
     )));
     *budget -= 1;
 
@@ -384,6 +391,7 @@ fn append_agent_tree_lines(
             &child_prefix,
             i + 1 == node.children.len(),
             rss_by_pid,
+            state_by_pid,
             lines,
             budget,
         );
@@ -393,10 +401,11 @@ fn append_agent_tree_lines(
     }
 }
 
-/// Lines for the host agent inventory panel — tree when forests are present (AC-006.22).
+/// Lines for the host agent inventory panel — tree when forests are present (AC-006.22, AC-006.39).
 pub fn agent_forest_lines(
     forests: &[AgentTreeNode],
     watched: &[DetectedAgentWatch],
+    state_by_pid: &HashMap<u32, char>,
     compact: bool,
 ) -> Vec<Line<'static>> {
     if compact || forests.is_empty() {
@@ -413,7 +422,7 @@ pub fn agent_forest_lines(
             }
             break;
         }
-        append_agent_tree_lines(root, "", true, &rss_by_pid, &mut lines, &mut budget);
+        append_agent_tree_lines(root, "", true, &rss_by_pid, state_by_pid, &mut lines, &mut budget);
     }
     lines
 }
@@ -475,6 +484,8 @@ pub struct App {
     pub detected_agents: Vec<DetectedAgentWatch>,
     /// Agent-rooted process forests from proc scan (FR-006 / AC-006.22).
     pub agent_forests: Vec<AgentTreeNode>,
+    /// Pinned forest-wide process state for tests; live render resolves via proc scan when unset.
+    forest_state_by_pid: Option<HashMap<u32, char>>,
 }
 
 impl App {
@@ -495,6 +506,7 @@ impl App {
             maildir_status: None,
             detected_agents: Vec::new(),
             agent_forests: Vec::new(),
+            forest_state_by_pid: None,
         }
     }
 
@@ -517,6 +529,7 @@ impl App {
         self.maildir_status = capture_maildir_status().ok().flatten();
         self.detected_agents = watch_host_agents();
         self.agent_forests = build_host_agent_forests();
+        self.forest_state_by_pid = None;
     }
 
     /// Test/golden helper — pin deterministic operator panel values.
@@ -554,6 +567,18 @@ impl App {
     pub fn with_agent_forests(mut self, forests: Vec<AgentTreeNode>) -> Self {
         self.agent_forests = forests;
         self
+    }
+
+    /// Test helper — pin forest-wide process state letters (AC-006.39).
+    pub fn with_agent_forest_state(mut self, state_by_pid: HashMap<u32, char>) -> Self {
+        self.forest_state_by_pid = Some(state_by_pid);
+        self
+    }
+
+    fn forest_state_by_pid(&self) -> HashMap<u32, char> {
+        self.forest_state_by_pid
+            .clone()
+            .unwrap_or_else(|| build_host_forest_state_map(&self.agent_forests))
     }
 }
 
@@ -707,7 +732,8 @@ fn render_slots(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 
 fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " Agents " } else { " Detected Agents " };
-    let lines = agent_forest_lines(&app.agent_forests, &app.detected_agents, compact);
+    let state_by_pid = app.forest_state_by_pid();
+    let lines = agent_forest_lines(&app.agent_forests, &app.detected_agents, &state_by_pid, compact);
     let block = Block::default().borders(Borders::ALL).title(title);
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }

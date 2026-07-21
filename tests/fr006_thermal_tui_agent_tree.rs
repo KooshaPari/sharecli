@@ -2,6 +2,9 @@
 //! FR: FR-006
 //!
 //! AC-006.22 full-layout thermal TUI renders parent-child agent forests.
+//! AC-006.39 thermal TUI agent-tree nodes show process state letters (parity with proc --tree).
+
+use std::collections::HashMap;
 
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
@@ -50,10 +53,22 @@ fn fixture_forests() -> Vec<AgentTreeNode> {
     }]
 }
 
+fn fixture_state_by_pid() -> HashMap<u32, char> {
+    let mut map = HashMap::new();
+    map.insert(100, 'S');
+    map.insert(101, 'R');
+    map
+}
+
 /// FR-006 / AC-006.22 — agent_forest_lines renders proc-scan tree connectors + RSS.
 #[test]
 fn fr006_thermal_tui_agent_forest_lines() {
-    let lines = agent_forest_lines(&fixture_forests(), &fixture_watched(), false);
+    let lines = agent_forest_lines(
+        &fixture_forests(),
+        &fixture_watched(),
+        &fixture_state_by_pid(),
+        false,
+    );
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(text.contains("Forests: 1"), "full layout MUST show forest count; got: {text}");
     assert!(
@@ -69,7 +84,12 @@ fn fr006_thermal_tui_agent_forest_lines() {
 /// FR-006 / AC-006.22 — compact layout keeps flat agent summary (no tree connectors).
 #[test]
 fn fr006_thermal_tui_agent_forest_lines_compact_flat() {
-    let lines = agent_forest_lines(&fixture_forests(), &fixture_watched(), true);
+    let lines = agent_forest_lines(
+        &fixture_forests(),
+        &fixture_watched(),
+        &fixture_state_by_pid(),
+        true,
+    );
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(!text.contains("└──"), "compact MUST NOT render tree connectors; got: {text}");
     assert!(text.contains("claude:100@"), "compact MUST keep flat summary; got: {text}");
@@ -90,7 +110,8 @@ fn fr006_thermal_tui_render_includes_agent_tree() {
             WriteSerializeMeters::default(),
         )
         .with_detected_agents(fixture_watched())
-        .with_agent_forests(fixture_forests());
+        .with_agent_forests(fixture_forests())
+        .with_agent_forest_state(fixture_state_by_pid());
     app.update(ThermalLevel::Green, 0);
 
     terminal.draw(|f| render(f, &app)).expect("draw");
@@ -101,5 +122,41 @@ fn fr006_thermal_tui_render_includes_agent_tree() {
         rendered.contains("Detected Agents") && rendered.contains("[100]") && rendered.contains("└──"),
         "thermal TUI MUST surface build_agent_forests tree; got excerpt: {}",
         &rendered.chars().take(400).collect::<String>()
+    );
+    assert!(
+        rendered.contains("[100] S") && rendered.contains("[101] R"),
+        "thermal TUI tree MUST show process state letters (AC-006.39); got excerpt: {}",
+        &rendered.chars().take(500).collect::<String>()
+    );
+}
+
+/// FR-006 / AC-006.39 — agent_forest_lines shows state on root and nested child nodes.
+#[test]
+fn fr006_thermal_tui_agent_forest_lines_show_state() {
+    let lines = agent_forest_lines(
+        &fixture_forests(),
+        &fixture_watched(),
+        &fixture_state_by_pid(),
+        false,
+    );
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(
+        text.contains("[100] S") && text.contains("claude"),
+        "root MUST show state letter after PID; got: {text}"
+    );
+    assert!(
+        text.contains("[101] R") && text.contains("node"),
+        "child MUST show forest-wide state letter; got: {text}"
+    );
+}
+
+/// FR-006 / AC-006.39 — missing forest state shows `-` on tree nodes.
+#[test]
+fn fr006_thermal_tui_agent_forest_lines_missing_state_dash() {
+    let lines = agent_forest_lines(&fixture_forests(), &fixture_watched(), &HashMap::new(), false);
+    let text: String = lines.iter().map(|l| l.to_string()).collect();
+    assert!(
+        text.contains("[100] -") && text.contains("[101] -"),
+        "missing state MUST render `-`; got: {text}"
     );
 }
