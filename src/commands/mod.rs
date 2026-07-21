@@ -303,6 +303,8 @@ pub async fn status(verbose: bool, json: bool) -> Result<()> {
     println!("\n=== System Memory ===\n");
     println!("Used: {} MB / {} MB ({}%)", used, total, (used * 100) / total);
 
+    print_live_gate_section()?;
+
     let resource_watch = ResourceWatchSample::capture()?;
     print!("{}", resource_watch.format_status_section());
 
@@ -321,8 +323,6 @@ pub async fn status(verbose: bool, json: bool) -> Result<()> {
     }
 
     print!("{}", global_write_serialize_meters().format_status_section());
-
-    print_live_gate_section()?;
 
     if verbose {
         println!("\n=== Detailed Process List ===\n");

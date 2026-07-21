@@ -58,6 +58,9 @@ fn format_status(
     let pct = used_mb.saturating_mul(100).checked_div(total_mb).unwrap_or(0);
     out.push_str("\n=== System Memory ===\n\n");
     out.push_str(&format!("Used: {used_mb} MB / {total_mb} MB ({pct}%)\n"));
+    let thermal =
+        ThermalGovernor::with_mock(ThermalLevel::Green).poll().expect("mock thermal poll");
+    out.push_str(&format_gate_status_section(thermal, 0));
     let resource_watch = ResourceWatchSample::capture().expect("resource watch capture");
     out.push_str(&resource_watch.format_status_section());
     out.push_str(&global_read_cache_meters().format_status_section());
@@ -68,9 +71,6 @@ fn format_status(
         out.push_str(&st.format_status_section());
     }
     out.push_str(&global_write_serialize_meters().format_status_section());
-    let thermal =
-        ThermalGovernor::with_mock(ThermalLevel::Green).poll().expect("mock thermal poll");
-    out.push_str(&format_gate_status_section(thermal, 0));
     out
 }
 
