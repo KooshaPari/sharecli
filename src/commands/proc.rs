@@ -642,7 +642,8 @@ fn print_host_watch_text_footer() -> Result<()> {
     Ok(())
 }
 
-/// Gate + host watch text companions on stderr for NDJSON watch (AC-007.28 / AC-007.29).
+/// Gate + host watch text companions on stderr for NDJSON watch only (AC-007.28 / AC-007.29).
+/// One-shot `proc --json` / `proc --tree --json` MUST NOT call this helper (AC-007.30).
 fn eprint_gate_host_watch_stderr_companions(
     thermal: ThermalLevel,
     agent_count: usize,
