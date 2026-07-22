@@ -226,6 +226,7 @@
 | AC-007.92   | `tests/fr007_proc_pid_combo_rejects.rs`; `src/commands/proc.rs` (`reject_pid_inventory_combos`, `run`) | proc --pid loud-rejects inventory flags (--tree/--family/--sort/--limit/…); --pid --csv/--json/--watch remain allowed |
 | AC-007.93   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_csv_watch_frame_smoke`) | Parity suite short CSV --watch frame-marker smoke for proc/tree/pid/report/health/pool/status/ps (AC-007.88–91); no long multi-frame dwell |
 | AC-007.94   | `tests/fr007_proc_csv_watch.rs` (`fr007_proc_csv_watch_footer_flushed_same_tick`); `src/commands/proc.rs`; `src/commands/report.rs`; `src/commands/mod.rs` (`emit_operator_csv_watch_footer`) | CSV --watch flushes `# [watch]` footer in the same tick (no deferred delivery via next frame) |
+| AC-007.95   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_csv_watch_footer_same_tick`) | Parity suite same-tick `# [watch]` flush matrix for all AC-007.93 CSV watch surfaces |
 
 ### FR-008 — Coalesce
 
@@ -307,6 +308,9 @@
   `tests/fr007_proc_pid_watch.rs` locks text/NDJSON watch parity for `proc --pid N --watch`;
   `render_pid_detail_once` + pid watch loop in `src/commands/proc.rs`; `--pid --csv --watch`
   unlocked per AC-007.91.
+- **2026-07-22 — FR-007 CSV watch same-tick flush matrix (AC-007.95):**
+  `fr007_operator_matrix_cli_csv_watch_footer_same_tick` locks one frame marker before first
+  `# [watch]` across proc/tree/pid/report/health/pool/status/ps CSV watch surfaces.
 - **2026-07-22 — FR-007 CSV watch footer same-tick flush (AC-007.94):**
   Flush stdout after `# [watch]` on proc/report/operator CSV `--watch` loops so pipe
   consumers see a complete frame without waiting for the next tick; locked by
@@ -320,6 +324,15 @@
 - **2026-07-22 — FR-007 proc --pid --csv --watch (AC-007.91):**
   `tests/fr007_proc_pid_csv_watch.rs` locks frame marker + CSV envelope for
   `proc --pid N --csv --watch`; `PROC_PID_CSV_WATCH_FRAME_MARKER` in `src/commands/proc.rs`.
+- **2026-07-22 — FR-007 report --format csv --watch (AC-007.90):**
+  `tests/fr007_report_csv_watch.rs` locks `# sharecli-report-watch-frame` + fleet CSV envelope
+  each tick; `REPORT_CSV_WATCH_FRAME_MARKER` in `src/commands/report.rs`.
+- **2026-07-22 — FR-007 operator health/pool/status/ps --csv --watch (AC-007.89):**
+  `tests/fr007_operator_csv_watch.rs` locks per-command frame markers + CSV envelope;
+  `emit_operator_csv_watch_frame` / `emit_operator_watch_footer` in `src/commands/mod.rs`.
+- **2026-07-22 — FR-007 proc --csv / --tree --csv --watch (AC-007.88):**
+  `tests/fr007_proc_csv_watch.rs` locks `# sharecli-proc-watch-frame` + inventory CSV envelope;
+  `PROC_CSV_WATCH_FRAME_MARKER` in `src/commands/proc.rs`.
 - **2026-07-21 — FR-007 proc --pid operator envelope parity suite rows (AC-007.86):**
   `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --pid` text/JSON/CSV one-shot matrix
   rows (self-PID) locking gate → host_watch → pool → status companions; `render_pid_detail`
