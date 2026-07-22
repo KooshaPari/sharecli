@@ -1232,6 +1232,67 @@ pub async fn render_once(
 }
 
 /// `sharecli proc` — list host-detected agents with live RSS/FD samples.
+/// Reject inventory-mode flags when `--pid` selects detail mode (AC-007.92).
+fn reject_pid_inventory_combos(
+    tree: bool,
+    family: &Option<String>,
+    exclude_family: &Option<String>,
+    comm: &Option<String>,
+    cmdline: &Option<String>,
+    state: &Option<String>,
+    min_rss: &Option<String>,
+    max_rss: &Option<String>,
+    min_fd: &Option<String>,
+    max_fd: &Option<String>,
+    sort: &Option<String>,
+    limit: Option<u64>,
+) -> Result<()> {
+    let mut conflicts: Vec<&str> = Vec::new();
+    if tree {
+        conflicts.push("--tree");
+    }
+    if family.is_some() {
+        conflicts.push("--family");
+    }
+    if exclude_family.is_some() {
+        conflicts.push("--exclude-family");
+    }
+    if comm.is_some() {
+        conflicts.push("--comm");
+    }
+    if cmdline.is_some() {
+        conflicts.push("--cmdline");
+    }
+    if state.is_some() {
+        conflicts.push("--state");
+    }
+    if min_rss.is_some() {
+        conflicts.push("--min-rss");
+    }
+    if max_rss.is_some() {
+        conflicts.push("--max-rss");
+    }
+    if min_fd.is_some() {
+        conflicts.push("--min-fd");
+    }
+    if max_fd.is_some() {
+        conflicts.push("--max-fd");
+    }
+    if sort.is_some() {
+        conflicts.push("--sort");
+    }
+    if limit.is_some() {
+        conflicts.push("--limit");
+    }
+    if conflicts.is_empty() {
+        return Ok(());
+    }
+    bail!(
+        "--pid cannot be combined with {} (AC-007.92); use inventory mode without --pid",
+        conflicts.join(", ")
+    )
+}
+
 pub async fn run(
     json: bool,
     csv: bool,
@@ -1258,6 +1319,23 @@ pub async fn run(
     }
     if pid.is_some() && ppid.is_some() {
         bail!("--ppid cannot be combined with --pid");
+    }
+    if pid.is_some() {
+        // AC-007.92: --pid is detail mode; inventory filters/tree MUST fail loudly.
+        reject_pid_inventory_combos(
+            tree,
+            &family,
+            &exclude_family,
+            &comm,
+            &cmdline,
+            &state,
+            &min_rss,
+            &max_rss,
+            &min_fd,
+            &max_fd,
+            &sort,
+            limit,
+        )?;
     }
     if let Some(target_pid) = pid {
         if let Some(interval_secs) = watch {
@@ -1587,5 +1665,51 @@ mod tests {
             err.to_string().contains("--watch") || err.to_string().contains(">= 1"),
             "error MUST mention watch interval; got: {err}"
         );
+    }
+
+    #[test]
+    fn pid_tree_combo_rejected() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let err = rt
+            .block_on(super::run(
+                false, false, true, None, None, None, None, None, None, None, None, None, None,
+                None, None, Some(42), None,
+            ))
+            .expect_err("pid+tree MUST fail");
+        assert!(
+            err.to_string().contains("--tree") && err.to_string().contains("AC-007.92"),
+            "error MUST mention --tree / AC-007.92; got: {err}"
+        );
+    }
+
+    #[test]
+    fn pid_family_sort_limit_combo_rejected() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let err = rt
+            .block_on(super::run(
+                false,
+                false,
+                false,
+                None,
+                Some("claude".into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some("rss".into()),
+                Some(5),
+                Some(42),
+                None,
+            ))
+            .expect_err("pid+family+sort+limit MUST fail");
+        let msg = err.to_string();
+        assert!(msg.contains("--family"), "got: {msg}");
+        assert!(msg.contains("--sort"), "got: {msg}");
+        assert!(msg.contains("--limit"), "got: {msg}");
+        assert!(msg.contains("AC-007.92"), "got: {msg}");
     }
 }
