@@ -489,6 +489,8 @@ pub async fn run(format: ReportFormat, watch: Option<u64>, sort: SortBy) -> Resu
                     println!(
                         "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
                     );
+                    // AC-007.96: flush text `[watch]` footer same tick (parity with CSV).
+                    std::io::stdout().flush()?;
                 }
                 let idle = cycle_start.elapsed();
                 let period = Duration::from_secs(interval_secs);

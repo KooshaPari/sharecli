@@ -7,8 +7,9 @@
 
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
@@ -136,4 +137,86 @@ fn fr007_proc_tree_watch_text_stderr_silent() {
     assert_stderr_silent(&stderr, "proc --tree --watch");
     assert_stderr_no_companion_markers(&stderr, "proc --tree --watch");
     assert_text_watch_stdout(&stdout, TREE_HEADER, "proc --tree --watch");
+}
+
+fn drain_watch_until(
+    child: &mut Child,
+    max_dwell: Duration,
+    mut ready: impl FnMut(&str) -> bool,
+) -> (String, String) {
+    let stdout = child.stdout.take().expect("piped stdout");
+    let stderr = child.stderr.take().expect("piped stderr");
+    let stdout_buf = Arc::new(Mutex::new(String::new()));
+    let stderr_buf = Arc::new(Mutex::new(String::new()));
+    let out_arc = Arc::clone(&stdout_buf);
+    let err_arc = Arc::clone(&stderr_buf);
+    let stdout_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 16_384];
+        let mut out = stdout;
+        loop {
+            match out.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => out_arc
+                    .lock()
+                    .expect("stdout lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+                Err(_) => break,
+            }
+        }
+    });
+    let stderr_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 4096];
+        let mut err = stderr;
+        loop {
+            match err.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => err_arc
+                    .lock()
+                    .expect("stderr lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+                Err(_) => break,
+            }
+        }
+    });
+    let deadline = Instant::now() + max_dwell;
+    while Instant::now() < deadline {
+        let snapshot = stdout_buf.lock().expect("stdout lock").clone();
+        if ready(&snapshot) {
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    let _ = stdout_reader.join();
+    let _ = stderr_reader.join();
+    let stdout = stdout_buf.lock().expect("stdout lock").clone();
+    let stderr = stderr_buf.lock().expect("stderr lock").clone();
+    (stdout, stderr)
+}
+
+/// FR-007 / AC-007.96 — text `[watch]` footer flushes in the same tick as the body.
+#[test]
+#[serial_test::serial]
+fn fr007_proc_watch_text_footer_flushed_same_tick() {
+    let mut child = bin()
+        .args(["proc", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn sharecli proc --watch 1");
+
+    let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
+        buf.contains(INVENTORY_HEADER) && buf.contains("[watch]")
+    });
+
+    assert_stderr_silent(&stderr, "proc --watch text flush");
+    let watch_pos = stdout
+        .find("[watch]")
+        .expect("proc --watch MUST include [watch] footer (AC-007.96)");
+    let gates_before = stdout[..watch_pos].matches(GATE_MARKER).count();
+    assert_eq!(
+        gates_before, 1,
+        "AC-007.96: text `[watch]` MUST flush in the same tick (exactly one gate before first footer); got {gates_before} in: {stdout}"
+    );
 }
