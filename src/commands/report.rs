@@ -21,6 +21,9 @@ use crate::runtime::{ProcessInfo, ProcessPool};
 // Public types
 // ---------------------------------------------------------------------------
 
+/// CSV `#` comment line separating each `report --format csv --watch` refresh frame (AC-007.90).
+pub const REPORT_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-report-watch-frame";
+
 /// Output format for `sharecli report`.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ReportFormat {
@@ -449,9 +452,6 @@ async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Resu
 ///   until Ctrl-C; if `None`, run once and exit.
 /// - `sort`: controls ordering of the top-consumers section.
 pub async fn run(format: ReportFormat, watch: Option<u64>, sort: SortBy) -> Result<()> {
-    if format == ReportFormat::Csv && watch.is_some() {
-        bail!("--format csv cannot be combined with --watch");
-    }
     match watch {
         None => render_once(&format, &sort, false).await,
         Some(interval_secs) => {
@@ -459,22 +459,34 @@ pub async fn run(format: ReportFormat, watch: Option<u64>, sort: SortBy) -> Resu
                 bail!("--watch interval must be >= 1 second");
             }
             let ndjson = format == ReportFormat::Json;
+            let csv_watch = format == ReportFormat::Csv;
             loop {
                 let cycle_start = std::time::Instant::now();
-                if !ndjson {
+                if !ndjson && !csv_watch {
                     print!("\x1b[2J\x1b[H");
+                }
+                if csv_watch {
+                    // AC-007.90: frame marker + full CSV body + `# [watch]` on stdout.
+                    println!("{REPORT_CSV_WATCH_FRAME_MARKER}");
                 }
                 render_once(&format, &sort, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
-                let footer =
-                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {
+                    let footer = format!(
+                        "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                    );
                     eprint!("{footer}");
                     let _ = std::io::stderr().flush();
+                } else if csv_watch {
+                    println!(
+                        "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                    );
                 } else {
-                    println!("{footer}");
+                    println!(
+                        "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                    );
                 }
                 let idle = cycle_start.elapsed();
                 let period = Duration::from_secs(interval_secs);
