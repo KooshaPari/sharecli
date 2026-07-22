@@ -106,6 +106,35 @@ pub(crate) async fn append_operator_csv_companions(
     Ok(out)
 }
 
+/// CSV `#` comment line separating each operator `--csv --watch` refresh frame (AC-007.89).
+pub const HEALTH_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-health-watch-frame";
+pub const POOL_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-pool-watch-frame";
+pub const STATUS_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-status-watch-frame";
+pub const PS_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-ps-watch-frame";
+
+/// Emit the CSV watch frame delimiter before a tick's body (AC-007.89).
+fn emit_operator_csv_watch_frame(marker: &str) {
+    println!("{marker}");
+}
+
+/// Emit the CSV watch footer as a `#` comment on stdout (AC-007.89).
+fn emit_operator_csv_watch_footer(interval_secs: u64) {
+    println!("# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+}
+
+/// Print watch-mode footer for text, NDJSON, or CSV refresh loops (AC-007.64–66 / AC-007.89).
+fn emit_operator_watch_footer(interval_secs: u64, ndjson: bool, csv_watch: bool) {
+    let footer = format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+    if ndjson {
+        eprint!("{footer}");
+        let _ = std::io::stderr().flush();
+    } else if csv_watch {
+        emit_operator_csv_watch_footer(interval_secs);
+    } else {
+        println!("{footer}");
+    }
+}
+
 fn get_shared_runtime() -> &'static SharedRuntime {
     SHARED_RUNTIME.get_or_init(|| {
         let max = config::global().pool.max_per_type;
@@ -576,9 +605,6 @@ pub async fn ps(
         if json {
             anyhow::bail!("--csv cannot be combined with --json");
         }
-        if watch.is_some() {
-            anyhow::bail!("--csv cannot be combined with --watch");
-        }
     }
     if watch.is_some() && json && !all {
         anyhow::bail!(
@@ -593,24 +619,20 @@ pub async fn ps(
                 anyhow::bail!("--watch interval must be >= 1 second");
             }
             let ndjson = json;
+            let csv_watch = csv;
             loop {
                 let cycle_start = std::time::Instant::now();
-                if !ndjson {
+                if !ndjson && !csv_watch {
                     print!("\x1b[2J\x1b[H");
+                }
+                if csv_watch {
+                    emit_operator_csv_watch_frame(PS_CSV_WATCH_FRAME_MARKER);
                 }
                 render_ps_once(project, harness, all, json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
-                let footer =
-                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
-                if ndjson {
-                    eprint!("{footer}");
-                    let _ = std::io::stderr().flush();
-                } else {
-                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.50).
-                    println!("{footer}");
-                }
+                emit_operator_watch_footer(interval_secs, ndjson, csv_watch);
                 let idle = cycle_start.elapsed();
                 let period = Duration::from_secs(interval_secs);
                 let sleep_for = period.saturating_sub(idle);
@@ -927,9 +949,6 @@ pub async fn status(verbose: bool, json: bool, csv: bool, watch: Option<u64>) ->
         if json {
             anyhow::bail!("--csv cannot be combined with --json");
         }
-        if watch.is_some() {
-            anyhow::bail!("--csv cannot be combined with --watch");
-        }
     }
     match watch {
         None => render_status_once(verbose, json, csv, false).await,
@@ -938,24 +957,20 @@ pub async fn status(verbose: bool, json: bool, csv: bool, watch: Option<u64>) ->
                 anyhow::bail!("--watch interval must be >= 1 second");
             }
             let ndjson = json;
+            let csv_watch = csv;
             loop {
                 let cycle_start = std::time::Instant::now();
-                if !ndjson {
+                if !ndjson && !csv_watch {
                     print!("\x1b[2J\x1b[H");
+                }
+                if csv_watch {
+                    emit_operator_csv_watch_frame(STATUS_CSV_WATCH_FRAME_MARKER);
                 }
                 render_status_once(verbose, json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
-                let footer =
-                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
-                if ndjson {
-                    eprint!("{footer}");
-                    let _ = std::io::stderr().flush();
-                } else {
-                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.66).
-                    println!("{footer}");
-                }
+                emit_operator_watch_footer(interval_secs, ndjson, csv_watch);
                 let idle = cycle_start.elapsed();
                 let period = Duration::from_secs(interval_secs);
                 let sleep_for = period.saturating_sub(idle);
@@ -1349,9 +1364,6 @@ pub async fn pool_status(json: bool, csv: bool, watch: Option<u64>) -> Result<()
         if json {
             anyhow::bail!("--csv cannot be combined with --json");
         }
-        if watch.is_some() {
-            anyhow::bail!("--csv cannot be combined with --watch");
-        }
     }
     match watch {
         None => render_pool_once(json, csv, false).await,
@@ -1360,24 +1372,20 @@ pub async fn pool_status(json: bool, csv: bool, watch: Option<u64>) -> Result<()
                 anyhow::bail!("--watch interval must be >= 1 second");
             }
             let ndjson = json;
+            let csv_watch = csv;
             loop {
                 let cycle_start = std::time::Instant::now();
-                if !ndjson {
+                if !ndjson && !csv_watch {
                     print!("\x1b[2J\x1b[H");
+                }
+                if csv_watch {
+                    emit_operator_csv_watch_frame(POOL_CSV_WATCH_FRAME_MARKER);
                 }
                 render_pool_once(json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
-                let footer =
-                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
-                if ndjson {
-                    eprint!("{footer}");
-                    let _ = std::io::stderr().flush();
-                } else {
-                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.65).
-                    println!("{footer}");
-                }
+                emit_operator_watch_footer(interval_secs, ndjson, csv_watch);
                 let idle = cycle_start.elapsed();
                 let period = Duration::from_secs(interval_secs);
                 let sleep_for = period.saturating_sub(idle);
@@ -1494,9 +1502,6 @@ pub async fn health(harness: Option<&str>, json: bool, csv: bool, watch: Option<
         if json {
             anyhow::bail!("--csv cannot be combined with --json");
         }
-        if watch.is_some() {
-            anyhow::bail!("--csv cannot be combined with --watch");
-        }
     }
     match watch {
         None => render_health_once(harness, json, csv, false).await,
@@ -1505,24 +1510,20 @@ pub async fn health(harness: Option<&str>, json: bool, csv: bool, watch: Option<
                 anyhow::bail!("--watch interval must be >= 1 second");
             }
             let ndjson = json;
+            let csv_watch = csv;
             loop {
                 let cycle_start = std::time::Instant::now();
-                if !ndjson {
+                if !ndjson && !csv_watch {
                     print!("\x1b[2J\x1b[H");
+                }
+                if csv_watch {
+                    emit_operator_csv_watch_frame(HEALTH_CSV_WATCH_FRAME_MARKER);
                 }
                 render_health_once(harness, json, csv, ndjson).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
-                let footer =
-                    format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
-                if ndjson {
-                    eprint!("{footer}");
-                    let _ = std::io::stderr().flush();
-                } else {
-                    // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.64).
-                    println!("{footer}");
-                }
+                emit_operator_watch_footer(interval_secs, ndjson, csv_watch);
                 let idle = cycle_start.elapsed();
                 let period = Duration::from_secs(interval_secs);
                 let sleep_for = period.saturating_sub(idle);
