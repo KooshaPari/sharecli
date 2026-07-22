@@ -1,12 +1,12 @@
 //! FR-007 — operator envelope matrix parity regression suite (AC-007.84, proc --tree AC-007.85,
-//! proc --pid AC-007.86, CSV watch frame smoke AC-007.93, same-tick footer flush AC-007.95)
+//! proc --pid AC-007.86, CSV watch frame smoke AC-007.93, same-tick footer flush AC-007.95/97)
 //! FR: FR-007
 //!
 //! Locks the full FR-007 operator envelope across proc/report/health/pool/status/ps --all
 //! (text/JSON/CSV one-shot, including `proc --tree` and `proc --pid`), IPC, WS decode, dashboard,
 //! tray, and thermal TUI companion markers. CSV `--watch` frame markers get a short smoke pass
-//! (AC-007.93) plus same-tick `# [watch]` flush coverage (AC-007.95); long multi-frame dwell
-//! cycles stay in per-AC integration files.
+//! (AC-007.93) plus same-tick `# [watch]` flush coverage (AC-007.95); text `--watch` same-tick
+//! flush is locked by AC-007.97. Long multi-frame dwell cycles stay in per-AC integration files.
 
 use std::fs;
 use std::io::Read;
@@ -75,6 +75,12 @@ struct CsvWatchCase {
     args: &'static [&'static str],
     body_header: &'static str,
     frame_marker: &'static str,
+}
+
+struct TextWatchCase {
+    label: &'static str,
+    args: &'static [&'static str],
+    body_header: &'static str,
 }
 
 /// Drain watch pipes, stopping as soon as `ready` matches stdout (or `max_dwell`).
@@ -256,6 +262,50 @@ const CSV_WATCH_MATRIX: &[CsvWatchCase] = &[
         frame_marker: "# sharecli-ps-watch-frame",
     },
 ];
+
+const TEXT_WATCH_MATRIX: &[TextWatchCase] = &[
+    TextWatchCase {
+        label: "proc --watch",
+        args: &["proc", "--watch", "1"],
+        body_header: "=== Host agents (proc scan) ===",
+    },
+    TextWatchCase {
+        label: "proc --tree --watch",
+        args: &["proc", "--tree", "--watch", "1"],
+        body_header: "=== Agent process tree (proc scan) ===",
+    },
+    TextWatchCase {
+        label: "report --watch",
+        args: &["report", "--watch", "1"],
+        body_header: "=== Fleet Analytics Report ===",
+    },
+];
+
+/// AC-007.97 — text `[watch]` must flush in the same tick (one gate before first footer).
+fn assert_text_watch_footer_same_tick(args: &[&str], body_header: &str, context: &str) {
+    let mut child = bin()
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| panic!("spawn {context}: {e}"));
+    let header = body_header.to_string();
+    let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
+        buf.contains(header.as_str()) && buf.contains("[watch]")
+    });
+    assert!(
+        stderr.is_empty(),
+        "{context} MUST keep stderr silent (AC-007.97); stderr: {stderr:?}"
+    );
+    let watch_pos = stdout
+        .find("[watch]")
+        .unwrap_or_else(|| panic!("{context} MUST include [watch] footer (AC-007.97); got: {stdout}"));
+    let gates_before = stdout[..watch_pos].matches(GATE_MARKER).count();
+    assert_eq!(
+        gates_before, 1,
+        "{context} MUST flush `[watch]` in the same tick (AC-007.97); got {gates_before} gates before footer in: {stdout}"
+    );
+}
 
 fn assert_stderr_silent(stderr: &[u8], context: &str) {
     assert!(
@@ -706,6 +756,23 @@ fn fr007_operator_matrix_cli_csv_watch_footer_same_tick() {
         "# sharecli-proc-pid-watch-frame",
         PROC_PID_CSV_HEADER,
         "proc --pid --csv --watch",
+    );
+}
+
+/// FR-007 / AC-007.97 — text `--watch` `[watch]` footer flushes in the same tick (full matrix).
+#[test]
+#[serial_test::serial]
+fn fr007_operator_matrix_cli_text_watch_footer_same_tick() {
+    for case in TEXT_WATCH_MATRIX {
+        assert_text_watch_footer_same_tick(case.args, case.body_header, case.label);
+    }
+
+    let self_pid = std::process::id().to_string();
+    let pid_args = ["proc", "--pid", self_pid.as_str(), "--watch", "1"];
+    assert_text_watch_footer_same_tick(
+        &pid_args,
+        PROC_PID_BODY_HEADER,
+        "proc --pid --watch",
     );
 }
 
