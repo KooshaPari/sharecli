@@ -6,8 +6,9 @@
 
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
@@ -151,5 +152,94 @@ fn fr007_proc_csv_json_watch_still_rejected() {
     assert!(
         !out.status.success(),
         "proc --csv --json --watch MUST fail (AC-007.88)"
+    );
+}
+
+fn drain_watch_until(
+    child: &mut Child,
+    max_dwell: Duration,
+    mut ready: impl FnMut(&str) -> bool,
+) -> (String, String) {
+    let stdout = child.stdout.take().expect("piped stdout");
+    let stderr = child.stderr.take().expect("piped stderr");
+    let stdout_buf = Arc::new(Mutex::new(String::new()));
+    let stderr_buf = Arc::new(Mutex::new(String::new()));
+    let out_arc = Arc::clone(&stdout_buf);
+    let err_arc = Arc::clone(&stderr_buf);
+    let stdout_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 16_384];
+        let mut out = stdout;
+        loop {
+            match out.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => out_arc
+                    .lock()
+                    .expect("stdout lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+                Err(_) => break,
+            }
+        }
+    });
+    let stderr_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 4096];
+        let mut err = stderr;
+        loop {
+            match err.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => err_arc
+                    .lock()
+                    .expect("stderr lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+                Err(_) => break,
+            }
+        }
+    });
+    let deadline = Instant::now() + max_dwell;
+    while Instant::now() < deadline {
+        let snapshot = stdout_buf.lock().expect("stdout lock").clone();
+        if ready(&snapshot) {
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    let _ = stdout_reader.join();
+    let _ = stderr_reader.join();
+    let stdout = stdout_buf.lock().expect("stdout lock").clone();
+    let stderr = stderr_buf.lock().expect("stderr lock").clone();
+    (stdout, stderr)
+}
+
+/// FR-007 / AC-007.94 — `# [watch]` footer must flush in the same tick as the CSV body.
+#[test]
+#[serial_test::serial]
+fn fr007_proc_csv_watch_footer_flushed_same_tick() {
+    let mut child = bin()
+        .args(["proc", "--csv", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn proc --csv --watch 1");
+
+    let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
+        buf.contains(FRAME_MARKER) && buf.contains(FLAT_CSV_HEADER) && buf.contains("[watch]")
+    });
+
+    assert!(
+        stderr.is_empty(),
+        "proc --csv --watch MUST keep stderr silent (AC-007.94); stderr: {stderr:?}"
+    );
+    assert!(
+        stdout.contains("[watch]"),
+        "proc --csv --watch MUST include [watch] footer (AC-007.94); got: {stdout}"
+    );
+    let watch_pos = stdout
+        .find("[watch]")
+        .expect("[watch] must be present after assert above");
+    let markers_before_footer = stdout[..watch_pos].matches(FRAME_MARKER).count();
+    assert_eq!(
+        markers_before_footer, 1,
+        "AC-007.94: `# [watch]` MUST flush in the same tick (exactly one frame marker before first footer); got {markers_before_footer} in: {stdout}"
     );
 }

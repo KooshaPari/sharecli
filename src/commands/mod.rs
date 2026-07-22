@@ -118,8 +118,10 @@ fn emit_operator_csv_watch_frame(marker: &str) {
 }
 
 /// Emit the CSV watch footer as a `#` comment on stdout (AC-007.89).
+/// Flush so pipe consumers see `# [watch]` in the same tick (AC-007.94).
 fn emit_operator_csv_watch_footer(interval_secs: u64) {
     println!("# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
+    let _ = std::io::stdout().flush();
 }
 
 /// Print watch-mode footer for text, NDJSON, or CSV refresh loops (AC-007.64–66 / AC-007.89).
@@ -132,6 +134,7 @@ fn emit_operator_watch_footer(interval_secs: u64, ndjson: bool, csv_watch: bool)
         emit_operator_csv_watch_footer(interval_secs);
     } else {
         println!("{footer}");
+        let _ = std::io::stdout().flush();
     }
 }
 
