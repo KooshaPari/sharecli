@@ -250,3 +250,29 @@ watch_ndjson_test!(
     ["proc", "--json", "--watch", "1"],
     assert_json_gate_host_watch_pool_status_order
 );
+
+/// FR-007 / AC-007.87 — proc --pid --watch --json NDJSON pool/status sibling ordering.
+#[test]
+#[serial_test::serial]
+fn fr007_proc_pid_watch_ndjson_pool_status_ordering() {
+    let pid = std::process::id();
+    let mut child = bin()
+        .args(["proc", "--pid", &pid.to_string(), "--json", "--watch", "1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn proc --pid --json --watch 1");
+
+    let (stdout, _stderr) = drain_watch_pipes(&mut child, Duration::from_millis(12_000));
+    let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    assert!(
+        lines.len() >= 2,
+        "proc --pid watch NDJSON MUST emit at least two lines; got: {stdout}"
+    );
+    for (idx, line) in lines.iter().enumerate() {
+        assert_json_gate_host_watch_pool_status_order(
+            line,
+            &format!("proc --pid watch NDJSON line {}", idx + 1),
+        );
+    }
+}
