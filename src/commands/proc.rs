@@ -1315,6 +1315,7 @@ fn host_agent_inventory_from_source(
 mod tests {
     use super::*;
     use sharecli_fleet::proc_scan::{DetectedAgent, FakeProcSource, ProcSnapshot};
+    use sharecli_fleet::collect_forest_pids;
 
     #[test]
     fn agent_row_from_watch_formats_rss() {
