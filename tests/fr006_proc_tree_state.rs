@@ -9,9 +9,10 @@ use std::collections::HashMap;
 use std::process::Command;
 
 use sharecli::commands::proc::{
-    agent_tree_node_to_json, build_agent_state_map, build_forest_state_map, collect_forest_pids,
+    agent_tree_node_to_json, build_agent_state_map, build_forest_state_map,
     render_agent_tree_csv, state_text_for_pid,
 };
+use sharecli_fleet::collect_forest_pids;
 use sharecli_fleet::proc_scan::{FakeProcSource, ProcSnapshot};
 
 fn bin() -> Command {
