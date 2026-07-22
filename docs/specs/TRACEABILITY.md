@@ -218,6 +218,8 @@
 | AC-007.84   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/mod.rs`; `src/commands/report.rs`; `src/commands/proc.rs`; `src/dashboard.html`; `crates/sharecli-ipc/src/handler.rs`; `crates/sharecli-ipc/src/ws_client.rs`; `crates/sharecli-tray-linux/src/operator_display.rs`; `crates/sharecli-tray-windows/src/operator_display.rs`; `crates/sharecli-thermal-tui/src/lib.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift`; `windows/ShareCLITray/OperatorDisplay.cs` | Meta regression locks operator envelope matrix: CLI text/JSON/CSV one-shot (proc/report/health/pool/status/ps --all), IPC health.status + monitoring.report, WS health_update decode, dashboard/tray/TUI companion markers; no watch dwell |
 | AC-007.85   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/proc.rs` (`render_once` text/JSON/CSV tree paths); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | Parity suite proc --tree text/JSON/CSV one-shot rows lock gate → host_watch → pool → status envelope (parity with flat proc AC-007.75/77/79) |
 | AC-007.86   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/proc.rs` (`ProcDetailSnapshot`, `render_proc_detail_text`, `render_proc_detail_csv`, `render_pid_detail`); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | Parity suite proc --pid text/JSON/CSV one-shot rows lock gate → host_watch → pool → status envelope via self-PID (parity with flat proc AC-007.75/77/79) |
+| AC-007.87   | `tests/fr007_proc_pid_watch.rs`; `src/commands/proc.rs` (`ProcDetailNdjsonLine`, `render_pid_detail_once`, `run` pid watch loop); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `fetch_operator_pool_status_siblings`) | proc --pid --watch text/NDJSON refresh parity with flat proc --watch (AC-007.35/28); rejects --pid --csv --watch |
+| AC-007.88   | `tests/fr007_proc_csv_watch.rs`; `src/commands/proc.rs` (`PROC_CSV_WATCH_FRAME_MARKER`, `run` CSV watch loop, `render_once` CSV paths); `src/commands/mod.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | proc --csv / --tree --csv --watch frame marker + full CSV envelope each tick on stdout; stderr silent; rejects --csv --json --watch and --pid --csv --watch |
 
 ### FR-008 — Coalesce
 
@@ -295,6 +297,10 @@
 
 - **2026-07-21 — FR-008 harness retry/circuit_breaker/process via Hypervisor (AC-008.21):** `retry`, `circuit_breaker`, and `passthrough`/process-delegating strategies execute via `Hypervisor::run` + `SpawnRequest::from_operator`; open circuit fails loudly; retry exhaustion surfaces non-zero exit.
 - **2026-07-21 — FR-008 cache_key modes + semantic normalization (AC-008.19..20):** `CacheKeyMode` time/args/git plumbed via rules.conf; per-rule `nocache_args=` override; `semantic=1` applies lint argv normalization before cache hash.
+- **2026-07-21 — FR-007 proc --pid --watch refresh surfaces (AC-007.87):**
+  `tests/fr007_proc_pid_watch.rs` locks text/NDJSON watch parity for `proc --pid N --watch`;
+  `render_pid_detail_once` + pid watch loop in `src/commands/proc.rs`; rejects
+  `--pid --csv --watch`.
 - **2026-07-21 — FR-007 proc --pid operator envelope parity suite rows (AC-007.86):**
   `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --pid` text/JSON/CSV one-shot matrix
   rows (self-PID) locking gate → host_watch → pool → status companions; `render_pid_detail`

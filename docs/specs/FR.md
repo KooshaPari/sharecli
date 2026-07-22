@@ -258,13 +258,13 @@ replacing vendor agent executables as the primary detection path.
 - **AC-006.23:** `sharecli proc --pid N` (N ≥ 1) prints a one-shot detail view
   for a live host process: `ppid`, parent `comm`, `cmdline`, live RSS/FD samples,
   direct agent `family` when the PID is a known agent, otherwise nearest agent
-  ancestor when under an agent subtree. `--pid --json` emits a structured object;
-  missing or dead PIDs MUST fail loudly; `--pid` MUST NOT combine with `--watch`.
+  ancestor when under an agent subtree.   `--pid --json` emits a structured object;
+  missing or dead PIDs MUST fail loudly; `--pid --watch` is allowed per AC-007.87.
 - **AC-006.24:** `sharecli proc --csv` emits RFC 4180-style CSV of flat agent
   inventory (`pid,family,comm,mem_rss_bytes,mem_rss,fd_count`) after
   `--family`, `--min-rss`, `--sort`, and `--limit`; empty inventory emits the
   header row only; fields with commas or quotes MUST be escaped; `--csv` MUST
-  NOT combine with `--json`, `--watch`, or `--pid` (without `--tree`).
+  NOT combine with `--json` or `--pid` (without `--tree`); `--csv --watch` is proc-only per AC-007.88.
 - **AC-006.25:** `sharecli proc --ppid N` keeps flat inventory rows and `--tree`
   root forests whose agent parent PID equals `N`, composed with `--family`,
   `--min-rss`, `--sort`, `--limit`, `--json`, and `--csv`; `--ppid` MUST NOT
@@ -274,8 +274,8 @@ replacing vendor agent executables as the primary detection path.
   (`root_index,depth,pid,ppid,family,comm,mem_rss_bytes,mem_rss,fd_count`) after
   `--family`, `--min-rss`, `--ppid`, `--sort`, and `--limit`; `root_index`
   separates forests, `depth` is 0 at each agent root; empty forests emit the
-  header row only; `--tree --csv` MUST NOT combine with `--json`, `--watch`, or
-  `--pid`.
+  header row only; `--tree --csv` MUST NOT combine with `--json` or `--pid`; `--tree --csv --watch`
+  is proc-only per AC-007.88.
 - **AC-006.27:** `sharecli proc --max-rss <size>` keeps flat inventory rows and
   `--tree` root forests at or below the RSS bound (same `K`/`M`/`G`/bytes
   parsing as `--min-rss`), composed with `--family`, `--min-rss`, `--ppid`,
@@ -876,7 +876,29 @@ coalesce. Thermal watch signals MAY surface via FR-011.
   append pool/proc-scan operator lines on text, and append CSV companions on `--csv`
   (extends AC-007.16/17 detail gate/host_watch paths).
 
-**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr007_thermal_tui_pool_status.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`, `tests/fr007_proc_watch_stderr_footer.rs`, `tests/fr007_proc_tree_watch_stderr_footer.rs`, `tests/fr007_proc_json_stderr_silent.rs`, `tests/fr007_status_json_stderr_silent.rs`, `tests/fr007_proc_csv_stderr_silent.rs`, `tests/fr007_proc_csv_pool_status.rs`, `tests/fr007_report_csv_pool_status.rs`, `tests/fr007_report_csv_stderr_silent.rs`, `tests/fr007_health_pool_status_csv.rs`, `tests/fr007_ps_all_csv.rs`, `tests/fr007_operator_envelope_parity_suite.rs`,
+- **AC-007.87:** `sharecli proc --pid N --watch [secs]` MUST refresh like flat
+  `proc --watch` / `proc --tree --watch`: text watch clears and re-renders stdout
+  each interval with full PID detail plus gate → host_watch → pool → status
+  operator envelope; stderr silent on success; `[watch]` footer on stdout (parity
+  AC-007.35). JSON watch emits NDJSON lines on stdout each tick with the same JSON
+  shape as one-shot `proc --pid N --json` (including gate/host_watch/pool/status);
+  gate → host_watch text companions on stderr each refresh (parity AC-007.28);
+  stdout pipe-clean. `--pid --csv --watch` MUST remain rejected (global CSV+watch
+  ban). Other meaningless `--pid` combos that still apply MUST remain rejected.
+
+- **AC-007.88:** `sharecli proc --csv --watch [secs]` and `sharecli proc --tree --csv --watch [secs]`
+  MUST refresh like one-shot CSV (AC-007.79): each tick emits the full inventory/tree CSV body
+  followed by companion rows `gate` → `host_watch` → `pool` → `status` on **stdout** only.
+  Streaming consumers MUST be able to split refresh frames: implementation uses a leading
+  `# sharecli-proc-watch-frame` comment line before each tick's CSV body (headers repeat every
+  frame). **stderr** MUST remain silent on success (parity with text watch AC-007.35 and
+  one-shot CSV AC-007.33); MUST NOT emit ANSI clear sequences. Each frame MUST end with a
+  `# [watch] Refreshing every Ns — press Ctrl-C to stop.` CSV comment line. `--watch` interval
+  MUST be >= 1. `--csv --json --watch` and `--pid --csv --watch` MUST remain rejected. Other
+  operator surfaces (report/health/pool/status/ps `--csv`) MUST keep one-shot-only `--csv`
+  (AC-007.81/82/83).
+
+**Test refs:** `tests/fr007_resource_thermal_watch.rs`, `tests/fr007_thermal_tui_watch.rs`, `tests/fr007_thermal_tui_gate_parity.rs`, `tests/fr007_thermal_tui_pool_status.rs`, `tests/fr004_status_health.rs`, `tests/fr007_proc_json_host_watch.rs`, `tests/fr007_proc_text_csv_host_watch.rs`, `tests/fr007_proc_tree_json_host_watch.rs`, `tests/fr007_proc_pid_json_host_watch.rs`, `tests/fr007_proc_pid_gate.rs`, `tests/fr007_proc_pid_watch.rs`, `tests/fr007_proc_csv_watch.rs`, `tests/fr007_proc_tree_json_gate.rs`, `tests/fr007_proc_text_csv_gate.rs`, `tests/fr007_proc_tree_text_gate.rs`, `tests/fr007_proc_text_gate.rs`, `tests/fr007_proc_watch_gate_order.rs`, `tests/fr007_proc_tree_watch_gate_order.rs`, `tests/fr007_proc_json_gate_order.rs`, `tests/fr007_status_json_host_watch.rs`, `tests/fr007_status_text_gate_order.rs`, `tests/fr007_proc_watch_stderr_footer.rs`, `tests/fr007_proc_tree_watch_stderr_footer.rs`, `tests/fr007_proc_json_stderr_silent.rs`, `tests/fr007_status_json_stderr_silent.rs`, `tests/fr007_proc_csv_stderr_silent.rs`, `tests/fr007_proc_csv_pool_status.rs`, `tests/fr007_report_csv_pool_status.rs`, `tests/fr007_report_csv_stderr_silent.rs`, `tests/fr007_health_pool_status_csv.rs`, `tests/fr007_ps_all_csv.rs`, `tests/fr007_operator_envelope_parity_suite.rs`,
 `tests/fr007_proc_text_stderr_silent.rs`, `tests/fr007_proc_text_pool_status.rs`, `tests/fr007_proc_watch_text_stderr_silent.rs`, `tests/fr007_status_text_stderr_silent.rs`, `tests/fr007_health_pool_text_stderr_silent.rs`, `tests/fr007_health_watch_text_stderr_silent.rs`, `tests/fr007_health_watch_json_gate_host_watch.rs`, `tests/fr007_pool_watch_text_stderr_silent.rs`, `tests/fr007_pool_watch_json_gate_host_watch.rs`, `tests/fr007_status_watch_text_stderr_silent.rs`, `tests/fr007_status_watch_json_gate_host_watch.rs`, `tests/fr007_ps_all_text_stderr_silent.rs`, `tests/fr007_ps_all_json_gate_host_watch.rs`, `tests/fr007_ps_all_watch_json_gate_host_watch.rs`, `tests/fr007_ps_all_watch_text_stderr_silent.rs`, `tests/fr007_health_pool_status_ps_text_pool_status.rs`, `tests/fr007_operator_json_pool_status.rs`, `tests/fr007_ipc_health_pool_status.rs`, `tests/fr007_ws_client_health_update_pool_status.rs`, `tests/fr007_report_text_stderr_silent.rs`, `tests/fr007_report_text_pool_status.rs`, `tests/fr007_report_json_gate_host_watch.rs`, `tests/fr007_report_json_pool_status.rs`, `tests/fr007_report_watch_json_gate_host_watch.rs`, `tests/fr007_dashboard_ws_operator_envelope.rs`, `tests/fr007_health_pool_json_gate_host_watch.rs`, `tests/fr007_ipc_health_status_gate_host_watch.rs`, `tests/fr007_ipc_monitoring_report_gate_host_watch.rs`, `tests/fr007_ipc_monitoring_report_pool_status.rs`, `tests/fr007_ipc_pool_status_snapshot.rs`, `tests/fr007_ipc_pool_status_tray_wire.rs`, `tests/fr007_tray_pool_status_consume.rs`, `tests/fr007_tray_monitoring_report_consume.rs`, `tests/fr007_tray_windows_monitoring_report_consume.rs`, `tests/fr007_tray_windows_poll_interval.rs`, `tests/fr007_tray_linux_poll_interval.rs`, `tests/fr007_tray_swift_poll_interval.rs`, `tests/fr007_tray_windows_kill.rs`, `tests/fr007_tray_linux_kill.rs`, `tests/fr007_tray_swift_kill.rs`, `tests/fr007_tray_windows_harness.rs`, `tests/fr007_tray_gate_host_watch_ui.rs`, `tests/fr007_tray_thermal_visual.rs`, `src/commands/serve.rs` (`DashboardWsSnapshot`, `build_dashboard_ws_snapshot`), `src/commands/mod.rs` (`PsAllJson`, `PsAllNdjsonLine`, `HealthJson`, `HealthNdjsonLine`, `PoolJson`, `PoolNdjsonLine`, `StatusJson`, `StatusNdjsonLine`, `build_pool_json`, `build_status_json`, `fetch_operator_pool_status_siblings`, `print_live_pool_status_operator_sections`, `render_health_csv_body`, `render_pool_csv_body`, `render_status_csv_body`, `render_ps_all_csv_body`, `append_operator_csv_companions`, `ps --all --json`, `ps --all --csv`, `ps --all --watch --json`, `health --json`, `health --csv`, `health --watch`, `health --watch --json`, `pool --json`, `pool --csv`, `pool --watch`, `pool --watch --json`, `status --json`, `status --csv`, `status --watch`, `status --watch --json`), `src/commands/report.rs` (`FleetReportJson`, `FleetReportNdjsonLine`, `ReportFormat::Csv`, `render_report_csv_body`, `render_once`), `src/commands/proc.rs` (`AgentProcSnapshot`, `AgentTreeSnapshot`, `append_proc_csv_companions`, `render_once` JSON path), `crates/sharecli-fleet/src/operator_pool_status.rs`, `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`, `PoolSnapshot`, `StatusSnapshot`, `MonitoringReportSnapshot`, `health.status`, `pool.status`, `status.snapshot`, `monitoring.report`, `process.kill`, `process.kill_all`, `capture_pool_snapshot`, `capture_status_snapshot`), `crates/sharecli-ipc/src/ws_client.rs` (`ClientMessage`, `ClientMessage::from_json`, `SharecliClient`, `SharecliStream`), `crates/sharecli-tray-linux/src/ipc.rs`, `crates/sharecli-tray-linux/src/operator_display.rs`, `crates/sharecli-tray-linux/src/poll.rs`, `crates/sharecli-tray-linux/src/main.rs`, `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift`, `desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift`, `desktop/ShareCLITray/Sources/ShareCLICore/TrayPoll.swift`, `desktop/ShareCLITray/Sources/ShareCLICore/IPCClient.swift`, `desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift`, `desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift`, `desktop/ShareCLITray/Sources/ShareCLITray/AppEntry.swift`, `crates/sharecli-tray-windows/src/ipc.rs`, `crates/sharecli-tray-windows/src/operator_display.rs`, `crates/sharecli-tray-windows/src/poll.rs`, `windows/ShareCLITray/MonitoringReportSnapshot.cs`, `windows/ShareCLITray/PoolStatusSnapshot.cs`, `windows/ShareCLITray/OperatorDisplay.cs`, `windows/ShareCLITray/IpcKill.cs`, `windows/ShareCLITray/TrayPoll.cs`, `windows/ShareCLITray/TrayWindow.xaml`, `windows/ShareCLITray/TrayWindow.xaml.cs`, `src/dashboard.html`
 
 ---
@@ -1020,8 +1042,17 @@ until create / mkdir / rename-into invalidates the entry.
   tracks background mounts (`mountpoint` → [`InterceptFs`]) so `commit`/`discard` operate on
   staged CoW via `commit_rel`/`discard_rel`; `list` enumerates mounts and pending relative paths;
   `status` prints global read-cache + write-serialize meter sections.
+- **AC-009.18:** [`AgentsConf`](crates/sharecli-fuse/src/agents_conf.rs) MUST parse Feb-format
+  `agents.conf` (comments/blanks ignored; substring match) and validate/sanitize agent ids.
+- **AC-009.19:** [`AgentCowStore`](crates/sharecli-fuse/src/agent_cow.rs) MUST isolate CoW staging
+  per agent under `{cow_root}/{agent}/` so two agents can hold pending edits for the same
+  backing path; `commit_all_for_agent` / `discard_all_for_agent` MUST promote or drop all
+  pending paths for one agent. CLI: `fuse mount --cow [--cow-dir] [--agent] [--agents-conf]`
+  and `fuse commit|discard [relpath] [--agent]`.
+- **AC-009.20:** `fuse mount --no-serialize` MUST disable per-path write locks (Feb
+  `--no-serialize` parity) while still allowing CoW stage/commit.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`).
 
 ---
 

@@ -18,6 +18,51 @@ use fuser::{BackgroundSession, Config, MountOption};
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::platform::{InterceptFs, SharedInterceptFs};
+use crate::InterceptFsOptions;
+
+/// Mount flags for CLI / hypervisor (`--cow`, `--cow-dir`, …).
+#[derive(Debug, Clone)]
+pub struct FuseMountOptions {
+    /// Write-provenance session id (default: process-local).
+    pub session_id: Option<String>,
+    /// Enable per-agent CoW overlays.
+    pub cow: bool,
+    /// CoW root (default under backing when unset).
+    pub cow_dir: Option<PathBuf>,
+    /// Default agent id for unscoped commit/discard.
+    pub agent: Option<String>,
+    /// When false, skip per-path write locks (Feb `--no-serialize`).
+    pub serialize: bool,
+    /// Path to Feb-format `agents.conf`.
+    pub agents_conf: Option<PathBuf>,
+}
+
+impl Default for FuseMountOptions {
+    fn default() -> Self {
+        Self {
+            session_id: None,
+            cow: false,
+            cow_dir: None,
+            agent: None,
+            serialize: true,
+            agents_conf: None,
+        }
+    }
+}
+
+impl FuseMountOptions {
+    /// Convert to [`InterceptFsOptions`].
+    pub fn to_intercept_options(&self) -> InterceptFsOptions {
+        InterceptFsOptions {
+            session_id: self.session_id.clone().unwrap_or_default(),
+            cow: self.cow,
+            cow_dir: self.cow_dir.clone(),
+            agent: self.agent.clone(),
+            serialize: self.serialize,
+            agents_conf: self.agents_conf.clone(),
+        }
+    }
+}
 
 /// Summary of one registered FUSE mount (operator / `fuse list`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,8 +73,16 @@ pub struct FuseMountInfo {
     pub backing: PathBuf,
     /// Write-provenance session id stamped on creates/writes.
     pub session_id: String,
-    /// Relative paths with pending CoW staging on this mount.
+    /// Whether per-agent CoW is enabled.
+    pub cow_enabled: bool,
+    /// CoW overlay root.
+    pub cow_root: PathBuf,
+    /// Default agent id for unscoped ops.
+    pub default_agent: String,
+    /// Relative paths with pending CoW staging on the default agent.
     pub pending_relpaths: Vec<PathBuf>,
+    /// Pending paths grouped by agent id.
+    pub pending_by_agent: Vec<(String, Vec<PathBuf>)>,
 }
 
 /// One live mount entry; dropping removes the background FUSE session.
@@ -68,40 +121,21 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        if !backing.is_dir() {
-            anyhow::bail!(
-                "fuse mount: backing path must be an existing directory: {}",
-                backing.display()
-            );
-        }
-        std::fs::create_dir_all(mountpoint).with_context_mount(mountpoint)?;
-        let key = Self::normalize_key(mountpoint);
-        {
-            let mounts = self.mounts.lock().expect("fuse registry lock");
-            if mounts.contains_key(&key) {
-                anyhow::bail!("fuse mount: already registered at {}", key.display());
-            }
-        }
+        let mut opts = FuseMountOptions::default();
+        opts.session_id = Some(session_id.to_string());
+        opts.serialize = true;
+        self.mount_background_with(mountpoint, backing, &opts)
+    }
 
-        let fs = Arc::new(InterceptFs::with_session(backing, session_id));
-        let mut config = Config::default();
-        config.mount_options =
-            vec![MountOption::FSName("sharecli-fuse".to_string()), MountOption::AutoUnmount];
-
-        let session = fuser::spawn_mount2(SharedInterceptFs(Arc::clone(&fs)), mountpoint, &config)
-            .map_err(|e| anyhow::anyhow!("fuse mount: spawn_mount2 failed: {e}"))?;
-
-        let mut mounts = self.mounts.lock().expect("fuse registry lock");
-        mounts.insert(
-            key,
-            FuseMountEntry {
-                fs,
-                backing: backing.to_path_buf(),
-                session_id: session_id.to_string(),
-                _session: Some(session),
-            },
-        );
-        Ok(())
+    /// Background mount with full Feb-parity options.
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    pub fn mount_background_with(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        opts: &FuseMountOptions,
+    ) -> anyhow::Result<()> {
+        self.mount_inner(mountpoint, backing, opts, true)
     }
 
     /// Foreground mount (blocks until unmounted); registers while active.
@@ -111,6 +145,31 @@ impl FuseSessionRegistry {
         mountpoint: &Path,
         backing: &Path,
         session_id: &str,
+    ) -> anyhow::Result<()> {
+        let mut opts = FuseMountOptions::default();
+        opts.session_id = Some(session_id.to_string());
+        opts.serialize = true;
+        self.mount_foreground_with(mountpoint, backing, &opts)
+    }
+
+    /// Foreground mount with full Feb-parity options.
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    pub fn mount_foreground_with(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        opts: &FuseMountOptions,
+    ) -> anyhow::Result<()> {
+        self.mount_inner(mountpoint, backing, opts, false)
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn mount_inner(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        opts: &FuseMountOptions,
+        background: bool,
     ) -> anyhow::Result<()> {
         if !backing.is_dir() {
             anyhow::bail!(
@@ -127,29 +186,47 @@ impl FuseSessionRegistry {
             }
         }
 
-        let fs = Arc::new(InterceptFs::with_session(backing, session_id));
+        let intercept = opts.to_intercept_options();
+        let fs = Arc::new(InterceptFs::with_options(backing, intercept));
+        let session_id = fs.session_id().to_string();
         let mut config = Config::default();
         config.mount_options =
             vec![MountOption::FSName("sharecli-fuse".to_string()), MountOption::AutoUnmount];
 
-        {
+        if background {
+            let session =
+                fuser::spawn_mount2(SharedInterceptFs(Arc::clone(&fs)), mountpoint, &config)
+                    .map_err(|e| anyhow::anyhow!("fuse mount: spawn_mount2 failed: {e}"))?;
             let mut mounts = self.mounts.lock().expect("fuse registry lock");
             mounts.insert(
-                key.clone(),
+                key,
                 FuseMountEntry {
-                    fs: Arc::clone(&fs),
+                    fs,
                     backing: backing.to_path_buf(),
-                    session_id: session_id.to_string(),
-                    _session: None,
+                    session_id,
+                    _session: Some(session),
                 },
             );
+            Ok(())
+        } else {
+            {
+                let mut mounts = self.mounts.lock().expect("fuse registry lock");
+                mounts.insert(
+                    key.clone(),
+                    FuseMountEntry {
+                        fs: Arc::clone(&fs),
+                        backing: backing.to_path_buf(),
+                        session_id,
+                        _session: None,
+                    },
+                );
+            }
+            let result = fuser::mount2(SharedInterceptFs(fs), mountpoint, &config);
+            let mut mounts = self.mounts.lock().expect("fuse registry lock");
+            mounts.remove(&key);
+            result.map_err(|e| anyhow::anyhow!("fuse mount: mount2 ended with error: {e}"))?;
+            Ok(())
         }
-
-        let result = fuser::mount2(SharedInterceptFs(fs), mountpoint, &config);
-        let mut mounts = self.mounts.lock().expect("fuse registry lock");
-        mounts.remove(&key);
-        result.map_err(|e| anyhow::anyhow!("fuse mount: mount2 ended with error: {e}"))?;
-        Ok(())
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
@@ -169,6 +246,28 @@ impl FuseSessionRegistry {
         mountpoint: &Path,
         backing: &Path,
         _session_id: &str,
+    ) -> anyhow::Result<()> {
+        let _ = (mountpoint, backing);
+        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    pub fn mount_background_with(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        _opts: &FuseMountOptions,
+    ) -> anyhow::Result<()> {
+        let _ = (mountpoint, backing);
+        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    pub fn mount_foreground_with(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        _opts: &FuseMountOptions,
     ) -> anyhow::Result<()> {
         let _ = (mountpoint, backing);
         anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
@@ -239,7 +338,11 @@ impl FuseSessionRegistry {
                     mountpoint: mp.clone(),
                     backing: entry.backing.clone(),
                     session_id: entry.session_id.clone(),
+                    cow_enabled: entry.fs.cow_enabled(),
+                    cow_root: entry.fs.cow_root().to_path_buf(),
+                    default_agent: entry.fs.default_agent().to_string(),
                     pending_relpaths: entry.fs.pending_rel_paths().unwrap_or_default(),
+                    pending_by_agent: entry.fs.pending_by_agent().unwrap_or_default(),
                 })
                 .collect();
             out.sort_by(|a, b| a.mountpoint.cmp(&b.mountpoint));
@@ -260,6 +363,8 @@ trait MountContext {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 impl MountContext for std::io::Result<()> {
     fn with_context_mount(self, mountpoint: &Path) -> anyhow::Result<()> {
-        self.map_err(|e| anyhow::anyhow!("fuse mount: create mountpoint {}: {e}", mountpoint.display()))
+        self.map_err(|e| {
+            anyhow::anyhow!("fuse mount: create mountpoint {}: {e}", mountpoint.display())
+        })
     }
 }

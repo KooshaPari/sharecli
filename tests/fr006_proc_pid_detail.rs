@@ -67,22 +67,3 @@ fn fr006_proc_pid_detail_self_text_sections() {
     assert!(s.contains("State:"), "MUST print State line; got: {s}");
 }
 
-/// FR-006 / AC-006.23 — --pid cannot combine with --watch.
-#[test]
-fn fr006_proc_pid_rejects_watch_combo() {
-    let pid = std::process::id();
-    let out = bin()
-        .args(["proc", "--pid", &pid.to_string(), "--watch", "1"])
-        .output()
-        .expect("spawn proc --pid --watch");
-    assert!(!out.status.success());
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
-    assert!(
-        combined.to_ascii_lowercase().contains("watch") || combined.contains("--pid"),
-        "MUST reject --pid with --watch; got: {combined}"
-    );
-}
