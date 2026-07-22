@@ -15,10 +15,31 @@ use std::sync::Arc;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use fuser::{BackgroundSession, Config, MountOption};
+#[cfg(target_os = "linux")]
+use fuser::SessionACL;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::platform::{InterceptFs, SharedInterceptFs};
 use crate::InterceptFsOptions;
+
+/// Default [`fuser`] mount [`Config`] for sharecli-fuse sessions.
+///
+/// On Linux, `AutoUnmount` is paired with [`SessionACL::RootAndOwner`] because
+/// fuser rejects `AutoUnmount` when `acl == Owner` (`auto_unmount requires acl !=
+/// Owner`). On macOS, skip `AutoUnmount` (and the implied `allow_other` helper
+/// path): macFUSE often lacks `allow_other` unless the operator enables it, and
+/// [`crate::mount_smoke::force_unmount`] / session Drop already call `umount`.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub fn default_fuser_config() -> Config {
+    let mut config = Config::default();
+    config.mount_options = vec![MountOption::FSName("sharecli-fuse".to_string())];
+    #[cfg(target_os = "linux")]
+    {
+        config.mount_options.push(MountOption::AutoUnmount);
+        config.acl = SessionACL::RootAndOwner;
+    }
+    config
+}
 
 /// Mount flags for CLI / hypervisor (`--cow`, `--cow-dir`, …).
 #[derive(Debug, Clone)]
@@ -189,9 +210,7 @@ impl FuseSessionRegistry {
         let intercept = opts.to_intercept_options();
         let fs = Arc::new(InterceptFs::with_options(backing, intercept));
         let session_id = fs.session_id().to_string();
-        let mut config = Config::default();
-        config.mount_options =
-            vec![MountOption::FSName("sharecli-fuse".to_string()), MountOption::AutoUnmount];
+        let config = default_fuser_config();
 
         if background {
             let session =
@@ -366,5 +385,60 @@ impl MountContext for std::io::Result<()> {
         self.map_err(|e| {
             anyhow::anyhow!("fuse mount: create mountpoint {}: {e}", mountpoint.display())
         })
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(test)]
+mod default_mount_options_tests {
+    use super::default_fuser_config;
+    use fuser::{MountOption, SessionACL};
+
+    #[test]
+    fn default_config_sets_fsname() {
+        let config = default_fuser_config();
+        assert!(
+            config
+                .mount_options
+                .iter()
+                .any(|o| matches!(o, MountOption::FSName(name) if name == "sharecli-fuse")),
+            "MUST set FSName=sharecli-fuse"
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_auto_unmount_pairs_with_non_owner_acl() {
+        let config = default_fuser_config();
+        assert!(
+            config
+                .mount_options
+                .iter()
+                .any(|o| matches!(o, MountOption::AutoUnmount)),
+            "Linux MUST include AutoUnmount"
+        );
+        assert_eq!(
+            config.acl,
+            SessionACL::RootAndOwner,
+            "Linux MUST prefer RootAndOwner over Owner for AutoUnmount"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_skips_auto_unmount_and_keeps_owner_acl() {
+        let config = default_fuser_config();
+        assert!(
+            !config
+                .mount_options
+                .iter()
+                .any(|o| matches!(o, MountOption::AutoUnmount)),
+            "macOS MUST NOT use AutoUnmount (allow_other / kext friction)"
+        );
+        assert_eq!(
+            config.acl,
+            SessionACL::Owner,
+            "macOS MUST keep Owner ACL"
+        );
     }
 }
