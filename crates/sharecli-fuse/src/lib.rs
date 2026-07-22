@@ -25,6 +25,8 @@
 
 #![warn(missing_docs)]
 
+mod agent_cow;
+mod agents_conf;
 mod inode_map;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod mount_smoke;
@@ -37,6 +39,8 @@ mod session_registry;
 mod write_serialize;
 mod write_serialize_meters;
 
+pub use agent_cow::{AgentCowStore, AgentPending};
+pub use agents_conf::{sanitize_agent_id, AgentsConf};
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use mount_smoke::{
@@ -53,12 +57,42 @@ pub use provenance::{
     ATTR_SESSION, ATTR_WRITTEN_AT,
 };
 pub use read_cache::{global_read_cache_meters, ReadCacheMeters, ReadContentCache};
-pub use session_registry::{FuseMountInfo, FuseSessionRegistry};
+pub use session_registry::{FuseMountInfo, FuseMountOptions, FuseSessionRegistry};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 pub use write_serialize_meters::{
     global_write_serialize_meters, record_commit, record_discard, record_passthrough_write,
     record_stage, WriteSerializeMeters,
 };
+
+/// Construction options for [`InterceptFs`] (Feb `harness-fuse` mount flags).
+#[derive(Debug, Clone)]
+pub struct InterceptFsOptions {
+    /// Write-provenance session id.
+    pub session_id: String,
+    /// Enable per-agent CoW overlays (Feb `--cow`).
+    pub cow: bool,
+    /// CoW root directory (default: `{backing}/.sharecli-cow` when `cow`, else staging).
+    pub cow_dir: Option<std::path::PathBuf>,
+    /// Default agent id for unscoped stage/commit (default: session id).
+    pub agent: Option<String>,
+    /// Per-path write locks (Feb `--no-serialize` clears this).
+    pub serialize: bool,
+    /// Optional path to Feb-format `agents.conf`.
+    pub agents_conf: Option<std::path::PathBuf>,
+}
+
+impl Default for InterceptFsOptions {
+    fn default() -> Self {
+        Self {
+            session_id: "default".to_string(),
+            cow: false,
+            cow_dir: None,
+            agent: None,
+            serialize: true,
+            agents_conf: None,
+        }
+    }
+}
 
 use std::path::Path;
 
@@ -85,12 +119,14 @@ mod platform {
     };
     use tracing::{debug, trace};
 
+    use crate::agent_cow::AgentCowStore;
+    use crate::agents_conf::AgentsConf;
     use crate::inode_map::{abs_under, InodeMap, ROOT_INO};
     use crate::neg_dentry::{NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL};
     use crate::provenance::{annotate_write, default_session_id};
     use crate::read_cache::{ReadCacheMeters, ReadContentCache};
-    use crate::write_serialize::WriteSerialize;
     use crate::write_serialize_meters::record_passthrough_write;
+    use crate::InterceptFsOptions;
 
     const TTL: Duration = Duration::from_secs(1);
 
@@ -100,10 +136,14 @@ mod platform {
         backing: PathBuf,
         /// Session id stamped onto every write / CoW commit (`user.sharecli.session`).
         session_id: String,
+        /// When true, CoW overlays are per-agent under [`AgentCowStore::cow_root`].
+        cow_enabled: bool,
+        /// Optional Feb `agents.conf` patterns (informational / CLI validation).
+        agents_conf: Option<AgentsConf>,
         inodes: Mutex<InodeMap>,
         read_cache: Mutex<ReadContentCache>,
         neg_dentry: Mutex<NegativeDentryCache>,
-        write_locks: WriteSerialize,
+        cow: AgentCowStore,
     }
 
     impl InterceptFs {
@@ -114,14 +154,46 @@ mod platform {
 
         /// Create a new [`InterceptFs`] rooted at `backing` with an explicit session id.
         pub fn with_session(backing: &Path, session_id: impl Into<String>) -> Self {
-            let staging = backing.join(".sharecli-cow-staging");
+            Self::with_options(
+                backing,
+                InterceptFsOptions {
+                    session_id: session_id.into(),
+                    ..InterceptFsOptions::default()
+                },
+            )
+        }
+
+        /// Create with full Feb-parity mount options (`--cow`, `--cow-dir`, …).
+        pub fn with_options(backing: &Path, opts: InterceptFsOptions) -> Self {
+            let session_id = if opts.session_id.is_empty() {
+                default_session_id()
+            } else {
+                opts.session_id
+            };
+            let default_agent = opts
+                .agent
+                .clone()
+                .unwrap_or_else(|| session_id.clone());
+            let cow_root = opts.cow_dir.unwrap_or_else(|| {
+                if opts.cow {
+                    backing.join(".sharecli-cow")
+                } else {
+                    backing.join(".sharecli-cow-staging")
+                }
+            });
+            let agents_conf = opts
+                .agents_conf
+                .as_ref()
+                .and_then(|p| AgentsConf::load(p).ok());
             Self {
                 backing: backing.to_path_buf(),
-                session_id: session_id.into(),
+                session_id,
+                cow_enabled: opts.cow,
+                agents_conf,
                 inodes: Mutex::new(InodeMap::new()),
                 read_cache: Mutex::new(ReadContentCache::new()),
                 neg_dentry: Mutex::new(NegativeDentryCache::with_ttl(DEFAULT_NEG_TTL)),
-                write_locks: WriteSerialize::with_staging_root(staging),
+                cow: AgentCowStore::new(cow_root, default_agent, opts.serialize),
             }
         }
 
@@ -133,6 +205,31 @@ mod platform {
         /// Session id used for write provenance xattrs.
         pub fn session_id(&self) -> &str {
             &self.session_id
+        }
+
+        /// Whether per-agent CoW mode is enabled.
+        pub fn cow_enabled(&self) -> bool {
+            self.cow_enabled
+        }
+
+        /// CoW overlay root.
+        pub fn cow_root(&self) -> &Path {
+            self.cow.cow_root()
+        }
+
+        /// Default agent id for unscoped CoW ops.
+        pub fn default_agent(&self) -> &str {
+            self.cow.default_agent()
+        }
+
+        /// Loaded `agents.conf`, if any.
+        pub fn agents_conf(&self) -> Option<&AgentsConf> {
+            self.agents_conf.as_ref()
+        }
+
+        /// Whether write serialization locks are enabled.
+        pub fn serialize_writes(&self) -> bool {
+            self.cow.serialize()
         }
 
         /// Read-coalesce meters (hits / misses) without mounting.
@@ -196,15 +293,34 @@ mod platform {
             rel: &Path,
             contents: &[u8],
         ) -> Result<(), crate::WriteSerializeError> {
+            self.stage_rel_for_agent(None, rel, contents)
+        }
+
+        /// Stage CoW bytes for `agent` (default agent when `None`).
+        pub fn stage_rel_for_agent(
+            &self,
+            agent: Option<&str>,
+            rel: &Path,
+            contents: &[u8],
+        ) -> Result<(), crate::WriteSerializeError> {
             let abs = abs_under(&self.backing, rel);
-            self.write_locks.stage_bytes(&abs, contents)
+            self.cow.stage_bytes(agent, &abs, contents)
         }
 
         /// Commit pending CoW staging for a relative path; invalidates read cache
         /// and stamps write provenance xattrs on the promoted backing file.
         pub fn commit_rel(&self, rel: &Path) -> Result<(), crate::WriteSerializeError> {
+            self.commit_rel_for_agent(None, rel)
+        }
+
+        /// Commit pending CoW for `agent` (default when `None`).
+        pub fn commit_rel_for_agent(
+            &self,
+            agent: Option<&str>,
+            rel: &Path,
+        ) -> Result<(), crate::WriteSerializeError> {
             let abs = abs_under(&self.backing, rel);
-            self.write_locks.commit_pending(&abs)?;
+            self.cow.commit_pending(agent, &abs)?;
             annotate_write(&abs, &self.session_id).map_err(crate::WriteSerializeError::Io)?;
             if let Ok(mut cache) = self.read_cache.lock() {
                 cache.invalidate(&abs);
@@ -212,10 +328,50 @@ mod platform {
             Ok(())
         }
 
+        /// Commit all pending CoW paths for `agent` (default when `None`).
+        pub fn commit_all_for_agent(
+            &self,
+            agent: Option<&str>,
+        ) -> Result<Vec<PathBuf>, crate::WriteSerializeError> {
+            let abs_paths = self.cow.commit_all_for_agent(agent)?;
+            let mut rels = Vec::new();
+            for abs in abs_paths {
+                annotate_write(&abs, &self.session_id).map_err(crate::WriteSerializeError::Io)?;
+                if let Ok(mut cache) = self.read_cache.lock() {
+                    cache.invalidate(&abs);
+                }
+                if let Ok(rel) = abs.strip_prefix(&self.backing) {
+                    rels.push(rel.to_path_buf());
+                }
+            }
+            Ok(rels)
+        }
+
         /// Discard pending CoW staging for a relative path (backing unchanged).
         pub fn discard_rel(&self, rel: &Path) -> Result<(), crate::WriteSerializeError> {
+            self.discard_rel_for_agent(None, rel)
+        }
+
+        /// Discard pending CoW for `agent` (default when `None`).
+        pub fn discard_rel_for_agent(
+            &self,
+            agent: Option<&str>,
+            rel: &Path,
+        ) -> Result<(), crate::WriteSerializeError> {
             let abs = abs_under(&self.backing, rel);
-            self.write_locks.discard_pending(&abs)
+            self.cow.discard_pending(agent, &abs)
+        }
+
+        /// Discard all pending CoW paths for `agent` (default when `None`).
+        pub fn discard_all_for_agent(
+            &self,
+            agent: Option<&str>,
+        ) -> Result<Vec<PathBuf>, crate::WriteSerializeError> {
+            let abs_paths = self.cow.discard_all_for_agent(agent)?;
+            Ok(abs_paths
+                .into_iter()
+                .filter_map(|abs| abs.strip_prefix(&self.backing).ok().map(Path::to_path_buf))
+                .collect())
         }
 
         /// Passthrough write at `offset` for relative `rel`, serialized per path.
@@ -227,8 +383,8 @@ mod platform {
             let data = data.to_vec();
             let session = self.session_id.clone();
             let n = self
-                .write_locks
-                .with_locked_path(&abs, || {
+                .cow
+                .with_locked_path(None, &abs, || {
                     let mut file = OpenOptions::new().write(true).open(&abs)?;
                     file.seek(SeekFrom::Start(offset))?;
                     file.write_all(&data)?;
@@ -259,14 +415,32 @@ mod platform {
             self.after_create_at(rel, &abs)
         }
 
-        /// Relative paths with pending CoW staging on this mount.
+        /// Relative paths with pending CoW staging on the default agent.
         pub fn pending_rel_paths(&self) -> Result<Vec<PathBuf>, crate::WriteSerializeError> {
             Ok(self
-                .write_locks
-                .pending_backing_paths()?
+                .cow
+                .pending_for_agent(None)?
                 .into_iter()
                 .filter_map(|abs| abs.strip_prefix(&self.backing).ok().map(Path::to_path_buf))
                 .collect())
+        }
+
+        /// Pending CoW paths grouped by agent (absolute backing paths stripped to rel).
+        pub fn pending_by_agent(
+            &self,
+        ) -> Result<Vec<(String, Vec<PathBuf>)>, crate::WriteSerializeError> {
+            let mut out = Vec::new();
+            for entry in self.cow.list_agent_pending()? {
+                let rels = entry
+                    .backing_paths
+                    .into_iter()
+                    .filter_map(|abs| abs.strip_prefix(&self.backing).ok().map(Path::to_path_buf))
+                    .collect::<Vec<_>>();
+                if !rels.is_empty() {
+                    out.push((entry.agent, rels));
+                }
+            }
+            Ok(out)
         }
 
         fn after_create_at(&self, rel: &Path, abs: &Path) -> std::io::Result<()> {
@@ -479,7 +653,7 @@ mod platform {
             };
             let payload = data.to_vec();
             let session = self.session_id.clone();
-            let result = self.write_locks.with_locked_path(&path, || {
+            let result = self.cow.with_locked_path(None, &path, || {
                 let mut file = OpenOptions::new().write(true).open(&path)?;
                 file.seek(SeekFrom::Start(offset))?;
                 file.write_all(&payload)?;

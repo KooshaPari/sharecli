@@ -1,0 +1,653 @@
+#!/usr/bin/env bash
+# =============================================================================
+# agent-harness/bin/harness — Dispatcher & CLI
+#
+# This script serves two roles:
+#   1. PROXY MODE:  Invoked via symlink (e.g., "ruff" -> harness).
+#                   Detects AI agent callers and applies rules.
+#   2. CLI MODE:    Invoked directly as "harness" for management.
+#
+# Architecture:
+#   Agent calls "ruff check ." →  PATH resolves to proxy/ruff (symlink)
+#   → dispatcher reads basename($0) = "ruff"
+#   → walks process tree to detect agent ancestry
+#   → if human: immediate exec to real ruff (zero overhead path)
+#   → if agent: loads rule, applies strategy (coalesce/queue/etc.)
+# =============================================================================
+
+set -uo pipefail
+
+# ---------------------------------------------------------------------------
+# Resolve HARNESS_HOME from the real location of this script
+# ---------------------------------------------------------------------------
+_self_real="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null)"
+_self_dir="$(dirname "$_self_real")"
+export HARNESS_HOME="${HARNESS_HOME:-$(dirname "$_self_dir")}"
+
+# ---------------------------------------------------------------------------
+# Determine invocation mode
+# ---------------------------------------------------------------------------
+INVOKED_AS="$(basename "$0")"
+
+# ============================= CLI MODE =====================================
+if [[ "$INVOKED_AS" == "harness" ]]; then
+    source "${HARNESS_HOME}/lib/core.sh"
+
+    case "${1:-help}" in
+        status)
+            echo "╔══════════════════════════════════════════════════╗"
+            echo "║           agent-harness status                  ║"
+            echo "╚══════════════════════════════════════════════════╝"
+            echo ""
+            echo "HARNESS_HOME: ${HARNESS_HOME}"
+            echo ""
+            echo "── Active Proxies ──"
+            local_count=0
+            for f in "${HARNESS_PROXY}/"*; do
+                [[ "$(basename "$f")" == .* ]] && continue
+                [[ ! -L "$f" ]] && continue
+                local_count=$((local_count + 1))
+                cmd_name=""; real_path=""
+                cmd_name="$(basename "$f")"
+                real_path="$(cat "${HARNESS_PROXY}/.${cmd_name}.real" 2>/dev/null || echo '(unknown)')"
+                printf '  %-20s → %s\n' "$cmd_name" "$real_path"
+            done
+            [[ $local_count -eq 0 ]] && echo "  (none — run 'harness sync' to create proxies)"
+            echo ""
+            echo "── Rules ──"
+            if [[ -f "${HARNESS_ETC}/rules.conf" ]]; then
+                grep -v '^\s*#' "${HARNESS_ETC}/rules.conf" | grep -v '^\s*$' | while IFS= read -r line; do
+                    echo "  $line"
+                done
+            else
+                echo "  (no rules.conf found)"
+            fi
+            echo ""
+            echo "── Agent Patterns ──"
+            if [[ -f "${HARNESS_ETC}/agents.conf" ]]; then
+                grep -v '^\s*#' "${HARNESS_ETC}/agents.conf" | grep -v '^\s*$' | while IFS= read -r p; do
+                    echo "  $p"
+                done
+            else
+                echo "  (no agents.conf found)"
+            fi
+            echo ""
+            echo "── Cache ──"
+            stats="$(harness::cache_stats)"
+            echo "  $stats"
+            echo ""
+            echo "── Recent Log ──"
+            if [[ -f "$HARNESS_LOG" ]]; then
+                tail -5 "$HARNESS_LOG" | sed 's/^/  /'
+            else
+                echo "  (no log entries)"
+            fi
+            ;;
+
+        sync)
+            echo "Syncing proxy symlinks from rules.conf..."
+            rules_file="${HARNESS_ETC}/rules.conf"
+            if [[ ! -f "$rules_file" ]]; then
+                echo "ERROR: ${rules_file} not found" >&2
+                exit 1
+            fi
+
+            mkdir -p "${HARNESS_PROXY}"
+
+            # Remove stale symlinks
+            for f in "${HARNESS_PROXY}/"*; do
+                [[ "$(basename "$f")" == .* ]] && continue
+                [[ -L "$f" ]] && rm "$f"
+            done
+            rm -f "${HARNESS_PROXY}"/.*.real 2>/dev/null
+
+            # Create new symlinks from rules
+            declare -A seen_cmds
+            while IFS= read -r line; do
+                line="${line%%#*}"
+                [[ -z "${line// /}" ]] && continue
+                pattern=""
+                pattern="$(echo "$line" | awk '{print $1}')"
+                cmd="${pattern%%:*}"
+
+                [[ -n "${seen_cmds[$cmd]+x}" ]] && continue
+                seen_cmds[$cmd]=1
+
+                # Find the real binary
+                real_path=""
+                real_path="$( (
+                    # Temporarily remove proxy from PATH for clean lookup
+                    export PATH="${PATH//${HARNESS_PROXY}:/}"
+                    export PATH="${PATH//:${HARNESS_PROXY}/}"
+                    command -v "$cmd" 2>/dev/null
+                ) )" || true
+
+                if [[ -z "$real_path" || ! -x "$real_path" ]]; then
+                    echo "  SKIP  $cmd (binary not found in PATH)"
+                    continue
+                fi
+
+                # Create symlink and cache real path
+                ln -sf "../bin/harness" "${HARNESS_PROXY}/${cmd}"
+                echo "$real_path" > "${HARNESS_PROXY}/.${cmd}.real"
+                echo "  OK    $cmd → $real_path"
+            done < "$rules_file"
+
+            echo "Done. Ensure ${HARNESS_PROXY} is first in your PATH."
+            ;;
+
+        flush)
+            rm -rf "${HARNESS_CACHE:?}/"* 2>/dev/null
+            rm -rf "${HARNESS_LOCKS:?}/"* 2>/dev/null
+            rm -f "${HARNESS_METRICS_FILE:-}" 2>/dev/null
+            echo "Cache, locks, and metrics flushed."
+            ;;
+
+        metrics)
+            source "${HARNESS_HOME}/lib/core.sh"
+            metrics_format="${2:-prometheus}"
+            case "$metrics_format" in
+                prometheus|prom)
+                    harness::metrics::dump
+                    ;;
+                json)
+                    echo "{"
+                    echo "  \"cache_hits\": $(harness::metrics::get cache_hits),"
+                    echo "  \"cache_misses\": $(harness::metrics::get cache_misses),"
+                    echo "  \"cache_stale_hits\": $(harness::metrics::get cache_stale_hits),"
+                    echo "  \"lock_timeouts\": $(harness::metrics::get lock_timeouts),"
+                    echo "  \"lock_waits\": $(harness::metrics::get lock_waits),"
+                    echo "  \"commands_executed\": $(harness::metrics::get commands_executed),"
+                    echo "  \"refresh_triggered\": $(harness::metrics::get refresh_triggered)"
+                    echo "}"
+                    ;;
+                *)
+                    echo "Unknown format: $metrics_format (use: prometheus, json)" >&2
+                    exit 1
+                    ;;
+            esac
+            ;;
+
+        log)
+            if [[ -f "$HARNESS_LOG" ]]; then
+                tail -f "$HARNESS_LOG"
+            else
+                echo "No log file yet: $HARNESS_LOG"
+            fi
+            ;;
+
+        test)
+            echo "Testing agent detection..."
+            if harness::is_agent; then
+                echo "  ✓ Running under an AI agent"
+            else
+                echo "  ✗ NOT running under an AI agent (human/direct)"
+            fi
+            echo ""
+            echo "Testing binary resolution for proxied commands..."
+            for f in "${HARNESS_PROXY}/"*; do
+                [[ "$(basename "$f")" == .* ]] && continue
+                [[ ! -L "$f" ]] && continue
+                cmd_name="$(basename "$f")"
+                real=""
+                real="$(harness::find_real "$cmd_name")"
+                if [[ -n "$real" ]]; then
+                    echo "  ✓ $cmd_name → $real"
+                else
+                    echo "  ✗ $cmd_name → NOT FOUND"
+                fi
+            done
+            ;;
+
+        readcache)
+            source "${HARNESS_LIB}/readcache.sh" 2>/dev/null || {
+                echo "ERROR: readcache library not found" >&2; exit 1
+            }
+            rc_action="${2:-status}"
+            case "$rc_action" in
+                status)  rc::status ;;
+                compile) rc::compile_shim ;;
+                warm)    rc::warm "${3:-$PWD}" "${4:-ruff}" "${5:-}" ;;
+                record)  shift 2; rc::record_manifest "$PWD" "$@" ;;
+                ramdisk)
+                    case "${3:-init}" in
+                        init)    rc::ramdisk_init "${4:-$PWD}" "${5:-512}" ;;
+                        watch)   rc::ramdisk_watch "${4:-$PWD}" "${5:?mirror_dir required}" ;;
+                        stop)    rc::ramdisk_stop "${4:?mirror_dir required}" ;;
+                        destroy) rc::ramdisk_destroy "${4:?mirror_dir required}" ;;
+                    esac
+                    ;;
+                *) echo "Usage: harness readcache {status|compile|warm|record|ramdisk}" >&2 ;;
+            esac
+            ;;
+
+        coord|coordination)
+            source "${HARNESS_HOME}/lib/core.sh"
+            coord_action="${2:-status}"
+            case "$coord_action" in
+                status)
+                    echo "=== Agent Coordination Status ==="
+                    echo ""
+                    echo "── Active Intents ──"
+                    harness::intent::list
+                    echo ""
+                    echo "── Fair Share ──"
+                    harness::fairshare::status
+                    echo ""
+                    echo "── Deadlock Check ──"
+                    if harness::deadlock::detect; then
+                        echo "  ⚠ DEADLOCK DETECTED"
+                    else
+                        echo "  ✓ No deadlock"
+                    fi
+                    ;;
+                intents)
+                    harness::intent::list
+                    ;;
+                fairshare)
+                    harness::fairshare::status
+                    ;;
+                reset-shares)
+                    harness::fairshare::reset
+                    echo "Fair share counters reset (50% decay applied)"
+                    ;;
+                deadlock)
+                    if harness::deadlock::detect; then
+                        echo "DEADLOCK DETECTED"
+                        echo "Run 'harness coord resolve' to attempt resolution"
+                        exit 1
+                    else
+                        echo "No deadlock detected"
+                    fi
+                    ;;
+                resolve)
+                    if harness::deadlock::resolve; then
+                        echo "Deadlock resolved (youngest waiter aborted)"
+                    else
+                        echo "No deadlock to resolve"
+                    fi
+                    ;;
+                cleanup)
+                    harness::coord::cleanup
+                    echo "Coordination state cleaned up"
+                    ;;
+                conflicts)
+                    conflict_log="${HARNESS_VAR}/coordination/conflicts.log"
+                    if [[ -f "$conflict_log" ]]; then
+                        echo "=== Recent Conflicts ==="
+                        tail -20 "$conflict_log"
+                    else
+                        echo "No conflicts recorded"
+                    fi
+                    ;;
+                *)
+                    echo "Usage: harness coord {status|intents|fairshare|reset-shares|deadlock|resolve|cleanup|conflicts}" >&2
+                    ;;
+            esac
+            ;;
+
+        dashboard|dash)
+            source "${HARNESS_HOME}/lib/core.sh"
+            harness::dashboard::run
+            ;;
+
+        tune|autotune)
+            source "${HARNESS_HOME}/lib/core.sh"
+            tune_action="${2:-report}"
+            case "$tune_action" in
+                report|status)
+                    harness::autotune::report
+                    ;;
+                analyze)
+                    echo "=== Auto-Tune Analysis ==="
+                    harness::autotune::analyze
+                    ;;
+                apply)
+                    echo "=== Applying Auto-Tune Fixes ==="
+                    harness::autotune::apply
+                    ;;
+                rules)
+                    harness::autotune::generate_rules
+                    ;;
+                benchmark|bench)
+                    harness::autotune::benchmark
+                    ;;
+                *)
+                    echo "Usage: harness tune {report|analyze|apply|rules|benchmark}" >&2
+                    ;;
+            esac
+            ;;
+
+        help|--help|-h|"")
+            cat <<'EOF'
+agent-harness — OS-level command proxy for AI agent coordination
+
+USAGE:
+  harness <command>
+
+COMMANDS:
+  status    Show active proxies, rules, and cache stats
+  sync      Create/update proxy symlinks from rules.conf
+  flush     Clear all cached results, locks, and metrics
+  log       Tail the harness log file
+  test      Run diagnostics (agent detection, binary resolution)
+  metrics   Export metrics (prometheus or json format)
+  coord     Agent coordination (intents, deadlock, fair share)
+  dashboard Interactive real-time monitoring dashboard
+  tune      Auto-tuning analysis and recommendations
+  readcache Show file read cache status, compile stat shim
+  fuse      FUSE filesystem commands (mount, unmount, status)
+  help      Show this help message
+
+METRICS:
+  harness metrics              Export in Prometheus format (default)
+  harness metrics prometheus   Export in Prometheus format
+  harness metrics json         Export in JSON format
+
+DASHBOARD:
+  harness dashboard            Launch interactive dashboard (q=quit, r=refresh)
+  harness dash                 Alias for dashboard
+
+AUTO-TUNE:
+  harness tune report          Show performance analysis and recommendations
+  harness tune analyze         List detected issues (machine-readable)
+  harness tune apply           Apply safe automatic fixes
+  harness tune rules           Generate optimized rules.conf suggestions
+  harness tune benchmark       Run performance benchmark
+
+COORDINATION:
+  harness coord status         Show all coordination info
+  harness coord intents        List active intents
+  harness coord fairshare      Show fair share allocation
+  harness coord reset-shares   Reset fair share counters
+  harness coord deadlock       Check for deadlocks
+  harness coord resolve        Attempt to resolve deadlock
+  harness coord conflicts      Show recent conflict log
+  harness coord cleanup        Clean stale coordination data
+
+FUSE COMMANDS:
+  harness fuse mount <source> <mountpoint>  Mount FUSE overlay
+  harness fuse unmount <mountpoint>         Unmount FUSE filesystem
+  harness fuse status                       Show FUSE mount status
+
+RULE OPTIONS:
+  ttl=<seconds>         Cache TTL (default: 10)
+  error_ttl=<seconds>   TTL for error results (default: same as ttl)
+  stale=<seconds>       Stale-while-revalidate threshold (default: 0=disabled)
+  debounce_ms=<ms>      Debounce delay before execution
+  max_concurrent=<n>    Max parallel executions (for queue strategy)
+  priority=<level>      Queue priority: critical, high, normal, low, background
+  cache_key=<mode>      Cache key mode: time, args, git
+  semantic=1            Enable semantic coalescing (path normalization)
+  nocache_args=<list>   Comma-separated args that bypass cache
+
+PRIORITY LEVELS (for queue strategy):
+  critical    Highest priority, executes first
+  high        Important operations (git, critical path)
+  normal      Default level
+  low         Background tasks (tests, non-blocking)
+  background  Lowest priority, executes when idle
+
+ENVIRONMENT:
+  HARNESS_LOCK_TIMEOUT       Max seconds to wait for lock (default: 30)
+  HARNESS_COMPRESS_THRESHOLD Compress cache entries larger than N bytes (default: 10240)
+  HARNESS_CACHE_HIERARCHY    Enable hierarchical L1/L2 cache (default: 1)
+  HARNESS_L1_CACHE           L1 cache directory (default: /dev/shm/harness-cache)
+  HARNESS_L1_MAX_SIZE        L1 max size in bytes (default: 104857600 = 100MB)
+  HARNESS_L1_TTL             L1 cache TTL in seconds (default: 60)
+  HARNESS_IONICE_ENABLED     Use ionice for I/O priority (default: 1)
+
+SETUP:
+  1. Edit etc/rules.conf to define command strategies
+  2. Edit etc/agents.conf to add your AI agent process patterns
+  3. Run 'harness sync' to create proxy symlinks
+  4. Add the proxy directory to the front of your PATH:
+     export PATH="HARNESS_HOME/proxy:$PATH"
+
+For more information, see README.md.
+EOF
+            ;;
+
+        fuse)
+            fuse_action="${2:-help}"
+            fuse_bin="${HARNESS_HOME}/bin/harness-fuse"
+            
+            # Fallback to build location if not installed
+            if [[ ! -x "$fuse_bin" ]]; then
+                fuse_bin="${HARNESS_HOME}/fuse/target/release/harness-fuse"
+            fi
+            
+            if [[ ! -x "$fuse_bin" ]]; then
+                echo "FUSE binary not found. Building..."
+                if command -v cargo &>/dev/null; then
+                    (cd "${HARNESS_HOME}/fuse" && cargo build --release)
+                else
+                    echo "ERROR: cargo not found. Install Rust to build FUSE server." >&2
+                    echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh" >&2
+                    exit 1
+                fi
+            fi
+            
+            case "$fuse_action" in
+                mount)
+                    fuse_source="$3"
+                    fuse_mount_point="$4"
+                    shift 4 2>/dev/null || true
+                    
+                    if [[ -z "${fuse_source:-}" || -z "${fuse_mount_point:-}" ]]; then
+                        echo "Usage: harness fuse mount <source> <mountpoint> [options]"
+                        echo ""
+                        echo "Options:"
+                        echo "  --cow              Enable copy-on-write per agent"
+                        echo "  --no-serialize     Disable write serialization"
+                        echo "  --foreground       Run in foreground"
+                        echo "  --verbose          Enable verbose logging"
+                        exit 1
+                    fi
+                    
+                    "$fuse_bin" mount \
+                        --source "$fuse_source" \
+                        --mount "$fuse_mount_point" \
+                        --agents-conf "${HARNESS_ETC}/agents.conf" \
+                        --log-dir "${HARNESS_VAR}/log" \
+                        "$@"
+                    ;;
+                unmount)
+                    fuse_mount_point="$3"
+                    fuse_force_flag=""
+                    [[ "${4:-}" == "-f" || "${4:-}" == "--force" ]] && fuse_force_flag="--force"
+                    
+                    if [[ -z "${fuse_mount_point:-}" ]]; then
+                        echo "Usage: harness fuse unmount <mountpoint> [-f|--force]"
+                        exit 1
+                    fi
+                    
+                    "$fuse_bin" unmount "$fuse_mount_point" $fuse_force_flag
+                    ;;
+                status)
+                    "$fuse_bin" status "${@:3}"
+                    ;;
+                commit)
+                    fuse_mount_point="${3:-}"
+                    fuse_agent="${4:-}"
+                    fuse_file="${5:-}"
+                    
+                    if [[ -z "$fuse_mount_point" || -z "$fuse_agent" ]]; then
+                        echo "Usage: harness fuse commit <mountpoint> <agent> [file]"
+                        echo ""
+                        echo "Commit CoW changes for an agent to the underlying filesystem."
+                        exit 1
+                    fi
+                    
+                    "$fuse_bin" commit --mount "$fuse_mount_point" --agent "$fuse_agent" ${fuse_file:+$fuse_file}
+                    ;;
+                discard)
+                    fuse_mount_point="${3:-}"
+                    fuse_agent="${4:-}"
+                    fuse_file="${5:-}"
+                    
+                    if [[ -z "$fuse_mount_point" || -z "$fuse_agent" ]]; then
+                        echo "Usage: harness fuse discard <mountpoint> <agent> [file]"
+                        echo ""
+                        echo "Discard CoW changes for an agent (revert to original)."
+                        exit 1
+                    fi
+                    
+                    "$fuse_bin" discard --mount "$fuse_mount_point" --agent "$fuse_agent" ${fuse_file:+$fuse_file}
+                    ;;
+                list)
+                    fuse_mount_point="${3:-}"
+                    fuse_agent="${4:-}"
+                    
+                    if [[ -z "$fuse_mount_point" ]]; then
+                        echo "Usage: harness fuse list <mountpoint> [agent]"
+                        echo ""
+                        echo "List CoW overlays for a mount, optionally filtered by agent."
+                        exit 1
+                    fi
+                    
+                    "$fuse_bin" list --mount "$fuse_mount_point" ${fuse_agent:+--agent "$fuse_agent"}
+                    ;;
+                help|*)
+                    echo "harness fuse — FUSE overlay filesystem for write serialization"
+                    echo ""
+                    echo "USAGE:"
+                    echo "  harness fuse <subcommand>"
+                    echo ""
+                    echo "SUBCOMMANDS:"
+                    echo "  mount <source> <mountpoint>  Mount FUSE overlay"
+                    echo "  unmount <mountpoint>         Unmount FUSE filesystem"
+                    echo "  status                       Show mounted filesystems"
+                    echo "  commit <mp> <agent> [file]   Commit CoW changes"
+                    echo "  discard <mp> <agent> [file]  Discard CoW changes"
+                    echo "  list <mp> [agent]            List CoW overlays"
+                    echo ""
+                    echo "MOUNT OPTIONS:"
+                    echo "  --cow              Enable per-agent copy-on-write isolation"
+                    echo "  --no-serialize     Disable write serialization (allow concurrent writes)"
+                    echo "  --foreground       Run in foreground (default: daemonize)"
+                    echo "  --verbose          Enable verbose operation logging"
+                    echo ""
+                    echo "EXAMPLES:"
+                    echo "  harness fuse mount /home/user/project /mnt/harness/project"
+                    echo "  harness fuse mount /src /mnt/src --cow --foreground"
+                    echo "  harness fuse unmount /mnt/harness/project"
+                    echo "  harness fuse commit /mnt/src claude      # Commit Claude's changes"
+                    echo "  harness fuse list /mnt/src               # Show all overlays"
+                    ;;
+            esac
+            ;;
+
+        *)
+            echo "Unknown command: $1 (try 'harness help')" >&2
+            exit 1
+            ;;
+    esac
+    exit 0
+fi
+
+# ============================= PROXY MODE ===================================
+
+# The command name is determined by the symlink name
+CMD_NAME="$INVOKED_AS"
+
+# --- Fast path: find real binary early ---
+INVOKED_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+REAL_CMD=""
+if [[ -f "${INVOKED_DIR}/.${CMD_NAME}.real" ]]; then
+    REAL_CMD="$(cat "${INVOKED_DIR}/.${CMD_NAME}.real" 2>/dev/null)"
+    [[ ! -x "$REAL_CMD" ]] && REAL_CMD=""
+fi
+
+# --- Load core library ---
+source "${HARNESS_HOME}/lib/core.sh"
+
+# --- Fallback binary resolution ---
+if [[ -z "$REAL_CMD" ]]; then
+    REAL_CMD="$(harness::find_real "$CMD_NAME")" || {
+        echo "agent-harness: cannot find real '${CMD_NAME}' in PATH" >&2
+        echo "  Run 'harness sync' to refresh binary paths." >&2
+        exit 127
+    }
+fi
+
+# --- Agent detection: humans get immediate passthrough ---
+if ! harness::is_agent; then
+    exec "$REAL_CMD" "$@"
+fi
+
+# --- Determine subcommand (first non-flag argument) ---
+SUBCMD=""
+for arg in "$@"; do
+    [[ "$arg" == -* ]] && continue
+    SUBCMD="$arg"
+    break
+done
+
+# --- Look up rule ---
+RULE="$(harness::get_rule "$CMD_NAME" "$SUBCMD")"
+STRATEGY="$(echo "$RULE" | awk '{print $1}')"
+OPTS="$(echo "$RULE" | cut -d' ' -f2- -s)"
+
+# --- Parse rule options ---
+TTL="$(harness::opt "$OPTS" "ttl" "10")"
+DEBOUNCE_MS="$(harness::opt "$OPTS" "debounce_ms" "0")"
+MAX_CONCURRENT="$(harness::opt "$OPTS" "max_concurrent" "1")"
+ERROR_TTL="$(harness::opt "$OPTS" "error_ttl" "$TTL")"
+CACHE_MODE="$(harness::opt "$OPTS" "cache_key" "time")"
+NOCACHE_ARGS="$(harness::opt "$OPTS" "nocache_args" "")"
+STALE_THRESHOLD="$(harness::opt "$OPTS" "stale" "0")"  # stale-while-revalidate threshold
+PRIORITY="$(harness::opt "$OPTS" "priority" "normal")"  # queue priority level
+SEMANTIC="$(harness::opt "$OPTS" "semantic" "0")"       # enable semantic coalescing
+
+# Export stale threshold for strategy to use
+export HARNESS_STALE_THRESHOLD="$STALE_THRESHOLD"
+
+# --- Safety: check for mutating flags that should bypass cache ---
+if [[ -n "$NOCACHE_ARGS" && "$STRATEGY" == "coalesce" ]]; then
+    IFS=',' read -ra unsafe_flags <<< "$NOCACHE_ARGS"
+    for arg in "$@"; do
+        for unsafe in "${unsafe_flags[@]}"; do
+            if [[ "$arg" == "$unsafe" ]]; then
+                harness::log WARN "Unsafe arg '$arg' detected — falling back to queue"
+                STRATEGY="queue"
+                break 2
+            fi
+        done
+    done
+fi
+
+harness::log INFO "PROXY cmd=${CMD_NAME} sub=${SUBCMD} strategy=${STRATEGY} priority=${PRIORITY}"
+
+# --- Dispatch to strategy ---
+case "$STRATEGY" in
+    passthrough)
+        exec "$REAL_CMD" "$@"
+        ;;
+
+    coalesce|cache)
+        # Use semantic cache key if enabled
+        if [[ "$SEMANTIC" == "1" ]]; then
+            CACHE_KEY="$(harness::semantic::cache_key "$CMD_NAME" "$CACHE_MODE" "$@")"
+        else
+            CACHE_KEY="$(harness::cache_key "$CACHE_MODE" "$CMD_NAME" "$@")"
+        fi
+        harness::strategy::coalesce \
+            "$REAL_CMD" "$CACHE_KEY" "$TTL" "$DEBOUNCE_MS" "$ERROR_TTL" "$@"
+        ;;
+
+    queue|priority_queue)
+        harness::strategy::queue \
+            "$REAL_CMD" "$CMD_NAME" "$MAX_CONCURRENT" "$PRIORITY" "$@"
+        ;;
+
+    debounce)
+        harness::strategy::debounce \
+            "$REAL_CMD" "$DEBOUNCE_MS" "$@"
+        ;;
+
+    *)
+        harness::log WARN "Unknown strategy '${STRATEGY}' — passthrough"
+        exec "$REAL_CMD" "$@"
+        ;;
+esac

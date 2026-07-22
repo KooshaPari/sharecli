@@ -1,50 +1,37 @@
-# Rust
-/target/
-**/*.rs.bk
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Editors
-*.swp
-*.swo
-*~
-.idea/
-.vscode/
-
-# Agent directories
 .claude/
 .codex/
-.gemini/
 .cursor/
-
-# Swift / Xcode build artifacts
-desktop/ShareCLITray/.build/
-
-# Git worktrees (embedded repos)
-worktrees/
-
-# Zig build cache and output (local only; not source)
+.DS_Store
+.gemini/
+.idea/
+.vale/styles/Microsoft/
+.vscode/
+*.db-journal
+*.swo
+*.swp
 **/.zig-cache/
+**/*.rs.bk
 **/zig-cache/
 **/zig-out/
-
-
+*~
+/target/
+# Agent directories
+# Editors
+# Git worktrees (embedded repos)
 # Local AgilePlus SQLite (machine ops; not source of truth)
-agileplus.db
-*.db-journal
-
 # Node (a11y axe tooling)
-node_modules/
-
+# OS
+# Rust
+# Swift / Xcode build artifacts
 # Vale synced packages (CI runs `vale sync`; commit only project styles/vocab)
-.vale/styles/Microsoft/
-
-
+# Zig build cache and output (local only; not source)
+agileplus.db
+desktop/ShareCLITray/.build/
 docs/.vitepress/dist/
-
-
-windows/ShareCLITray/obj/
+node_modules/
+target-cow-parity/
+Thumbs.db
 windows/ShareCLITray/bin/
-
+windows/ShareCLITray/obj/
+worktrees/

@@ -1,15 +1,34 @@
 //! `sharecli fuse …` — FUSE IO intercept operator surface (FR-009).
 //!
-//! Exposes mount control, staged CoW commit/discard, global FUSE meters, and
-//! write-provenance inspection without reaching into xattr(1) by hand.
+//! Exposes mount control, staged CoW commit/discard (per-agent), global FUSE
+//! meters, and write-provenance inspection without reaching into xattr(1).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use sharecli_fuse::{
-    default_session_id, global_read_cache_meters, global_write_serialize_meters,
-    read_provenance, FuseSessionRegistry,
+    default_session_id, global_read_cache_meters, global_write_serialize_meters, read_provenance,
+    AgentsConf, FuseMountOptions, FuseSessionRegistry,
 };
+
+/// Mount options from CLI flags.
+#[derive(Debug, Clone, Default)]
+pub struct FuseMountCliOpts {
+    /// Write-provenance session id.
+    pub session_id: Option<String>,
+    /// Enable per-agent CoW.
+    pub cow: bool,
+    /// CoW directory root.
+    pub cow_dir: Option<PathBuf>,
+    /// Default agent id.
+    pub agent: Option<String>,
+    /// Disable per-path write locks.
+    pub no_serialize: bool,
+    /// Path to agents.conf.
+    pub agents_conf: Option<PathBuf>,
+    /// Foreground mount.
+    pub foreground: bool,
+}
 
 /// Read FUSE write-provenance xattrs from a backing file path.
 ///
@@ -19,7 +38,10 @@ pub fn provenance(path: &Path, json: bool) -> Result<()> {
         anyhow::bail!("fuse provenance: path does not exist: {}", path.display());
     }
     if path.is_dir() {
-        anyhow::bail!("fuse provenance: path must be a file, not a directory: {}", path.display());
+        anyhow::bail!(
+            "fuse provenance: path must be a file, not a directory: {}",
+            path.display()
+        );
     }
 
     let prov = read_provenance(path)
@@ -55,23 +77,43 @@ pub fn provenance(path: &Path, json: bool) -> Result<()> {
 }
 
 /// Mount the intercept layer over `backing` at `mountpoint`.
-pub fn mount(
-    backing: &Path,
-    mountpoint: &Path,
-    session_id: Option<&str>,
-    foreground: bool,
-) -> Result<()> {
-    let session = session_id.map(str::to_string).unwrap_or_else(default_session_id);
+pub fn mount(backing: &Path, mountpoint: &Path, opts: FuseMountCliOpts) -> Result<()> {
+    if let Some(ref agent) = opts.agent {
+        if !AgentsConf::is_valid_agent_id(agent) {
+            anyhow::bail!(
+                "fuse mount: invalid --agent {agent:?} (use alnum, '_' or '-')"
+            );
+        }
+    }
+    if let Some(ref conf) = opts.agents_conf {
+        AgentsConf::load(conf)
+            .with_context(|| format!("load agents.conf {}", conf.display()))?;
+    }
+
+    let session = opts
+        .session_id
+        .clone()
+        .unwrap_or_else(default_session_id);
+    let mount_opts = FuseMountOptions {
+        session_id: Some(session.clone()),
+        cow: opts.cow,
+        cow_dir: opts.cow_dir.clone(),
+        agent: opts.agent.clone(),
+        serialize: !opts.no_serialize,
+        agents_conf: opts.agents_conf.clone(),
+    };
     let registry = FuseSessionRegistry::global();
-    if foreground {
-        registry.mount_foreground(mountpoint, backing, &session)?;
+    if opts.foreground {
+        registry.mount_foreground_with(mountpoint, backing, &mount_opts)?;
     } else {
-        registry.mount_background(mountpoint, backing, &session)?;
+        registry.mount_background_with(mountpoint, backing, &mount_opts)?;
         println!(
-            "fuse mount: {} over {} (session {})",
+            "fuse mount: {} over {} (session {}; cow={}; agent={})",
             mountpoint.display(),
             backing.display(),
-            session
+            session,
+            opts.cow,
+            opts.agent.as_deref().unwrap_or(&session)
         );
     }
     Ok(())
@@ -109,48 +151,95 @@ pub fn status(json: bool) -> Result<()> {
     Ok(())
 }
 
-/// Commit staged CoW for `relpath` on a registered mount.
-pub fn commit(relpath: &Path, mountpoint: Option<&Path>) -> Result<()> {
-    commit_or_discard(relpath, mountpoint, true)
+/// Commit staged CoW — one relative path and/or all pending for `--agent`.
+pub fn commit(
+    relpath: Option<&Path>,
+    mountpoint: Option<&Path>,
+    agent: Option<&str>,
+) -> Result<()> {
+    commit_or_discard(relpath, mountpoint, agent, true)
 }
 
-/// Discard staged CoW for `relpath` on a registered mount.
-pub fn discard(relpath: &Path, mountpoint: Option<&Path>) -> Result<()> {
-    commit_or_discard(relpath, mountpoint, false)
+/// Discard staged CoW — one relative path and/or all pending for `--agent`.
+pub fn discard(
+    relpath: Option<&Path>,
+    mountpoint: Option<&Path>,
+    agent: Option<&str>,
+) -> Result<()> {
+    commit_or_discard(relpath, mountpoint, agent, false)
 }
 
-fn commit_or_discard(relpath: &Path, mountpoint: Option<&Path>, commit: bool) -> Result<()> {
+fn commit_or_discard(
+    relpath: Option<&Path>,
+    mountpoint: Option<&Path>,
+    agent: Option<&str>,
+    commit: bool,
+) -> Result<()> {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         use sharecli_fuse::WriteSerializeError;
 
+        if let Some(a) = agent {
+            if !AgentsConf::is_valid_agent_id(a) {
+                anyhow::bail!("fuse: invalid --agent {a:?} (use alnum, '_' or '-')");
+            }
+        }
+
         let fs = FuseSessionRegistry::global()
             .resolve_fs(mountpoint)
             .context("fuse commit/discard requires a registered mount")?;
-        let result = if commit {
-            fs.commit_rel(relpath)
-        } else {
-            fs.discard_rel(relpath)
-        };
-        match result {
-            Ok(()) => {
-                let verb = if commit { "commit" } else { "discard" };
-                println!("fuse {verb}: {}", relpath.display());
-                Ok(())
-            }
-            Err(WriteSerializeError::NoPending(p)) => {
+        let verb = if commit { "commit" } else { "discard" };
+
+        match (relpath, agent) {
+            (None, None) => {
                 anyhow::bail!(
-                    "fuse {}: no pending CoW staging for {}",
-                    if commit { "commit" } else { "discard" },
-                    p.display()
+                    "fuse {verb}: pass <relpath> and/or --agent <id> (see `fuse list`)"
                 );
             }
-            Err(e) => Err(e.into()),
+            (Some(rel), _) => {
+                let result = if commit {
+                    fs.commit_rel_for_agent(agent, rel)
+                } else {
+                    fs.discard_rel_for_agent(agent, rel)
+                };
+                match result {
+                    Ok(()) => {
+                        println!(
+                            "fuse {verb}: {}{}",
+                            rel.display(),
+                            agent.map(|a| format!(" (agent {a})")).unwrap_or_default()
+                        );
+                        Ok(())
+                    }
+                    Err(WriteSerializeError::NoPending(p)) => {
+                        anyhow::bail!("fuse {verb}: no pending CoW staging for {}", p.display());
+                    }
+                    Err(e) => Err(e.into()),
+                }
+            }
+            (None, Some(_)) => {
+                let paths = if commit {
+                    fs.commit_all_for_agent(agent)?
+                } else {
+                    fs.discard_all_for_agent(agent)?
+                };
+                if paths.is_empty() {
+                    println!(
+                        "fuse {verb}: (no pending for agent {})",
+                        agent.unwrap_or("default")
+                    );
+                } else {
+                    for p in &paths {
+                        println!("fuse {verb}: {}", p.display());
+                    }
+                }
+                Ok(())
+            }
         }
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        let _ = (relpath, mountpoint, commit);
+        let _ = (relpath, mountpoint, agent, commit);
         anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
     }
 }
@@ -166,7 +255,16 @@ pub fn list(json: bool) -> Result<()> {
                     "mountpoint": m.mountpoint.display().to_string(),
                     "backing": m.backing.display().to_string(),
                     "session_id": m.session_id,
+                    "cow_enabled": m.cow_enabled,
+                    "cow_root": m.cow_root.display().to_string(),
+                    "default_agent": m.default_agent,
                     "pending_relpaths": m.pending_relpaths.iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
+                    "pending_by_agent": m.pending_by_agent.iter().map(|(a, paths)| {
+                        serde_json::json!({
+                            "agent": a,
+                            "relpaths": paths.iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
+                        })
+                    }).collect::<Vec<_>>(),
                 })
             })
             .collect();
@@ -179,14 +277,19 @@ pub fn list(json: bool) -> Result<()> {
     }
     for m in &mounts {
         println!("mountpoint: {}", m.mountpoint.display());
-        println!("  backing:    {}", m.backing.display());
-        println!("  session_id: {}", m.session_id);
-        if m.pending_relpaths.is_empty() {
-            println!("  pending:    (none)");
+        println!("  backing:       {}", m.backing.display());
+        println!("  session_id:    {}", m.session_id);
+        println!("  cow:           {}", m.cow_enabled);
+        println!("  cow_root:      {}", m.cow_root.display());
+        println!("  default_agent: {}", m.default_agent);
+        if m.pending_by_agent.is_empty() {
+            println!("  pending:       (none)");
         } else {
             println!("  pending:");
-            for p in &m.pending_relpaths {
-                println!("    - {}", p.display());
+            for (agent, paths) in &m.pending_by_agent {
+                for p in paths {
+                    println!("    - [{agent}] {}", p.display());
+                }
             }
         }
         println!();
