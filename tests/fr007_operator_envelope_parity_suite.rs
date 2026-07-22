@@ -1,12 +1,12 @@
 //! FR-007 — operator envelope matrix parity regression suite (AC-007.84, proc --tree AC-007.85,
-//! proc --pid AC-007.86, CSV watch frame smoke AC-007.93, same-tick footer flush AC-007.95/97)
+//! proc --pid AC-007.86, CSV watch frame smoke AC-007.93, same-tick footer flush AC-007.95/97/98)
 //! FR: FR-007
 //!
 //! Locks the full FR-007 operator envelope across proc/report/health/pool/status/ps --all
 //! (text/JSON/CSV one-shot, including `proc --tree` and `proc --pid`), IPC, WS decode, dashboard,
 //! tray, and thermal TUI companion markers. CSV `--watch` frame markers get a short smoke pass
 //! (AC-007.93) plus same-tick `# [watch]` flush coverage (AC-007.95); text `--watch` same-tick
-//! flush is locked by AC-007.97. Long multi-frame dwell cycles stay in per-AC integration files.
+//! flush is locked by AC-007.97/98. Long multi-frame dwell cycles stay in per-AC integration files.
 
 use std::fs;
 use std::io::Read;
@@ -278,6 +278,26 @@ const TEXT_WATCH_MATRIX: &[TextWatchCase] = &[
         label: "report --watch",
         args: &["report", "--watch", "1"],
         body_header: "=== Fleet Analytics Report ===",
+    },
+    TextWatchCase {
+        label: "health --watch",
+        args: &["health", "--watch", "1"],
+        body_header: "Shared runtime health:",
+    },
+    TextWatchCase {
+        label: "pool --watch",
+        args: &["pool", "--watch", "1"],
+        body_header: "=== Shared Runtime Pool Status ===",
+    },
+    TextWatchCase {
+        label: "status --watch",
+        args: &["status", "--watch", "1"],
+        body_header: "=== Process Status ===",
+    },
+    TextWatchCase {
+        label: "ps --all --watch",
+        args: &["ps", "--all", "--watch", "1"],
+        body_header: "=== Host agents (proc scan) ===",
     },
 ];
 

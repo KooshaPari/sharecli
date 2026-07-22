@@ -229,6 +229,7 @@
 | AC-007.95   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_csv_watch_footer_same_tick`) | Parity suite same-tick `# [watch]` flush matrix for all AC-007.93 CSV watch surfaces |
 | AC-007.96   | `tests/fr007_proc_watch_text_stderr_silent.rs` (`fr007_proc_watch_text_footer_flushed_same_tick`); `src/commands/proc.rs`; `src/commands/report.rs` | Text `--watch` flushes `[watch]` footer same tick (proc/report; operator already flushed) |
 | AC-007.97   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_text_watch_footer_same_tick`) | Parity suite same-tick text `[watch]` flush matrix for proc/tree/pid/report |
+| AC-007.98   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_text_watch_footer_same_tick` + health/pool/status/ps rows) | Extends text flush matrix to operator health/pool/status/ps --all --watch |
 
 ### FR-008 — Coalesce
 
@@ -310,6 +311,9 @@
   `tests/fr007_proc_pid_watch.rs` locks text/NDJSON watch parity for `proc --pid N --watch`;
   `render_pid_detail_once` + pid watch loop in `src/commands/proc.rs`; `--pid --csv --watch`
   unlocked per AC-007.91.
+- **2026-07-22 — FR-007 operator text --watch same-tick flush matrix (AC-007.98):**
+  Extends `TEXT_WATCH_MATRIX` with health/pool/status/ps --all --watch rows under the same
+  one-gate-before-footer contract as AC-007.97.
 - **2026-07-22 — FR-007 text --watch same-tick flush matrix (AC-007.97):**
   `fr007_operator_matrix_cli_text_watch_footer_same_tick` locks one gate before first
   `[watch]` across proc/tree/pid/report text watch surfaces.
