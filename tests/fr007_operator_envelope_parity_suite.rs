@@ -1,15 +1,19 @@
 //! FR-007 — operator envelope matrix parity regression suite (AC-007.84, proc --tree AC-007.85,
-//! proc --pid AC-007.86)
+//! proc --pid AC-007.86, CSV watch frame smoke AC-007.93)
 //! FR: FR-007
 //!
 //! Locks the full FR-007 operator envelope across proc/report/health/pool/status/ps --all
 //! (text/JSON/CSV one-shot, including `proc --tree` and `proc --pid`), IPC, WS decode, dashboard,
-//! tray, and thermal TUI companion markers. No long `--watch` dwell cycles — those stay in per-AC
-//! integration files.
+//! tray, and thermal TUI companion markers. CSV `--watch` frame markers get a short smoke pass
+//! (AC-007.93); long multi-frame dwell cycles stay in per-AC integration files.
 
 use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
 use sharecli_thermal_tui::{pool_panel_lines, status_panel_lines, HELP_OVERLAY_HINT};
@@ -63,6 +67,116 @@ struct CsvCase {
     label: &'static str,
     args: &'static [&'static str],
     body_header: &'static str,
+}
+
+struct CsvWatchCase {
+    label: &'static str,
+    args: &'static [&'static str],
+    body_header: &'static str,
+    frame_marker: &'static str,
+}
+
+/// Drain watch pipes, stopping as soon as `ready` matches stdout (or `max_dwell`).
+/// Keeps AC-007.93 single-frame smoke short on fast hosts without flaking on slow proc scans.
+fn drain_watch_until(
+    child: &mut Child,
+    max_dwell: Duration,
+    mut ready: impl FnMut(&str) -> bool,
+) -> (String, String) {
+    let stdout = child.stdout.take().expect("piped stdout");
+    let stderr = child.stderr.take().expect("piped stderr");
+    let stdout_buf = Arc::new(Mutex::new(String::new()));
+    let stderr_buf = Arc::new(Mutex::new(String::new()));
+    let out_arc = Arc::clone(&stdout_buf);
+    let err_arc = Arc::clone(&stderr_buf);
+    let stdout_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 16_384];
+        let mut out = stdout;
+        loop {
+            match out.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => out_arc
+                    .lock()
+                    .expect("stdout lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+                Err(_) => break,
+            }
+        }
+    });
+    let stderr_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 4096];
+        let mut err = stderr;
+        loop {
+            match err.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => err_arc
+                    .lock()
+                    .expect("stderr lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+                Err(_) => break,
+            }
+        }
+    });
+    let deadline = Instant::now() + max_dwell;
+    while Instant::now() < deadline {
+        let snapshot = stdout_buf.lock().expect("stdout lock").clone();
+        if ready(&snapshot) {
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    let _ = stdout_reader.join();
+    let _ = stderr_reader.join();
+    let stdout = stdout_buf.lock().expect("stdout lock").clone();
+    let stderr = stderr_buf.lock().expect("stderr lock").clone();
+    (stdout, stderr)
+}
+
+fn assert_csv_watch_frame_smoke(
+    args: &[&str],
+    frame_marker: &str,
+    body_header: &str,
+    context: &str,
+) {
+    let mut child = bin()
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| panic!("spawn {context}: {e}"));
+    // Adaptive single-frame smoke: stop once one complete frame is visible.
+    // Cap stays above slow proc scans; multi-frame (>=2) dwells stay in per-AC files.
+    let marker = frame_marker.to_string();
+    let header = body_header.to_string();
+    let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
+        buf.split(marker.as_str())
+            .skip(1)
+            .any(|f| f.contains(header.as_str()) && f.contains("[watch]"))
+    });
+    assert!(
+        stderr.is_empty(),
+        "{context} MUST keep stderr silent (AC-007.93); stderr: {stderr:?}"
+    );
+    assert!(
+        !stdout.contains("\x1b[2J"),
+        "{context} MUST NOT emit ANSI clear (AC-007.93); got: {stdout}"
+    );
+    assert!(
+        stdout.contains(frame_marker),
+        "{context} MUST emit frame marker {frame_marker} (AC-007.93); got: {stdout}"
+    );
+    let frame = stdout
+        .split(frame_marker)
+        .skip(1)
+        .find(|f| f.contains(body_header))
+        .unwrap_or_else(|| panic!("{context} MUST emit >=1 complete CSV frame; got: {stdout}"));
+    assert_csv_companion_order(frame, body_header, &format!("{context} frame"));
+    assert!(
+        frame.contains("[watch]") || stdout.contains("[watch]"),
+        "{context} MUST include [watch] footer comment (AC-007.93); got: {stdout}"
+    );
 }
 
 fn assert_stderr_silent(stderr: &[u8], context: &str) {
@@ -460,6 +574,76 @@ fn fr007_operator_matrix_cli_csv_one_shot() {
     assert_stderr_silent(&out.stderr, "proc --pid --csv");
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert_csv_companion_order(&stdout, PROC_PID_CSV_HEADER, "proc --pid --csv");
+}
+
+/// FR-007 / AC-007.93 — CSV `--watch` frame-marker smoke (short dwell, >=1 frame).
+#[test]
+#[serial_test::serial]
+fn fr007_operator_matrix_cli_csv_watch_frame_smoke() {
+    let cases = [
+        CsvWatchCase {
+            label: "proc --csv --watch",
+            args: &["proc", "--csv", "--watch", "1"],
+            body_header: "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+            frame_marker: "# sharecli-proc-watch-frame",
+        },
+        CsvWatchCase {
+            label: "proc --tree --csv --watch",
+            args: &["proc", "--tree", "--csv", "--watch", "1"],
+            body_header: "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+            frame_marker: "# sharecli-proc-watch-frame",
+        },
+        CsvWatchCase {
+            label: "report --format csv --watch",
+            args: &["report", "--format", "csv", "--watch", "1"],
+            body_header: "record,timestamp,uptime_seconds,total_processes,total_memory_mb,thermal_pressure,detected_agents,agent_contention,gate_decision",
+            frame_marker: "# sharecli-report-watch-frame",
+        },
+        CsvWatchCase {
+            label: "health --csv --watch",
+            args: &["health", "--csv", "--watch", "1"],
+            body_header: "record,healthy,node_total,node_idle,node_in_use,bun_total,bun_idle,bun_in_use,max_per_type,issues",
+            frame_marker: "# sharecli-health-watch-frame",
+        },
+        CsvWatchCase {
+            label: "pool --csv --watch",
+            args: &["pool", "--csv", "--watch", "1"],
+            body_header: "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy,issues",
+            frame_marker: "# sharecli-pool-watch-frame",
+        },
+        CsvWatchCase {
+            label: "status --csv --watch",
+            args: &["status", "--csv", "--watch", "1"],
+            body_header: "record,total_processes,scanned,watched,agent_rows",
+            frame_marker: "# sharecli-status-watch-frame",
+        },
+        CsvWatchCase {
+            label: "ps --all --csv --watch",
+            args: &["ps", "--all", "--csv", "--watch", "1"],
+            body_header: "record,pid,name,memory_mb,project,harness,agent",
+            frame_marker: "# sharecli-ps-watch-frame",
+        },
+    ];
+
+    for case in cases {
+        assert_csv_watch_frame_smoke(case.args, case.frame_marker, case.body_header, case.label);
+    }
+
+    let self_pid = std::process::id().to_string();
+    let pid_args = [
+        "proc",
+        "--pid",
+        self_pid.as_str(),
+        "--csv",
+        "--watch",
+        "1",
+    ];
+    assert_csv_watch_frame_smoke(
+        &pid_args,
+        "# sharecli-proc-pid-watch-frame",
+        PROC_PID_CSV_HEADER,
+        "proc --pid --csv --watch",
+    );
 }
 
 /// FR-007 / AC-007.84 — IPC health.status + monitoring.report carry gate → host_watch → pool/status.
