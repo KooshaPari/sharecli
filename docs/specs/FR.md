@@ -1020,8 +1020,17 @@ until create / mkdir / rename-into invalidates the entry.
   tracks background mounts (`mountpoint` → [`InterceptFs`]) so `commit`/`discard` operate on
   staged CoW via `commit_rel`/`discard_rel`; `list` enumerates mounts and pending relative paths;
   `status` prints global read-cache + write-serialize meter sections.
+- **AC-009.18:** [`AgentsConf`](crates/sharecli-fuse/src/agents_conf.rs) MUST parse Feb-format
+  `agents.conf` (comments/blanks ignored; substring match) and validate/sanitize agent ids.
+- **AC-009.19:** [`AgentCowStore`](crates/sharecli-fuse/src/agent_cow.rs) MUST isolate CoW staging
+  per agent under `{cow_root}/{agent}/` so two agents can hold pending edits for the same
+  backing path; `commit_all_for_agent` / `discard_all_for_agent` MUST promote or drop all
+  pending paths for one agent. CLI: `fuse mount --cow [--cow-dir] [--agent] [--agents-conf]`
+  and `fuse commit|discard [relpath] [--agent]`.
+- **AC-009.20:** `fuse mount --no-serialize` MUST disable per-path write locks (Feb
+  `--no-serialize` parity) while still allowing CoW stage/commit.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests.
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`).
 
 ---
 

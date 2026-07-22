@@ -482,6 +482,21 @@ enum FuseCmd {
         /// Write-provenance session id (default: process-local)
         #[arg(long)]
         session: Option<String>,
+        /// Enable per-agent CoW overlays (Feb `--cow`)
+        #[arg(long)]
+        cow: bool,
+        /// CoW overlay root (default: `{backing}/.sharecli-cow` when `--cow`)
+        #[arg(long)]
+        cow_dir: Option<std::path::PathBuf>,
+        /// Default agent id for unscoped commit/discard (default: session id)
+        #[arg(long)]
+        agent: Option<String>,
+        /// Disable per-path write locks (Feb `--no-serialize`)
+        #[arg(long)]
+        no_serialize: bool,
+        /// Path to Feb-format `agents.conf`
+        #[arg(long)]
+        agents_conf: Option<std::path::PathBuf>,
         /// Block in foreground until unmounted (default: background daemon thread)
         #[arg(long)]
         foreground: bool,
@@ -497,21 +512,27 @@ enum FuseCmd {
         #[arg(long)]
         json: bool,
     },
-    /// Commit staged CoW for a relative path on a registered mount
+    /// Commit staged CoW (path and/or all pending for `--agent`)
     Commit {
-        /// Path relative to backing root
-        relpath: std::path::PathBuf,
+        /// Path relative to backing root (optional when `--agent` commits all)
+        relpath: Option<std::path::PathBuf>,
         /// Mountpoint when multiple mounts are registered
         #[arg(long)]
         mountpoint: Option<std::path::PathBuf>,
+        /// Agent id (Feb `harness-fuse commit <mp> <agent>`)
+        #[arg(long)]
+        agent: Option<String>,
     },
-    /// Discard staged CoW for a relative path on a registered mount
+    /// Discard staged CoW (path and/or all pending for `--agent`)
     Discard {
-        /// Path relative to backing root
-        relpath: std::path::PathBuf,
+        /// Path relative to backing root (optional when `--agent` discards all)
+        relpath: Option<std::path::PathBuf>,
         /// Mountpoint when multiple mounts are registered
         #[arg(long)]
         mountpoint: Option<std::path::PathBuf>,
+        /// Agent id
+        #[arg(long)]
+        agent: Option<String>,
     },
     /// List registered mounts and pending CoW paths
     List {
@@ -774,22 +795,51 @@ async fn run() -> Result<()> {
             MeshCmd::Reclaim { queue, owner } => mesh_cmd::reclaim(queue, owner)?,
         },
         Commands::Fuse { cmd } => match cmd {
-            FuseCmd::Mount { backing, mountpoint, session, foreground } => {
+            FuseCmd::Mount {
+                backing,
+                mountpoint,
+                session,
+                cow,
+                cow_dir,
+                agent,
+                no_serialize,
+                agents_conf,
+                foreground,
+            } => {
                 fuse_cmd::mount(
                     backing,
                     mountpoint,
-                    session.as_deref(),
-                    *foreground,
-                )?
+                    fuse_cmd::FuseMountCliOpts {
+                        session_id: session.clone(),
+                        cow: *cow,
+                        cow_dir: cow_dir.clone(),
+                        agent: agent.clone(),
+                        no_serialize: *no_serialize,
+                        agents_conf: agents_conf.clone(),
+                        foreground: *foreground,
+                    },
+                )?;
             }
             FuseCmd::Unmount { mountpoint } => fuse_cmd::unmount(mountpoint)?,
             FuseCmd::Status { json } => fuse_cmd::status(*json)?,
-            FuseCmd::Commit { relpath, mountpoint } => {
-                fuse_cmd::commit(relpath, mountpoint.as_deref())?
-            }
-            FuseCmd::Discard { relpath, mountpoint } => {
-                fuse_cmd::discard(relpath, mountpoint.as_deref())?
-            }
+            FuseCmd::Commit {
+                relpath,
+                mountpoint,
+                agent,
+            } => fuse_cmd::commit(
+                relpath.as_deref(),
+                mountpoint.as_deref(),
+                agent.as_deref(),
+            )?,
+            FuseCmd::Discard {
+                relpath,
+                mountpoint,
+                agent,
+            } => fuse_cmd::discard(
+                relpath.as_deref(),
+                mountpoint.as_deref(),
+                agent.as_deref(),
+            )?,
             FuseCmd::List { json } => fuse_cmd::list(*json)?,
             FuseCmd::Provenance { path, json } => fuse_cmd::provenance(path, *json)?,
         },
@@ -867,12 +917,12 @@ fn cli_list(as_json: bool) -> Result<()> {
     ];
 
     let fuse_modules: &[(&str, &str)] = &[
-        ("mount", "Mount intercept over backing (`fuse mount <backing> <mountpoint>`)"),
+        ("mount", "Mount intercept over backing (`fuse mount <backing> <mountpoint> [--cow]`)"),
         ("unmount", "Unmount registered intercept (`fuse unmount <mountpoint>`)"),
         ("status", "FUSE read-cache + write-serialize meters"),
-        ("commit", "Promote staged CoW for a relative path"),
-        ("discard", "Drop staged CoW for a relative path"),
-        ("list", "List registered mounts + pending CoW paths"),
+        ("commit", "Commit staged CoW (`fuse commit [relpath] [--agent]`)"),
+        ("discard", "Discard staged CoW (`fuse discard [relpath] [--agent]`)"),
+        ("list", "List mounts + pending CoW by agent"),
         ("provenance", "Read FUSE write xattrs on a backing file (`fuse provenance <path>`)"),
     ];
 
