@@ -1376,6 +1376,8 @@ pub async fn run(
                     println!(
                         "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
                     );
+                    // AC-007.96: flush text `[watch]` footer same tick (parity with CSV).
+                    std::io::stdout().flush()?;
                 }
                 let idle = period.saturating_sub(cycle_start.elapsed());
                 tokio::select! {
@@ -1445,6 +1447,8 @@ pub async fn run(
                     std::io::stdout().flush()?;
                 } else {
                     println!("{footer}");
+                    // AC-007.96: flush text `[watch]` footer same tick (parity with CSV).
+                    std::io::stdout().flush()?;
                 }
                 let idle = period.saturating_sub(cycle_start.elapsed());
                 tokio::select! {
