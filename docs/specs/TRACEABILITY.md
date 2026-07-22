@@ -272,6 +272,10 @@
 | AC-009.15 | `tests/fr009_fuse_intercept.rs` (`fr009_create_rel_provenance_and_neg_invalidate`); `crates/sharecli-fuse/src/lib.rs` FUSE `create`/`mknod` | create files through intercept; provenance + cache/dentry invalidate |
 | AC-009.16 | `crates/sharecli-fuse/src/lib.rs` (`Filesystem::write` + `record_passthrough_write`); `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` extended smoke | live write metering + create/mkdir/unlink/rename mount smoke |
 | AC-009.17 | `tests/fr009_fuse_cli.rs`; `src/commands/fuse.rs`; `crates/sharecli-fuse/src/session_registry.rs` | fuse mount/unmount/status/list/commit/discard CLI + registry |
+| AC-009.18 | `crates/sharecli-fuse/src/agents_conf.rs` (`ac_009_18_*`); `src/commands/fuse.rs` | Feb `agents.conf` parse + agent id sanitize/validate |
+| AC-009.19 | `crates/sharecli-fuse/src/agent_cow.rs` (`ac_009_19_*`); `src/commands/fuse.rs` (`--cow` / `--agent`) | Per-agent CoW isolation + commit_all/discard_all |
+| AC-009.20 | `crates/sharecli-fuse/src/agent_cow.rs` (`ac_009_20_no_serialize_runs_callback`); `src/commands/fuse.rs` (`--no-serialize`) | `--no-serialize` skips per-path write locks |
+| AC-009.21 | `tests/fr009_fuse_cli.rs` (`fr009_cli_fuse_mount_rejects_*`, `fr009_cli_fuse_mount_help_documents_feb_flags`); `src/commands/fuse.rs` | CLI loud-reject invalid agent / missing agents.conf; help documents Feb flags |
 
 ### FR-010 — Mesh
 
@@ -305,6 +309,9 @@
 
 ## Change log
 
+- **2026-07-22 — FR-009 fuse CLI Feb-flag validation + TRACE backfill (AC-009.18..21):**
+  TRACE rows for agents.conf / AgentCowStore / `--no-serialize`; AC-009.21 CLI loud-rejects
+  invalid `--agent` and missing `--agents-conf`, and locks `fuse mount --help` Feb flags.
 - **2026-07-21 — FR-008 harness retry/circuit_breaker/process via Hypervisor (AC-008.21):** `retry`, `circuit_breaker`, and `passthrough`/process-delegating strategies execute via `Hypervisor::run` + `SpawnRequest::from_operator`; open circuit fails loudly; retry exhaustion surfaces non-zero exit.
 - **2026-07-21 — FR-008 cache_key modes + semantic normalization (AC-008.19..20):** `CacheKeyMode` time/args/git plumbed via rules.conf; per-rule `nocache_args=` override; `semantic=1` applies lint argv normalization before cache hash.
 - **2026-07-21 — FR-007 proc --pid --watch refresh surfaces (AC-007.87):**

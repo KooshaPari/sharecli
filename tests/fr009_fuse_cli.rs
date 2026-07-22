@@ -3,6 +3,7 @@
 //!
 //! AC-009.11 CLI `fuse provenance <path>` reads write xattrs via read_provenance
 //! AC-009.17 CLI fuse mount/unmount/status/list/commit/discard operator surface
+//! AC-009.21 CLI loud-rejects invalid `--agent` / missing `--agents-conf`; help documents Feb flags
 
 use sharecli_fuse::{annotate_write_at, read_provenance};
 use std::process::Command;
@@ -119,4 +120,77 @@ fn fr009_cli_fuse_commit_requires_mount() {
         "stderr={}",
         stderr(&out)
     );
+}
+
+/// FR-009 / AC-009.21 — `fuse mount --agent` with path separators fails before mount.
+#[test]
+fn fr009_cli_fuse_mount_rejects_invalid_agent() {
+    let dir = TempDir::new().expect("tempdir");
+    let backing = dir.path().join("backing");
+    let mountpoint = dir.path().join("mnt");
+    std::fs::create_dir_all(&backing).expect("backing");
+    std::fs::create_dir_all(&mountpoint).expect("mnt");
+
+    let out = bin()
+        .args([
+            "fuse",
+            "mount",
+            backing.to_str().unwrap(),
+            mountpoint.to_str().unwrap(),
+            "--agent",
+            "bad/id",
+        ])
+        .output()
+        .expect("spawn fuse mount");
+    assert!(!out.status.success(), "invalid --agent MUST fail (AC-009.21)");
+    assert!(
+        stderr(&out).contains("invalid --agent") || stderr(&out).contains("alnum"),
+        "stderr={}",
+        stderr(&out)
+    );
+}
+
+/// FR-009 / AC-009.21 — missing `--agents-conf` path fails loudly before mount.
+#[test]
+fn fr009_cli_fuse_mount_rejects_missing_agents_conf() {
+    let dir = TempDir::new().expect("tempdir");
+    let backing = dir.path().join("backing");
+    let mountpoint = dir.path().join("mnt");
+    let missing = dir.path().join("no-such-agents.conf");
+    std::fs::create_dir_all(&backing).expect("backing");
+    std::fs::create_dir_all(&mountpoint).expect("mnt");
+
+    let out = bin()
+        .args([
+            "fuse",
+            "mount",
+            backing.to_str().unwrap(),
+            mountpoint.to_str().unwrap(),
+            "--agents-conf",
+            missing.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn fuse mount");
+    assert!(
+        !out.status.success(),
+        "missing agents.conf MUST fail (AC-009.21); stderr={}",
+        stderr(&out)
+    );
+}
+
+/// FR-009 / AC-009.21 — `fuse mount --help` documents Feb `--cow` / `--no-serialize` / `--agents-conf`.
+#[test]
+fn fr009_cli_fuse_mount_help_documents_feb_flags() {
+    let out = bin()
+        .args(["fuse", "mount", "--help"])
+        .output()
+        .expect("spawn fuse mount --help");
+    assert!(out.status.success(), "help MUST exit 0");
+    let text = format!("{}{}", stdout(&out), stderr(&out));
+    for flag in ["--cow", "--no-serialize", "--agents-conf", "--agent", "--cow-dir"] {
+        assert!(
+            text.contains(flag),
+            "fuse mount --help MUST document {flag} (AC-009.21); got: {text}"
+        );
+    }
 }

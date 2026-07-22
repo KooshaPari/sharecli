@@ -1123,6 +1123,9 @@ until create / mkdir / rename-into invalidates the entry.
   and `fuse commit|discard [relpath] [--agent]`.
 - **AC-009.20:** `fuse mount --no-serialize` MUST disable per-path write locks (Feb
   `--no-serialize` parity) while still allowing CoW stage/commit.
+- **AC-009.21:** `sharecli fuse mount` MUST loud-reject invalid `--agent` ids and missing
+  `--agents-conf` paths before attempting a FUSE mount. `fuse mount --help` MUST document
+  Feb-parity flags `--cow`, `--cow-dir`, `--agent`, `--agents-conf`, and `--no-serialize`.
 
 **Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`).
 
