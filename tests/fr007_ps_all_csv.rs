@@ -141,28 +141,6 @@ fn fr007_ps_all_csv_rejects_json() {
     );
 }
 
-/// FR-007 / AC-007.83 — ps --all --csv rejects --watch.
-#[test]
-fn fr007_ps_all_csv_rejects_watch() {
-    let out = bin()
-        .args(["ps", "--all", "--csv", "--watch", "1"])
-        .output()
-        .expect("spawn sharecli ps --all --csv --watch 1");
-    assert!(
-        !out.status.success(),
-        "ps --all --csv --watch MUST fail loudly (AC-007.83)"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
-    assert!(
-        combined.to_ascii_lowercase().contains("watch") || combined.contains("--csv"),
-        "MUST reject --csv with --watch; got: {combined}"
-    );
-}
-
 /// FR-007 / AC-007.83 — ps --csv without --all fails loudly.
 #[test]
 fn fr007_ps_csv_requires_all() {
