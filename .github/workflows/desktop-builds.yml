@@ -23,7 +23,7 @@ jobs:
     name: Tray Linux (beta)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
@@ -38,7 +38,7 @@ jobs:
           cp target/release/sharecli-tray "$STAGE/sharecli-tray"
           tar -czf sharecli-tray-linux-x86_64.tar.gz -C "$STAGE" .
           shasum -a 256 sharecli-tray-linux-x86_64.tar.gz | tee sharecli-tray-linux-x86_64.tar.gz.sha256
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sharecli-tray-linux-x86_64
           path: |
@@ -52,7 +52,7 @@ jobs:
     # Soft until Swift package stays green on runners; release attach still attempts hard build.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
       - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
         with:
@@ -85,7 +85,7 @@ jobs:
           cp target/release/libsharecli_ffi.dylib "$STAGE/" 2>/dev/null || true
           tar -czf sharecli-desktop-macos-aarch64.tar.gz -C "$STAGE" .
           shasum -a 256 sharecli-desktop-macos-aarch64.tar.gz | tee sharecli-desktop-macos-aarch64.tar.gz.sha256
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sharecli-desktop-macos-aarch64
           path: |
@@ -98,9 +98,9 @@ jobs:
     runs-on: windows-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "8.0.x"
       - name: Build WinUI tray
@@ -116,7 +116,7 @@ jobs:
           Get-FileHash sharecli-tray-windows-x64.zip -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLower())  sharecli-tray-windows-x64.zip" } |
             Tee-Object sharecli-tray-windows-x64.zip.sha256
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sharecli-tray-windows-x64
           path: |
@@ -128,7 +128,7 @@ jobs:
     name: WSL parity docs
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Assert FINALITY WSL section
         run: |
           set -euo pipefail
