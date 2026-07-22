@@ -1370,6 +1370,8 @@ pub async fn run(
                     println!(
                         "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
                     );
+                    // AC-007.94: flush so `# [watch]` reaches pipe consumers this tick.
+                    std::io::stdout().flush()?;
                 } else {
                     println!(
                         "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
@@ -1439,6 +1441,8 @@ pub async fn run(
                     println!(
                         "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
                     );
+                    // AC-007.94: flush so `# [watch]` reaches pipe consumers this tick.
+                    std::io::stdout().flush()?;
                 } else {
                     println!("{footer}");
                 }
