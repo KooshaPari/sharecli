@@ -57,6 +57,8 @@ pub use provenance::{
     ATTR_SESSION, ATTR_WRITTEN_AT,
 };
 pub use read_cache::{global_read_cache_meters, ReadCacheMeters, ReadContentCache};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub use session_registry::default_fuser_config;
 pub use session_registry::{FuseMountInfo, FuseMountOptions, FuseSessionRegistry};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 pub use write_serialize_meters::{
@@ -113,9 +115,9 @@ mod platform {
     };
 
     use fuser::{
-        Config, Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation, INodeNo,
-        MountOption, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory,
-        ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, Request, WriteFlags,
+        Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation, INodeNo,
+        OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty,
+        ReplyEntry, ReplyOpen, ReplyWrite, Request, WriteFlags,
     };
     use tracing::{debug, trace};
 
@@ -938,10 +940,8 @@ mod platform {
         session_id: &str,
     ) -> anyhow::Result<()> {
         let fs = InterceptFs::with_session(backing, session_id);
-        let mut config = Config::default();
-        // RW mount — writes are passthrough + path-serialized; CoW via WriteSerialize.
-        config.mount_options =
-            vec![MountOption::FSName("sharecli-fuse".to_string()), MountOption::AutoUnmount];
+        // AutoUnmount + RootAndOwner ACL: fuser rejects AutoUnmount with Owner ACL.
+        let config = crate::session_registry::default_fuser_config();
         fuser::mount2(fs, mountpoint, &config)?;
         Ok(())
     }
