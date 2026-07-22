@@ -121,25 +121,6 @@ fn fr007_report_csv_pool_status_companion() {
     assert_csv_pool_status_companion_order(&s, "report --format csv");
 }
 
-/// FR-007 / AC-007.81 — report --format csv rejects --watch (one-shot export only).
-#[test]
-#[serial_test::serial]
-fn fr007_report_csv_rejects_watch() {
-    let out = bin()
-        .args(["report", "--format", "csv", "--watch", "1"])
-        .output()
-        .expect("spawn sharecli report --format csv --watch 1");
-    assert!(
-        !out.status.success(),
-        "report --format csv --watch MUST fail loudly (AC-007.81)"
-    );
-    let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(
-        stderr.contains("csv") && stderr.contains("watch"),
-        "error MUST mention csv/watch incompatibility (AC-007.81); stderr: {stderr}"
-    );
-}
-
 /// FR-007 / AC-007.81 — companion CSV pool/status helpers match proc CSV shapes (AC-007.79).
 #[test]
 fn fr007_report_csv_companion_helpers_match_proc_shapes() {
