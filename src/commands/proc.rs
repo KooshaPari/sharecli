@@ -644,6 +644,14 @@ pub struct AgentTreeNdjsonLine {
     pub snapshot: AgentTreeSnapshot,
 }
 
+/// One NDJSON watch line for process detail (`proc --pid N --watch --json`, AC-007.87).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ProcDetailNdjsonLine {
+    pub ts: u64,
+    #[serde(flatten)]
+    pub snapshot: ProcDetailSnapshot,
+}
+
 fn unix_ts_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
 }
@@ -876,9 +884,32 @@ pub fn render_proc_detail_csv(detail: &ProcDetailSnapshot) -> String {
     )
 }
 
-async fn render_pid_detail(pid: u32, json: bool, csv: bool) -> Result<()> {
+async fn render_pid_detail_once(pid: u32, json: bool, ndjson: bool) -> Result<()> {
+    let scanned_agents = scan_host_agents();
+    let thermal = ThermalGovernor::new().poll()?;
     let mut detail = build_proc_detail(&HostProcSource, pid)?;
+    if json {
+        let (pool_panel, status_panel) = super::fetch_operator_pool_status_siblings().await?;
+        detail.pool = Some(pool_panel);
+        detail.status = Some(status_panel);
+        if ndjson {
+            let line = ProcDetailNdjsonLine { ts: unix_ts_secs(), snapshot: detail };
+            emit_ndjson_line(&line)?;
+            eprint_gate_host_watch_stderr_companions(thermal, scanned_agents.len())?;
+            return Ok(());
+        }
+        println!("{}", serde_json::to_string_pretty(&detail)?);
+        return Ok(());
+    }
+    render_proc_detail_text(&detail)?;
+    // AC-007.75 / AC-007.86 / AC-007.87: gate → host_watch → pool → proc-scan on stdout.
+    super::print_live_pool_status_operator_sections().await?;
+    Ok(())
+}
+
+async fn render_pid_detail(pid: u32, json: bool, csv: bool) -> Result<()> {
     if csv {
+        let detail = build_proc_detail(&HostProcSource, pid)?;
         let body = render_proc_detail_csv(&detail);
         print!(
             "{}",
@@ -886,17 +917,7 @@ async fn render_pid_detail(pid: u32, json: bool, csv: bool) -> Result<()> {
         );
         return Ok(());
     }
-    if json {
-        let (pool_panel, status_panel) = super::fetch_operator_pool_status_siblings().await?;
-        detail.pool = Some(pool_panel);
-        detail.status = Some(status_panel);
-        println!("{}", serde_json::to_string_pretty(&detail)?);
-        return Ok(());
-    }
-    render_proc_detail_text(&detail)?;
-    // AC-007.75 / AC-007.86: gate → host_watch → pool → proc-scan on stdout after detail body.
-    super::print_live_pool_status_operator_sections().await?;
-    Ok(())
+    render_pid_detail_once(pid, json, false).await
 }
 
 /// Escape one CSV field (RFC 4180-style quoting when needed).
@@ -1234,8 +1255,47 @@ pub async fn run(
         bail!("--ppid cannot be combined with --pid");
     }
     if let Some(target_pid) = pid {
-        if watch.is_some() {
-            bail!("--pid cannot be combined with --watch");
+        if csv && watch.is_some() {
+            bail!("--csv cannot be combined with --watch");
+        }
+        if let Some(interval_secs) = watch {
+            if interval_secs == 0 {
+                bail!("--watch interval must be >= 1 second");
+            }
+            let ndjson = json;
+            let period = Duration::from_secs(interval_secs);
+            loop {
+                let cycle_start = std::time::Instant::now();
+                if !ndjson {
+                    print!("\x1b[2J\x1b[H");
+                }
+                render_pid_detail_once(target_pid, json, ndjson).await?;
+                if !ndjson {
+                    std::io::stdout().flush()?;
+                }
+                let footer = format!(
+                    "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                );
+                if ndjson {
+                    eprint!("{footer}");
+                    let _ = std::io::stderr().flush();
+                } else {
+                    println!("{footer}");
+                }
+                let idle = period.saturating_sub(cycle_start.elapsed());
+                tokio::select! {
+                    _ = sleep(idle) => {},
+                    _ = tokio::signal::ctrl_c() => {
+                        if ndjson {
+                            eprintln!("\nExiting watch mode.");
+                        } else {
+                            println!("\nExiting watch mode.");
+                        }
+                        break;
+                    }
+                }
+            }
+            return Ok(());
         }
         return render_pid_detail(target_pid, json, csv).await;
     }
@@ -1492,17 +1552,17 @@ mod tests {
     }
 
     #[test]
-    fn pid_watch_combo_rejected() {
+    fn pid_csv_watch_combo_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, false, false, Some(1), None, None, None, None, None, None, None, None, None,
+                false, true, false, Some(1), None, None, None, None, None, None, None, None, None,
                 None, None, Some(42), None,
             ))
-            .expect_err("pid+watch MUST fail");
+            .expect_err("pid+csv+watch MUST fail");
         assert!(
-            err.to_string().contains("--watch") || err.to_string().contains("--pid"),
-            "error MUST mention flag conflict; got: {err}"
+            err.to_string().contains("--csv") || err.to_string().contains("--watch"),
+            "error MUST mention csv/watch conflict; got: {err}"
         );
     }
 }
