@@ -10,10 +10,15 @@ Prefer higher ranks before inventing new mesh/FUSE/strategy code:
 |------|--------|---------|
 | **1** | Live sharecli crates (this repo) | Current tray/serve UX, supervisor surface, any already-ported strategy/FUSE/mesh |
 | **2** | `thegent/src/thegent/mesh/` | Feb mesh substrate absorbed into thegent (donor after Jun 21 boundary flip) |
-| **3** | `~/Downloads/files/` | Archived Feb/Mar harness artifacts — **`harness-fuse` binary**, **`core.sh`**, **`rules.conf`**, and related Feb intercept/coalesce config |
+| **3** | [`recovery/feb-2026-agent-harness/`](../../recovery/feb-2026-agent-harness/) | **Durable vault** of the Feb 12 Downloads dump (install tar, `harness-fuse.elf`, `agents.conf`, `rules.conf`, plans). **Not** a git clone — no `.git`, no `fuse/` Rust sources. |
+| **4** | `~/Downloads/files/` | Original Downloads path (same content as rank-3 vault; prefer vault in-repo) |
 
 **February included FUSE** (`agent-harness fuse` / `harness-fuse`). Recovery diffs
-against rank-3 artifacts before claiming greenfield FUSE design.
+against rank-3 vault before claiming greenfield FUSE design.
+
+**GitHub Support:** `agent-harness` remote is past the 90-day restore window and will not
+return. Restored `thegent-sharecli` is the Mar 25 process-manager twin / Python stub — **not**
+Feb FUSE.
 
 ## Recovery branch status (`feat/fuse-feb-recovery-complete`, 2026-07-21)
 
@@ -24,7 +29,7 @@ Intent on this branch: close Feb→sharecli lineage for **mesh**, **strategy**, 
 |------|------------------|-------|
 | **Mesh** (`sharecli-mesh`) | **Landed** | `task_queue`, `smart_merge`, `worktree_pool` — CoW commit/discard + mesh CLI substrate |
 | **Strategy** | **Mostly landed** | `SlotQueue`, nocache argv routing, coalesce integration landed; **`cache_key` / semantic / per-rule nocache** completing on this branch |
-| **FUSE** (`sharecli-fuse`) | **Library landed; CLI completing** | `InterceptFs` passthrough + inode map, read coalesce, write serialize library landed; **`sharecli fuse` create/mount CLI** completing on this branch |
+| **FUSE** (`sharecli-fuse`) | **Landed + CoW agent parity** | Passthrough + inode map, read coalesce, write serialize, `sharecli fuse` CLI; **per-agent CoW** (`--cow` / `--agent` / `--agents-conf` / `--no-serialize`) |
 | Feb recovery lineage / ADR wiring | **Landed** | PR [#397](https://github.com/KooshaPari/sharecli/pull/397) + ADR 0006 refresh |
 | CoW commit/discard + `smart_merge` / worktree pool (mesh) | **Landed** | PR [#400](https://github.com/KooshaPari/sharecli/pull/400) |
 

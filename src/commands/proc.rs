@@ -16,7 +16,7 @@ use sharecli_fleet::{
 };
 
 pub use sharecli_fleet::{
-    build_agent_state_map, build_forest_state_map, collect_forest_pids, state_text_for_pid,
+    build_agent_state_map, build_forest_state_map, state_text_for_pid,
 };
 
 use tokio::time::sleep;
@@ -1315,6 +1315,7 @@ fn host_agent_inventory_from_source(
 mod tests {
     use super::*;
     use sharecli_fleet::proc_scan::{DetectedAgent, FakeProcSource, ProcSnapshot};
+    use sharecli_fleet::collect_forest_pids;
 
     #[test]
     fn agent_row_from_watch_formats_rss() {

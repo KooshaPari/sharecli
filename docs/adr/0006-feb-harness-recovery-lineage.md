@@ -35,7 +35,8 @@ Recovery sources still exist off the current main tip. Prefer them in rank order
 |------|--------|---------|
 | **1** | Live sharecli crates (this repo) | Current tray/serve UX, supervisor surface, already-ported strategy/FUSE/mesh |
 | **2** | `thegent/src/thegent/mesh/` | Feb mesh substrate absorbed into thegent (donor after Jun 21 flip) |
-| **3** | `~/Downloads/files/` | Archived Feb/Mar harness artifacts — include **`harness-fuse` binary**, **`core.sh`**, and **`rules.conf`** when diffing Feb intercept/coalesce behavior |
+| **3** | `recovery/feb-2026-agent-harness/` (in-repo vault) | Durable copy of Feb Downloads dump — **`harness-fuse.elf`**, install tar (no `.git` / no `fuse/` sources), `agents.conf`, `rules.conf`, plans. Prefer this over `~/Downloads/files/`. |
+| **3b** | `KooshaPari/thegent-sharecli` (restored) | Mar 25 sharecli twin → Python absorb stub; **not** Feb FUSE donor |
 
 Current UX is **tray + serve**, **not** the Feb harness TUI. The Feb operator
 surface was a harness **TUI dashboard with metrics** (thermal/coalesce/mesh meters).
@@ -84,4 +85,4 @@ under thegent.
 - Agent-eval supersede plan (still deferred): [`0005-agent-eval-supersede.md`](0005-agent-eval-supersede.md)
 - Ops recovery pointer: [`../ops/feb-recovery.md`](../ops/feb-recovery.md)
 - L34 operator guide: [`../ops/gpg-verified-commits-l34.md`](../ops/gpg-verified-commits-l34.md)
-- Recovery donors: live sharecli crates → `thegent/src/thegent/mesh/` → `~/Downloads/files/` (`harness-fuse`, `core.sh`, `rules.conf`)
+- Recovery donors: live sharecli crates → `thegent/src/thegent/mesh/` → `recovery/feb-2026-agent-harness/` (Downloads vault; `agent-harness` remote unrestorable past 90d)

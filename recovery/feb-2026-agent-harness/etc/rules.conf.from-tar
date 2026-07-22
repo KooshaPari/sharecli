@@ -1,0 +1,87 @@
+# =============================================================================
+# agent-harness rules.conf — Command strategy definitions
+#
+# FORMAT:
+#   COMMAND[:SUBCOMMAND]  STRATEGY  [key=value ...]
+#
+# STRATEGIES:
+#   passthrough   — Direct exec, no interception (use for mutating or
+#                   interactive commands, or when you want zero overhead)
+#   coalesce      — Single-flight with caching. Only one process runs at a
+#                   time; concurrent arrivals get the cached result. Best for
+#                   read-only lint/check commands.
+#   queue         — Concurrency limiter. Allows up to max_concurrent parallel
+#                   executions. Use for commands that mutate files.
+#   debounce      — Adds a delay before execution (no caching). Absorbs
+#                   rapid-fire calls without deduplicating results.
+#
+# OPTIONS:
+#   ttl=N           Cache lifetime in seconds (coalesce only)      [default: 10]
+#   error_ttl=N     Cache lifetime for non-zero exits              [default: =ttl]
+#   debounce_ms=N   Delay in milliseconds before executing         [default: 0]
+#   max_concurrent=N  Max parallel executions (queue only)         [default: 1]
+#   cache_key=MODE  Cache key mode: "time", "git", or "args"      [default: time]
+#                    - time: command + args + CWD (TTL-based expiry)
+#                    - git:  command + args + CWD + git working tree state
+#                    - args: command + args only (CWD-independent)
+#   nocache_args=X,Y  Comma-separated flags that bypass cache     [default: ""]
+#                     If any of these flags appear in the command args,
+#                     strategy falls back to "queue" instead of coalesce.
+#   error_ttl=N       Shorter TTL (sec) for non-zero exits           [default: ttl]
+#   readcache=N       File read cache level before exec              [default: 1]
+#                     0 = off, 1 = page cache warm, 2 = warm + stat shim, 3 = ramdisk
+#
+# MATCHING:
+#   - Exact match (ruff:check) takes priority over wildcard (ruff:*)
+#   - Wildcard (ruff or ruff:*) matches any subcommand
+#   - Subcommand is the first non-flag argument
+#   - Commands not listed here are passed through without interception
+#
+# =============================================================================
+
+# ── Python linting / formatting ──────────────────────────────────────────────
+ruff:check          coalesce    ttl=15  cache_key=git  debounce_ms=150  nocache_args=--fix,--unsafe-fixes
+ruff:format         queue       max_concurrent=1
+ruff                coalesce    ttl=15  cache_key=git  debounce_ms=150
+
+mypy                coalesce    ttl=30  cache_key=git  debounce_ms=300
+pylint              coalesce    ttl=20  cache_key=git  debounce_ms=200
+flake8              coalesce    ttl=15  cache_key=git
+black:--check       coalesce    ttl=15  cache_key=git
+black               queue       max_concurrent=1
+isort:--check-only  coalesce    ttl=15  cache_key=git
+isort               queue       max_concurrent=1
+
+# ── JavaScript / TypeScript ──────────────────────────────────────────────────
+eslint              coalesce    ttl=15  cache_key=git  debounce_ms=200  nocache_args=--fix
+prettier:--check    coalesce    ttl=15  cache_key=git
+prettier            queue       max_concurrent=1
+tsc                 coalesce    ttl=20  cache_key=git  debounce_ms=300
+
+# ── Go ───────────────────────────────────────────────────────────────────────
+# NOTE: Go tools are fast; you may prefer passthrough for small projects.
+golangci-lint       coalesce    ttl=20  cache_key=git  debounce_ms=200
+go:vet              coalesce    ttl=15  cache_key=git
+gofmt               queue       max_concurrent=1
+
+# ── Rust ─────────────────────────────────────────────────────────────────────
+cargo:check         coalesce    ttl=30  cache_key=git  debounce_ms=500
+cargo:clippy        coalesce    ttl=30  cache_key=git  debounce_ms=500
+cargo:fmt           queue       max_concurrent=1
+
+# ── npm / package managers ───────────────────────────────────────────────────
+# "npm run lint", "npm run check", etc. — coalesce the check variants
+npm:run             coalesce    ttl=15  debounce_ms=300
+npx                 coalesce    ttl=10  debounce_ms=200
+pnpm:run            coalesce    ttl=15  debounce_ms=300
+
+# ── General-purpose ──────────────────────────────────────────────────────────
+make:lint           coalesce    ttl=15  debounce_ms=200
+make:check          coalesce    ttl=15  debounce_ms=200
+make                passthrough
+
+# ── Testing (usually too unique per invocation to cache) ─────────────────────
+pytest              passthrough
+jest                passthrough
+go:test             passthrough
+cargo:test          passthrough
