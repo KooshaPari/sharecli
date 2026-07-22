@@ -186,27 +186,3 @@ fn fr007_proc_pid_watch_ndjson_stdout_pipe_clean() {
         );
     }
 }
-
-/// FR-007 / AC-007.87 — proc --pid --csv --watch remains rejected.
-#[test]
-#[serial_test::serial]
-fn fr007_proc_pid_csv_watch_rejected() {
-    let pid = std::process::id();
-    let out = bin()
-        .args(["proc", "--pid", &pid.to_string(), "--csv", "--watch", "1"])
-        .output()
-        .expect("spawn sharecli proc --pid --csv --watch 1");
-    assert!(
-        !out.status.success(),
-        "proc --pid --csv --watch MUST fail (AC-007.87)"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
-    assert!(
-        combined.to_ascii_lowercase().contains("watch") || combined.contains("--csv"),
-        "error MUST mention incompatible flags; got: {combined}"
-    );
-}

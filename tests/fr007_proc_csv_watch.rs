@@ -141,24 +141,6 @@ fn fr007_proc_tree_csv_watch_stderr_silent_and_envelope() {
     }
 }
 
-/// FR-007 / AC-007.88 — proc --pid --csv --watch remains rejected.
-#[test]
-fn fr007_proc_pid_csv_watch_still_rejected() {
-    let out = bin()
-        .args(["proc", "--pid", "1", "--csv", "--watch", "1"])
-        .output()
-        .expect("spawn proc --pid --csv --watch");
-    assert!(
-        !out.status.success(),
-        "proc --pid --csv --watch MUST fail (AC-007.88)"
-    );
-    let err = String::from_utf8_lossy(&out.stderr);
-    assert!(
-        err.contains("--csv") || err.contains("--watch"),
-        "error MUST mention csv/watch; got: {err}"
-    );
-}
-
 /// FR-007 / AC-007.88 — proc --csv --json --watch remains rejected.
 #[test]
 fn fr007_proc_csv_json_watch_still_rejected() {

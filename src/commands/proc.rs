@@ -25,6 +25,8 @@ use crate::monitoring::HostResourceWatchJson;
 
 /// CSV `#` comment line separating each `--csv --watch` refresh frame (AC-007.88).
 pub const PROC_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-proc-watch-frame";
+/// CSV `#` comment line separating each `proc --pid --csv --watch` refresh frame (AC-007.91).
+pub const PROC_PID_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-proc-pid-watch-frame";
 
 /// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30, AC-006.31, AC-006.38).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -1258,32 +1260,42 @@ pub async fn run(
         bail!("--ppid cannot be combined with --pid");
     }
     if let Some(target_pid) = pid {
-        if csv && watch.is_some() {
-            bail!("--csv cannot be combined with --watch");
-        }
         if let Some(interval_secs) = watch {
             if interval_secs == 0 {
                 bail!("--watch interval must be >= 1 second");
             }
             let ndjson = json;
+            let csv_watch = csv;
             let period = Duration::from_secs(interval_secs);
             loop {
                 let cycle_start = std::time::Instant::now();
-                if !ndjson {
+                if !ndjson && !csv_watch {
                     print!("\x1b[2J\x1b[H");
                 }
-                render_pid_detail_once(target_pid, json, ndjson).await?;
+                if csv_watch {
+                    // AC-007.91: frame marker + full PID CSV body + `# [watch]` on stdout.
+                    println!("{PROC_PID_CSV_WATCH_FRAME_MARKER}");
+                    render_pid_detail(target_pid, false, true).await?;
+                } else {
+                    render_pid_detail_once(target_pid, json, ndjson).await?;
+                }
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
-                let footer = format!(
-                    "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
-                );
                 if ndjson {
+                    let footer = format!(
+                        "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                    );
                     eprint!("{footer}");
                     let _ = std::io::stderr().flush();
+                } else if csv_watch {
+                    println!(
+                        "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                    );
                 } else {
-                    println!("{footer}");
+                    println!(
+                        "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                    );
                 }
                 let idle = period.saturating_sub(cycle_start.elapsed());
                 tokio::select! {
@@ -1563,17 +1575,17 @@ mod tests {
     }
 
     #[test]
-    fn pid_csv_watch_combo_rejected() {
+    fn pid_csv_watch_zero_interval_rejected() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, true, false, Some(1), None, None, None, None, None, None, None, None, None,
+                false, true, false, Some(0), None, None, None, None, None, None, None, None, None,
                 None, None, Some(42), None,
             ))
-            .expect_err("pid+csv+watch MUST fail");
+            .expect_err("pid+csv+watch 0 MUST fail");
         assert!(
-            err.to_string().contains("--csv") || err.to_string().contains("--watch"),
-            "error MUST mention csv/watch conflict; got: {err}"
+            err.to_string().contains("--watch") || err.to_string().contains(">= 1"),
+            "error MUST mention watch interval; got: {err}"
         );
     }
 }
