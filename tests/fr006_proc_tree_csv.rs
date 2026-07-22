@@ -119,22 +119,3 @@ fn fr006_proc_tree_csv_rejects_json_combo() {
         "MUST reject --tree --csv with --json; got: {combined}"
     );
 }
-
-/// FR-006 / AC-006.26 — --tree --csv rejects --watch.
-#[test]
-fn fr006_proc_tree_csv_rejects_watch_combo() {
-    let out = bin()
-        .args(["proc", "--tree", "--csv", "--watch", "1"])
-        .output()
-        .expect("spawn proc --tree --csv --watch");
-    assert!(!out.status.success());
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
-    assert!(
-        combined.to_ascii_lowercase().contains("watch") || combined.contains("--csv"),
-        "MUST reject --tree --csv with --watch; got: {combined}"
-    );
-}

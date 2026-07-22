@@ -23,6 +23,9 @@ use tokio::time::sleep;
 
 use crate::monitoring::HostResourceWatchJson;
 
+/// CSV `#` comment line separating each `--csv --watch` refresh frame (AC-007.88).
+pub const PROC_CSV_WATCH_FRAME_MARKER: &str = "# sharecli-proc-watch-frame";
+
 /// Inventory filter for `sharecli proc` (AC-006.17, AC-006.25, AC-006.27, AC-006.28, AC-006.29, AC-006.30, AC-006.31, AC-006.38).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcFilter {
@@ -1299,9 +1302,6 @@ pub async fn run(
         }
         return render_pid_detail(target_pid, json, csv).await;
     }
-    if csv && watch.is_some() {
-        bail!("--csv cannot be combined with --watch");
-    }
     let filter = ProcFilter::from_cli(
         family,
         exclude_family,
@@ -1323,23 +1323,32 @@ pub async fn run(
                 bail!("--watch interval must be >= 1 second");
             }
             let ndjson = json;
+            let csv_watch = csv;
             let period = Duration::from_secs(interval_secs);
             loop {
                 let cycle_start = std::time::Instant::now();
-                if !ndjson {
+                if !ndjson && !csv_watch {
                     print!("\x1b[2J\x1b[H");
+                }
+                if csv_watch {
+                    println!("{PROC_CSV_WATCH_FRAME_MARKER}");
                 }
                 render_once(json, csv, tree, &filter, ndjson, sort_key, row_limit).await?;
                 if !ndjson {
                     std::io::stdout().flush()?;
                 }
                 // Text watch: gate/host_watch + `[watch]` footer on stdout only (AC-007.35).
+                // CSV watch: frame marker + full CSV body + `# [watch]` comment on stdout (AC-007.88).
                 // NDJSON watch: companions + footer on stderr (AC-007.28 / AC-007.29).
                 let footer =
                     format!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                 if ndjson {
                     eprint!("{footer}");
                     let _ = std::io::stderr().flush();
+                } else if csv_watch {
+                    println!(
+                        "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
+                    );
                 } else {
                     println!("{footer}");
                 }
