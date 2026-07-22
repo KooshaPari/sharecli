@@ -112,6 +112,12 @@ pub struct CoalesceCache {
     debounce: Duration,
 }
 
+impl Clone for CoalesceCache {
+    fn clone(&self) -> Self {
+        Self { root: self.root.clone(), ttl: self.ttl, debounce: self.debounce }
+    }
+}
+
 impl CoalesceCache {
     /// Default result lifetime (5 minutes) — longer than origin harness lint TTLs
     /// so Hypervisor callers share across agent turns unless overridden.

@@ -71,6 +71,7 @@ use tracing::{debug, error, warn};
 
 pub mod detect;
 pub mod proc_scan;
+pub mod speculation;
 pub use detect::{match_known_agent, KNOWN_AGENT_FAMILIES};
 pub use proc_scan::{
     agent_label_for_pid, detect_caller_agent, is_under_agent, scan_agents, scan_host_agents,
@@ -86,6 +87,7 @@ pub use sharecli_ipc::{
     CacheKeyMode, CoalesceCache, CoalesceHitKind, CommandKey, SlotQueue, QueuePriority,
     QUEUE_PRIORITY_ENV, DEFAULT_NOCACHE_ARGS,
 };
+pub use speculation::{SpeculationTracker, SPECULATION_THRESHOLD, SPECULATION_WINDOW};
 
 // ---------------------------------------------------------------------------
 // Thermal gate — trait + decisions
@@ -618,6 +620,8 @@ pub struct Hypervisor {
     #[allow(dead_code)]
     config: HypervisorConfig,
     thermal_gate: Arc<dyn ThermalGate>,
+    /// FR-008 speculative execution tracker.
+    pub speculation_tracker: Arc<SpeculationTracker>,
 }
 
 impl Hypervisor {
@@ -686,7 +690,16 @@ impl Hypervisor {
             config.coalesce_debounce,
         );
         let queue = SlotQueue::new(config.queue_root.clone(), config.queue_max_concurrent);
-        Self { cache, queue, nocache_args, config, thermal_gate: gate }
+
+        // FR-008: create speculation tracker and spawn the background task.
+        let speculation_tracker = Arc::new(SpeculationTracker::new());
+        speculation::spawn_speculation_task(
+            Arc::clone(&speculation_tracker),
+            cache.clone(),
+            gate.clone(),
+        );
+
+        Self { cache, queue, nocache_args, config, thermal_gate: gate, speculation_tracker }
     }
 
     /// Borrow the mutating-path [`SlotQueue`] (Hypervisor API for external callers).
@@ -778,9 +791,10 @@ impl Hypervisor {
     ///   flock; the first one to acquire the lock spawns; the rest read the
     ///   cache once the lock is released.
     ///
-    /// # TODO(hypervisor): speculative
-    /// Record command-frequency histograms here; trigger pre-execution from a
-    /// background task when a command crosses the speculation threshold.
+    /// # FR-008: speculative execution
+    /// Command-frequency histograms are tracked in [`SpeculationTracker`];
+    /// the background task pre-executes high-probability commands into the
+    /// coalesce cache during idle periods.
     pub async fn run(&self, req: SpawnRequest) -> Result<SpawnOutcome> {
         // ── Thermal gate ─────────────────────────────────────────────────────
         self.thermal_gate_check().await?;
@@ -833,6 +847,10 @@ impl Hypervisor {
         if let Some(cached) = self.cache.lookup(&key)? {
             debug!(key = %key.0, "hypervisor::run — cache hit");
             record_coalesce_lookup_hit();
+            // FR-008: record hit for speculation tracker.
+            self.speculation_tracker
+                .record_hit(&key, &req.argv, &req.cwd, &req.env)
+                .await;
             return Ok(SpawnOutcome {
                 exit_code: cached.exit_code,
                 stdout: cached.stdout,
@@ -880,6 +898,13 @@ impl Hypervisor {
         // We use `effective_req` (with a potentially FUSE-wrapped cwd)
         // inside the closure to avoid any borrow conflict with `req`.
         let (cached, hit_kind) = self.coalesce_via_lock(&key, &effective_req)?;
+
+        // FR-008: record speculation hit when the lock-wait cache was shared.
+        if hit_kind.shared_from_cache() {
+            self.speculation_tracker
+                .record_hit(&key, &req.argv, &req.cwd, &req.env)
+                .await;
+        }
 
         Ok(SpawnOutcome {
             exit_code: cached.exit_code,
@@ -1327,8 +1352,8 @@ mod tests {
 
     /// HypervisorConfig.coalesce_debounce is plumbed into CoalesceCache so every
     /// Hypervisor::run coalesce path uses with_lock's debounce re-check (AC-008.6).
-    #[test]
-    fn hypervisor_coalesce_debounce_wired_from_config() {
+    #[tokio::test]
+    async fn hypervisor_coalesce_debounce_wired_from_config() {
         let dir = TempDir::new().expect("tempdir");
         let debounce = Duration::from_millis(75);
         let hv = Hypervisor::with_options(
@@ -1352,8 +1377,8 @@ mod tests {
     }
 
     /// Default Hypervisor constructors leave debounce disabled (opt-in via config).
-    #[test]
-    fn hypervisor_default_debounce_is_zero() {
+    #[tokio::test]
+    async fn hypervisor_default_debounce_is_zero() {
         let dir = TempDir::new().expect("tempdir");
         let hv = Hypervisor::new(dir.path());
         assert_eq!(hv.coalesce_debounce(), Duration::ZERO);
