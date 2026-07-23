@@ -116,7 +116,7 @@ flowchart TD
 |----|------|-------------|------|--------|--------|-----------|
 | T-685 | C10 L99 dashboard skeleton loading states | FR-003 / C10 L99 | T-680 | S | DONE | Skeletons + `loading-states.md` + `tests/c10_l99_skeleton_states.rs` (#396); L99 2→3 |
 | T-690 | Governance reconcile after #392 (#396/#399) | audit | T-680 | S | DONE | SCORECARD v6 + T-660 DONE + `audit_scorecard.json` at `bba2411` |
-| T-691 | Coverage pin refresh post-#399 | FR-003 / C01 L11 | T-685 | S | READY | Green `coverage.yml` llvm-cov snapshot after `922b4ae+`; matrix + pin gate cite new % |
+| T-691 | Coverage pin refresh post-#399 | FR-003 / C01 L11 | T-685 | S | DONE | Measured **80.51%** lines @ `5d8dc08` (run 29985746034); matrix + pin gates cite real % |
 | T-692 | Dashboard hex drift (token alignment) | FR-003 / C10 L98 | T-685 | M | READY | Dashboard hexes match `assets/tokens.css`; SCORECARD top-3 drops hex drift |
 
 ## Ownership notes

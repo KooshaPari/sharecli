@@ -41,7 +41,7 @@
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
 | C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-625 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` (83.48% @ `d3cb7c4`) · `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json` · `tests/c01_coverage_pin_gate.rs` | agent-c01 |
-| C01 | L11 | Post-#399 broad-workspace pin refresh | Med | W15.2 · T-691 · FR-003 | Status: Gap | `coverage.yml` empty-suite on `922b4ae`/`bba2411` (runs 29872308604, 29967745465); keep honest 83.48% pin | agent-c01 |
+| C01 | L11 | Post-#399 broad-workspace pin refresh | Med | W15.2 · T-691 · FR-003 | Status: Closed | Measured **80.51%** @ `5d8dc08` (run 29985746034); `TEST_COVERAGE_MATRIX.md` + `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` | agent-c01 |
 | C10 | L98 | Dashboard hex drift vs tokens.css | Med | W15.4 · T-692 · FR-003 | Status: Gap | SCORECARD C10 top-3; `assets/tokens.css` vs `src/dashboard.html` hexes | agent-c10 |
 | C01 | L12 | FR↔acceptance-test SSOT | Med | T-670 · FR-003 | Status: Closed | `FUNCTIONAL_REQUIREMENTS.md` · `docs/specs/TRACEABILITY.md` · `tests/c01_fr_ssot_gate.rs` | agent-c01 |
 | C02 | L25 | Serve HTTP rate limit middleware | Med | W14 · FR-003 | Status: Closed | `src/serve_rate_limit.rs` · `src/commands/serve.rs` · `docs/ops/rate-limits.md` · `tests/c02_serve_rate_limit.rs` | agent-c02 |
