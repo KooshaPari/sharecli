@@ -12,6 +12,7 @@ surface gains proof (release asset, deploy URL, or CI log).
 | GitHub Releases (prebuilt binaries) | **ready** | Tag `v*` → `release.yml` `github-release` job | Attaches **UNSIGNED** CLI + tray archives + `.sha256` (+ SBOM). Not notarized (L112 open). |
 | Homebrew (`Formula/sharecli.rb`) | **proven** | Bottle sha256 from `v0.3.0` darwin tarball | `Formula/sharecli.rb` + [`docs/ops/brew-bottle.md`](ops/brew-bottle.md) |
 | Linux `.deb` (unsigned) | **soft CI** | `packaging-soft.yml` + `scripts/packaging/build_deb.sh` | Artifact `sharecli_*_amd64.deb` on PR/main (L108 phase 3) |
+| macOS `.dmg` / Windows `.msi` (unsigned layouts) | **soft CI** | `packaging-soft.yml` `dmg-msi-soft` + `build_dmg_layout.sh` / `build_msi_layout.sh` + `wix/sharecli.wxs` | Layout assert via `assert_dmg_msi_soft.sh` (L108 phase 3.5; signed attach blocked on L112) |
 | OpenAPI (`docs/openapi/serve.yaml`) | **gated** | All `serve` Axum routes; drift CI via `scripts/check-openapi-drift.py` | Mirrors `sharecli serve` HTTP surface |
 | SBOM (CycloneDX) | **shipped** | `sbom.yml` on main + embedded in release tarballs | `sharecli.cdx.json` in-archive + CI artifact |
 | OCI container (`Containerfile`) | **ready** | Multi-stage build, non-root `USER sharecli`, `HEALTHCHECK` → `/healthz` | `podman build -f Containerfile -t sharecli .` then `podman run --rm -p 9000:9000 sharecli` |
@@ -35,7 +36,7 @@ Operator channels: [`ops/auto-update.md`](ops/auto-update.md) (C11 L111). Prefer
 
 ## Native installers (soft)
 
-Planned `.dmg` / `.msi` paths + shipped unsigned `.deb`: [`ops/dmg-msi-packaging.md`](ops/dmg-msi-packaging.md) (C11 L108). Archives today; signed classic installers after L112.
+Unsigned `.deb` + soft `.app`/WiX MSI layouts: [`ops/dmg-msi-packaging.md`](ops/dmg-msi-packaging.md) (C11 L108). Archives today; signed classic installers after L112.
 
 ## Windows tray hardening (soft)
 

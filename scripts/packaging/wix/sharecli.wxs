@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Soft unsigned MSI scaffold for sharecli (C11 L108).
+  No Authenticode — L112 secrets remain out of scope.
+  Build (Windows + WiX Toolset v3/v4): candle/light or `wix build` against a staged layout.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product
+      Id="*"
+      Name="ShareCLI"
+      Language="1033"
+      Version="$(var.ShareCLIVersion)"
+      Manufacturer="Phenotype"
+      UpgradeCode="A7C3E1B2-4D5F-6789-ABCD-0123456789EF">
+    <Package
+        InstallerVersion="500"
+        Compressed="yes"
+        InstallScope="perUser"
+        Description="Shared CLI process manager (unsigned soft MSI)" />
+
+    <MajorUpgrade
+        DowngradeErrorMessage="A newer version of ShareCLI is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="ShareCLI" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+  </Product>
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="INSTALLFOLDER" Name="ShareCLI" />
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="ShareCLIBinary" Guid="B1C2D3E4-F5A6-7890-BCDE-F01234567890">
+        <File
+            Id="ShareCLIExe"
+            Source="$(var.ShareCLISourceDir)\sharecli.exe"
+            KeyPath="yes"
+            Checksum="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
