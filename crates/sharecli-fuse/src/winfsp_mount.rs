@@ -21,6 +21,7 @@ use winfsp::filesystem::{FileInfo, FileSecurity, FileSystemContext, OpenFileInfo
 use winfsp::host::{FileSystemHost, VolumeParams};
 use winfsp::{winfsp_init, FspError, U16CStr};
 
+use crate::cow_session::CowMountHandle;
 use crate::provenance::{annotate_write, default_session_id};
 use crate::write_serialize_meters::record_passthrough_write;
 
@@ -62,8 +63,13 @@ pub struct WinfspMountSession {
 }
 
 impl WinfspMountSession {
-    /// Mount `backing` at `mountpoint` with write-provenance `session_id`.
-    pub fn start(mountpoint: &Path, backing: &Path, session_id: &str) -> Result<Self> {
+    /// Mount `backing` at `mountpoint` with shared CoW/provenance handle.
+    pub fn start(
+        mountpoint: &Path,
+        backing: &Path,
+        session_id: &str,
+        handle: Arc<CowMountHandle>,
+    ) -> Result<Self> {
         ensure_winfsp()?;
         if !backing.is_dir() {
             bail!("sharecli-fuse WinFsp: backing is not a directory: {}", backing.display());
@@ -80,10 +86,10 @@ impl WinfspMountSession {
         let ready = Arc::new(AtomicBool::new(false));
         let ready_t = Arc::clone(&ready);
         let mp_t = mp.clone();
+        let handle_t = Arc::clone(&handle);
 
         let join = thread::spawn(move || {
-            let result = run_host(&mp_t, &backing, &session, stop_t, ready_t);
-            result
+            run_host(&mp_t, &backing, &session, handle_t, stop_t, ready_t)
         });
 
         let deadline = Duration::from_secs(20);
@@ -123,21 +129,38 @@ impl Drop for WinfspMountSession {
 }
 
 /// Blocking mount entry used by [`crate::mount_with_session`].
-pub fn mount_blocking(mountpoint: &Path, backing: &Path, session_id: &str) -> Result<()> {
+pub fn mount_blocking(
+    mountpoint: &Path,
+    backing: &Path,
+    session_id: &str,
+    handle: Arc<CowMountHandle>,
+) -> Result<()> {
     ensure_winfsp()?;
     let stop = Arc::new(AtomicBool::new(false));
     let ready = Arc::new(AtomicBool::new(false));
-    run_host(mountpoint, backing, session_id, stop, ready)
+    run_host(
+        mountpoint,
+        backing,
+        session_id,
+        handle,
+        stop,
+        ready,
+    )
 }
 
 fn run_host(
     mountpoint: &Path,
     backing: &Path,
     session_id: &str,
+    handle: Arc<CowMountHandle>,
     stop: Arc<AtomicBool>,
     ready: Arc<AtomicBool>,
 ) -> Result<()> {
-    let ctx = PassthroughCtx { backing: backing.to_path_buf(), session_id: session_id.to_string() };
+    let ctx = PassthroughCtx {
+        backing: backing.to_path_buf(),
+        session_id: session_id.to_string(),
+        cow: handle,
+    };
 
     let mut params = VolumeParams::new();
     params
@@ -170,6 +193,7 @@ fn run_host(
 struct PassthroughCtx {
     backing: PathBuf,
     session_id: String,
+    cow: Arc<CowMountHandle>,
 }
 
 struct FileCtx {
@@ -341,10 +365,19 @@ impl FileSystemContext for PassthroughCtx {
         } else {
             file.seek(SeekFrom::Start(offset)).map_err(|_| FspError::from(0xC0000001))?;
         }
-        file.write_all(buffer).map_err(|_| FspError::from(0xC0000001))?;
-        annotate_write(&context.path, &self.session_id).map_err(|_| FspError::from(0xC0000001))?;
+        file.write_all(buffer)
+            .map_err(|_| FspError::from(0xC0000001))?;
+        let path = context.path.clone();
+        let session = self.session_id.clone();
+        let n = buffer.len() as u32;
+        self.cow
+            .with_locked_path(None, &path, || {
+                annotate_write(&path, &session).map_err(|_| FspError::from(0xC0000001))?;
+                Ok::<(), FspError>(())
+            })
+            .map_err(|_| FspError::from(0xC0000001))??;
         record_passthrough_write();
-        Ok(buffer.len() as u32)
+        Ok(n)
     }
 
     fn rename(

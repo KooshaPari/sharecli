@@ -66,10 +66,23 @@ impl MountSession {
         {
             let mount_dir = tempfile::tempdir()?;
             let mountpoint = mount_dir.path().to_path_buf();
+            let session_id = default_session_id();
+            let handle = std::sync::Arc::new(crate::CowMountHandle::from_options(
+                backing,
+                &crate::InterceptFsOptions {
+                    session_id: session_id.clone(),
+                    cow: false,
+                    cow_dir: None,
+                    agent: None,
+                    serialize: true,
+                    agents_conf: None,
+                },
+            ));
             let session = crate::winfsp_mount::WinfspMountSession::start(
                 &mountpoint,
                 backing,
-                &default_session_id(),
+                &session_id,
+                handle,
             )?;
             let seed_on_mount = mountpoint.join(seed_rel);
             let deadline = Duration::from_secs(8);
