@@ -9,6 +9,7 @@
 // --- Tier A/B: product + ops (root pub surface) ---
 pub mod audit_log;
 pub mod cast;
+pub mod session;
 pub mod commands;
 pub mod config;
 pub mod config_loader;
