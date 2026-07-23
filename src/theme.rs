@@ -1,9 +1,10 @@
 //! Backbone-2 theme tokens for sharecli (Phase 2 tokens.css adoption).
 //!
 //! Source of truth: tokens.css (`bb2-graphite`, `bb2-panel`, `bb2-pulse-green`,
-//! `bb2-sync-violet`, `bb2-warm-amber`). This module is the Rust mirror of those
-//! CSS custom properties so any non-CLI surface (logs, tui, markdown reports)
-//! can paint with the same family without re-deriving hex anywhere.
+//! `bb2-sync-violet`, `bb2-warm-amber`, `bb2-error`). This module is the Rust
+//! mirror of those CSS custom properties so any non-CLI surface (logs, tui,
+//! markdown reports) can paint with the same family without re-deriving hex
+//! anywhere.
 //!
 //! All `from_hex` is `const fn`, so the palette is statically available at
 //! compile time and `Tokens::default()` is a `const` value.
@@ -62,6 +63,7 @@ pub struct Tokens {
     pub pulse_green: Rgb,
     pub sync_violet: Rgb,
     pub warm_amber: Rgb,
+    pub error: Rgb,
 }
 
 impl Tokens {
@@ -73,6 +75,7 @@ impl Tokens {
         pulse_green: Rgb::from_hex("#3fb950"),
         sync_violet: Rgb::from_hex("#a371f7"),
         warm_amber: Rgb::from_hex("#d29922"),
+        error: Rgb::from_hex("#f85149"),
     };
 
     /// Light variant — paper ground with Backbone-2 accents (tokens.css `[data-theme=light]`).
@@ -83,6 +86,7 @@ impl Tokens {
         pulse_green: Rgb::from_hex("#1a7f37"),
         sync_violet: Rgb::from_hex("#8250df"),
         warm_amber: Rgb::from_hex("#9a6700"),
+        error: Rgb::from_hex("#cf222e"),
     };
 
     /// Default palette = Backbone-2.
@@ -126,6 +130,7 @@ mod tests {
         assert_eq!(t.pulse_green, Rgb(0x3f, 0xb9, 0x50));
         assert_eq!(t.sync_violet, Rgb(0xa3, 0x71, 0xf7));
         assert_eq!(t.warm_amber, Rgb(0xd2, 0x99, 0x22));
+        assert_eq!(t.error, Rgb(0xf8, 0x51, 0x49));
     }
 
     #[test]

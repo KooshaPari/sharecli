@@ -1,6 +1,6 @@
 # Golden visual tests
 
-Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for CLI/TUI are **shipped** (T-250); the dashboard PNG diff is a **blocking gate** (T-600), while hex-drift closure remains soft.
+Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for CLI/TUI are **shipped** (T-250); the dashboard PNG diff is a **blocking gate** (T-600); dashboard hex→token lock is **shipped** (`tests/c10_l105_hex_drift.rs`).
 
 ## Scope split
 
@@ -10,7 +10,7 @@ Audit-v38 **C10 L107** — screenshot / visual-regression plan. Text goldens for
 | Splash string regression | **Shipped** | `tests/integration_cli.rs` | default test suite |
 | Rust ↔ CSS hex lock | **Shipped** | `src/theme.rs` (`backbone2_constants_match_tokens_css`) | unit tests |
 | Dashboard PNG snapshots | **Hard** | `tests/visual/dashboard/` (committed Ubuntu baselines + manifest bytes) + `artifacts/playwright/` capture | `visual-soft.yml` (blocking diff) |
-| Dashboard hex → token alignment | **Soft** | `src/dashboard.html` → `assets/tokens.css` | manual + future computed-style assert |
+| Dashboard hex → token alignment | **Shipped** | `src/dashboard.html` → `assets/tokens.css` | `tests/c10_l105_hex_drift.rs` |
 
 Eval-corpus JSON goldens (`docs/ops/eval-corpus.md`) are **not** screenshot tests — keep them separate from C10 visual gates.
 
@@ -42,35 +42,35 @@ Palette and motion tokens are the CSS source of truth; Rust mirrors in `src/them
 | Dark pair | `:root` `--bb2-*` | `backbone2_constants_match_tokens_css` |
 | Light pair | `[data-theme="light"]`, `prefers-color-scheme: light` | CLI `--theme light`; extend unit test when light lock added |
 | Type / motion | `--type-*`, `--motion-*` | `docs/visual/typography.md`, `docs/visual/motion.md` |
-| Dashboard drift | inline hex in `src/dashboard.html` | see [Dashboard hex drift](#dashboard-hex-drift-l105) |
+| Dashboard drift | none (vars only outside `:root`) | `tests/c10_l105_hex_drift.rs` |
 
 Do not add one-off hex on new surfaces; wire through tokens and mirror in Rust.
 
 ## Dashboard hex drift (L105)
 
-The embedded dashboard still uses inline hex instead of `var(--bb2-*)`. Full inventory and mapping live in [`docs/a11y/high-contrast.md`](../a11y/high-contrast.md#dashboard-hex-audit-steps-l105-evidence).
+**Closed.** The embedded dashboard `:root` mirrors `assets/tokens.css` brand + chrome tokens; rules use `var(--bb2-*)` only. Gate: `tests/c10_l105_hex_drift.rs`.
 
-Quick extract:
+Legacy inventory (pre-alignment) lived in [`docs/a11y/high-contrast.md`](../a11y/high-contrast.md#dashboard-hex-audit-steps-l105-evidence).
 
 ```bash
-rg -o '#[0-9a-fA-F]{3,8}' src/dashboard.html | sort -u
+cargo test --test c10_l105_hex_drift
+rg -o '#[0-9a-fA-F]{3,8}' src/dashboard.html | sort -u   # hex only inside :root
 ```
 
-| Dashboard hex | Nearest token | Match? |
-|---------------|---------------|:------:|
-| `#161b22` | `--bb2-panel` | **match** |
-| `#a371f7` | `--bb2-sync-violet` | **match** |
-| `#1a1a2e` | `--bb2-graphite` `#0a0d12` | drift |
-| `#22c55e` | `--bb2-pulse-green` `#3fb950` | near |
-| `#f59e0b` | `--bb2-warm-amber` `#d29922` | near |
-| `#ef4444` | — (no error token) | drift |
+| Token | Hex | Role |
+|-------|-----|------|
+| `--bb2-graphite` | `#0a0d12` | ground |
+| `--bb2-panel` | `#161b22` | panels |
+| `--bb2-pulse-green` | `#3fb950` | healthy / CTA |
+| `--bb2-sync-violet` | `#a371f7` | sync / connecting |
+| `--bb2-warm-amber` | `#d29922` | warn / mem |
+| `--bb2-error` | `#f85149` | disconnect / deny |
 
-**Hex-alignment sequence**
+**Follow-ups**
 
-1. Refactor `dashboard.html` to `@import` or inline `assets/tokens.css` and replace hard-coded hex with `var(--bb2-*)`.
-2. Add `--bb2-error` (or map errors to warm-amber + label) in `tokens.css` + `theme.rs`.
-3. Re-run contrast spot-check (`docs/a11y/contrast.md`).
-4. Capture new Playwright baselines (below).
+1. Re-run contrast spot-check (`docs/a11y/contrast.md`) after any token hex change.
+2. Regenerate Playwright PNG baselines on `ubuntu-24.04` (accent greens/ambers now SoT-aligned).
+3. Theme matrix captures once light `data-theme` is wired through the dashboard shell.
 
 ## Dashboard PNG gate (Playwright)
 
@@ -137,10 +137,10 @@ Tray / Win32 surfaces stay out of scope until L112 signing hardens (C11).
 | Text goldens | 5/5 fixtures green in CI | unchanged |
 | Hex lock | dark pair unit test | + light pair lock |
 | Dashboard PNG | blocking manifest byte/dimension checks; pixel diff ≤ 0.1% @ 768/1280 and ≤ 0.2% @ 375 | theme matrix |
-| Hex drift | documented in high-contrast.md | zero unmatched hex in `dashboard.html` |
+| Hex drift | `tests/c10_l105_hex_drift.rs` | PNG regen after token hex edits |
 | axe Level A | `a11y.yml` | unchanged |
 
-L107 remains **3**: the hard promotion strengthens existing evidence but does not justify a score above the rubric maximum or change the C10 cluster total. T-600 closes the visual-gate remediation; dashboard hex drift remains separate.
+L107 remains **3**: the hard promotion strengthens existing evidence but does not justify a score above the rubric maximum or change the C10 cluster total. T-600 closes the visual-gate remediation; L105 hex drift is gated separately.
 
 ## Related docs
 

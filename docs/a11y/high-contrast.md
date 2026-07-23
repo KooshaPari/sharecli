@@ -1,6 +1,6 @@
 # High contrast — forced-colors & prefers-contrast (soft)
 
-Audit-v38 **C10 L104** (theming) + **L105** (brand cohesion) — documents current behavior, token pairs, and dashboard hex drift audit steps. Implementation of a dedicated high-contrast theme remains a soft follow-up.
+Audit-v38 **C10 L104** (theming) + **L105** (brand cohesion) — documents current behavior, token pairs, and the closed dashboard hex→token lock. Implementation of a dedicated high-contrast theme remains a soft follow-up.
 
 ## Media-query posture
 
@@ -76,48 +76,46 @@ Wire as `[data-theme="high-contrast"]` + Rust `ThemeVariant::Backbone2HighContra
 
 ## Dashboard hex audit steps (L105 evidence)
 
-The embedded dashboard (`src/dashboard.html`) still uses inline hex. This checklist maps each value to the Backbone-2 SoT and records drift for brand-cohesion scoring.
+**Status: closed.** `src/dashboard.html` `:root` mirrors `assets/tokens.css`; rules use `var(--bb2-*)` only. Regression: `tests/c10_l105_hex_drift.rs`.
 
 ### 1. Extract hex inventory
 
 ```bash
 rg -o '#[0-9a-fA-F]{3,8}' src/dashboard.html | sort -u
+# expect hex only inside the :root token block
+cargo test --test c10_l105_hex_drift
 ```
 
 ### 2. Map to token SoT
 
-| Dashboard hex | Role | Nearest token | Match? |
-|---------------|------|---------------|:------:|
-| `#1a1a2e` | `body` background | `--bb2-graphite` `#0a0d12` | drift |
-| `#e2e8f0` | body text | — (no text token yet) | drift |
-| `#a78bfa` | `h1` title | `--bb2-sync-violet` `#a371f7` | near |
-| `#161b22` | table header bg | `--bb2-panel` | **match** |
-| `#a371f7` | table header text | `--bb2-sync-violet` | **match** |
-| `#22c55e` | connected / running | `--bb2-pulse-green` `#3fb950` | near |
-| `#f59e0b` | memory column | `--bb2-warm-amber` `#d29922` | near |
-| `#ef4444` | disconnected / error | — (no error token) | drift |
-| `#94a3b8` | status label, pid | — | drift |
-| `#cbd5e1` | table cells | — | drift |
-| `#16213e` | row hover, focus bg | — | drift |
-| `#2d2d4e` / `#1e1e3a` | borders | — | drift |
-| `#4a5568` | empty-state copy | — | drift |
+| Token | Hex | Role |
+|-------|-----|------|
+| `--bb2-graphite` | `#0a0d12` | body ground |
+| `--bb2-panel` | `#161b22` | panels / empty bg |
+| `--bb2-pulse-green` | `#3fb950` | connected / running / CTA |
+| `--bb2-sync-violet` | `#a371f7` | connecting / error CTA |
+| `--bb2-warm-amber` | `#d29922` | warn / mem |
+| `--bb2-error` | `#f85149` | disconnect / deny / critical |
+| `--bb2-text` / `--bb2-muted` / `--bb2-cell` | chrome | body / labels / cells |
+| `--bb2-border` / `--bb2-row-hover` / `--bb2-caption` | chrome | borders / hover / hints |
 
 ### 3. Contrast spot-check
 
-Cross-check pairs against [`contrast.md`](./contrast.md). All listed dashboard pairs pass WCAG 2.2 AA normal text on the default dark chrome; re-run after token alignment.
+Cross-check pairs against [`contrast.md`](./contrast.md). Re-run after any SoT hex change.
 
 ### 4. Manual forced-colors pass (when implemented)
 
 1. Windows: **Settings → Accessibility → Contrast themes** → enable a high-contrast theme.
 2. Open `sharecli serve` dashboard at `http://127.0.0.1:PORT/`.
 3. Confirm: table headers readable, focus ring visible, status dot has text label (`#status-label`).
-4. Record pass/fail in release checklist; until then L105 hex drift remains partial.
+4. Record pass/fail in release checklist.
 
 ### 5. CI / sync guards
 
 | Check | Path |
 |-------|------|
 | Rust ↔ CSS hex lock | `theme::backbone2_constants_match_tokens_css` |
+| Dashboard ↔ tokens.css | `tests/c10_l105_hex_drift.rs` |
 | WCAG ratios | `docs/a11y/contrast.md` |
 | axe Level A | `.github/workflows/a11y.yml` |
 
