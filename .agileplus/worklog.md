@@ -1,5 +1,10 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-22 (C11 L108 unsigned dmg/msi soft layouts — FR-003)
+- Status: DONE — phase 3.5 soft scaffolds (`build_dmg_layout.sh`, `build_msi_layout.sh`, `wix/sharecli.wxs`, `assert_dmg_msi_soft.sh`, packaging-soft `dmg-msi-soft`, FR-003 tests)
+- Score: C11 **39/45 (87% B)** unchanged (append); L112 still Blocked
+- FR: FR-003 · C11 L108
+
 ## 2026-07-22 (Wave15 governance reconcile — T-690 / FR-003)
 - Status: DONE — reconcile SCORECARD v6 after #392 merges (#396 C10 L99 2→3; #399 coverage tests at `922b4ae`); resolve SCORECARD merge conflict; WORK_DAG T-660 READY→DONE + Wave15 stub (T-685 DONE / T-691 READY / T-692 READY); pin `audit_scorecard.json` at `bba2411`
 - Coverage: measured post-#399 % **unavailable** (`coverage.yml` empty-suite on `922b4ae`/`bba2411`); honest pin remains **83.48%** @ `d3cb7c4`

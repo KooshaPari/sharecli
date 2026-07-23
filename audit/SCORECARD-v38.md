@@ -619,6 +619,11 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - Top-3 C07 gaps: freebsd/wasm; examine_re widen; flake-tracker stats.
 - Overall unweighted **90.4% A** (1085/12); tier-1 weighted **91% A** (1465/16).
 
+### 2026-07-22 (C11 L108 unsigned dmg/msi soft layouts — FR-003)
+- **C11 39/45 (87% B) unchanged (append):** L108 phase 3.5 — `build_dmg_layout.sh` + `build_msi_layout.sh` + `wix/sharecli.wxs`; `assert_dmg_msi_soft.sh`; `packaging-soft.yml` job `dmg-msi-soft`; `tests/c11_l108_dmg_msi_packaging.rs`; deploy matrix row for soft layouts.
+- L112 codesign/notarize secrets remain **Blocked**; no score bump (already L108=3).
+- Top-3 C11 gaps: L112 codesign secrets; L111 in-binary updater hard; signed dmg/msi tag attach.
+
 ### 2026-07-22 (C10 L105 dashboard hex → tokens.css lock — FR-003)
 - Dashboard CSS aligned to `assets/tokens.css` / `VISUAL_SPEC`: `--bb2-error` + chrome tokens; `src/dashboard.html` rules use `var(--bb2-*)` only; Rust mirror adds `Tokens.error`; gate `tests/c10_l105_hex_drift.rs`.
 - **C10 remains 35/36 (97% A) after Wave15 L99; L105 remains 3:** residual hex drift closed without inventing a further cluster lift (rubric line already maxed).

@@ -1,6 +1,6 @@
 name: Packaging (soft)
 
-# C11 L108 phase 3 — unsigned native installer scaffold (.deb) + metadata check.
+# C11 L108 phase 3 / 3.5 — unsigned native installer scaffolds (.deb + dmg/msi layouts).
 # Signed dmg/msi remain blocked on L112 secrets.
 
 on:
@@ -11,12 +11,15 @@ on:
       - 'scripts/packaging/**'
       - '.github/workflows/packaging-soft.yml'
       - 'docs/ops/dmg-msi-packaging.md'
+      - 'tests/c11_l108_dmg_msi_packaging.rs'
   push:
     branches: [main]
     paths:
       - 'Cargo.toml'
       - 'scripts/packaging/**'
       - '.github/workflows/packaging-soft.yml'
+      - 'docs/ops/dmg-msi-packaging.md'
+      - 'tests/c11_l108_dmg_msi_packaging.rs'
   workflow_dispatch:
 
 permissions:
@@ -53,14 +56,35 @@ jobs:
           path: dist/sharecli_*.deb
           retention-days: 14
 
+  dmg-msi-soft:
+    name: unsigned dmg/msi soft scaffolds
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Assert unsigned dmg/msi soft layouts
+        run: bash scripts/packaging/assert_dmg_msi_soft.sh
+      - name: Upload soft layout markers
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sharecli-dmg-msi-soft-${{ github.sha }}
+          path: |
+            scripts/packaging/wix/sharecli.wxs
+            scripts/packaging/build_dmg_layout.sh
+            scripts/packaging/build_msi_layout.sh
+            docs/ops/dmg-msi-packaging.md
+          retention-days: 14
+
   dist-metadata:
     name: cargo-dist metadata present
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Assert [package.metadata.dist] targets
+      - name: Assert [package.metadata.dist] + workspace dmg/msi hosts
         run: |
           grep -q '^\[package.metadata.dist\]' Cargo.toml
           grep -q 'aarch64-apple-darwin' Cargo.toml
+          grep -q 'x86_64-apple-darwin' Cargo.toml
           grep -q 'x86_64-unknown-linux-gnu' Cargo.toml
+          grep -q 'x86_64-pc-windows-msvc' Cargo.toml
           test -f docs/ops/dmg-msi-packaging.md
+          test -f scripts/packaging/wix/sharecli.wxs
