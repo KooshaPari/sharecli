@@ -36,7 +36,9 @@ pub struct ZmxSessionAdapter {
 }
 
 impl ZmxSessionAdapter {
-    pub fn new(binary: impl Into<String>) -> Self { Self { binary: binary.into() } }
+    pub fn new(binary: impl Into<String>) -> Self {
+        Self { binary: binary.into() }
+    }
 
     pub fn attach(&self, name: &str, command: &[&str]) -> ZmxCommand {
         let mut args = vec!["attach".to_owned(), name.to_owned()];
@@ -50,14 +52,18 @@ impl ZmxSessionAdapter {
 
     pub fn tail(&self, name: &str, lines: Option<u32>) -> ZmxCommand {
         let mut args = vec!["tail".to_owned()];
-        if let Some(lines) = lines { args.extend(["--lines".to_owned(), lines.to_string()]); }
+        if let Some(lines) = lines {
+            args.extend(["--lines".to_owned(), lines.to_string()]);
+        }
         args.push(name.to_owned());
         ZmxCommand::new(self.binary.clone(), args)
     }
 
     pub fn history(&self, name: &str, vt: bool) -> ZmxCommand {
         let mut args = vec!["history".to_owned()];
-        if vt { args.push("--vt".to_owned()); }
+        if vt {
+            args.push("--vt".to_owned());
+        }
         args.push(name.to_owned());
         ZmxCommand::new(self.binary.clone(), args)
     }
@@ -75,9 +81,8 @@ impl ZmxSessionAdapter {
 
 fn command_available(binary: &str) -> bool {
     Path::new(binary).is_file()
-        || std::env::var_os("PATH").is_some_and(|path| {
-            std::env::split_paths(&path).any(|dir| dir.join(binary).is_file())
-        })
+        || std::env::var_os("PATH")
+            .is_some_and(|path| std::env::split_paths(&path).any(|dir| dir.join(binary).is_file()))
 }
 
 pub fn execute(command: &ZmxCommand) -> std::io::Result<std::process::Output> {
@@ -103,7 +108,8 @@ pub struct GhosttyAdapter;
 
 impl GhosttyAdapter {
     pub fn degraded_reason(caps: &GhosttyCapabilities) -> Option<&'static str> {
-        (!caps.apple_events && !caps.app_intents).then_some("native surface API unavailable")
+        (!caps.apple_events && !caps.app_intents)
+            .then_some("native surface API unavailable")
             .or_else(|| (!caps.control_socket).then_some("native RPC unavailable"))
     }
 }
