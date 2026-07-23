@@ -168,9 +168,11 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let mut opts = FuseMountOptions::default();
-        opts.session_id = Some(session_id.to_string());
-        opts.serialize = true;
+        let opts = FuseMountOptions {
+            session_id: Some(session_id.to_string()),
+            serialize: true,
+            ..Default::default()
+        };
         self.mount_background_with(mountpoint, backing, &opts)
     }
 
@@ -193,9 +195,11 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let mut opts = FuseMountOptions::default();
-        opts.session_id = Some(session_id.to_string());
-        opts.serialize = true;
+        let opts = FuseMountOptions {
+            session_id: Some(session_id.to_string()),
+            serialize: true,
+            ..Default::default()
+        };
         self.mount_foreground_with(mountpoint, backing, &opts)
     }
 
@@ -281,8 +285,10 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let mut opts = FuseMountOptions::default();
-        opts.session_id = Some(session_id.to_string());
+        let opts = FuseMountOptions {
+            session_id: Some(session_id.to_string()),
+            ..Default::default()
+        };
         self.mount_background_with(mountpoint, backing, &opts)
     }
 
@@ -293,8 +299,10 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let mut opts = FuseMountOptions::default();
-        opts.session_id = Some(session_id.to_string());
+        let opts = FuseMountOptions {
+            session_id: Some(session_id.to_string()),
+            ..Default::default()
+        };
         self.mount_foreground_with(mountpoint, backing, &opts)
     }
 

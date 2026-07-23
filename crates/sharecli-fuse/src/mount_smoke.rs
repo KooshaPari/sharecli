@@ -126,14 +126,12 @@ impl MountSession {
             let mut waited = Duration::ZERO;
 
             while waited < deadline {
-                if seed_on_mount.is_file() {
-                    if std::fs::read(&seed_on_mount).is_ok() {
-                        return Ok(Self {
-                            mountpoint,
-                            _mount_dir: mount_dir,
-                            mount_thread: Some(mount_thread),
-                        });
-                    }
+                if seed_on_mount.is_file() && std::fs::read(&seed_on_mount).is_ok() {
+                    return Ok(Self {
+                        mountpoint,
+                        _mount_dir: mount_dir,
+                        mount_thread: Some(mount_thread),
+                    });
                 }
                 if let Ok(msg) = fail_rx.try_recv() {
                     anyhow::bail!("sharecli-fuse mount smoke: mount failed: {msg}");
