@@ -11,8 +11,11 @@ Acceptance contract for visual polish (C10 L107). Surfaces: CLI splash, TUI, das
 | `--bb2-pulse-green` | `#3fb950` | Primary accent / healthy |
 | `--bb2-sync-violet` | `#a371f7` | Sync / secondary accent |
 | `--bb2-warm-amber` | `#d29922` | Warn / cooldown |
+| `--bb2-error` | `#f85149` | Failure / disconnect |
 
-SoT: `assets/tokens.css`. Do not invent one-off hexes on new surfaces; mirror via `src/theme.rs`.
+Dashboard chrome extensions (`--bb2-text`, `--bb2-muted`, `--bb2-cell`, `--bb2-border`, `--bb2-row-hover`, `--bb2-caption`) live in the same SoT file for HTML surfaces; Rust mirrors the six brand accents above via `src/theme.rs`.
+
+SoT: `assets/tokens.css`. Do not invent one-off hexes on new surfaces; mirror via `src/theme.rs`. Gate: `tests/c10_l105_hex_drift.rs`.
 
 ## 2. Typography
 

@@ -24,7 +24,7 @@
 | C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
-| C10 | Visual Identity | L96–L107 | 35/36 | 97% | A | dashboard hex drift; error illustration tier-1; visual provenance ledger |
+| C10 | Visual Identity | L96–L107 | 35/36 | 97% | A | error illustration tier-1; visual provenance ledger; PNG regen after hex lock |
 | C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
 ## Overall
@@ -618,3 +618,9 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C07 26/30 (87% B) → 27/30 (90% A):** L64 2→3 — `tests/e2e_serve_healthz.rs` + `tests/e2e_chaos_recovery.rs`; `just test-e2e`; `docs/testing/e2e-tier.md`; `tests/c07_l64_e2e_tier_gate.rs`.
 - Top-3 C07 gaps: freebsd/wasm; examine_re widen; flake-tracker stats.
 - Overall unweighted **90.4% A** (1085/12); tier-1 weighted **91% A** (1465/16).
+
+### 2026-07-22 (C10 L105 dashboard hex → tokens.css lock — FR-003)
+- Dashboard CSS aligned to `assets/tokens.css` / `VISUAL_SPEC`: `--bb2-error` + chrome tokens; `src/dashboard.html` rules use `var(--bb2-*)` only; Rust mirror adds `Tokens.error`; gate `tests/c10_l105_hex_drift.rs`.
+- **C10 remains 35/36 (97% A) after Wave15 L99; L105 remains 3:** residual hex drift closed without inventing a further cluster lift (rubric line already maxed).
+- Top-3 C10 gaps: error illustration tier-1; Ubuntu PNG baseline regen after accent SoT alignment; light-theme dashboard matrix.
+- Docs: `docs/visual/{VISUAL_SPEC,golden-visual-tests}.md`, `docs/a11y/{high-contrast,contrast}.md`.
