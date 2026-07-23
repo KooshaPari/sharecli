@@ -206,7 +206,8 @@ fn cache_key_env_mode_includes_environment() {
     let output =
         Command::new(bin).args(["env", "tool"]).output().expect("run harness-cache-key env");
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    let hex = String::from_utf8_lossy(&output.stdout).trim();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let hex = stdout.trim();
     assert_eq!(hex.len(), 16, "expected 16-hex cache key, got: {hex}");
 }
 
