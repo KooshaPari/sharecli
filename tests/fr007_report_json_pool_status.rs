@@ -23,9 +23,7 @@ fn assert_json_gate_host_watch_pool_status_order(raw: &str, context: &str) {
     let v: serde_json::Value =
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     let gate = v.get("gate").expect("{context} MUST include gate (AC-007.73)");
-    let host = v
-        .get("host_watch")
-        .expect("{context} MUST include host_watch (AC-007.73)");
+    let host = v.get("host_watch").expect("{context} MUST include host_watch (AC-007.73)");
     let pool = v.get("pool").expect("{context} MUST include pool (AC-007.73)");
     let status = v.get("status").expect("{context} MUST include status (AC-007.73)");
     assert!(
@@ -38,15 +36,9 @@ fn assert_json_gate_host_watch_pool_status_order(raw: &str, context: &str) {
             && status.get("watched").is_some(),
         "status MUST include proc-scan fields (AC-007.73); got: {status}"
     );
-    assert!(
-        gate.get("gate_decision").is_some(),
-        "gate MUST include gate_decision (AC-007.73)"
-    );
+    assert!(gate.get("gate_decision").is_some(), "gate MUST include gate_decision (AC-007.73)");
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.73); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.73); got: {host}");
     }
 
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
@@ -90,11 +82,7 @@ fn fr007_report_json_pool_status_shape() {
         .args(["report", "--format", "json"])
         .output()
         .expect("spawn sharecli report --format json");
-    assert!(
-        out.status.success(),
-        "report --format json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "report --format json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("report --format json MUST emit valid JSON");
     assert!(
@@ -115,11 +103,7 @@ fn fr007_report_json_pool_status_stderr_silent() {
         .args(["report", "--format", "json"])
         .output()
         .expect("spawn sharecli report --format json");
-    assert!(
-        out.status.success(),
-        "report --format json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "report --format json MUST exit 0; stderr: {:?}", out.stderr);
     assert!(
         out.stderr.is_empty(),
         "report --format json MUST NOT print companions on stderr (AC-007.73); stderr: {:?}",

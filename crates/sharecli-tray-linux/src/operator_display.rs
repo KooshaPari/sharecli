@@ -3,7 +3,9 @@
 //!
 //! Mirrors dashboard operator panels and proc/status text sections; testable without GUI.
 
-use crate::ipc::{GateStatusSnapshot, HealthSnapshot, HostResourceWatchJson, PoolSnapshot, StatusSnapshot};
+use crate::ipc::{
+    GateStatusSnapshot, HealthSnapshot, HostResourceWatchJson, PoolSnapshot, StatusSnapshot,
+};
 
 /// Tray thermal/gate severity bucket (dashboard `#thermal-status` + gate decision).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,11 +89,7 @@ pub fn resolve_tray_gate_visual(
     let (color_hex, badge_label, linux_icon_name, swift_symbol_name) = match severity {
         TrayGateSeverity::Critical => ("#f85149", "Critical", "dialog-error", "flame.fill"),
         TrayGateSeverity::Warning => {
-            let label = if thermal_pressure == "UNAVAILABLE" {
-                "Unavailable"
-            } else {
-                "Warning"
-            };
+            let label = if thermal_pressure == "UNAVAILABLE" { "Unavailable" } else { "Warning" };
             ("#d29922", label, "dialog-warning", "exclamationmark.triangle.fill")
         }
         TrayGateSeverity::Normal => ("#3fb950", "Normal", "utilities-system-monitor", "cpu"),
@@ -110,7 +108,10 @@ pub fn resolve_tray_gate_visual(
 }
 
 /// Convenience: derive visuals from a gate snapshot + IPC connectivity.
-pub fn resolve_tray_gate_visual_from_gate(gate: &GateStatusSnapshot, connected: bool) -> TrayGateVisual {
+pub fn resolve_tray_gate_visual_from_gate(
+    gate: &GateStatusSnapshot,
+    connected: bool,
+) -> TrayGateVisual {
     resolve_tray_gate_visual(&gate.thermal_pressure, &gate.gate_decision, connected)
 }
 
@@ -190,13 +191,13 @@ pub fn format_operator_status_summary(
 }
 
 /// Primary tooltip summary line for Linux SNI (AC-007.61).
-pub fn format_tray_tooltip_summary_line(visual: &TrayGateVisual, health: &HealthSnapshot) -> String {
+pub fn format_tray_tooltip_summary_line(
+    visual: &TrayGateVisual,
+    health: &HealthSnapshot,
+) -> String {
     format!(
         "{} managed · {} / {} MB · {}",
-        health.managed_processes,
-        health.used_memory_mb,
-        health.total_memory_mb,
-        visual.badge_label,
+        health.managed_processes, health.used_memory_mb, health.total_memory_mb, visual.badge_label,
     )
 }
 
@@ -209,10 +210,7 @@ pub fn format_tray_tooltip_offline_line(visual: &TrayGateVisual) -> String {
 pub fn format_tray_menu_header_line(visual: &TrayGateVisual, health: &HealthSnapshot) -> String {
     format!(
         "{} · {} process(es) · {} / {} MB",
-        visual.badge_label,
-        health.managed_processes,
-        health.used_memory_mb,
-        health.total_memory_mb,
+        visual.badge_label, health.managed_processes, health.used_memory_mb, health.total_memory_mb,
     )
 }
 
@@ -246,7 +244,10 @@ pub fn format_status_snapshot_tray_line(status: &StatusSnapshot) -> String {
 }
 
 /// Supplementary pool + status operator lines (AC-007.69).
-pub fn format_pool_status_operator_lines(pool: &PoolSnapshot, status: &StatusSnapshot) -> Vec<String> {
+pub fn format_pool_status_operator_lines(
+    pool: &PoolSnapshot,
+    status: &StatusSnapshot,
+) -> Vec<String> {
     vec![format_pool_tray_line(pool), format_status_snapshot_tray_line(status)]
 }
 

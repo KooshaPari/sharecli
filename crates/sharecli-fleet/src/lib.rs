@@ -17,9 +17,8 @@ pub use agent_contention::{
     agent_contention_tier, agent_resource_contention_tier, combined_agent_contention_tier,
     count_host_agents, effective_gate_decision, effective_gate_decision_for_tier,
     format_gate_status_from_snapshot, format_gate_status_section, gate_status_snapshot,
-    gate_status_snapshot_with_rss,
-    live_agent_contention_tier, total_watched_agent_rss_bytes, AgentContentionThresholds,
-    AgentContentionTier, AgentResourceThresholds, GateStatusSnapshot,
+    gate_status_snapshot_with_rss, live_agent_contention_tier, total_watched_agent_rss_bytes,
+    AgentContentionThresholds, AgentContentionTier, AgentResourceThresholds, GateStatusSnapshot,
 };
 use async_nats::Client;
 pub use coalesce_meters::{
@@ -33,10 +32,9 @@ pub use operator_pool_status::{
 pub use proc_scan::{
     agent_label_for_pid, build_agent_forests, build_agent_state_map, build_forest_state_map,
     build_host_agent_forests, build_host_agent_state_map, build_host_forest_state_map,
-    collect_forest_pids, detect_caller_agent,
-    is_under_agent, lookup_host_proc, lookup_proc, scan_agents, scan_host_agents, state_text_for_pid,
-    walk_agent_ancestors, AgentTreeNode, DetectedAgent, FakeProcSource, HostProcSource,
-    ProcSnapshot, ProcSource,
+    collect_forest_pids, detect_caller_agent, is_under_agent, lookup_host_proc, lookup_proc,
+    scan_agents, scan_host_agents, state_text_for_pid, walk_agent_ancestors, AgentTreeNode,
+    DetectedAgent, FakeProcSource, HostProcSource, ProcSnapshot, ProcSource,
 };
 pub use registry::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
 pub use resource_watch::{

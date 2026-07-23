@@ -17,19 +17,13 @@ const GATE_KEYS: [&str; 5] = [
 
 fn assert_host_watch_object(host: &serde_json::Value) {
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.45); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.45); got: {host}");
     }
 }
 
 fn assert_gate_object(gate: &serde_json::Value) {
     for key in GATE_KEYS {
-        assert!(
-            gate.get(key).is_some(),
-            "gate MUST include {key} (AC-007.45); got: {gate}"
-        );
+        assert!(gate.get(key).is_some(), "gate MUST include {key} (AC-007.45); got: {gate}");
     }
 }
 
@@ -37,9 +31,7 @@ fn assert_json_gate_before_host_watch(raw: &str, context: &str) {
     let v: serde_json::Value =
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     let gate = v.get("gate").expect("{context} MUST include gate (AC-007.45)");
-    let host = v
-        .get("host_watch")
-        .expect("{context} MUST include host_watch (AC-007.45)");
+    let host = v.get("host_watch").expect("{context} MUST include host_watch (AC-007.45)");
     assert_gate_object(gate);
     assert_host_watch_object(host);
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
@@ -54,9 +46,7 @@ fn assert_json_gate_before_host_watch(raw: &str, context: &str) {
 #[tokio::test]
 async fn fr007_ipc_health_status_gate_host_watch_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
-    let resp = handler
-        .dispatch(r#"{"id":1,"method":"health.status","params":{}}"#)
-        .await;
+    let resp = handler.dispatch(r#"{"id":1,"method":"health.status","params":{}}"#).await;
     assert!(resp.error.is_none(), "health.status MUST succeed (AC-007.45); err={:?}", resp.error);
     let raw = serde_json::to_string(&resp.result).expect("serialize health.status result");
     assert_json_gate_before_host_watch(&raw, "health.status");

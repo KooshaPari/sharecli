@@ -8,9 +8,7 @@ use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use sharecli_fleet::thermal::ThermalLevel;
 use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
-use sharecli_thermal_tui::{
-    pool_panel_lines, render, status_panel_lines, App, HELP_OVERLAY_HINT,
-};
+use sharecli_thermal_tui::{pool_panel_lines, render, status_panel_lines, App, HELP_OVERLAY_HINT};
 
 const SAMPLE_POOL: PoolOperatorPanel = PoolOperatorPanel {
     node_total: 2,
@@ -21,25 +19,22 @@ const SAMPLE_POOL: PoolOperatorPanel = PoolOperatorPanel {
     healthy: true,
 };
 
-const SAMPLE_STATUS: StatusOperatorPanel = StatusOperatorPanel {
-    scanned: 50,
-    watched: 1,
-    total_processes: 2,
-    agent_rows: 1,
-};
+const SAMPLE_STATUS: StatusOperatorPanel =
+    StatusOperatorPanel { scanned: 50, watched: 1, total_processes: 2, agent_rows: 1 };
 
 /// FR-007 / AC-007.71 — pool panel lines match tray operator formatter.
 #[test]
 fn fr007_thermal_tui_pool_panel_lines_tray_parity() {
     let lines = pool_panel_lines(Some(SAMPLE_POOL), false);
     let text: String = lines.iter().map(|l| l.to_string()).collect();
-    assert!(text.contains("Node idle/total: 1/2"), "pool panel MUST show node capacity; got: {text}");
+    assert!(
+        text.contains("Node idle/total: 1/2"),
+        "pool panel MUST show node capacity; got: {text}"
+    );
     assert!(text.contains("healthy"), "pool panel MUST show health; got: {text}");
 
-    let compact: String = pool_panel_lines(Some(SAMPLE_POOL), true)
-        .iter()
-        .map(|l| l.to_string())
-        .collect();
+    let compact: String =
+        pool_panel_lines(Some(SAMPLE_POOL), true).iter().map(|l| l.to_string()).collect();
     assert!(
         compact.contains("Pool node 2/1 idle · bun 1/0 idle · max 4 · healthy"),
         "compact pool MUST match tray line (AC-007.71); got: {compact}"
@@ -54,10 +49,8 @@ fn fr007_thermal_tui_status_panel_lines_tray_parity() {
     assert!(text.contains("Scanned:  50"), "status panel MUST show scanned; got: {text}");
     assert!(text.contains("agent rows: 1"), "status panel MUST show agent rows; got: {text}");
 
-    let compact: String = status_panel_lines(Some(SAMPLE_STATUS), true)
-        .iter()
-        .map(|l| l.to_string())
-        .collect();
+    let compact: String =
+        status_panel_lines(Some(SAMPLE_STATUS), true).iter().map(|l| l.to_string()).collect();
     assert!(
         compact.contains("Proc scan 50 · watched 1 · 2 managed · 1 agent row(s)"),
         "compact status MUST match tray line (AC-007.71); got: {compact}"

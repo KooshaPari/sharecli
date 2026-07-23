@@ -67,8 +67,10 @@ mod linux {
         fn tool_tip(&self) -> ksni::ToolTip {
             let description = match (&self.health, self.connected) {
                 (Some(h), true) => {
-                    let base = operator_display::format_tray_tooltip_summary_line(&self.gate_visual, h);
-                    let op = operator_display::format_operator_status_summary(&h.gate, &h.host_watch);
+                    let base =
+                        operator_display::format_tray_tooltip_summary_line(&self.gate_visual, h);
+                    let op =
+                        operator_display::format_operator_status_summary(&h.gate, &h.host_watch);
                     let net = operator_display::format_host_net_tray_line(&h.host_watch);
                     format!("{base}\n{op}\n{net}")
                 }
@@ -109,9 +111,11 @@ mod linux {
                         }
                         .into(),
                     );
-                    for line in operator_display::format_operator_tray_lines(&h.gate, &h.host_watch) {
+                    for line in operator_display::format_operator_tray_lines(&h.gate, &h.host_watch)
+                    {
                         items.push(
-                            StandardItem { label: line, enabled: false, ..Default::default() }.into(),
+                            StandardItem { label: line, enabled: false, ..Default::default() }
+                                .into(),
                         );
                     }
                     items.push(MenuItem::Separator);
@@ -123,7 +127,8 @@ mod linux {
                     items.push(MenuItem::Separator);
                     for line in operator_display::format_pool_status_operator_lines(pool, status) {
                         items.push(
-                            StandardItem { label: line, enabled: false, ..Default::default() }.into(),
+                            StandardItem { label: line, enabled: false, ..Default::default() }
+                                .into(),
                         );
                     }
                 }
@@ -232,10 +237,8 @@ mod linux {
                 tray.pool = Some(snap.pool);
                 tray.status = Some(snap.status);
                 tray.connected = true;
-                tray.gate_visual = operator_display::resolve_tray_gate_visual_from_gate(
-                    &snap.gate,
-                    true,
-                );
+                tray.gate_visual =
+                    operator_display::resolve_tray_gate_visual_from_gate(&snap.gate, true);
             }
             Err(e) => {
                 tracing::debug!("monitoring.report poll failed: {e}");
@@ -270,10 +273,7 @@ mod linux {
             }
         };
         let poll_interval = tray_poll_interval();
-        tracing::info!(
-            "sharecli-tray registered; polling every {}s",
-            poll_interval.as_secs()
-        );
+        tracing::info!("sharecli-tray registered; polling every {}s", poll_interval.as_secs());
 
         loop {
             std::thread::sleep(poll_interval);

@@ -27,10 +27,7 @@ fn fr007_tray_swift_poll_interval_wires_app_state() {
         app_state.contains("TrayPoll.intervalNanoseconds"),
         "AppState MUST sleep via TrayPoll.intervalNanoseconds (AC-007.53)"
     );
-    assert!(
-        app_state.contains("startPolling"),
-        "AppState MUST expose startPolling (AC-007.53)"
-    );
+    assert!(app_state.contains("startPolling"), "AppState MUST expose startPolling (AC-007.53)");
     assert!(
         app_state.contains("monitoringReport()"),
         "AppState refresh MUST stay on monitoringReport (AC-007.48)"

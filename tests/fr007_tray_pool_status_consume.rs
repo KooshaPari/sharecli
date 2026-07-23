@@ -71,9 +71,8 @@ fn sample_status() -> StatusSnapshot {
 async fn fr007_tray_pool_status_consume_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
 
-    let report_resp = handler
-        .dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#)
-        .await;
+    let report_resp =
+        handler.dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#).await;
     assert!(
         report_resp.error.is_none(),
         "monitoring.report MUST succeed (AC-007.72); err={:?}",
@@ -221,10 +220,7 @@ fn fr007_tray_pool_status_consume_linux_main_wires_refresh() {
 #[test]
 fn fr007_tray_pool_status_consume_swift_wires_refresh() {
     let app_state = include_str!("../desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift");
-    assert!(
-        app_state.contains("poolStatus"),
-        "AppState MUST publish poolStatus (AC-007.72)"
-    );
+    assert!(app_state.contains("poolStatus"), "AppState MUST publish poolStatus (AC-007.72)");
     assert!(
         app_state.contains("statusSnapshot"),
         "AppState MUST publish statusSnapshot (AC-007.72)"
@@ -270,13 +266,15 @@ fn fr007_tray_pool_status_consume_swift_wires_refresh() {
         "Swift OperatorDisplay MUST expose status snapshot formatter (AC-007.72)"
     );
 
-    let popover = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
+    let popover =
+        include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
     assert!(
         popover.contains("poolStatusSection"),
         "Tray popover MUST surface pool/status section (AC-007.72)"
     );
 
-    let dashboard = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift");
+    let dashboard =
+        include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift");
     assert!(
         dashboard.contains("formatPoolStatusOperatorLines"),
         "Dashboard Health view MUST surface pool/status lines (AC-007.72)"

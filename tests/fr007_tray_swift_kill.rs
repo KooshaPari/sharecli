@@ -26,10 +26,7 @@ fn fr007_tray_swift_kill_ipc_methods() {
 #[test]
 fn fr007_tray_swift_kill_wires_app_state() {
     let app_state = include_str!("../desktop/ShareCLITray/Sources/ShareCLICore/AppState.swift");
-    assert!(
-        app_state.contains("client.kill(pid:"),
-        "AppState MUST call client.kill (AC-007.54)"
-    );
+    assert!(app_state.contains("client.kill(pid:"), "AppState MUST call client.kill (AC-007.54)");
     assert!(
         app_state.contains("client.killAll()"),
         "AppState MUST call client.killAll (AC-007.54)"
@@ -39,13 +36,11 @@ fn fr007_tray_swift_kill_wires_app_state() {
         "AppState MUST refresh after kill (AC-007.54 / AC-007.48)"
     );
 
-    let popover = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
+    let popover =
+        include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
     assert!(
         popover.contains("state.kill(pid:"),
         "Tray popover MUST expose per-process kill (AC-007.54)"
     );
-    assert!(
-        popover.contains("state.killAll()"),
-        "Tray popover MUST expose Kill All (AC-007.54)"
-    );
+    assert!(popover.contains("state.killAll()"), "Tray popover MUST expose Kill All (AC-007.54)");
 }

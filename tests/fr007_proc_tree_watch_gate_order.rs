@@ -24,10 +24,7 @@ fn assert_gate_before_watch(segment: &str, context: &str) {
     let watch_pos = segment
         .find(WATCH_MARKER)
         .unwrap_or_else(|| panic!("{context} MUST include host watch section; got: {segment}"));
-    assert!(
-        gate_pos < watch_pos,
-        "{context} MUST print gate before host watch; got: {segment}"
-    );
+    assert!(gate_pos < watch_pos, "{context} MUST print gate before host watch; got: {segment}");
 }
 
 fn drain_stdout_after_watch(child: &mut Child, dwell: Duration) -> String {
@@ -102,10 +99,7 @@ fn assert_ndjson_gate_before_host_watch(line: &str, context: &str) {
         serde_json::from_str(line.trim()).expect("tree watch NDJSON line MUST be valid JSON");
     assert!(v.get("ts").is_some(), "{context} MUST include ts");
     assert!(v.get("gate").is_some(), "{context} MUST include gate (AC-007.23)");
-    assert!(
-        v.get("host_watch").is_some(),
-        "{context} MUST include host_watch (AC-007.23)"
-    );
+    assert!(v.get("host_watch").is_some(), "{context} MUST include host_watch (AC-007.23)");
     let gate_pos = line.find("\"gate\"").expect("gate key in raw JSON");
     let host_pos = line.find("\"host_watch\"").expect("host_watch key in raw JSON");
     assert!(

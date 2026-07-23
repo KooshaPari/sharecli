@@ -1,8 +1,6 @@
 //! Host probes and cell executors for the FUSE smoke matrix.
 
-use crate::matrix::{
-    find_repo_root, CellId, CellResult, FailReason, MatrixReport,
-};
+use crate::matrix::{find_repo_root, CellId, CellResult, FailReason, MatrixReport};
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -60,11 +58,7 @@ fn macfuse_fs_present() -> bool {
     path_exists("/Library/Filesystems/macfuse.fs")
 }
 
-fn fail(
-    cell: CellId,
-    reason: FailReason,
-    detail: impl Into<String>,
-) -> CellResult {
+fn fail(cell: CellId, reason: FailReason, detail: impl Into<String>) -> CellResult {
     CellResult {
         cell,
         host_os: host_os().into(),
@@ -111,30 +105,11 @@ fn ensure_colima() -> Result<(), (FailReason, String)> {
         return Ok(());
     }
     // Prefer QEMU when available — VZ often ENOSYS for FUSE mounts (AC-009.22/23).
-    let vm_type = if which("qemu-img") || which("qemu-system-aarch64") {
-        "qemu"
-    } else {
-        "vz"
-    };
+    let vm_type = if which("qemu-img") || which("qemu-system-aarch64") { "qemu" } else { "vz" };
     let out = Command::new("colima")
-        .args([
-            "start",
-            "--cpu",
-            "2",
-            "--memory",
-            "4",
-            "--vm-type",
-            vm_type,
-            "--runtime",
-            "docker",
-        ])
+        .args(["start", "--cpu", "2", "--memory", "4", "--vm-type", vm_type, "--runtime", "docker"])
         .output()
-        .map_err(|e| {
-            (
-                FailReason::ToolingMissing,
-                format!("colima start spawn failed: {e}"),
-            )
-        })?;
+        .map_err(|e| (FailReason::ToolingMissing, format!("colima start spawn failed: {e}")))?;
     if !out.status.success() {
         return Err((
             FailReason::ToolingMissing,
@@ -150,10 +125,7 @@ fn ensure_colima() -> Result<(), (FailReason, String)> {
 
 fn ensure_docker() -> Result<(), (FailReason, String)> {
     if !which("docker") {
-        return Err((
-            FailReason::ToolingMissing,
-            "docker not found on PATH".into(),
-        ));
+        return Err((FailReason::ToolingMissing, "docker not found on PATH".into()));
     }
     let out = Command::new("docker")
         .args(["info"])
@@ -164,10 +136,7 @@ fn ensure_docker() -> Result<(), (FailReason, String)> {
     if !out.status.success() {
         return Err((
             FailReason::ToolingMissing,
-            format!(
-                "docker daemon not reachable: {}",
-                String::from_utf8_lossy(&out.stderr).trim()
-            ),
+            format!("docker daemon not reachable: {}", String::from_utf8_lossy(&out.stderr).trim()),
         ));
     }
     Ok(())
@@ -184,31 +153,18 @@ fn run_linux_container_smoke(root: &Path) -> Result<(), (FailReason, String)> {
     }
     let cf = root.join("Containerfile.fuse-smoke");
     if !cf.is_file() {
-        return Err((
-            FailReason::ToolingMissing,
-            format!("missing {}", cf.display()),
-        ));
+        return Err((FailReason::ToolingMissing, format!("missing {}", cf.display())));
     }
     let tag = "sharecli-fuse-smoke:local";
     let build = Command::new("docker")
-        .args([
-            "build",
-            "-f",
-            "Containerfile.fuse-smoke",
-            "-t",
-            tag,
-            ".",
-        ])
+        .args(["build", "-f", "Containerfile.fuse-smoke", "-t", tag, "."])
         .current_dir(root)
         .output()
         .map_err(|e| (FailReason::ToolingMissing, format!("docker build: {e}")))?;
     if !build.status.success() {
         return Err((
             FailReason::SmokeFailed,
-            format!(
-                "docker build failed:\n{}",
-                String::from_utf8_lossy(&build.stderr)
-            ),
+            format!("docker build failed:\n{}", String::from_utf8_lossy(&build.stderr)),
         ));
     }
     let run = Command::new("docker")
@@ -246,24 +202,14 @@ fn run_colima_vm_smoke(root: &Path) -> Result<(), (FailReason, String)> {
     ensure_docker()?;
     let tag = "sharecli-fuse-smoke:local";
     let build = Command::new("docker")
-        .args([
-            "build",
-            "-f",
-            "Containerfile.fuse-smoke",
-            "-t",
-            tag,
-            ".",
-        ])
+        .args(["build", "-f", "Containerfile.fuse-smoke", "-t", tag, "."])
         .current_dir(root)
         .output()
         .map_err(|e| (FailReason::ToolingMissing, format!("docker build: {e}")))?;
     if !build.status.success() {
         return Err((
             FailReason::SmokeFailed,
-            format!(
-                "docker build failed:\n{}",
-                String::from_utf8_lossy(&build.stderr)
-            ),
+            format!("docker build failed:\n{}", String::from_utf8_lossy(&build.stderr)),
         ));
     }
     let script = format!(
@@ -306,10 +252,7 @@ fn run_colima_vm_smoke(root: &Path) -> Result<(), (FailReason, String)> {
 /// Native privileged smoke via cargo test (linux/macos).
 fn run_native_cargo_smoke(root: &Path) -> Result<(), (FailReason, String)> {
     if !fuse_dev_present() && cfg!(target_os = "linux") {
-        return Err((
-            FailReason::NoFuseDevice,
-            "/dev/fuse missing on Linux host".into(),
-        ));
+        return Err((FailReason::NoFuseDevice, "/dev/fuse missing on Linux host".into()));
     }
     if cfg!(target_os = "macos") && !macfuse_fs_present() {
         return Err((
@@ -381,10 +324,7 @@ fn run_wsl2_smoke(root: &Path) -> Result<(), (FailReason, String)> {
         .output()
         .map_err(|e| (FailReason::ToolingMissing, format!("wsl spawn: {e}")))?;
     if out.status.code() == Some(42) {
-        return Err((
-            FailReason::NoFuseDevice,
-            "/dev/fuse missing inside WSL2".into(),
-        ));
+        return Err((FailReason::NoFuseDevice, "/dev/fuse missing inside WSL2".into()));
     }
     if !out.status.success() {
         return Err((
@@ -422,10 +362,7 @@ fn run_windows_winfsp_smoke(root: &Path) -> Result<(), (FailReason, String)> {
 
 fn run_macos_vm_tart(root: &Path) -> Result<(), (FailReason, String)> {
     if host_os() != "macos" {
-        return Err((
-            FailReason::HostOsMismatch,
-            "macos_vm_tart requires macOS host".into(),
-        ));
+        return Err((FailReason::HostOsMismatch, "macos_vm_tart requires macOS host".into()));
     }
     if !which("tart") {
         return Err((
@@ -434,8 +371,8 @@ fn run_macos_vm_tart(root: &Path) -> Result<(), (FailReason, String)> {
                 .into(),
         ));
     }
-    let image = std::env::var("SHARECLI_TART_FUSE_IMAGE")
-        .unwrap_or_else(|_| "sharecli-fuse-macos".into());
+    let image =
+        std::env::var("SHARECLI_TART_FUSE_IMAGE").unwrap_or_else(|_| "sharecli-fuse-macos".into());
     let list = Command::new("tart")
         .args(["list"])
         .output()
@@ -457,10 +394,7 @@ fn run_macos_vm_tart(root: &Path) -> Result<(), (FailReason, String)> {
     if !ip_out.status.success() {
         return Err((
             FailReason::ToolingMissing,
-            format!(
-                "tart ip failed: {}",
-                String::from_utf8_lossy(&ip_out.stderr)
-            ),
+            format!("tart ip failed: {}", String::from_utf8_lossy(&ip_out.stderr)),
         ));
     }
     let ip = String::from_utf8_lossy(&ip_out.stdout).trim().to_string();
@@ -497,10 +431,7 @@ fn execute_cell(cell: CellId, root: &Path) -> CellResult {
     let mapped = match cell {
         CellId::LinuxNative => {
             if host_os() != "linux" {
-                Err((
-                    FailReason::HostOsMismatch,
-                    "linux_native requires Linux host".into(),
-                ))
+                Err((FailReason::HostOsMismatch, "linux_native requires Linux host".into()))
             } else {
                 run_native_cargo_smoke(root)
             }
@@ -521,10 +452,7 @@ fn execute_cell(cell: CellId, root: &Path) -> CellResult {
         }
         CellId::MacosNative => {
             if host_os() != "macos" {
-                Err((
-                    FailReason::HostOsMismatch,
-                    "macos_native requires macOS host".into(),
-                ))
+                Err((FailReason::HostOsMismatch, "macos_native requires macOS host".into()))
             } else {
                 run_native_cargo_smoke(root)
             }
@@ -556,11 +484,7 @@ mod tests {
 
     #[test]
     fn ac_009_22_fail_helper_sets_reason() {
-        let r = fail(
-            CellId::MacosNative,
-            FailReason::DriverMissing,
-            "test",
-        );
+        let r = fail(CellId::MacosNative, FailReason::DriverMissing, "test");
         assert!(!r.ok);
         assert_eq!(r.fail_reason, Some(FailReason::DriverMissing));
     }

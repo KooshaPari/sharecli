@@ -39,18 +39,10 @@ fn assert_status_object(status: &serde_json::Value, context: &str) {
 
 fn assert_gate_host_watch(raw: &str, v: &serde_json::Value, context: &str) {
     let gate = v.get("gate").expect("{context} MUST include gate (AC-007.77)");
-    let host = v
-        .get("host_watch")
-        .expect("{context} MUST include host_watch (AC-007.77)");
-    assert!(
-        gate.get("gate_decision").is_some(),
-        "gate MUST include gate_decision (AC-007.77)"
-    );
+    let host = v.get("host_watch").expect("{context} MUST include host_watch (AC-007.77)");
+    assert!(gate.get("gate_decision").is_some(), "gate MUST include gate_decision (AC-007.77)");
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.77); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.77); got: {host}");
     }
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch key in raw JSON");
@@ -165,10 +157,7 @@ macro_rules! one_shot_json_test {
                 out.stderr
             );
             assert_stderr_silent(&out.stderr, stringify!($name));
-            $assert_fn(
-                &String::from_utf8_lossy(&out.stdout),
-                stringify!($name),
-            );
+            $assert_fn(&String::from_utf8_lossy(&out.stdout), stringify!($name));
         }
     };
 }

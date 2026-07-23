@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use sharecli_core::{Hypervisor, HypervisorConfig, SpawnRequest};
-use sharecli_ipc::{CoalesceCache, CacheKeyMode, DEFAULT_NOCACHE_ARGS};
+use sharecli_ipc::{CacheKeyMode, CoalesceCache, DEFAULT_NOCACHE_ARGS};
 
 use super::RuleOpts;
 
@@ -15,16 +15,10 @@ pub fn hypervisor_cache_root(harness_home: &Path) -> PathBuf {
 /// Map rules.conf options into a [`HypervisorConfig`] (FR-008 AC-008.17).
 pub fn config_from_rule_opts(harness_home: &Path, opts: &RuleOpts) -> HypervisorConfig {
     let cache_root = hypervisor_cache_root(harness_home);
-    let coalesce_ttl = if opts.ttl == 0 {
-        CoalesceCache::DEFAULT_TTL
-    } else {
-        Duration::from_secs(opts.ttl)
-    };
-    let queue_max_concurrent = if opts.max_concurrent == 0 {
-        1
-    } else {
-        opts.max_concurrent as usize
-    };
+    let coalesce_ttl =
+        if opts.ttl == 0 { CoalesceCache::DEFAULT_TTL } else { Duration::from_secs(opts.ttl) };
+    let queue_max_concurrent =
+        if opts.max_concurrent == 0 { 1 } else { opts.max_concurrent as usize };
     HypervisorConfig {
         cache_root: cache_root.clone(),
         queue_root: cache_root.join("queue"),
@@ -72,12 +66,7 @@ mod tests {
     #[test]
     fn rule_opts_plumb_hypervisor_config() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            ttl: 42,
-            debounce_ms: 99,
-            max_concurrent: 3,
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { ttl: 42, debounce_ms: 99, max_concurrent: 3, ..RuleOpts::default() };
         let cfg = config_from_rule_opts(tmp.path(), &opts);
         assert_eq!(cfg.coalesce_ttl, Duration::from_secs(42));
         assert_eq!(cfg.coalesce_debounce, Duration::from_millis(99));
@@ -96,11 +85,7 @@ mod tests {
     #[test]
     fn rule_opts_plumb_cache_key_mode_and_semantic() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            cache_key: "git".to_string(),
-            semantic: true,
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { cache_key: "git".to_string(), semantic: true, ..RuleOpts::default() };
         let cfg = config_from_rule_opts(tmp.path(), &opts);
         assert_eq!(cfg.cache_key_mode, CacheKeyMode::Git);
         assert!(cfg.semantic);
@@ -110,10 +95,8 @@ mod tests {
     #[test]
     fn build_hypervisor_rule_nocache_args_override() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            nocache_args: Some(vec!["--custom".to_string()]),
-            ..RuleOpts::default()
-        };
+        let opts =
+            RuleOpts { nocache_args: Some(vec!["--custom".to_string()]), ..RuleOpts::default() };
         let hv = build_hypervisor(tmp.path(), &opts);
         assert_eq!(hv.nocache_args(), &["--custom"]);
     }
@@ -122,10 +105,7 @@ mod tests {
     #[test]
     fn build_hypervisor_rule_nocache_args_empty_disables_bypass() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            nocache_args: Some(vec![]),
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { nocache_args: Some(vec![]), ..RuleOpts::default() };
         let hv = build_hypervisor(tmp.path(), &opts);
         assert!(hv.nocache_args().is_empty());
     }
@@ -138,10 +118,7 @@ mod tests {
         let hv = build_hypervisor(tmp.path(), &opts);
         assert_eq!(
             hv.nocache_args(),
-            DEFAULT_NOCACHE_ARGS
-                .iter()
-                .map(|s| (*s).to_string())
-                .collect::<Vec<_>>()
+            DEFAULT_NOCACHE_ARGS.iter().map(|s| (*s).to_string()).collect::<Vec<_>>()
         );
     }
 }

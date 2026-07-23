@@ -37,15 +37,9 @@ fn assert_ndjson_gate_before_host_watch(line: &str, context: &str) {
         serde_json::from_str(line.trim()).expect("watch NDJSON line MUST be valid JSON");
     assert!(v.get("ts").is_some(), "{context} MUST include ts (AC-007.42)");
     assert!(v.get("gate").is_some(), "{context} MUST include gate (AC-007.42)");
-    assert!(
-        v.get("host_watch").is_some(),
-        "{context} MUST include host_watch (AC-007.42)"
-    );
+    assert!(v.get("host_watch").is_some(), "{context} MUST include host_watch (AC-007.42)");
     assert!(v.get("pool").is_some(), "{context} MUST include pool (AC-007.73)");
-    assert!(
-        v.get("status").is_some(),
-        "{context} MUST include status (AC-007.73)"
-    );
+    assert!(v.get("status").is_some(), "{context} MUST include status (AC-007.73)");
     let gate_pos = line.find("\"gate\"").expect("gate key in NDJSON line");
     let host_pos = line.find("\"host_watch\"").expect("host_watch key in NDJSON line");
     let pool_pos = line.find("\"pool\"").expect("pool key in NDJSON line (AC-007.73)");

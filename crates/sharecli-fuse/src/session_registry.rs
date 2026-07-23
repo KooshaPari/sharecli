@@ -13,10 +13,10 @@ use std::{
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::sync::Arc;
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-use fuser::{BackgroundSession, Config, MountOption};
 #[cfg(target_os = "linux")]
 use fuser::SessionACL;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use fuser::{BackgroundSession, Config, MountOption};
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::platform::{InterceptFs, SharedInterceptFs};
@@ -359,11 +359,7 @@ impl FuseSessionRegistry {
             let mut mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
             mounts.insert(
                 key,
-                WinfspMountEntry {
-                    backing: backing.to_path_buf(),
-                    session_id,
-                    _session: session,
-                },
+                WinfspMountEntry { backing: backing.to_path_buf(), session_id, _session: session },
             );
             Ok(())
         } else {
@@ -467,7 +463,9 @@ impl FuseSessionRegistry {
                 if mounts.len() == 1 {
                     Ok(Arc::clone(&mounts.values().next().expect("one mount").fs))
                 } else if mounts.is_empty() {
-                    anyhow::bail!("fuse: no active FUSE mounts registered (run `fuse mount` first)");
+                    anyhow::bail!(
+                        "fuse: no active FUSE mounts registered (run `fuse mount` first)"
+                    );
                 } else {
                     anyhow::bail!(
                         "fuse: multiple mounts registered; pass --mountpoint <path> \
@@ -575,10 +573,7 @@ mod default_mount_options_tests {
     fn linux_auto_unmount_pairs_with_non_owner_acl() {
         let config = default_fuser_config();
         assert!(
-            config
-                .mount_options
-                .iter()
-                .any(|o| matches!(o, MountOption::AutoUnmount)),
+            config.mount_options.iter().any(|o| matches!(o, MountOption::AutoUnmount)),
             "Linux MUST include AutoUnmount"
         );
         assert_eq!(
@@ -593,16 +588,9 @@ mod default_mount_options_tests {
     fn macos_skips_auto_unmount_and_keeps_owner_acl() {
         let config = default_fuser_config();
         assert!(
-            !config
-                .mount_options
-                .iter()
-                .any(|o| matches!(o, MountOption::AutoUnmount)),
+            !config.mount_options.iter().any(|o| matches!(o, MountOption::AutoUnmount)),
             "macOS MUST NOT use AutoUnmount (allow_other / kext friction)"
         );
-        assert_eq!(
-            config.acl,
-            SessionACL::Owner,
-            "macOS MUST keep Owner ACL"
-        );
+        assert_eq!(config.acl, SessionACL::Owner, "macOS MUST keep Owner ACL");
     }
 }

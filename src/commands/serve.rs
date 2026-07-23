@@ -33,15 +33,15 @@ use tokio::sync::{broadcast, watch, RwLock};
 use tracing::{info, instrument, warn, Instrument};
 
 use crate::audit_log;
+use crate::commands::proc::AgentProcSnapshot;
+use crate::commands::{PoolJson, StatusJson};
 use crate::config::Config;
 use crate::config_watcher::ConfigWatcher;
 use crate::error_envelope::ErrorEnvelope;
 use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
-use crate::notifier::Notifier;
-use crate::commands::proc::AgentProcSnapshot;
-use crate::commands::{PoolJson, StatusJson};
 use crate::monitoring::HostResourceWatchJson;
+use crate::notifier::Notifier;
 use crate::runtime::ProcessPool;
 use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
@@ -240,10 +240,7 @@ pub async fn run(bind: &str, on_conflict: OnConflict) -> Result<()> {
 
     let app = Router::new()
         .route("/", get(dashboard))
-        .route(
-            "/assets/dashboard/ui/{*path}",
-            get(crate::dashboard_assets::serve),
-        )
+        .route("/assets/dashboard/ui/{*path}", get(crate::dashboard_assets::serve))
         .route("/healthz", get(healthz))
         .route("/readyz", get(readyz))
         .route("/config", get(config_handler))
@@ -1032,9 +1029,7 @@ mod tests {
             v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
             "dashboard WS MUST include gate (AC-007.41); got: {v}"
         );
-        let host = v
-            .get("host_watch")
-            .expect("dashboard WS MUST include host_watch (AC-007.41)");
+        let host = v.get("host_watch").expect("dashboard WS MUST include host_watch (AC-007.41)");
         for key in HOST_WATCH_KEYS {
             assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.41)");
         }
@@ -1053,9 +1048,7 @@ mod tests {
         let pool = v.get("pool").expect("dashboard WS MUST include pool (AC-007.70)");
         assert!(pool.get("node_total").is_some(), "pool MUST include node_total (AC-007.70)");
         assert!(pool.get("healthy").is_some(), "pool MUST include healthy (AC-007.70)");
-        let status = v
-            .get("status")
-            .expect("dashboard WS MUST include status (AC-007.70)");
+        let status = v.get("status").expect("dashboard WS MUST include status (AC-007.70)");
         assert!(
             status.get("total_processes").is_some(),
             "status MUST include total_processes (AC-007.70)"

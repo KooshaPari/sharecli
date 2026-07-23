@@ -11,7 +11,8 @@ fn repo_root() -> PathBuf {
 /// FR-003 / C10 L99 — dashboard ships content-shaped skeleton rows + busy region.
 #[test]
 fn c10_l99_dashboard_skeleton_markup() {
-    let html = fs::read_to_string(repo_root().join("src/dashboard.html")).expect("read dashboard.html");
+    let html =
+        fs::read_to_string(repo_root().join("src/dashboard.html")).expect("read dashboard.html");
     for needle in [
         "renderSkeletonRows",
         "renderOperatorPanelSkeletons",
@@ -46,14 +47,8 @@ fn c10_l99_loading_states_doc_present() {
         doc.contains("renderOperatorPanelSkeletons"),
         "loading-states.md must reference operator panel skeleton implementation"
     );
-    assert!(
-        doc.contains("aria-busy"),
-        "loading-states.md must document busy region"
-    );
-    assert!(
-        doc.contains("renderSkeletonRows"),
-        "loading-states.md must reference implementation"
-    );
+    assert!(doc.contains("aria-busy"), "loading-states.md must document busy region");
+    assert!(doc.contains("renderSkeletonRows"), "loading-states.md must reference implementation");
     assert!(
         doc.contains("prefers-reduced-motion"),
         "loading-states.md must document reduced-motion collapse"

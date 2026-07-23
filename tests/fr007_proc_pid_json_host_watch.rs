@@ -12,20 +12,11 @@ fn bin() -> Command {
 const HOST_WATCH_KEYS: [&str; 5] =
     ["fd_count", "net_rx_bytes", "net_tx_bytes", "mem_rss_bytes", "load_1m"];
 
-const TEXT_MARKERS: [&str; 5] = [
-    "Open FDs:",
-    "RSS:",
-    "Load (1m):",
-    "Net RX:",
-    "Net TX:",
-];
+const TEXT_MARKERS: [&str; 5] = ["Open FDs:", "RSS:", "Load (1m):", "Net RX:", "Net TX:"];
 
 fn assert_host_watch_object(host: &serde_json::Value) {
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.16); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.16); got: {host}");
     }
 }
 
@@ -38,16 +29,11 @@ fn fr007_proc_pid_json_host_watch_shape() {
         .args(["proc", "--pid", &pid.to_string(), "--json"])
         .output()
         .expect("spawn sharecli proc --pid --json");
-    assert!(
-        out.status.success(),
-        "proc --pid --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc --pid --json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("proc --pid --json MUST emit valid JSON");
-    let host = v
-        .get("host_watch")
-        .expect("proc --pid --json MUST include host_watch object (AC-007.16)");
+    let host =
+        v.get("host_watch").expect("proc --pid --json MUST include host_watch object (AC-007.16)");
     assert_host_watch_object(host);
 }
 
@@ -60,21 +46,14 @@ fn fr007_proc_pid_text_host_watch_footer() {
         .args(["proc", "--pid", &pid.to_string()])
         .output()
         .expect("spawn sharecli proc --pid");
-    assert!(
-        out.status.success(),
-        "proc --pid MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc --pid MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
         s.contains("=== Host Resource Watch ==="),
         "proc --pid text MUST include host watch section (AC-007.16); got: {s}"
     );
     for marker in TEXT_MARKERS {
-        assert!(
-            s.contains(marker),
-            "proc --pid text MUST include {marker} (AC-007.16)"
-        );
+        assert!(s.contains(marker), "proc --pid text MUST include {marker} (AC-007.16)");
     }
 }
 
@@ -115,9 +94,6 @@ fn fr007_proc_pid_json_host_watch_serializes_fields() {
     };
     let json = serde_json::to_string(&detail).expect("serialize proc detail snapshot");
     for key in HOST_WATCH_KEYS {
-        assert!(
-            json.contains(&format!("\"{key}\"")),
-            "JSON MUST include {key}; got: {json}"
-        );
+        assert!(json.contains(&format!("\"{key}\"")), "JSON MUST include {key}; got: {json}");
     }
 }

@@ -53,10 +53,7 @@ fn fr006_proc_comm_filter_substring_case_insensitive() {
     ];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter {
-            comm: Some("-Code".into()),
-            ..Default::default()
-        },
+        &ProcFilter { comm: Some("-Code".into()), ..Default::default() },
         &empty_ppid_map(),
         &empty_cmdline_map(),
         &empty_state_map(),
@@ -100,16 +97,19 @@ fn fr006_proc_tree_comm_filter() {
             cmdline: vec!["cursor-agent".into()],
             state: 'R',
         },
-        ProcSnapshot { pid: 60, ppid: 1, comm: "codex".into(), cmdline: vec!["codex".into()], state: 'R' },
+        ProcSnapshot {
+            pid: 60,
+            ppid: 1,
+            comm: "codex".into(),
+            cmdline: vec!["codex".into()],
+            state: 'R',
+        },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     assert_eq!(forests.len(), 2);
     let filtered = filter_agent_forests(
         &forests,
-        &ProcFilter {
-            comm: Some("CURSOR".into()),
-            ..Default::default()
-        },
+        &ProcFilter { comm: Some("CURSOR".into()), ..Default::default() },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
@@ -124,11 +124,8 @@ fn fr006_proc_tree_comm_filter() {
 fn fr006_proc_empty_comm_rejected() {
     let out = bin().args(["proc", "--comm", ""]).output().expect("spawn sharecli proc --comm");
     assert!(!out.status.success(), "empty --comm MUST fail");
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    let combined =
+        format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
     assert!(
         combined.to_ascii_lowercase().contains("comm"),
         "error MUST mention --comm; got: {combined}"

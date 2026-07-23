@@ -85,9 +85,10 @@ async fn e2e_hypervisor_nocache_concurrent_serializes() {
         let hv = Arc::clone(&hv);
         let argv = argv.clone();
         let cwd = cwd.clone();
-        joins.push(tokio::spawn(
-            async move { hv.run(SpawnRequest { argv, cwd, env: vec![], queue_priority: QueuePriority::Normal }).await },
-        ));
+        joins.push(tokio::spawn(async move {
+            hv.run(SpawnRequest { argv, cwd, env: vec![], queue_priority: QueuePriority::Normal })
+                .await
+        }));
     }
     let mut outcomes = Vec::new();
     for j in joins {
@@ -127,7 +128,12 @@ async fn e2e_hypervisor_nocache_isolated_from_coalesce_cache() {
     let readonly =
         vec!["cmd".to_string(), "/C".to_string(), format!("echo.>>\"{}\"", counter.display())];
 
-    let read_req = SpawnRequest { argv: readonly, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
+    let read_req = SpawnRequest {
+        argv: readonly,
+        cwd: dir.path().to_path_buf(),
+        env: vec![],
+        queue_priority: QueuePriority::Normal,
+    };
     let miss = hv.run(read_req.clone()).await.expect("coalesce miss");
     assert!(!miss.from_cache);
     let hit = hv.run(read_req).await.expect("coalesce hit");

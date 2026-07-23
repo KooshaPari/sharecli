@@ -19,10 +19,7 @@ const WATCH_MARKER: &str = "=== Host Resource Watch ===";
 
 fn assert_host_watch_object(host: &serde_json::Value) {
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.43); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.43); got: {host}");
     }
 }
 
@@ -30,10 +27,7 @@ fn assert_json_gate_before_host_watch(raw: &str, context: &str) {
     let v: serde_json::Value =
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     assert!(v.get("gate").is_some(), "{context} MUST include gate (AC-007.43)");
-    assert!(
-        v.get("host_watch").is_some(),
-        "{context} MUST include host_watch (AC-007.43)"
-    );
+    assert!(v.get("host_watch").is_some(), "{context} MUST include host_watch (AC-007.43)");
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch key in raw JSON");
     assert!(
@@ -66,15 +60,9 @@ fn assert_stderr_no_companion_markers(stderr: &[u8], context: &str) {
 #[test]
 #[serial_test::serial]
 fn fr007_ps_all_json_gate_host_watch_shape() {
-    let out = bin()
-        .args(["ps", "--all", "--json"])
-        .output()
-        .expect("spawn sharecli ps --all --json");
-    assert!(
-        out.status.success(),
-        "ps --all --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out =
+        bin().args(["ps", "--all", "--json"]).output().expect("spawn sharecli ps --all --json");
+    assert!(out.status.success(), "ps --all --json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("ps --all --json MUST emit valid JSON");
     assert!(
@@ -97,9 +85,8 @@ fn fr007_ps_all_json_gate_host_watch_shape() {
         v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
         "ps --all --json MUST include top-level gate (AC-007.43); got: {v}"
     );
-    let host = v
-        .get("host_watch")
-        .expect("ps --all --json MUST include top-level host_watch (AC-007.43)");
+    let host =
+        v.get("host_watch").expect("ps --all --json MUST include top-level host_watch (AC-007.43)");
     assert_host_watch_object(host);
 }
 
@@ -107,10 +94,8 @@ fn fr007_ps_all_json_gate_host_watch_shape() {
 #[test]
 #[serial_test::serial]
 fn fr007_ps_all_json_gate_before_host_watch() {
-    let out = bin()
-        .args(["ps", "--all", "--json"])
-        .output()
-        .expect("spawn sharecli ps --all --json");
+    let out =
+        bin().args(["ps", "--all", "--json"]).output().expect("spawn sharecli ps --all --json");
     assert!(out.status.success(), "ps --all --json MUST exit 0");
     let raw = String::from_utf8_lossy(&out.stdout);
     assert_json_gate_before_host_watch(&raw, "ps --all --json");
@@ -120,15 +105,9 @@ fn fr007_ps_all_json_gate_before_host_watch() {
 #[test]
 #[serial_test::serial]
 fn fr007_ps_all_json_stderr_silent() {
-    let out = bin()
-        .args(["ps", "--all", "--json"])
-        .output()
-        .expect("spawn sharecli ps --all --json");
-    assert!(
-        out.status.success(),
-        "ps --all --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out =
+        bin().args(["ps", "--all", "--json"]).output().expect("spawn sharecli ps --all --json");
+    assert!(out.status.success(), "ps --all --json MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "ps --all --json");
     assert_stderr_no_companion_markers(&out.stderr, "ps --all --json");
     let raw = String::from_utf8_lossy(&out.stdout);
@@ -139,10 +118,7 @@ fn fr007_ps_all_json_stderr_silent() {
 #[test]
 #[serial_test::serial]
 fn fr007_ps_json_requires_all() {
-    let out = bin()
-        .args(["ps", "--json"])
-        .output()
-        .expect("spawn sharecli ps --json");
+    let out = bin().args(["ps", "--json"]).output().expect("spawn sharecli ps --json");
     assert!(
         !out.status.success(),
         "ps --json without --all MUST fail (AC-007.43); stdout: {:?}",
@@ -158,9 +134,9 @@ fn fr007_ps_json_requires_all() {
 /// FR-007 / AC-007.43 — serialized ps --all JSON envelope preserves gate → host_watch key order.
 #[test]
 fn fr007_ps_all_json_gate_order_serializes_fields() {
+    use sharecli::commands::proc::AgentProcRow;
     use sharecli::commands::PsAllJson;
     use sharecli::commands::PsManagedProcessRow;
-    use sharecli::commands::proc::AgentProcRow;
     use sharecli::monitoring::HostResourceWatchJson;
     use sharecli_fleet::GateStatusSnapshot;
 

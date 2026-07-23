@@ -6,9 +6,7 @@ fn main() {
     {
         use sharecli_fuse::{fuse_mount_smoke_enabled, run_mount_smoke, ENV_FUSE_MOUNT_SMOKE};
         if !fuse_mount_smoke_enabled() {
-            eprintln!(
-                "fuse-mount-smoke: set {ENV_FUSE_MOUNT_SMOKE}=1 to run privileged smoke"
-            );
+            eprintln!("fuse-mount-smoke: set {ENV_FUSE_MOUNT_SMOKE}=1 to run privileged smoke");
             std::process::exit(2);
         }
         #[cfg(windows)]

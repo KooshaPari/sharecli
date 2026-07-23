@@ -63,12 +63,8 @@ fn fixture_state_by_pid() -> HashMap<u32, char> {
 /// FR-006 / AC-006.22 — agent_forest_lines renders proc-scan tree connectors + RSS.
 #[test]
 fn fr006_thermal_tui_agent_forest_lines() {
-    let lines = agent_forest_lines(
-        &fixture_forests(),
-        &fixture_watched(),
-        &fixture_state_by_pid(),
-        false,
-    );
+    let lines =
+        agent_forest_lines(&fixture_forests(), &fixture_watched(), &fixture_state_by_pid(), false);
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(text.contains("Forests: 1"), "full layout MUST show forest count; got: {text}");
     assert!(
@@ -84,15 +80,14 @@ fn fr006_thermal_tui_agent_forest_lines() {
 /// FR-006 / AC-006.22 — compact layout keeps flat agent summary (no tree connectors).
 #[test]
 fn fr006_thermal_tui_agent_forest_lines_compact_flat() {
-    let lines = agent_forest_lines(
-        &fixture_forests(),
-        &fixture_watched(),
-        &fixture_state_by_pid(),
-        true,
-    );
+    let lines =
+        agent_forest_lines(&fixture_forests(), &fixture_watched(), &fixture_state_by_pid(), true);
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(!text.contains("└──"), "compact MUST NOT render tree connectors; got: {text}");
-    assert!(text.contains("claude:100:S@"), "compact MUST keep flat summary with state; got: {text}");
+    assert!(
+        text.contains("claude:100:S@"),
+        "compact MUST keep flat summary with state; got: {text}"
+    );
 }
 
 /// FR-006 / AC-006.22 — headless thermal render includes agent process tree.
@@ -119,7 +114,9 @@ fn fr006_thermal_tui_render_includes_agent_tree() {
         terminal.backend().buffer().content.iter().map(|c| c.symbol().to_string()).collect();
 
     assert!(
-        rendered.contains("Detected Agents") && rendered.contains("[100]") && rendered.contains("└──"),
+        rendered.contains("Detected Agents")
+            && rendered.contains("[100]")
+            && rendered.contains("└──"),
         "thermal TUI MUST surface build_agent_forests tree; got excerpt: {}",
         &rendered.chars().take(400).collect::<String>()
     );
@@ -133,12 +130,8 @@ fn fr006_thermal_tui_render_includes_agent_tree() {
 /// FR-006 / AC-006.39 — agent_forest_lines shows state on root and nested child nodes.
 #[test]
 fn fr006_thermal_tui_agent_forest_lines_show_state() {
-    let lines = agent_forest_lines(
-        &fixture_forests(),
-        &fixture_watched(),
-        &fixture_state_by_pid(),
-        false,
-    );
+    let lines =
+        agent_forest_lines(&fixture_forests(), &fixture_watched(), &fixture_state_by_pid(), false);
     let text: String = lines.iter().map(|l| l.to_string()).collect();
     assert!(
         text.contains("[100] S") && text.contains("claude"),

@@ -15,7 +15,9 @@ use sharecli::monitoring::{
     sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes, ProcessStats,
     ResourceWatchSample,
 };
-use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision, ThermalGate};
+use sharecli_core::{
+    FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision, ThermalGate,
+};
 use sharecli_fleet::{ThermalGovernor, ThermalLevel};
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -141,7 +143,12 @@ async fn fr007_hypervisor_run_carries_resource_watch() {
     ];
 
     let outcome = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        })
         .await
         .expect("Hypervisor run MUST sample resource watch");
 

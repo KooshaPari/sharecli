@@ -34,7 +34,12 @@ async fn fr011_agent_contention_refuses_hypervisor_spawn() {
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "agent-gated".to_string()];
 
     let err = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        })
         .await
         .expect_err("Refuse MUST err after retries");
 
@@ -65,9 +70,14 @@ async fn fr011_agent_contention_warn_still_spawns() {
     #[cfg(windows)]
     let argv = vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "warn-ok".to_string()];
 
-    hv.run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
-        .await
-        .expect("Warn tier MUST still allow spawn");
+    hv.run(SpawnRequest {
+        argv,
+        cwd: dir.path().to_path_buf(),
+        env: vec![],
+        queue_priority: QueuePriority::Normal,
+    })
+    .await
+    .expect("Warn tier MUST still allow spawn");
 }
 
 /// FR-011 / AC-011.4 — thermal TUI effective gate denies on agent refuse + Green thermal.

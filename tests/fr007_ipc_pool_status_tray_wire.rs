@@ -18,9 +18,7 @@ fn assert_json_gate_before_host_watch(raw: &str, context: &str) {
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     for key in HOST_WATCH_KEYS {
         assert!(
-            v.get("host_watch")
-                .and_then(|h| h.get(key))
-                .is_some(),
+            v.get("host_watch").and_then(|h| h.get(key)).is_some(),
             "{context} host_watch MUST include {key} (AC-007.68)"
         );
     }
@@ -57,8 +55,7 @@ fn fr007_ipc_status_snapshot_tray_linux_wire_roundtrip() {
         "agent_total_rss_bytes":4096,"agent_contention":"OK","gate_decision":"ADMIT"},
         "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
         "mem_rss_bytes":4,"load_1m":0.5}}"#;
-    let snap: StatusSnapshot =
-        serde_json::from_str(raw).expect("decode StatusSnapshot for tray");
+    let snap: StatusSnapshot = serde_json::from_str(raw).expect("decode StatusSnapshot for tray");
     assert_eq!(snap.total_processes, 2);
     assert_eq!(snap.agents[0].pid, 99);
     assert_eq!(snap.scanned, 50);
@@ -78,7 +75,8 @@ fn fr007_ipc_pool_status_tray_windows_wire_roundtrip() {
         "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
         "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
         "mem_rss_bytes":4,"load_1m":0.5}}"#;
-    let snap: PoolSnapshot = serde_json::from_str(raw).expect("decode PoolSnapshot for Windows tray");
+    let snap: PoolSnapshot =
+        serde_json::from_str(raw).expect("decode PoolSnapshot for Windows tray");
     assert_eq!(snap.node_total, 2);
     assert_eq!(snap.gate.gate_decision, "ADMIT");
     assert_eq!(snap.host_watch.load_1m, 0.5);
@@ -109,9 +107,7 @@ fn fr007_ipc_status_snapshot_tray_windows_wire_roundtrip() {
 async fn fr007_ipc_pool_status_tray_linux_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
 
-    let pool_resp = handler
-        .dispatch(r#"{"id":1,"method":"pool.status","params":{}}"#)
-        .await;
+    let pool_resp = handler.dispatch(r#"{"id":1,"method":"pool.status","params":{}}"#).await;
     assert!(
         pool_resp.error.is_none(),
         "pool.status MUST succeed (AC-007.68); err={:?}",
@@ -123,9 +119,7 @@ async fn fr007_ipc_pool_status_tray_linux_live() {
     assert_json_gate_before_host_watch(&pool_raw, "pool.status tray live");
     assert!(!pool.gate.gate_decision.is_empty());
 
-    let status_resp = handler
-        .dispatch(r#"{"id":2,"method":"status.snapshot","params":{}}"#)
-        .await;
+    let status_resp = handler.dispatch(r#"{"id":2,"method":"status.snapshot","params":{}}"#).await;
     assert!(
         status_resp.error.is_none(),
         "status.snapshot MUST succeed (AC-007.68); err={:?}",

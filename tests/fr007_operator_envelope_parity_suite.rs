@@ -18,7 +18,9 @@ use std::time::{Duration, Instant};
 
 use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
 use sharecli_thermal_tui::{pool_panel_lines, status_panel_lines, HELP_OVERLAY_HINT};
-use sharecli_tray_linux::ipc::{GateStatusSnapshot, HostResourceWatchJson, PoolSnapshot, StatusSnapshot};
+use sharecli_tray_linux::ipc::{
+    GateStatusSnapshot, HostResourceWatchJson, PoolSnapshot, StatusSnapshot,
+};
 use sharecli_tray_linux::operator_display as linux_display;
 use sharecli_tray_windows::operator_display as win_display;
 
@@ -162,10 +164,7 @@ fn assert_csv_watch_frame_smoke(
             .skip(1)
             .any(|f| f.contains(header.as_str()) && f.contains("[watch]"))
     });
-    assert!(
-        stderr.is_empty(),
-        "{context} MUST keep stderr silent (AC-007.93); stderr: {stderr:?}"
-    );
+    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.93); stderr: {stderr:?}");
     assert!(
         !stdout.contains("\x1b[2J"),
         "{context} MUST NOT emit ANSI clear (AC-007.93); got: {stdout}"
@@ -204,13 +203,10 @@ fn assert_csv_watch_footer_same_tick(
     let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
         buf.contains(marker.as_str()) && buf.contains(header.as_str()) && buf.contains("[watch]")
     });
-    assert!(
-        stderr.is_empty(),
-        "{context} MUST keep stderr silent (AC-007.95); stderr: {stderr:?}"
-    );
-    let watch_pos = stdout
-        .find("[watch]")
-        .unwrap_or_else(|| panic!("{context} MUST include [watch] footer (AC-007.95); got: {stdout}"));
+    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.95); stderr: {stderr:?}");
+    let watch_pos = stdout.find("[watch]").unwrap_or_else(|| {
+        panic!("{context} MUST include [watch] footer (AC-007.95); got: {stdout}")
+    });
     let markers_before = stdout[..watch_pos].matches(frame_marker).count();
     assert_eq!(
         markers_before, 1,
@@ -313,13 +309,10 @@ fn assert_text_watch_footer_same_tick(args: &[&str], body_header: &str, context:
     let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
         buf.contains(header.as_str()) && buf.contains("[watch]")
     });
-    assert!(
-        stderr.is_empty(),
-        "{context} MUST keep stderr silent (AC-007.97); stderr: {stderr:?}"
-    );
-    let watch_pos = stdout
-        .find("[watch]")
-        .unwrap_or_else(|| panic!("{context} MUST include [watch] footer (AC-007.97); got: {stdout}"));
+    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.97); stderr: {stderr:?}");
+    let watch_pos = stdout.find("[watch]").unwrap_or_else(|| {
+        panic!("{context} MUST include [watch] footer (AC-007.97); got: {stdout}")
+    });
     let gates_before = stdout[..watch_pos].matches(GATE_MARKER).count();
     assert_eq!(
         gates_before, 1,
@@ -374,15 +367,10 @@ fn assert_status_object(status: &serde_json::Value, context: &str) {
 
 fn assert_json_gate_host_watch(raw: &str, v: &serde_json::Value, context: &str) {
     let gate = v.get("gate").expect("{context} MUST include gate (AC-007.84)");
-    let host = v
-        .get("host_watch")
-        .expect("{context} MUST include host_watch (AC-007.84)");
+    let host = v.get("host_watch").expect("{context} MUST include host_watch (AC-007.84)");
     assert!(gate.get("gate_decision").is_some(), "gate MUST include gate_decision (AC-007.84)");
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.84); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.84); got: {host}");
     }
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch key in raw JSON");
@@ -447,12 +435,9 @@ fn assert_csv_companion_order(stdout: &str, body_header: &str, context: &str) {
         stdout.contains(body_header),
         "{context} MUST include command CSV body (AC-007.84); got: {stdout}"
     );
-    for header in [
-        GATE_CSV_HEADER,
-        HOST_CSV_HEADER,
-        POOL_COMPANION_CSV_HEADER,
-        STATUS_COMPANION_CSV_HEADER,
-    ] {
+    for header in
+        [GATE_CSV_HEADER, HOST_CSV_HEADER, POOL_COMPANION_CSV_HEADER, STATUS_COMPANION_CSV_HEADER]
+    {
         assert!(stdout.contains(header), "{context} MUST include {header} (AC-007.84)");
     }
     for prefix in ["gate,", "host,", "pool,", "status,"] {
@@ -563,31 +548,19 @@ fn fr007_operator_matrix_cli_text_one_shot() {
             args: &["report"],
             body_header: "=== Fleet Analytics Report ===",
         },
-        TextCase {
-            label: "proc",
-            args: &["proc"],
-            body_header: "=== Host agents (proc scan) ===",
-        },
+        TextCase { label: "proc", args: &["proc"], body_header: "=== Host agents (proc scan) ===" },
         TextCase {
             label: "proc --tree",
             args: &["proc", "--tree"],
             body_header: "=== Agent process tree (proc scan) ===",
         },
-        TextCase {
-            label: "health",
-            args: &["health"],
-            body_header: "Shared runtime health:",
-        },
+        TextCase { label: "health", args: &["health"], body_header: "Shared runtime health:" },
         TextCase {
             label: "pool",
             args: &["pool"],
             body_header: "=== Shared Runtime Pool Status ===",
         },
-        TextCase {
-            label: "status",
-            args: &["status"],
-            body_header: "=== Process Status ===",
-        },
+        TextCase { label: "status", args: &["status"], body_header: "=== Process Status ===" },
         TextCase {
             label: "ps --all",
             args: &["ps", "--all"],
@@ -733,14 +706,7 @@ fn fr007_operator_matrix_cli_csv_watch_frame_smoke() {
     }
 
     let self_pid = std::process::id().to_string();
-    let pid_args = [
-        "proc",
-        "--pid",
-        self_pid.as_str(),
-        "--csv",
-        "--watch",
-        "1",
-    ];
+    let pid_args = ["proc", "--pid", self_pid.as_str(), "--csv", "--watch", "1"];
     assert_csv_watch_frame_smoke(
         &pid_args,
         "# sharecli-proc-pid-watch-frame",
@@ -763,14 +729,7 @@ fn fr007_operator_matrix_cli_csv_watch_footer_same_tick() {
     }
 
     let self_pid = std::process::id().to_string();
-    let pid_args = [
-        "proc",
-        "--pid",
-        self_pid.as_str(),
-        "--csv",
-        "--watch",
-        "1",
-    ];
+    let pid_args = ["proc", "--pid", self_pid.as_str(), "--csv", "--watch", "1"];
     assert_csv_watch_footer_same_tick(
         &pid_args,
         "# sharecli-proc-pid-watch-frame",
@@ -789,11 +748,7 @@ fn fr007_operator_matrix_cli_text_watch_footer_same_tick() {
 
     let self_pid = std::process::id().to_string();
     let pid_args = ["proc", "--pid", self_pid.as_str(), "--watch", "1"];
-    assert_text_watch_footer_same_tick(
-        &pid_args,
-        PROC_PID_BODY_HEADER,
-        "proc --pid --watch",
-    );
+    assert_text_watch_footer_same_tick(&pid_args, PROC_PID_BODY_HEADER, "proc --pid --watch");
 }
 
 /// FR-007 / AC-007.84 — IPC health.status + monitoring.report carry gate → host_watch → pool/status.
@@ -801,16 +756,12 @@ fn fr007_operator_matrix_cli_text_watch_footer_same_tick() {
 async fn fr007_operator_matrix_ipc_envelopes() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
 
-    let health = handler
-        .dispatch(r#"{"id":1,"method":"health.status","params":{}}"#)
-        .await;
+    let health = handler.dispatch(r#"{"id":1,"method":"health.status","params":{}}"#).await;
     assert!(health.error.is_none(), "health.status MUST succeed (AC-007.84)");
     let health_raw = serde_json::to_string(&health.result).expect("serialize health.status");
     assert_json_envelope(&health_raw, JsonEnvelopeMode::FullPoolStatus, "health.status");
 
-    let report = handler
-        .dispatch(r#"{"id":2,"method":"monitoring.report","params":{}}"#)
-        .await;
+    let report = handler.dispatch(r#"{"id":2,"method":"monitoring.report","params":{}}"#).await;
     assert!(report.error.is_none(), "monitoring.report MUST succeed (AC-007.84)");
     let report_raw = serde_json::to_string(&report.result).expect("serialize monitoring.report");
     assert_json_envelope(&report_raw, JsonEnvelopeMode::FullPoolStatus, "monitoring.report");
@@ -942,7 +893,8 @@ fn fr007_operator_matrix_tray_source_markers() {
 /// FR-007 / AC-007.84 — dashboard HTML + thermal TUI companion panel markers present.
 #[test]
 fn fr007_operator_matrix_dashboard_tui_markers() {
-    let html = fs::read_to_string(manifest_path("src/dashboard.html")).expect("read dashboard.html");
+    let html =
+        fs::read_to_string(manifest_path("src/dashboard.html")).expect("read dashboard.html");
     for marker in [
         "data-operator-panels",
         "panel-gate",
@@ -969,12 +921,7 @@ fn fr007_operator_matrix_dashboard_tui_markers() {
         false,
     );
     let status_lines = status_panel_lines(
-        Some(StatusOperatorPanel {
-            scanned: 50,
-            watched: 1,
-            total_processes: 2,
-            agent_rows: 1,
-        }),
+        Some(StatusOperatorPanel { scanned: 50, watched: 1, total_processes: 2, agent_rows: 1 }),
         false,
     );
     let pool_text: String = pool_lines.iter().map(|l| l.to_string()).collect();

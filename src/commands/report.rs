@@ -300,8 +300,13 @@ fn render_json(
     pool: &PoolJson,
     status: &StatusJson,
 ) -> Result<()> {
-    let payload =
-        FleetReportJson::from_parts(report, gate.clone(), *host_watch, pool.clone(), status.clone());
+    let payload = FleetReportJson::from_parts(
+        report,
+        gate.clone(),
+        *host_watch,
+        pool.clone(),
+        status.clone(),
+    );
     let json = serde_json::to_string_pretty(&payload)?;
     println!("{}", json);
     Ok(())
@@ -352,10 +357,7 @@ pub fn render_report_csv_body(report: &FleetReport) -> String {
     out
 }
 
-async fn append_report_csv_companions(
-    csv: String,
-    gate: &GateStatusSnapshot,
-) -> Result<String> {
+async fn append_report_csv_companions(csv: String, gate: &GateStatusSnapshot) -> Result<String> {
     use sharecli_fleet::{PoolOperatorPanel, StatusOperatorPanel};
 
     let mut out = csv;
@@ -423,13 +425,8 @@ async fn render_once(format: &ReportFormat, sort: &SortBy, ndjson: bool) -> Resu
             let pool = pool_json?;
             let status = status_json?;
             if ndjson {
-                let payload = FleetReportJson::from_parts(
-                    &report,
-                    gate.clone(),
-                    host_watch,
-                    pool,
-                    status,
-                );
+                let payload =
+                    FleetReportJson::from_parts(&report, gate.clone(), host_watch, pool, status);
                 let line = FleetReportNdjsonLine { ts: unix_ts_secs(), snapshot: payload };
                 emit_ndjson_line(&line)?;
                 super::eprint_live_gate_host_watch_sections()?;
@@ -480,15 +477,11 @@ pub async fn run(format: ReportFormat, watch: Option<u64>, sort: SortBy) -> Resu
                     eprint!("{footer}");
                     let _ = std::io::stderr().flush();
                 } else if csv_watch {
-                    println!(
-                        "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
-                    );
+                    println!("# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                     // AC-007.94: flush so `# [watch]` reaches pipe consumers this tick.
                     std::io::stdout().flush()?;
                 } else {
-                    println!(
-                        "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
-                    );
+                    println!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                     // AC-007.96: flush text `[watch]` footer same tick (parity with CSV).
                     std::io::stdout().flush()?;
                 }

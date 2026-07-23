@@ -39,21 +39,13 @@ fn assert_json_gate_host_watch_pool_status_order(raw: &str, context: &str) {
     let v: serde_json::Value =
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     let gate = v.get("gate").expect("{context} MUST include gate (AC-007.78)");
-    let host = v
-        .get("host_watch")
-        .expect("{context} MUST include host_watch (AC-007.78)");
+    let host = v.get("host_watch").expect("{context} MUST include host_watch (AC-007.78)");
     let pool = v.get("pool").expect("{context} MUST include pool (AC-007.78)");
     let status = v.get("status").expect("{context} MUST include status (AC-007.78)");
     assert_pool_object(pool, context);
     assert_status_object(status, context);
-    assert!(
-        gate.get("gate_decision").is_some(),
-        "gate MUST include gate_decision (AC-007.78)"
-    );
-    assert!(
-        host.get("load_1m").is_some(),
-        "host_watch MUST include load_1m (AC-007.78)"
-    );
+    assert!(gate.get("gate_decision").is_some(), "gate MUST include gate_decision (AC-007.78)");
+    assert!(host.get("load_1m").is_some(), "host_watch MUST include load_1m (AC-007.78)");
 
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch key in raw JSON");
@@ -113,14 +105,8 @@ fn assert_json_gate_host_watch_pool_only(raw: &str, context: &str) {
 #[tokio::test]
 async fn fr007_ipc_health_status_pool_status_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
-    let resp = handler
-        .dispatch(r#"{"id":1,"method":"health.status","params":{}}"#)
-        .await;
-    assert!(
-        resp.error.is_none(),
-        "health.status MUST succeed (AC-007.78); err={:?}",
-        resp.error
-    );
+    let resp = handler.dispatch(r#"{"id":1,"method":"health.status","params":{}}"#).await;
+    assert!(resp.error.is_none(), "health.status MUST succeed (AC-007.78); err={:?}", resp.error);
     let raw = serde_json::to_string(&resp.result).expect("serialize health.status result");
     assert_json_gate_host_watch_pool_status_order(&raw, "health.status");
 }
@@ -129,14 +115,8 @@ async fn fr007_ipc_health_status_pool_status_live() {
 #[tokio::test]
 async fn fr007_ipc_pool_status_nested_status_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
-    let resp = handler
-        .dispatch(r#"{"id":2,"method":"pool.status","params":{}}"#)
-        .await;
-    assert!(
-        resp.error.is_none(),
-        "pool.status MUST succeed (AC-007.78); err={:?}",
-        resp.error
-    );
+    let resp = handler.dispatch(r#"{"id":2,"method":"pool.status","params":{}}"#).await;
+    assert!(resp.error.is_none(), "pool.status MUST succeed (AC-007.78); err={:?}", resp.error);
     let raw = serde_json::to_string(&resp.result).expect("serialize pool.status result");
     assert_json_gate_host_watch_status_only(&raw, "pool.status");
 }
@@ -145,14 +125,8 @@ async fn fr007_ipc_pool_status_nested_status_live() {
 #[tokio::test]
 async fn fr007_ipc_status_snapshot_nested_pool_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
-    let resp = handler
-        .dispatch(r#"{"id":3,"method":"status.snapshot","params":{}}"#)
-        .await;
-    assert!(
-        resp.error.is_none(),
-        "status.snapshot MUST succeed (AC-007.78); err={:?}",
-        resp.error
-    );
+    let resp = handler.dispatch(r#"{"id":3,"method":"status.snapshot","params":{}}"#).await;
+    assert!(resp.error.is_none(), "status.snapshot MUST succeed (AC-007.78); err={:?}", resp.error);
     let raw = serde_json::to_string(&resp.result).expect("serialize status.snapshot result");
     assert_json_gate_host_watch_pool_only(&raw, "status.snapshot");
 }

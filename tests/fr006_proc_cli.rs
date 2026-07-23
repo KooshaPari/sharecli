@@ -48,5 +48,8 @@ fn fr006_status_json_includes_agents() {
     );
     assert!(v.get("gate").is_some(), "status JSON MUST include top-level gate (AC-007.25)");
     assert!(v.get("scanned").is_some());
-    assert!(v.get("host_watch").is_some(), "status JSON MUST include top-level host_watch (AC-007.25)");
+    assert!(
+        v.get("host_watch").is_some(),
+        "status JSON MUST include top-level host_watch (AC-007.25)"
+    );
 }

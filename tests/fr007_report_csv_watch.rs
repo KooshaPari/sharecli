@@ -18,8 +18,7 @@ const SUMMARY_CSV_HEADER: &str = "record,timestamp,uptime_seconds,total_processe
 const GATE_CSV_HEADER: &str =
     "record,thermal_pressure,detected_agents,agent_total_rss_bytes,agent_contention,gate_decision";
 const HOST_CSV_HEADER: &str = "record,fd_count,net_rx_bytes,net_tx_bytes,mem_rss_bytes,load_1m";
-const POOL_CSV_HEADER: &str =
-    "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
+const POOL_CSV_HEADER: &str = "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
 const STATUS_CSV_HEADER: &str = "record,scanned,watched,total_processes,agent_rows";
 
 fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
@@ -40,10 +39,7 @@ fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
     thread::sleep(dwell);
     let _ = child.kill();
     let _ = child.wait();
-    (
-        stdout_reader.join().expect("stdout drain"),
-        stderr_reader.join().expect("stderr drain"),
-    )
+    (stdout_reader.join().expect("stdout drain"), stderr_reader.join().expect("stderr drain"))
 }
 
 fn assert_csv_envelope(frame: &str, context: &str) {
@@ -119,8 +115,5 @@ fn fr007_report_csv_watch_zero_interval_rejected() {
         .args(["report", "--format", "csv", "--watch", "0"])
         .output()
         .expect("spawn report --format csv --watch 0");
-    assert!(
-        !out.status.success(),
-        "report --format csv --watch 0 MUST fail (AC-007.90)"
-    );
+    assert!(!out.status.success(), "report --format csv --watch 0 MUST fail (AC-007.90)");
 }

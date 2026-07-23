@@ -207,8 +207,10 @@ mod tests {
                 assert_eq!(h.status.scanned, 50);
                 assert_eq!(h.status.watched, 1);
                 let gate_pos = raw.find("\"gate\"").expect("gate key in health_update JSON");
-                let host_pos = raw.find("\"host_watch\"").expect("host_watch key in health_update JSON");
-                let pool_pos = raw.find("\"pool\"").expect("pool key in health_update JSON (AC-007.80)");
+                let host_pos =
+                    raw.find("\"host_watch\"").expect("host_watch key in health_update JSON");
+                let pool_pos =
+                    raw.find("\"pool\"").expect("pool key in health_update JSON (AC-007.80)");
                 let status_pos =
                     raw.find("\"status\"").expect("status key in health_update JSON (AC-007.80)");
                 assert!(

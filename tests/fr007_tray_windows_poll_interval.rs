@@ -4,15 +4,12 @@
 //! Linux tray and Swift `AppState` poll ~every 3 s; WinUI MUST wire an equivalent timer loop
 //! calling the AC-007.51 `monitoring.report` refresh path.
 
-use sharecli_tray_windows::poll::{TRAY_POLL_INTERVAL_SECS, tray_poll_interval};
+use sharecli_tray_windows::poll::{tray_poll_interval, TRAY_POLL_INTERVAL_SECS};
 
 /// FR-007 / AC-007.52 — canonical tray poll interval matches Linux/Swift 3 s cadence.
 #[test]
 fn fr007_tray_windows_poll_interval_seconds() {
-    assert_eq!(
-        TRAY_POLL_INTERVAL_SECS, 3,
-        "Windows tray MUST poll every 3s (AC-007.52)"
-    );
+    assert_eq!(TRAY_POLL_INTERVAL_SECS, 3, "Windows tray MUST poll every 3s (AC-007.52)");
     assert_eq!(tray_poll_interval(), std::time::Duration::from_secs(3));
 }
 

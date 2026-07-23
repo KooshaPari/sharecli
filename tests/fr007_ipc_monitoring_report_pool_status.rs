@@ -24,9 +24,7 @@ fn assert_json_gate_host_watch_pool_status_order(raw: &str, context: &str) {
     let v: serde_json::Value =
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     let gate = v.get("gate").expect("{context} MUST include gate (AC-007.72)");
-    let host = v
-        .get("host_watch")
-        .expect("{context} MUST include host_watch (AC-007.72)");
+    let host = v.get("host_watch").expect("{context} MUST include host_watch (AC-007.72)");
     let pool = v.get("pool").expect("{context} MUST include pool (AC-007.72)");
     let status = v.get("status").expect("{context} MUST include status (AC-007.72)");
     assert!(
@@ -39,14 +37,8 @@ fn assert_json_gate_host_watch_pool_status_order(raw: &str, context: &str) {
             && status.get("watched").is_some(),
         "status MUST include proc-scan fields (AC-007.72); got: {status}"
     );
-    assert!(
-        gate.get("gate_decision").is_some(),
-        "gate MUST include gate_decision (AC-007.72)"
-    );
-    assert!(
-        host.get("load_1m").is_some(),
-        "host_watch MUST include load_1m (AC-007.72)"
-    );
+    assert!(gate.get("gate_decision").is_some(), "gate MUST include gate_decision (AC-007.72)");
+    assert!(host.get("load_1m").is_some(), "host_watch MUST include load_1m (AC-007.72)");
 
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch key in raw JSON");
@@ -62,9 +54,7 @@ fn assert_json_gate_host_watch_pool_status_order(raw: &str, context: &str) {
 #[tokio::test]
 async fn fr007_ipc_monitoring_report_pool_status_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
-    let resp = handler
-        .dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#)
-        .await;
+    let resp = handler.dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#).await;
     assert!(
         resp.error.is_none(),
         "monitoring.report MUST succeed (AC-007.72); err={:?}",

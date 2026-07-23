@@ -206,10 +206,8 @@ pub fn spawn_speculation_task(
                 let cwd = candidate.cwd.clone();
                 let env = candidate.env.clone();
 
-                let result = tokio::task::spawn_blocking(move || {
-                    speculate_execute(&argv, &cwd, &env)
-                })
-                .await;
+                let result =
+                    tokio::task::spawn_blocking(move || speculate_execute(&argv, &cwd, &env)).await;
 
                 match result {
                     Ok(Ok(cached)) => {
@@ -256,9 +254,8 @@ fn speculate_execute(
     cwd: &std::path::Path,
     env: &[(String, String)],
 ) -> Result<CachedResult> {
-    let (program, args) = argv
-        .split_first()
-        .ok_or_else(|| anyhow::anyhow!("speculate: argv is empty"))?;
+    let (program, args) =
+        argv.split_first().ok_or_else(|| anyhow::anyhow!("speculate: argv is empty"))?;
 
     let output = std::process::Command::new(program)
         .args(args)
@@ -317,10 +314,7 @@ mod tests {
         }
 
         let candidates = tracker.drain_candidates().await;
-        assert!(
-            candidates.len() <= SPECULATION_MAX_CANDIDATES,
-            "must not exceed max candidates"
-        );
+        assert!(candidates.len() <= SPECULATION_MAX_CANDIDATES, "must not exceed max candidates");
     }
 
     #[tokio::test]

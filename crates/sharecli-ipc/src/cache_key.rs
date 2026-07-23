@@ -95,16 +95,16 @@ fn git_fingerprint(cwd: &Path) -> String {
     let cwd_str = cwd.to_string_lossy();
     let mut state = String::new();
 
-    if let Ok(out) = Command::new("git")
-        .args(["-C", cwd_str.as_ref(), "status", "--porcelain"])
-        .output()
+    if let Ok(out) =
+        Command::new("git").args(["-C", cwd_str.as_ref(), "status", "--porcelain"]).output()
     {
         if out.status.success() {
             state.push_str(&String::from_utf8_lossy(&out.stdout));
         }
     }
 
-    if let Ok(out) = Command::new("git").args(["-C", cwd_str.as_ref(), "rev-parse", "HEAD"]).output()
+    if let Ok(out) =
+        Command::new("git").args(["-C", cwd_str.as_ref(), "rev-parse", "HEAD"]).output()
     {
         if out.status.success() {
             state.push_str(&String::from_utf8_lossy(&out.stdout));
@@ -151,8 +151,7 @@ mod tests {
     fn cache_key_git_mode_parse_and_differs_from_args() {
         let argv = vec!["tool".into()];
         let env: Vec<(String, String)> = vec![];
-        let args_key =
-            command_key_with_mode(CacheKeyMode::Args, &argv, Path::new("/tmp"), &env);
+        let args_key = command_key_with_mode(CacheKeyMode::Args, &argv, Path::new("/tmp"), &env);
         let git_key = command_key_with_mode(CacheKeyMode::Git, &argv, Path::new("/tmp"), &env);
         // Git mode adds cwd + fingerprint even when git is absent; differs from Args.
         assert_ne!(args_key, git_key);

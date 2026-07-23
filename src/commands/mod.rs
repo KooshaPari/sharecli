@@ -81,7 +81,8 @@ pub(crate) fn eprint_live_gate_host_watch_sections() -> Result<()> {
 }
 
 /// Live thermal gate + host resource watch for JSON envelopes (FR-007 / AC-007.44).
-fn capture_live_gate_host_watch() -> Result<(sharecli_fleet::GateStatusSnapshot, HostResourceWatchJson)> {
+fn capture_live_gate_host_watch(
+) -> Result<(sharecli_fleet::GateStatusSnapshot, HostResourceWatchJson)> {
     let thermal = ThermalGovernor::new().poll()?;
     let gate = gate_status_snapshot(thermal, count_host_agents());
     let host_watch = HostResourceWatchJson::capture()?;
@@ -356,18 +357,11 @@ pub fn render_status_csv_body(
     let mut out = format!(
         "record,total_processes,scanned,watched,agent_rows\n\
          status,{},{},{},{}\n",
-        summary.total_processes,
-        summary.scanned,
-        summary.watched,
-        summary.agent_rows,
+        summary.total_processes, summary.scanned, summary.watched, summary.agent_rows,
     );
     out.push_str("\nrecord,harness,count,memory_mb\n");
     for (h, count, mem) in harness_rows {
-        out.push_str(&format!(
-            "harness,{},{},{mem}\n",
-            csv_escape_field(h),
-            count,
-        ));
+        out.push_str(&format!("harness,{},{},{mem}\n", csv_escape_field(h), count,));
     }
     out.push_str("\nrecord,type,total,idle,max_per_type\n");
     out.push_str(&format!(
@@ -394,9 +388,7 @@ pub fn render_ps_all_csv_body(
 ) -> String {
     use proc::csv_escape_field;
 
-    let mut out = String::from(
-        "record,pid,name,memory_mb,project,harness,agent\n",
-    );
+    let mut out = String::from("record,pid,name,memory_mb,project,harness,agent\n");
     for proc in processes {
         out.push_str(&format!(
             "process,{},{},{},{},{},{}\n",
@@ -415,10 +407,7 @@ pub fn render_ps_all_csv_body(
     out.push_str(&format!("agent_inventory,{scanned},{watched}\n"));
     out.push_str("\npid,family,comm,state,mem_rss_bytes,mem_rss,fd_count\n");
     for row in agents {
-        let fd = row
-            .fd_count
-            .map(|n| n.to_string())
-            .unwrap_or_default();
+        let fd = row.fd_count.map(|n| n.to_string()).unwrap_or_default();
         out.push_str(&format!(
             "{},{},{},{},{},{},{}\n",
             row.pid,
@@ -441,10 +430,7 @@ pub struct StatusNdjsonLine {
     pub snapshot: StatusJson,
 }
 
-async fn build_ps_all_json(
-    project: Option<&str>,
-    harness: Option<&str>,
-) -> Result<PsAllJson> {
+async fn build_ps_all_json(project: Option<&str>, harness: Option<&str>) -> Result<PsAllJson> {
     let pool = ProcessPool::new();
     let filter = if let Some(p) = project {
         ProcessFilter::ByProject(p.to_string())
@@ -531,10 +517,7 @@ async fn render_ps_once(
     if json {
         let payload = build_ps_all_json(project, harness).await?;
         if ndjson {
-            let line = PsAllNdjsonLine {
-                ts: ps_unix_ts_secs(),
-                snapshot: payload,
-            };
+            let line = PsAllNdjsonLine { ts: ps_unix_ts_secs(), snapshot: payload };
             emit_ps_ndjson_line(&line)?;
             eprint_live_gate_host_watch_sections()?;
         } else {
@@ -835,10 +818,7 @@ async fn render_status_once(verbose: bool, json: bool, csv: bool, ndjson: bool) 
         let mut payload = build_status_json().await?;
         payload.pool = Some(Box::new(build_pool_json().await?));
         if ndjson {
-            let line = StatusNdjsonLine {
-                ts: ps_unix_ts_secs(),
-                snapshot: payload,
-            };
+            let line = StatusNdjsonLine { ts: ps_unix_ts_secs(), snapshot: payload };
             emit_ps_ndjson_line(&line)?;
             eprint_live_gate_host_watch_sections()?;
         } else {
@@ -860,10 +840,8 @@ async fn render_status_once(verbose: bool, json: bool, csv: bool, ndjson: bool) 
             entry.0 += 1;
             entry.1 += proc.memory_mb;
         }
-        let mut harness_rows: Vec<(String, usize, u64)> = by_harness
-            .into_iter()
-            .map(|(h, (count, mem))| (h, count, mem))
-            .collect();
+        let mut harness_rows: Vec<(String, usize, u64)> =
+            by_harness.into_iter().map(|(h, (count, mem))| (h, count, mem)).collect();
         harness_rows.sort_by(|a, b| a.0.cmp(&b.0));
         let runtime = get_shared_runtime();
         let pool_status = runtime.status().await;
@@ -1303,10 +1281,7 @@ async fn render_pool_once(json: bool, csv: bool, ndjson: bool) -> Result<()> {
         let mut payload = build_pool_json().await?;
         payload.status = Some(Box::new(build_status_json().await?));
         if ndjson {
-            let line = PoolNdjsonLine {
-                ts: ps_unix_ts_secs(),
-                snapshot: payload,
-            };
+            let line = PoolNdjsonLine { ts: ps_unix_ts_secs(), snapshot: payload };
             emit_ps_ndjson_line(&line)?;
             eprint_live_gate_host_watch_sections()?;
         } else {
@@ -1435,14 +1410,16 @@ async fn build_health_json() -> Result<HealthJson> {
 /// Render one health snapshot (one-shot or watch cycle).
 ///
 /// One-shot `health --json` MUST NOT print gate/host_watch stderr companions (AC-007.44).
-async fn render_health_once(harness: Option<&str>, json: bool, csv: bool, ndjson: bool) -> Result<()> {
+async fn render_health_once(
+    harness: Option<&str>,
+    json: bool,
+    csv: bool,
+    ndjson: bool,
+) -> Result<()> {
     if json {
         let payload = build_health_json().await?;
         if ndjson {
-            let line = HealthNdjsonLine {
-                ts: ps_unix_ts_secs(),
-                snapshot: payload,
-            };
+            let line = HealthNdjsonLine { ts: ps_unix_ts_secs(), snapshot: payload };
             emit_ps_ndjson_line(&line)?;
             eprint_live_gate_host_watch_sections()?;
         } else {
@@ -1500,7 +1477,12 @@ async fn render_health_once(harness: Option<&str>, json: bool, csv: bool, ndjson
 }
 
 /// Run health probe for shared runtime
-pub async fn health(harness: Option<&str>, json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
+pub async fn health(
+    harness: Option<&str>,
+    json: bool,
+    csv: bool,
+    watch: Option<u64>,
+) -> Result<()> {
     if csv {
         if json {
             anyhow::bail!("--csv cannot be combined with --json");

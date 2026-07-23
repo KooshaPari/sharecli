@@ -6,8 +6,8 @@
 
 use std::process::Command;
 
-use sharecli::commands::render_ps_all_csv_body;
 use sharecli::commands::proc::AgentProcRow;
+use sharecli::commands::render_ps_all_csv_body;
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
@@ -100,15 +100,8 @@ fn assert_stderr_silent(stderr: &[u8], context: &str) {
 /// FR-007 / AC-007.83 — CLI ps --all --csv appends gate → host_watch → pool → status companions.
 #[test]
 fn fr007_ps_all_csv_companion_order() {
-    let out = bin()
-        .args(["ps", "--all", "--csv"])
-        .output()
-        .expect("spawn sharecli ps --all --csv");
-    assert!(
-        out.status.success(),
-        "ps --all --csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["ps", "--all", "--csv"]).output().expect("spawn sharecli ps --all --csv");
+    assert!(out.status.success(), "ps --all --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert_body_precedes_companions(&s, MANAGED_CSV_HEADER, "ps --all --csv");
     assert!(
@@ -126,15 +119,9 @@ fn fr007_ps_all_csv_rejects_json() {
         .args(["ps", "--all", "--csv", "--json"])
         .output()
         .expect("spawn sharecli ps --all --csv --json");
-    assert!(
-        !out.status.success(),
-        "ps --all --csv --json MUST fail loudly (AC-007.83)"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    assert!(!out.status.success(), "ps --all --csv --json MUST fail loudly (AC-007.83)");
+    let combined =
+        format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
     assert!(
         combined.to_ascii_lowercase().contains("json") || combined.contains("--csv"),
         "MUST reject --csv with --json; got: {combined}"
@@ -144,19 +131,10 @@ fn fr007_ps_all_csv_rejects_json() {
 /// FR-007 / AC-007.83 — ps --csv without --all fails loudly.
 #[test]
 fn fr007_ps_csv_requires_all() {
-    let out = bin()
-        .args(["ps", "--csv"])
-        .output()
-        .expect("spawn sharecli ps --csv");
-    assert!(
-        !out.status.success(),
-        "ps --csv without --all MUST fail loudly (AC-007.83)"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    let out = bin().args(["ps", "--csv"]).output().expect("spawn sharecli ps --csv");
+    assert!(!out.status.success(), "ps --csv without --all MUST fail loudly (AC-007.83)");
+    let combined =
+        format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
     assert!(
         combined.contains("--all") || combined.contains("AC-007.83"),
         "MUST require --all for --csv; got: {combined}"

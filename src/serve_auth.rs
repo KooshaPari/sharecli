@@ -330,8 +330,7 @@ fn tokens_equal(a: &str, b: &str) -> bool {
 
 /// Paths that remain reachable without AuthN (liveness/readiness).
 pub fn is_public_path(path: &str) -> bool {
-    matches!(path, "/healthz" | "/readyz")
-        || crate::dashboard_assets::is_dashboard_asset_path(path)
+    matches!(path, "/healthz" | "/readyz") || crate::dashboard_assets::is_dashboard_asset_path(path)
 }
 
 /// Axum middleware: enforce bearer or JWT when configured.

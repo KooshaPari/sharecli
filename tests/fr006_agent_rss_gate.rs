@@ -4,8 +4,8 @@
 //! AC-006.12 aggregate watched-agent RSS escalates Hypervisor gate tier
 
 use sharecli_core::{
-    AgentAwareThermalGate, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision,
-    THERMAL_MAX_RETRIES,
+    AgentAwareThermalGate, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,
+    ThermalDecision, THERMAL_MAX_RETRIES,
 };
 use sharecli_fleet::agent_contention::{
     agent_resource_contention_tier, combined_agent_contention_tier, AgentContentionThresholds,
@@ -35,7 +35,12 @@ async fn fr006_agent_rss_refuses_hypervisor_spawn() {
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "rss-gated".to_string()];
 
     let err = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        })
         .await
         .expect_err("RSS refuse MUST err after retries");
 

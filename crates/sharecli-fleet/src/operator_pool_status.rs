@@ -44,10 +44,7 @@ impl StatusOperatorPanel {
         format!(
             "\nrecord,scanned,watched,total_processes,agent_rows\n\
              status,{},{},{},{}\n",
-            self.scanned,
-            self.watched,
-            self.total_processes,
-            self.agent_rows,
+            self.scanned, self.watched, self.total_processes, self.agent_rows,
         )
     }
 }
@@ -69,10 +66,7 @@ pub fn format_pool_operator_line(pool: &PoolOperatorPanel) -> String {
 pub fn format_status_operator_line(status: &StatusOperatorPanel) -> String {
     format!(
         "Proc scan {} · watched {} · {} managed · {} agent row(s)",
-        status.scanned,
-        status.watched,
-        status.total_processes,
-        status.agent_rows,
+        status.scanned, status.watched, status.total_processes, status.agent_rows,
     )
 }
 
@@ -103,13 +97,9 @@ mod tests {
 
     #[test]
     fn status_operator_panel_format_csv_companion() {
-        let csv = StatusOperatorPanel {
-            scanned: 5,
-            watched: 3,
-            total_processes: 12,
-            agent_rows: 3,
-        }
-        .format_csv_companion();
+        let csv =
+            StatusOperatorPanel { scanned: 5, watched: 3, total_processes: 12, agent_rows: 3 }
+                .format_csv_companion();
         assert!(
             csv.contains("record,scanned,watched,total_processes,agent_rows"),
             "CSV companion MUST include status header; got: {csv}"

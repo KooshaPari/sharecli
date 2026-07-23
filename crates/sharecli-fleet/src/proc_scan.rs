@@ -361,7 +361,13 @@ mod tests {
                 cmdline: vec!["ruff".into(), "check".into(), ".".into()],
                 state: 'R',
             },
-            ProcSnapshot { pid: 400, ppid: 10, comm: "zsh".into(), cmdline: vec!["-l".into()], state: 'R' },
+            ProcSnapshot {
+                pid: 400,
+                ppid: 10,
+                comm: "zsh".into(),
+                cmdline: vec!["-l".into()],
+                state: 'R',
+            },
         ])
     }
 

@@ -13,8 +13,8 @@ fn repo_root() -> PathBuf {
 
 #[test]
 fn fr004_l81_3_thermal_tui_keyboard_matrix() {
-    let doc = fs::read_to_string(repo_root().join("docs/a11y/keyboard.md"))
-        .expect("read keyboard.md");
+    let doc =
+        fs::read_to_string(repo_root().join("docs/a11y/keyboard.md")).expect("read keyboard.md");
     for needle in ["Tab", "Shift-Tab", "`r`", "`?`", "handle_key"] {
         assert!(doc.contains(needle), "keyboard.md must document {needle}");
     }

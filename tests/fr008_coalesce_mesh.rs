@@ -19,8 +19,8 @@ use sharecli_core::{
     THERMAL_MAX_RETRIES,
 };
 use sharecli_ipc::{
-    command_key, has_nocache_arg, should_bypass_coalesce, CachedResult, CacheKeyMode, CoalesceCache,
-    SlotQueue, DEFAULT_NOCACHE_ARGS,
+    command_key, has_nocache_arg, should_bypass_coalesce, CacheKeyMode, CachedResult,
+    CoalesceCache, SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
 use std::fs;
 use std::path::Path;
@@ -81,12 +81,7 @@ async fn fr008_hypervisor_cache_respects_cwd_and_env() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "cwd-env".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "cwd-env".to_string(),
-    ];
+    let argv = vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "cwd-env".to_string()];
 
     let cwd_a = root.path().join("a");
     let cwd_b = root.path().join("b");
@@ -157,7 +152,12 @@ async fn fr008_thermal_gate_before_coalesce() {
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "should-not-run".to_string()];
 
     let err = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        })
         .await
         .expect_err("Refuse MUST err after retries");
 
@@ -181,7 +181,12 @@ async fn fr008_second_run_from_cache() {
     let argv =
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "coalesce".to_string()];
 
-    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
+    let req = SpawnRequest {
+        argv,
+        cwd: dir.path().to_path_buf(),
+        env: vec![],
+        queue_priority: QueuePriority::Normal,
+    };
     let first = hv.run(req.clone()).await.expect("first");
     assert!(!first.from_cache);
     let second = hv.run(req).await.expect("second");
@@ -300,8 +305,10 @@ async fn fr008_hypervisor_debounce_waits_and_shares() {
             .expect("bg store");
     });
 
-    let outcome =
-        hv.run(SpawnRequest { argv, cwd, env: vec![], queue_priority: QueuePriority::Normal }).await.expect("debounced hypervisor run");
+    let outcome = hv
+        .run(SpawnRequest { argv, cwd, env: vec![], queue_priority: QueuePriority::Normal })
+        .await
+        .expect("debounced hypervisor run");
 
     producer.join().expect("producer join");
 
@@ -392,7 +399,12 @@ async fn fr008_hypervisor_nocache_routes_to_queue() {
     ];
 
     // echo ignores unknown flags on unix; we care about routing, not exit.
-    let req = SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
+    let req = SpawnRequest {
+        argv,
+        cwd: dir.path().to_path_buf(),
+        env: vec![],
+        queue_priority: QueuePriority::Normal,
+    };
     let first = hv.run(req.clone()).await.expect("first nocache run");
     assert!(!first.from_cache, "AC-008.9: nocache MUST NOT use coalesce cache");
     let second = hv.run(req).await.expect("second nocache run");
@@ -577,9 +589,7 @@ async fn fr008_hypervisor_nocache_critical_before_normal() {
             .expect("holder nocache run")
     });
 
-    while !std::fs::read_to_string(&order_path)
-        .map(|s| s.contains("holder_start"))
-        .unwrap_or(false)
+    while !std::fs::read_to_string(&order_path).map(|s| s.contains("holder_start")).unwrap_or(false)
     {
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
@@ -588,14 +598,12 @@ async fn fr008_hypervisor_nocache_critical_before_normal() {
     let critical_cwd = cwd.clone();
     let critical = tokio::spawn(async move {
         critical_hv
-            .run(
-                SpawnRequest {
-                    argv: critical_argv,
-                    cwd: critical_cwd,
-                    env: vec![],
-                    queue_priority: QueuePriority::Critical,
-                },
-            )
+            .run(SpawnRequest {
+                argv: critical_argv,
+                cwd: critical_cwd,
+                env: vec![],
+                queue_priority: QueuePriority::Critical,
+            })
             .await
             .expect("critical nocache run")
     });
@@ -603,14 +611,12 @@ async fn fr008_hypervisor_nocache_critical_before_normal() {
     let late_normal_hv = Arc::clone(&hv);
     let late_normal = tokio::spawn(async move {
         late_normal_hv
-            .run(
-                SpawnRequest {
-                    argv: late_normal_argv,
-                    cwd,
-                    env: vec![],
-                    queue_priority: QueuePriority::Normal,
-                },
-            )
+            .run(SpawnRequest {
+                argv: late_normal_argv,
+                cwd,
+                env: vec![],
+                queue_priority: QueuePriority::Normal,
+            })
             .await
             .expect("late normal nocache run")
     });
@@ -654,20 +660,11 @@ async fn fr008_hypervisor_args_cache_key_mode_ignores_cwd() {
     fs::create_dir_all(&sub_b).expect("mkdir b");
 
     let argv = vec!["/bin/echo".into(), "args-mode-probe".into()];
-    let first = hv
-        .run(SpawnRequest::new(argv.clone(), sub_a, vec![]))
-        .await
-        .expect("first run");
+    let first = hv.run(SpawnRequest::new(argv.clone(), sub_a, vec![])).await.expect("first run");
     assert!(!first.from_cache);
 
-    let second = hv
-        .run(SpawnRequest::new(argv, sub_b, vec![]))
-        .await
-        .expect("second run");
-    assert!(
-        second.from_cache,
-        "AC-008.19: Args mode MUST coalesce across different cwd"
-    );
+    let second = hv.run(SpawnRequest::new(argv, sub_b, vec![])).await.expect("second run");
+    assert!(second.from_cache, "AC-008.19: Args mode MUST coalesce across different cwd");
 }
 
 /// FR-008 / AC-008.20 — semantic normalization applied before Hypervisor cache hash.
@@ -692,11 +689,7 @@ async fn fr008_hypervisor_semantic_coalesces_repeated_lint_dot() {
         vec![],
     );
 
-    let argv = vec![
-        fake_ruff.to_string_lossy().into(),
-        "check".into(),
-        ".".into(),
-    ];
+    let argv = vec![fake_ruff.to_string_lossy().into(), "check".into(), ".".into()];
     let cwd = dir.path().to_path_buf();
 
     let first = hv
@@ -705,12 +698,7 @@ async fn fr008_hypervisor_semantic_coalesces_repeated_lint_dot() {
         .expect("first semantic lint run");
     assert!(!first.from_cache);
 
-    let second = hv
-        .run(SpawnRequest::new(argv, cwd, vec![]))
-        .await
-        .expect("second semantic lint run");
-    assert!(
-        second.from_cache,
-        "AC-008.20: semantic lint invocations MUST coalesce on replay"
-    );
+    let second =
+        hv.run(SpawnRequest::new(argv, cwd, vec![])).await.expect("second semantic lint run");
+    assert!(second.from_cache, "AC-008.20: semantic lint invocations MUST coalesce on replay");
 }

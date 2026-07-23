@@ -57,9 +57,7 @@ impl Drop for ServeChild {
 fn wait_ws_message(url: &str, timeout: Duration) -> Option<String> {
     let deadline = std::time::Instant::now() + timeout;
     while std::time::Instant::now() < deadline {
-        let out = Command::new("websocat")
-            .args(["-n1", url])
-            .output();
+        let out = Command::new("websocat").args(["-n1", url]).output();
         if let Ok(out) = out {
             if out.status.success() {
                 let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
@@ -80,9 +78,7 @@ fn assert_ws_envelope(raw: &str) {
         v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
         "dashboard WS MUST include gate (AC-007.41); got: {v}"
     );
-    let host = v
-        .get("host_watch")
-        .expect("dashboard WS MUST include host_watch (AC-007.41)");
+    let host = v.get("host_watch").expect("dashboard WS MUST include host_watch (AC-007.41)");
     for key in HOST_WATCH_KEYS {
         assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.41)");
     }
@@ -97,9 +93,7 @@ fn assert_ws_envelope(raw: &str) {
         pool.get("node_total").is_some() && pool.get("healthy").is_some(),
         "pool MUST include capacity fields (AC-007.70); got: {pool}"
     );
-    let status = v
-        .get("status")
-        .expect("dashboard WS MUST include status (AC-007.70)");
+    let status = v.get("status").expect("dashboard WS MUST include status (AC-007.70)");
     assert!(
         status.get("total_processes").is_some()
             && status.get("scanned").is_some()
@@ -137,10 +131,7 @@ fn fr007_dashboard_operator_panel_markup() {
     );
     assert!(html.contains("panel-gate"), "dashboard MUST include gate panel");
     assert!(html.contains("panel-host-watch"), "dashboard MUST include host watch panel");
-    assert!(
-        html.contains("panel-pool"),
-        "dashboard MUST include pool panel (AC-007.70)"
-    );
+    assert!(html.contains("panel-pool"), "dashboard MUST include pool panel (AC-007.70)");
     assert!(
         html.contains("panel-status"),
         "dashboard MUST include status snapshot panel (AC-007.70)"

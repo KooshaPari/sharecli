@@ -15,11 +15,7 @@ fn bin() -> Command {
 #[serial_test::serial]
 fn fr007_proc_text_gate_section() {
     let out = bin().args(["proc"]).output().expect("spawn sharecli proc");
-    assert!(
-        out.status.success(),
-        "proc MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
         s.contains("=== Thermal Gate (FR-011) ==="),
@@ -29,12 +25,8 @@ fn fr007_proc_text_gate_section() {
         s.contains("Gate decision:"),
         "proc text MUST include gate decision (AC-007.21); got: {s}"
     );
-    let gate_pos = s
-        .find("=== Thermal Gate (FR-011) ===")
-        .expect("gate section");
-    let watch_pos = s
-        .find("=== Host Resource Watch ===")
-        .expect("host watch section");
+    let gate_pos = s.find("=== Thermal Gate (FR-011) ===").expect("gate section");
+    let watch_pos = s.find("=== Host Resource Watch ===").expect("host watch section");
     assert!(
         gate_pos < watch_pos,
         "gate section MUST precede host watch footer (AC-007.21); got: {s}"

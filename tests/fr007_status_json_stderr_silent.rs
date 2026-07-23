@@ -36,10 +36,7 @@ fn assert_stderr_no_companion_markers(stderr: &[u8], context: &str) {
 fn assert_json_body_has_gate_and_host_watch(stdout: &[u8], context: &str) {
     let v: serde_json::Value =
         serde_json::from_slice(stdout).expect("{context} MUST emit valid JSON on stdout");
-    assert!(
-        v.get("gate").is_some(),
-        "{context} JSON body MUST include gate (AC-007.32); got: {v}"
-    );
+    assert!(v.get("gate").is_some(), "{context} JSON body MUST include gate (AC-007.32); got: {v}");
     assert!(
         v.get("host_watch").is_some(),
         "{context} JSON body MUST include host_watch (AC-007.32); got: {v}"
@@ -51,11 +48,7 @@ fn assert_json_body_has_gate_and_host_watch(stdout: &[u8], context: &str) {
 #[serial_test::serial]
 fn fr007_status_json_stderr_silent() {
     let out = bin().args(["status", "--json"]).output().expect("spawn sharecli status --json");
-    assert!(
-        out.status.success(),
-        "status --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "status --json MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "status --json");
     assert_stderr_no_companion_markers(&out.stderr, "status --json");
     assert_json_body_has_gate_and_host_watch(&out.stdout, "status --json");

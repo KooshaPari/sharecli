@@ -100,20 +100,13 @@ fn fr009_cli_fuse_status_json() {
 fn fr009_cli_fuse_list_empty() {
     let out = bin().args(["fuse", "list"]).output().expect("spawn fuse list");
     assert!(out.status.success(), "stderr={}", stderr(&out));
-    assert!(
-        stdout(&out).contains("no registered mounts"),
-        "stdout={}",
-        stdout(&out)
-    );
+    assert!(stdout(&out).contains("no registered mounts"), "stdout={}", stdout(&out));
 }
 
 /// FR-009 / AC-009.17 — commit without a registered mount fails loudly.
 #[test]
 fn fr009_cli_fuse_commit_requires_mount() {
-    let out = bin()
-        .args(["fuse", "commit", "some/path.txt"])
-        .output()
-        .expect("spawn fuse commit");
+    let out = bin().args(["fuse", "commit", "some/path.txt"]).output().expect("spawn fuse commit");
     assert!(!out.status.success(), "commit without mount MUST fail");
     assert!(
         stderr(&out).contains("no active FUSE mounts") || stderr(&out).contains("registered mount"),
@@ -181,10 +174,7 @@ fn fr009_cli_fuse_mount_rejects_missing_agents_conf() {
 /// FR-009 / AC-009.21 — `fuse mount --help` documents Feb `--cow` / `--no-serialize` / `--agents-conf`.
 #[test]
 fn fr009_cli_fuse_mount_help_documents_feb_flags() {
-    let out = bin()
-        .args(["fuse", "mount", "--help"])
-        .output()
-        .expect("spawn fuse mount --help");
+    let out = bin().args(["fuse", "mount", "--help"]).output().expect("spawn fuse mount --help");
     assert!(out.status.success(), "help MUST exit 0");
     let text = format!("{}{}", stdout(&out), stderr(&out));
     for flag in ["--cow", "--no-serialize", "--agents-conf", "--agent", "--cow-dir"] {

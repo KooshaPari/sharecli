@@ -11,13 +11,7 @@ fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
 
-const TEXT_MARKERS: [&str; 5] = [
-    "Open FDs:",
-    "RSS:",
-    "Load (1m):",
-    "Net RX:",
-    "Net TX:",
-];
+const TEXT_MARKERS: [&str; 5] = ["Open FDs:", "RSS:", "Load (1m):", "Net RX:", "Net TX:"];
 
 const CSV_HEADER: &str = "record,fd_count,net_rx_bytes,net_tx_bytes,mem_rss_bytes,load_1m";
 
@@ -36,7 +30,10 @@ fn fr007_host_watch_format_text_section() {
         assert!(section.contains(marker), "text section MUST include {marker}; got: {section}");
     }
     assert!(section.contains("42"), "text section MUST include fd_count; got: {section}");
-    assert!(section.contains("52428800"), "text section MUST include mem_rss_bytes; got: {section}");
+    assert!(
+        section.contains("52428800"),
+        "text section MUST include mem_rss_bytes; got: {section}"
+    );
 }
 
 /// FR-007 / AC-007.14 — unit helper renders companion CSV host record.
@@ -50,10 +47,7 @@ fn fr007_host_watch_format_csv_companion() {
         load_1m: 0.5,
     }
     .format_csv_companion();
-    assert!(
-        csv.contains(CSV_HEADER),
-        "CSV companion MUST include host_watch header; got: {csv}"
-    );
+    assert!(csv.contains(CSV_HEADER), "CSV companion MUST include host_watch header; got: {csv}");
     assert!(
         csv.contains("host,7,11,22,4096,0.50"),
         "CSV companion MUST include host data row; got: {csv}"
@@ -114,15 +108,9 @@ fn fr007_proc_tree_text_host_watch_footer() {
 #[test]
 #[serial_test::serial]
 fn fr007_proc_tree_csv_host_watch_companion() {
-    let out = bin()
-        .args(["proc", "--tree", "--csv"])
-        .output()
-        .expect("spawn sharecli proc --tree --csv");
-    assert!(
-        out.status.success(),
-        "proc --tree --csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out =
+        bin().args(["proc", "--tree", "--csv"]).output().expect("spawn sharecli proc --tree --csv");
+    assert!(out.status.success(), "proc --tree --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
         s.lines().next().unwrap_or("").starts_with("root_index,"),

@@ -37,10 +37,7 @@ fn assert_ndjson_gate_before_host_watch(line: &str, context: &str) {
         serde_json::from_str(line.trim()).expect("watch NDJSON line MUST be valid JSON");
     assert!(v.get("ts").is_some(), "{context} MUST include ts (AC-007.49)");
     assert!(v.get("gate").is_some(), "{context} MUST include gate (AC-007.49)");
-    assert!(
-        v.get("host_watch").is_some(),
-        "{context} MUST include host_watch (AC-007.49)"
-    );
+    assert!(v.get("host_watch").is_some(), "{context} MUST include host_watch (AC-007.49)");
     let gate_pos = line.find("\"gate\"").expect("gate key in NDJSON line");
     let host_pos = line.find("\"host_watch\"").expect("host_watch key in NDJSON line");
     assert!(
@@ -189,10 +186,10 @@ fn fr007_ps_watch_json_requires_all() {
 /// FR-007 / AC-007.49 — serialized ps watch NDJSON envelope preserves gate → host_watch key order.
 #[test]
 fn fr007_ps_all_watch_ndjson_gate_order_serializes_fields() {
+    use sharecli::commands::proc::AgentProcRow;
     use sharecli::commands::PsAllJson;
     use sharecli::commands::PsAllNdjsonLine;
     use sharecli::commands::PsManagedProcessRow;
-    use sharecli::commands::proc::AgentProcRow;
     use sharecli::monitoring::HostResourceWatchJson;
     use sharecli_fleet::GateStatusSnapshot;
 
@@ -277,10 +274,7 @@ fn fr007_ps_all_watch_ndjson_gate_order_serializes_fields() {
             pool: None,
         },
     };
-    let line = PsAllNdjsonLine {
-        ts: 1_700_000_000,
-        snapshot: envelope,
-    };
+    let line = PsAllNdjsonLine { ts: 1_700_000_000, snapshot: envelope };
     let json = serde_json::to_string(&line).expect("serialize ps watch NDJSON envelope");
     assert_ndjson_gate_before_host_watch(&json, "PsAllNdjsonLine");
 }

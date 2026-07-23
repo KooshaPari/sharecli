@@ -16,10 +16,10 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
+use windows::Win32::Storage::FileSystem::FILE_ACCESS_RIGHTS;
 use winfsp::filesystem::{FileInfo, FileSecurity, FileSystemContext, OpenFileInfo};
 use winfsp::host::{FileSystemHost, VolumeParams};
 use winfsp::{winfsp_init, FspError, U16CStr};
-use windows::Win32::Storage::FileSystem::FILE_ACCESS_RIGHTS;
 
 use crate::provenance::{annotate_write, default_session_id};
 use crate::write_serialize_meters::record_passthrough_write;
@@ -66,22 +66,15 @@ impl WinfspMountSession {
     pub fn start(mountpoint: &Path, backing: &Path, session_id: &str) -> Result<Self> {
         ensure_winfsp()?;
         if !backing.is_dir() {
-            bail!(
-                "sharecli-fuse WinFsp: backing is not a directory: {}",
-                backing.display()
-            );
+            bail!("sharecli-fuse WinFsp: backing is not a directory: {}", backing.display());
         }
-        fs::create_dir_all(mountpoint).with_context(|| {
-            format!("create mountpoint {}", mountpoint.display())
-        })?;
+        fs::create_dir_all(mountpoint)
+            .with_context(|| format!("create mountpoint {}", mountpoint.display()))?;
 
         let mp = mountpoint.to_path_buf();
         let backing = backing.to_path_buf();
-        let session = if session_id.is_empty() {
-            default_session_id()
-        } else {
-            session_id.to_string()
-        };
+        let session =
+            if session_id.is_empty() { default_session_id() } else { session_id.to_string() };
         let stop = Arc::new(AtomicBool::new(false));
         let stop_t = Arc::clone(&stop);
         let ready = Arc::new(AtomicBool::new(false));
@@ -97,11 +90,7 @@ impl WinfspMountSession {
         let started = std::time::Instant::now();
         while started.elapsed() < deadline {
             if ready.load(Ordering::SeqCst) {
-                return Ok(Self {
-                    mountpoint: mp,
-                    stop,
-                    join: Some(join),
-                });
+                return Ok(Self { mountpoint: mp, stop, join: Some(join) });
             }
             if join.is_finished() {
                 match join.join() {
@@ -138,13 +127,7 @@ pub fn mount_blocking(mountpoint: &Path, backing: &Path, session_id: &str) -> Re
     ensure_winfsp()?;
     let stop = Arc::new(AtomicBool::new(false));
     let ready = Arc::new(AtomicBool::new(false));
-    run_host(
-        mountpoint,
-        backing,
-        session_id,
-        stop,
-        ready,
-    )
+    run_host(mountpoint, backing, session_id, stop, ready)
 }
 
 fn run_host(
@@ -154,10 +137,7 @@ fn run_host(
     stop: Arc<AtomicBool>,
     ready: Arc<AtomicBool>,
 ) -> Result<()> {
-    let ctx = PassthroughCtx {
-        backing: backing.to_path_buf(),
-        session_id: session_id.to_string(),
-    };
+    let ctx = PassthroughCtx { backing: backing.to_path_buf(), session_id: session_id.to_string() };
 
     let mut params = VolumeParams::new();
     params
@@ -178,8 +158,7 @@ fn run_host(
         .map_err(|e| anyhow::anyhow!("FileSystemHost::new: {e}"))?;
     host.mount(mountpoint)
         .map_err(|e| anyhow::anyhow!("WinFsp mount {}: {e}", mountpoint.display()))?;
-    host.start()
-        .map_err(|e| anyhow::anyhow!("WinFsp host start: {e}"))?;
+    host.start().map_err(|e| anyhow::anyhow!("WinFsp host start: {e}"))?;
     ready.store(true, Ordering::SeqCst);
 
     while !stop.load(Ordering::SeqCst) {
@@ -203,9 +182,7 @@ struct FileCtx {
 impl PassthroughCtx {
     fn resolve(&self, file_name: &U16CStr) -> PathBuf {
         let name = file_name.to_string_lossy();
-        let trimmed = name
-            .trim_start_matches('\\')
-            .trim_start_matches('/');
+        let trimmed = name.trim_start_matches('\\').trim_start_matches('/');
         if trimmed.is_empty() || trimmed == "." {
             self.backing.clone()
         } else {
@@ -343,8 +320,7 @@ impl FileSystemContext for PassthroughCtx {
     ) -> Result<u32, FspError> {
         let mut guard = context.file.lock().map_err(|_| FspError::from(0xC0000001))?;
         let file = guard.as_mut().ok_or(FspError::from(0xC0000001))?;
-        file.seek(SeekFrom::Start(offset))
-            .map_err(|_| FspError::from(0xC0000001))?;
+        file.seek(SeekFrom::Start(offset)).map_err(|_| FspError::from(0xC0000001))?;
         let n = file.read(buffer).map_err(|_| FspError::from(0xC0000001))?;
         Ok(n as u32)
     }
@@ -361,16 +337,12 @@ impl FileSystemContext for PassthroughCtx {
         let mut guard = context.file.lock().map_err(|_| FspError::from(0xC0000001))?;
         let file = guard.as_mut().ok_or(FspError::from(0xC0000001))?;
         if write_to_eof {
-            file.seek(SeekFrom::End(0))
-                .map_err(|_| FspError::from(0xC0000001))?;
+            file.seek(SeekFrom::End(0)).map_err(|_| FspError::from(0xC0000001))?;
         } else {
-            file.seek(SeekFrom::Start(offset))
-                .map_err(|_| FspError::from(0xC0000001))?;
+            file.seek(SeekFrom::Start(offset)).map_err(|_| FspError::from(0xC0000001))?;
         }
-        file.write_all(buffer)
-            .map_err(|_| FspError::from(0xC0000001))?;
-        annotate_write(&context.path, &self.session_id)
-            .map_err(|_| FspError::from(0xC0000001))?;
+        file.write_all(buffer).map_err(|_| FspError::from(0xC0000001))?;
+        annotate_write(&context.path, &self.session_id).map_err(|_| FspError::from(0xC0000001))?;
         record_passthrough_write();
         Ok(buffer.len() as u32)
     }
@@ -400,9 +372,7 @@ impl FileSystemContext for PassthroughCtx {
         _file_name: &U16CStr,
         delete_file: bool,
     ) -> Result<(), FspError> {
-        context
-            .delete_on_close
-            .store(delete_file, Ordering::SeqCst);
+        context.delete_on_close.store(delete_file, Ordering::SeqCst);
         Ok(())
     }
 }

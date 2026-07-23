@@ -6,7 +6,8 @@
 use std::process::Command;
 
 use sharecli::commands::proc::{
-    build_agent_state_map, filter_agent_forests, filter_watched_agents, parse_proc_state, ProcFilter,
+    build_agent_state_map, filter_agent_forests, filter_watched_agents, parse_proc_state,
+    ProcFilter,
 };
 use sharecli_fleet::{
     proc_scan::{DetectedAgent, FakeProcSource, ProcSnapshot},
@@ -61,16 +62,10 @@ fn fr006_proc_state_filter_matches_letter() {
         },
     ]);
     let state_by_pid = build_agent_state_map(&src, &[10, 11]);
-    let rows = vec![
-        watch_row("claude", "claude", 10, 100),
-        watch_row("codex", "codex", 11, 200),
-    ];
+    let rows = vec![watch_row("claude", "claude", 10, 100), watch_row("codex", "codex", 11, 200)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter {
-            state: Some('R'),
-            ..Default::default()
-        },
+        &ProcFilter { state: Some('R'), ..Default::default() },
         &empty_ppid_map(),
         &empty_cmdline_map(),
         &state_by_pid,
@@ -153,10 +148,7 @@ fn fr006_proc_tree_state_filter() {
     assert_eq!(forests.len(), 2);
     let filtered = filter_agent_forests(
         &forests,
-        &ProcFilter {
-            state: Some('S'),
-            ..Default::default()
-        },
+        &ProcFilter { state: Some('S'), ..Default::default() },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &empty_cmdline_map(),
@@ -178,11 +170,8 @@ fn fr006_proc_state_parse_case_insensitive_common() {
 fn fr006_proc_empty_state_rejected() {
     let out = bin().args(["proc", "--state", ""]).output().expect("spawn sharecli proc --state");
     assert!(!out.status.success(), "empty --state MUST fail");
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    let combined =
+        format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
     assert!(
         combined.to_ascii_lowercase().contains("state"),
         "error MUST mention --state; got: {combined}"

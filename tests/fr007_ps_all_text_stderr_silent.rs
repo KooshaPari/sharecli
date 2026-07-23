@@ -55,15 +55,8 @@ fn assert_text_body_has_gate_and_host_watch(stdout: &[u8], context: &str) {
 #[test]
 #[serial_test::serial]
 fn fr007_ps_all_text_stderr_silent() {
-    let out = bin()
-        .args(["ps", "--all"])
-        .output()
-        .expect("spawn sharecli ps --all");
-    assert!(
-        out.status.success(),
-        "ps --all MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["ps", "--all"]).output().expect("spawn sharecli ps --all");
+    assert!(out.status.success(), "ps --all MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "ps --all");
     assert_stderr_no_companion_markers(&out.stderr, "ps --all");
     assert_text_body_has_gate_and_host_watch(&out.stdout, "ps --all");

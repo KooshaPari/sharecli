@@ -66,7 +66,11 @@ impl AgentCowStore {
         sanitize_agent_id(agent.unwrap_or(self.default_agent.as_str()))
     }
 
-    fn store_for(&self, agent: &str) -> Result<std::sync::MutexGuard<'_, HashMap<String, WriteSerialize>>, WriteSerializeError> {
+    fn store_for(
+        &self,
+        agent: &str,
+    ) -> Result<std::sync::MutexGuard<'_, HashMap<String, WriteSerialize>>, WriteSerializeError>
+    {
         let mut map = self.agents.lock().map_err(|_| WriteSerializeError::Poisoned)?;
         if !map.contains_key(agent) {
             let root = self.cow_root.join(agent);

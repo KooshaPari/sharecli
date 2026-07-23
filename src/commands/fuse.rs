@@ -38,10 +38,7 @@ pub fn provenance(path: &Path, json: bool) -> Result<()> {
         anyhow::bail!("fuse provenance: path does not exist: {}", path.display());
     }
     if path.is_dir() {
-        anyhow::bail!(
-            "fuse provenance: path must be a file, not a directory: {}",
-            path.display()
-        );
+        anyhow::bail!("fuse provenance: path must be a file, not a directory: {}", path.display());
     }
 
     let prov = read_provenance(path)
@@ -80,20 +77,14 @@ pub fn provenance(path: &Path, json: bool) -> Result<()> {
 pub fn mount(backing: &Path, mountpoint: &Path, opts: FuseMountCliOpts) -> Result<()> {
     if let Some(ref agent) = opts.agent {
         if !AgentsConf::is_valid_agent_id(agent) {
-            anyhow::bail!(
-                "fuse mount: invalid --agent {agent:?} (use alnum, '_' or '-')"
-            );
+            anyhow::bail!("fuse mount: invalid --agent {agent:?} (use alnum, '_' or '-')");
         }
     }
     if let Some(ref conf) = opts.agents_conf {
-        AgentsConf::load(conf)
-            .with_context(|| format!("load agents.conf {}", conf.display()))?;
+        AgentsConf::load(conf).with_context(|| format!("load agents.conf {}", conf.display()))?;
     }
 
-    let session = opts
-        .session_id
-        .clone()
-        .unwrap_or_else(default_session_id);
+    let session = opts.session_id.clone().unwrap_or_else(default_session_id);
     let mount_opts = FuseMountOptions {
         session_id: Some(session.clone()),
         cow: opts.cow,
@@ -192,9 +183,7 @@ fn commit_or_discard(
 
         match (relpath, agent) {
             (None, None) => {
-                anyhow::bail!(
-                    "fuse {verb}: pass <relpath> and/or --agent <id> (see `fuse list`)"
-                );
+                anyhow::bail!("fuse {verb}: pass <relpath> and/or --agent <id> (see `fuse list`)");
             }
             (Some(rel), _) => {
                 let result = if commit {
@@ -224,10 +213,7 @@ fn commit_or_discard(
                     fs.discard_all_for_agent(agent)?
                 };
                 if paths.is_empty() {
-                    println!(
-                        "fuse {verb}: (no pending for agent {})",
-                        agent.unwrap_or("default")
-                    );
+                    println!("fuse {verb}: (no pending for agent {})", agent.unwrap_or("default"));
                 } else {
                     for p in &paths {
                         println!("fuse {verb}: {}", p.display());

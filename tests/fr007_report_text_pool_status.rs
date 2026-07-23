@@ -97,9 +97,9 @@ fn assert_frame_operator_order(segment: &str, context: &str) {
     let pool_pos = segment
         .find(POOL_PREFIX)
         .unwrap_or_else(|| panic!("{context} MUST include pool operator line; got: {segment}"));
-    let proc_pos = segment
-        .find(PROC_PREFIX)
-        .unwrap_or_else(|| panic!("{context} MUST include proc-scan operator line; got: {segment}"));
+    let proc_pos = segment.find(PROC_PREFIX).unwrap_or_else(|| {
+        panic!("{context} MUST include proc-scan operator line; got: {segment}")
+    });
     assert!(
         gate_pos < watch_pos && watch_pos < pool_pos && pool_pos < proc_pos,
         "{context} MUST serialize gate → host_watch → pool → proc-scan (AC-007.74); got: {segment}"
@@ -131,11 +131,7 @@ fn fr007_report_text_pool_status_order() {
         .args(["report", "--format", "text"])
         .output()
         .expect("spawn sharecli report --format text");
-    assert!(
-        out.status.success(),
-        "report text MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "report text MUST exit 0; stderr: {:?}", out.stderr);
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert_stderr_silent(&out.stderr, "report");
     assert_text_operator_order(&stdout, "report");
