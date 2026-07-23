@@ -49,6 +49,12 @@ Contract: [loading-states.md](loading-states.md). Tests: `tests/c10_l99_skeleton
 
 Human-readable status + recovery hint; avoid raw red walls of stack traces in operator UI. Map severity to pulse-green (ok) / amber (warn) / distinct failure tone.
 
+| Surface | Illustration | Contract |
+|---------|--------------|----------|
+| Dashboard disconnect | Tier-1 `assets/dashboard/ui/error-states/disconnect.svg` | Severed serve↔dashboard WebSocket scene + Retry CTA |
+
+Contract: [error-states.md](error-states.md). Tests: `tests/c10_l101_error_states.rs`. Provenance: [PROVENANCE.md](PROVENANCE.md).
+
 ## 6. Major views (reference)
 
 | View | Reference |
@@ -56,6 +62,7 @@ Human-readable status + recovery hint; avoid raw red walls of stack traces in op
 | Brand mark | `assets/brand/sharecli-icon.svg` |
 | Motion mark | `assets/brand/sharecli-icon-animated.svg` |
 | Identity demo | `docs/assets/identity/demo.svg` |
+| Disconnect error | `assets/dashboard/ui/error-states/disconnect.svg` |
 | CLI splash | textual regression in `tests/integration_cli.rs` |
 | Tokens | `assets/tokens.css` |
 

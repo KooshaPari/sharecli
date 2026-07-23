@@ -19,6 +19,8 @@ Tier legend (audit-v38 C10):
 | `assets/icons/sharecli.icns` | 2 | macOS pack from iconset |
 | `docs/assets/identity/demo.svg` | 1 | Heartbeat / ECG demo |
 | `docs/assets/identity/demo.mp4` | 2 | Render of demo.svg |
+| `assets/dashboard/ui/error-states/disconnect.svg` | 1 | Hand-authored L101 disconnect scene (serve↔dashboard severed feed); Backbone-2 tokens |
+| `assets/dashboard/ui/empty-states/*` | 3 | Phenotype UI pack (Keycap palette); not used for disconnect panel |
 | Dashboard mono fonts (CDN/system) | 3 | JetBrains/Fira/Cascadia — system/CDN fallbacks only |
 
-No tier-3 generative image packs are shipped as primary brand marks.
+No tier-3 generative image packs are shipped as primary brand marks. The disconnect error panel uses the tier-1 `disconnect.svg` only.

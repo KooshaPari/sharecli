@@ -30,7 +30,10 @@ Source: `orchestrator/tokens.json`
 ### Empty states (SVG + PNG)
 - `empty-states/no-data.{svg,png}` — "No data yet"
 - `empty-states/no-results.{svg,png}` — "No results"
-- `empty-states/error.{svg,png}` — "Something went wrong"
+- `empty-states/error.{svg,png}` — "Something went wrong" (pack generic; not used for L101 disconnect)
+
+### Error states (tier-1 hand-authored)
+- `error-states/disconnect.svg` — Backbone-2 severed serve↔dashboard WebSocket scene (C10 L101)
 
 ### Video (FFmpeg)
 - `video/brand_intro.mp4` — 3s 1920×1080 brand intro
