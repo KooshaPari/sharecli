@@ -6,13 +6,17 @@
 //! expanding quality-gate ignore patterns.
 
 use sharecli::config::{
-    CastConfig, Config, DefaultHarnessConfig, MonitoringConfig, PoolConfig, PortConfig,
-    PathsConfig, ProjectLimitsConfig, RuntimeConfig, ServeConfig, ServeJwtConfig, SpawnConfig,
+    CastConfig, Config, DefaultHarnessConfig, MonitoringConfig, PathsConfig, PoolConfig,
+    PortConfig, ProjectLimitsConfig, RuntimeConfig, ServeConfig, ServeJwtConfig, SpawnConfig,
     SpawnPolicyConfig,
 };
-use sharecli::dashboard_assets::{is_dashboard_asset_path, serve as serve_dashboard_asset, URL_PREFIX};
+use sharecli::dashboard_assets::{
+    is_dashboard_asset_path, serve as serve_dashboard_asset, URL_PREFIX,
+};
 use sharecli::monitoring::{HealthStatus, HostResourceWatchJson, ProcessStats};
-use sharecli::runtime::{ProcessFilter, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime};
+use sharecli::runtime::{
+    ProcessFilter, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
+};
 use sharecli_fuse::InterceptFsOptions;
 
 /// FR-003 / C01 — all Config sub-struct defaults + JWT serve settings round-trip.
@@ -153,11 +157,7 @@ async fn fr003_runtime_shared_status_and_process_filters() {
     resources
         .set_limits(
             "demo",
-            ProjectLimits {
-                memory_limit_mb: 512,
-                max_processes: 3,
-                cpu_affinity: None,
-            },
+            ProjectLimits { memory_limit_mb: 512, max_processes: 3, cpu_affinity: None },
         )
         .await;
     let limits = resources.get_limits("demo").await;
@@ -277,7 +277,11 @@ fn fr003_serve_rate_limit_probe_and_builder() {
     assert!(!lim.try_acquire());
     assert!(lim.retry_after_secs() >= 1);
 
-    let cfg = ServeConfig { rate_limit_max: Some(0), rate_limit_window_secs: Some(30), ..Default::default() };
+    let cfg = ServeConfig {
+        rate_limit_max: Some(0),
+        rate_limit_window_secs: Some(30),
+        ..Default::default()
+    };
     assert!(ServeRateLimit::from_env_or_config(&cfg).is_none());
 
     let cfg2 = ServeConfig {

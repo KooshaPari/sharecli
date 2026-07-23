@@ -118,10 +118,7 @@ fn fr003_intercept_fs_defaults_and_empty_session() {
 
     let empty_sess = InterceptFs::with_options(
         &backing,
-        InterceptFsOptions {
-            session_id: String::new(),
-            ..InterceptFsOptions::default()
-        },
+        InterceptFsOptions { session_id: String::new(), ..InterceptFsOptions::default() },
     );
     assert!(!empty_sess.session_id().is_empty());
 }

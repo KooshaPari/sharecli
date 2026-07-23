@@ -50,17 +50,13 @@ fn fr003_cow_handle_disabled_and_discard_paths() {
     assert_eq!(enabled.default_agent(), "agent-b");
     assert_eq!(enabled.cow_root(), dir.path().join("cow-on").as_path());
 
-    enabled
-        .stage_rel_for_agent(Some("agent-b"), Path::new("f.txt"), b"pending")
-        .expect("stage");
+    enabled.stage_rel_for_agent(Some("agent-b"), Path::new("f.txt"), b"pending").expect("stage");
     let pending = enabled.pending_rel_paths_for_agent(Some("agent-b")).expect("pending");
     assert!(pending.iter().any(|p| p.ends_with("f.txt")));
     let grouped = enabled.pending_by_agent().expect("grouped");
     assert!(!grouped.is_empty());
 
-    enabled
-        .discard_rel_for_agent(Some("agent-b"), Path::new("f.txt"))
-        .expect("discard");
+    enabled.discard_rel_for_agent(Some("agent-b"), Path::new("f.txt")).expect("discard");
     assert_eq!(fs::read(backing.join("f.txt")).expect("unchanged"), b"seed");
 
     enabled
@@ -76,8 +72,7 @@ fn fr003_cow_handle_disabled_and_discard_paths() {
     assert!(!committed.is_empty());
     assert_eq!(fs::read(backing.join("f.txt")).expect("committed"), b"final");
 
-    let locked = enabled
-        .with_locked_path(Some("agent-b"), &backing.join("f.txt"), || 42u32)
-        .expect("lock");
+    let locked =
+        enabled.with_locked_path(Some("agent-b"), &backing.join("f.txt"), || 42u32).expect("lock");
     assert_eq!(locked, 42);
 }

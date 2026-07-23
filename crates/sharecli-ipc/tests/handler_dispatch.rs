@@ -86,8 +86,7 @@ async fn fr003_ipc_handler_pool_status_and_status_snapshot() {
     assert!(pool_resp.result.get("host_watch").is_some());
     assert!(pool_resp.result.get("status").is_some());
 
-    let status_resp =
-        handler.dispatch(r#"{"id":12,"method":"status.snapshot","params":{}}"#).await;
+    let status_resp = handler.dispatch(r#"{"id":12,"method":"status.snapshot","params":{}}"#).await;
     assert!(status_resp.error.is_none(), "status.snapshot error: {:?}", status_resp.error);
     assert!(status_resp.result.get("total_processes").is_some());
     assert!(status_resp.result.get("agents").is_some());
