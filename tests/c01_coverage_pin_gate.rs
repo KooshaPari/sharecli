@@ -67,4 +67,8 @@ fn fr003_coverage_yml_emits_snapshot_artifact() {
         !workflow.contains("2>/dev/null || true"),
         "coverage.yml must not swallow cargo test --list failures"
     );
+    assert!(
+        workflow.contains("tool: cargo-llvm-cov"),
+        "coverage.yml must pass tool: cargo-llvm-cov to install-action (SHA pins drop tag tool names)"
+    );
 }

@@ -35,11 +35,14 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # cargo-llvm-cov
+        uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # v2
+        with:
+          tool: cargo-llvm-cov
 
       # Guard must not inherit workflow CARGO_TERM_COLOR=always: libtest paints
       # "test" with ANSI, so `grep ': test$'` falsely reports an empty suite and
       # aborts before llvm-cov (post-#399 Wave15 failure mode).
+      # Suite: full --workspace --all-features (same scope as llvm-cov below).
       - name: Guard — refuse empty test suite
         env:
           CARGO_TERM_COLOR: never
@@ -58,6 +61,7 @@ jobs:
         env:
           CARGO_TERM_COLOR: never
         run: |
+          cargo llvm-cov --version
           cargo llvm-cov --locked --all-features --workspace \
             --json --output-path coverage-llvm-cov.json
           cargo llvm-cov report --lcov --output-path lcov.info
