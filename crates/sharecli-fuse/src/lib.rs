@@ -14,9 +14,9 @@
 //! * Record provenance — every write carries a (session-id, timestamp) annotation
 //!   in the extended-attribute namespace — without modifying the backing FS.
 //!
-//! The implementation uses [`fuser`] which provides cross-platform FUSE bindings:
-//! Linux via libfuse3 and macOS via macFUSE.  The mount entry point is gated
-//! behind `#[cfg(any(target_os = "linux", target_os = "macos"))]`; all other
+//! The implementation uses [`fuser`] on Linux/macOS (libfuse3 / macFUSE) and
+//! [`winfsp`] on Windows (AC-009.25). Mount entry points are gated behind
+//! `#[cfg(any(target_os = "linux", target_os = "macos", windows))]`; all other
 //! targets compile to a stub that returns an unsupported-platform error.
 //!
 //! Ported/inspired by the harness-fuse Rust prototype; rewritten on top of
@@ -28,21 +28,23 @@
 mod agent_cow;
 mod agents_conf;
 mod inode_map;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 mod mount_smoke;
 mod neg_dentry;
 mod path_remap;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 mod provenance;
 mod read_cache;
 mod session_registry;
+#[cfg(windows)]
+mod winfsp_mount;
 mod write_serialize;
 mod write_serialize_meters;
 
 pub use agent_cow::{AgentCowStore, AgentPending};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use mount_smoke::{
     force_unmount, fuse_mount_smoke_enabled, run_mount_smoke, verify_mount_smoke_provenance,
     MountSession, ENV_FUSE_MOUNT_SMOKE,
@@ -51,7 +53,7 @@ pub use neg_dentry::{
     global_neg_dentry_meters, NegDentryMeters, NegativeDentryCache, DEFAULT_NEG_TTL,
 };
 pub use path_remap::remap_mount_to_backing;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use provenance::{
     annotate_write, annotate_write_at, default_session_id, read_provenance, WriteProvenance,
     ATTR_SESSION, ATTR_WRITTEN_AT,
@@ -67,6 +69,9 @@ pub use write_serialize_meters::{
     global_write_serialize_meters, record_commit, record_discard, record_passthrough_write,
     record_stage, WriteSerializeMeters,
 };
+
+#[cfg(windows)]
+pub use winfsp_mount::winfsp_installed;
 
 /// Construction options for [`InterceptFs`] (Feb `harness-fuse` mount flags).
 #[derive(Debug, Clone)]
@@ -1144,17 +1149,17 @@ pub use platform::InterceptFs;
 
 /// Mount the sharecli FUSE layer at `mountpoint` over `backing`.
 ///
-/// On Linux and macOS this calls `fuser::mount2`; on other platforms it returns
-/// an [`anyhow::Error`] indicating the platform is not supported.
+/// On Linux and macOS this calls `fuser::mount2`; on Windows this uses WinFsp
+/// (AC-009.25). Other platforms return an unsupported-platform error.
 pub fn mount(mountpoint: &Path, backing: &Path) -> anyhow::Result<()> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "macos", windows))]
     {
         mount_with_session(mountpoint, backing, &default_session_id())
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     {
         let _ = (mountpoint, backing);
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
     }
 }
 
@@ -1171,9 +1176,13 @@ pub fn mount_with_session(
     {
         platform::mount_with_session(mountpoint, backing, session_id)
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(windows)]
+    {
+        winfsp_mount::mount_blocking(mountpoint, backing, session_id)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     {
         let _ = (mountpoint, backing, session_id);
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
     }
 }

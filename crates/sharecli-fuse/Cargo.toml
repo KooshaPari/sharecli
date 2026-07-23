@@ -16,13 +16,22 @@ thiserror = "2"
 tracing = "0.1"
 tempfile = "3"
 
-# FUSE binding — cross-platform: Linux via libfuse3, macOS via macFUSE.
-# Gated at compile time; see lib.rs #[cfg(any(target_os = "linux", target_os = "macos"))].
+# Linux / macOS — fuser (libfuse3 / macFUSE)
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
 fuser = "0.17"
 libc = "0.2"
 # wraps: xattr 1.x — portable setxattr/getxattr for write provenance
 xattr = "1.6"
+
+# Windows — WinFsp (AC-009.25)
+# wraps: winfsp 0.13 (SnowflakePowered/winfsp-rs)
+[target.'cfg(windows)'.dependencies]
+winfsp = { version = "0.13", features = ["full", "windows-61"] }
+xattr = "1.6"
+windows = { version = "0.61", features = ["Win32_Storage_FileSystem"] }
+
+[target.'cfg(windows)'.build-dependencies]
+winfsp = { version = "0.13", features = ["build", "delayload"] }
 
 [dev-dependencies]
 tempfile = "3"

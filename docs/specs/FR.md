@@ -1140,12 +1140,15 @@ until create / mkdir / rename-into invalidates the entry.
   `driver_missing` / `tooling_missing`.
 - **AC-009.24:** Matrix cell `wsl2` MUST run Linux FUSE smoke inside WSL2 when selected on
   Windows; missing WSL or `/dev/fuse` MUST fail loudly.
-- **AC-009.25:** On Windows, `mount` MUST use WinFsp when installed; matrix cell
-  `windows_winfsp` MUST run privileged smoke or fail with `winfsp_missing`.
+- **AC-009.25:** On Windows, `mount` / `fuse-mount-smoke` MUST use WinFsp when installed
+  (`crates/sharecli-fuse/src/winfsp_mount.rs`); missing WinFsp MUST fail with
+  `winfsp_missing`. Write provenance MUST use NTFS ADS/EA via `xattr` and MUST fail
+  loudly when EA is unavailable (no silent skip). Matrix cell `windows_winfsp` MUST run
+  privileged smoke or fail with `winfsp_missing`.
 - **AC-009.26:** CI workflow `fuse-mount-smoke.yml` MUST mirror matrix cells; local
   `just fuse-smoke` remains the merge gate when Actions billing blocks runners.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`); `fuse-smoke-runner` unit tests; `docs/ops/fuse-mount-smoke-matrix.md`.
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`, `winfsp_mount` probe); `fuse-smoke-runner` unit tests; `docs/ops/fuse-mount-smoke-matrix.md`; `docs/ops/winfsp-fuse-mount.md`.
 
 ---
 

@@ -2,7 +2,9 @@
 //!
 //! Every InterceptFs write / CoW commit records `(session-id, timestamp)` on the
 //! backing file without altering file contents. Uses the `xattr` crate (wraps
-//! platform `setxattr` / `getxattr`).
+//! platform `setxattr` / `getxattr` on Unix; on Windows, NTFS alternate data
+//! streams / EA via the same crate — AC-009.25). Failures are loud: never
+//! silently skip provenance when a write succeeds.
 //!
 //! Attribute names:
 //! - [`ATTR_SESSION`] — opaque session id (UTF-8)

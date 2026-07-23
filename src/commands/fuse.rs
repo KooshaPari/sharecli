@@ -240,7 +240,10 @@ fn commit_or_discard(
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         let _ = (relpath, mountpoint, agent, commit);
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!(
+            "fuse commit/discard CoW requires InterceptFs (Linux/macOS); \
+             Windows WinFsp mounts are passthrough + provenance only (AC-009.25)"
+        )
     }
 }
 
