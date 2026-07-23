@@ -9,15 +9,12 @@ use serde::{Deserialize, Serialize};
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
     build_host_agent_forests, format_gate_status_from_snapshot, format_gate_status_section,
-    format_rss_bytes, gate_status_snapshot,
-    lookup_proc, match_known_agent, parse_rss_bytes, scan_host_agents, walk_agent_ancestors,
-    watch_detected_agents, AgentResourceSample, AgentTreeNode, DetectedAgentWatch, HostProcSource,
-    ProcSource, ThermalLevel,
+    format_rss_bytes, gate_status_snapshot, lookup_proc, match_known_agent, parse_rss_bytes,
+    scan_host_agents, walk_agent_ancestors, watch_detected_agents, AgentResourceSample,
+    AgentTreeNode, DetectedAgentWatch, HostProcSource, ProcSource, ThermalLevel,
 };
 
-pub use sharecli_fleet::{
-    build_agent_state_map, build_forest_state_map, state_text_for_pid,
-};
+pub use sharecli_fleet::{build_agent_state_map, build_forest_state_map, state_text_for_pid};
 
 use tokio::time::sleep;
 
@@ -184,7 +181,10 @@ pub fn build_agent_ppid_map(source: &dyn ProcSource, agent_pids: &[u32]) -> Hash
 }
 
 /// Map agent PID → joined argv/cmdline from a proc source (AC-006.30).
-pub fn build_agent_cmdline_map(source: &dyn ProcSource, agent_pids: &[u32]) -> HashMap<u32, String> {
+pub fn build_agent_cmdline_map(
+    source: &dyn ProcSource,
+    agent_pids: &[u32],
+) -> HashMap<u32, String> {
     agent_pids
         .iter()
         .filter_map(|&pid| {
@@ -739,10 +739,7 @@ impl AgentProcSnapshot {
         let agent_pids: Vec<u32> = agents.iter().map(|a| a.pid).collect();
         let state_by_pid = build_agent_state_map(&HostProcSource, &agent_pids);
         Ok(Self {
-            agents: watched
-                .iter()
-                .map(|row| agent_row_from_watch(row, &state_by_pid))
-                .collect(),
+            agents: watched.iter().map(|row| agent_row_from_watch(row, &state_by_pid)).collect(),
             scanned: agents.len(),
             watched: watched.len(),
             gate,
@@ -758,11 +755,19 @@ fn state_letter_for_pid(state_by_pid: &HashMap<u32, char>, pid: u32) -> String {
 }
 
 fn state_json_from_char(state: char) -> String {
-    if state == '?' { String::new() } else { state.to_string() }
+    if state == '?' {
+        String::new()
+    } else {
+        state.to_string()
+    }
 }
 
 fn state_text_from_detail_state(state: &str) -> String {
-    if state.is_empty() { "-".into() } else { state.to_string() }
+    if state.is_empty() {
+        "-".into()
+    } else {
+        state.to_string()
+    }
 }
 
 /// Build one JSON/CSV agent row including process state (AC-006.32).
@@ -782,7 +787,10 @@ pub fn agent_row_from_watch(
 }
 
 /// Build one tree JSON node including process state (AC-006.34).
-pub fn agent_tree_node_to_json(node: &AgentTreeNode, state_by_pid: &HashMap<u32, char>) -> AgentTreeNodeJson {
+pub fn agent_tree_node_to_json(
+    node: &AgentTreeNode,
+    state_by_pid: &HashMap<u32, char>,
+) -> AgentTreeNodeJson {
     AgentTreeNodeJson {
         pid: node.pid,
         ppid: node.ppid,
@@ -806,10 +814,8 @@ pub fn build_proc_detail(source: &dyn ProcSource, pid: u32) -> Result<ProcDetail
     let agent_ancestor = if direct_family.is_some() {
         None
     } else {
-        walk_agent_ancestors(source, pid).map(|agent| AgentAncestorRef {
-            pid: agent.pid,
-            family: agent.family.to_string(),
-        })
+        walk_agent_ancestors(source, pid)
+            .map(|agent| AgentAncestorRef { pid: agent.pid, family: agent.family.to_string() })
     };
     let resource = AgentResourceSample::capture_for_pid(pid)
         .with_context(|| format!("failed to sample RSS/FD for process {pid}"))?;
@@ -873,10 +879,7 @@ pub fn render_proc_detail_text(detail: &ProcDetailSnapshot) -> Result<()> {
 /// Render one process detail row as CSV body (FR-007 / AC-007.86).
 pub fn render_proc_detail_csv(detail: &ProcDetailSnapshot) -> String {
     const HEADER: &str = "pid,ppid,comm,state,mem_rss_bytes,mem_rss,fd_count";
-    let fd = detail
-        .fd_count
-        .map(|n| n.to_string())
-        .unwrap_or_default();
+    let fd = detail.fd_count.map(|n| n.to_string()).unwrap_or_default();
     format!(
         "{HEADER}\n{pid},{ppid},{comm},{state},{rss},{mem_rss},{fd}\n",
         pid = detail.pid,
@@ -916,10 +919,7 @@ async fn render_pid_detail(pid: u32, json: bool, csv: bool) -> Result<()> {
     if csv {
         let detail = build_proc_detail(&HostProcSource, pid)?;
         let body = render_proc_detail_csv(&detail);
-        print!(
-            "{}",
-            append_proc_csv_companions(body, &detail.gate).await?
-        );
+        print!("{}", append_proc_csv_companions(body, &detail.gate).await?);
         return Ok(());
     }
     render_pid_detail_once(pid, json, false).await
@@ -972,7 +972,8 @@ pub fn render_agent_tree_csv(
     fd_by_pid: &HashMap<u32, u64>,
     state_by_pid: &HashMap<u32, char>,
 ) -> String {
-    const HEADER: &str = "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count";
+    const HEADER: &str =
+        "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count";
     let mut out = String::from(HEADER);
     out.push('\n');
     for (root_index, root) in forests.iter().enumerate() {
@@ -992,11 +993,7 @@ pub fn render_agent_inventory_csv(
     const HEADER: &str = "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count";
     let mut out = String::from(HEADER);
     for row in watched {
-        let fd = row
-            .resource
-            .fd_count
-            .map(|n| n.to_string())
-            .unwrap_or_default();
+        let fd = row.resource.fd_count.map(|n| n.to_string()).unwrap_or_default();
         let state = state_letter_for_pid(state_by_pid, row.agent.pid);
         out.push('\n');
         out.push_str(&format!(
@@ -1052,7 +1049,12 @@ pub fn render_agent_inventory(
     println!("\nTotal: {} agent process(es)", watched.len());
 }
 
-fn render_tree_node(node: &AgentTreeNode, prefix: &str, is_last: bool, state_by_pid: &HashMap<u32, char>) {
+fn render_tree_node(
+    node: &AgentTreeNode,
+    prefix: &str,
+    is_last: bool,
+    state_by_pid: &HashMap<u32, char>,
+) {
     let connector = if prefix.is_empty() {
         String::new()
     } else if is_last {
@@ -1062,11 +1064,7 @@ fn render_tree_node(node: &AgentTreeNode, prefix: &str, is_last: bool, state_by_
     };
     let family = node.family.map(|f| format!("{f} ")).unwrap_or_else(String::new);
     let state = state_text_for_pid(state_by_pid, node.pid);
-    println!(
-        "{prefix}{connector}[{pid}] {state} {family}{comm}",
-        pid = node.pid,
-        comm = node.comm
-    );
+    println!("{prefix}{connector}[{pid}] {state} {family}{comm}", pid = node.pid, comm = node.comm);
     let child_prefix = if prefix.is_empty() {
         String::new()
     } else {
@@ -1131,12 +1129,7 @@ pub async fn render_once(
             print!(
                 "{}",
                 append_proc_csv_companions(
-                    render_agent_tree_csv(
-                        &forests,
-                        &rss_by_pid,
-                        &fd_by_pid,
-                        &tree_state_by_pid,
-                    ),
+                    render_agent_tree_csv(&forests, &rss_by_pid, &fd_by_pid, &tree_state_by_pid,),
                     &gate,
                 )
                 .await?
@@ -1156,11 +1149,8 @@ pub async fn render_once(
         };
         if json {
             let (pool_panel, status_panel) = super::fetch_operator_pool_status_siblings().await?;
-            let snap = AgentTreeSnapshot {
-                pool: Some(pool_panel),
-                status: Some(status_panel),
-                ..snap
-            };
+            let snap =
+                AgentTreeSnapshot { pool: Some(pool_panel), status: Some(status_panel), ..snap };
             if ndjson {
                 let line = AgentTreeNdjsonLine { ts: unix_ts_secs(), snapshot: snap };
                 emit_ndjson_line(&line)?;
@@ -1181,7 +1171,13 @@ pub async fn render_once(
 
     let watched = limit_watched_agents(
         apply_sort_watched(
-            filter_watched_agents(&watched_all, filter, &ppid_by_pid, &cmdline_by_pid, &state_by_pid),
+            filter_watched_agents(
+                &watched_all,
+                filter,
+                &ppid_by_pid,
+                &cmdline_by_pid,
+                &state_by_pid,
+            ),
             sort,
             &state_by_pid,
         ),
@@ -1191,21 +1187,15 @@ pub async fn render_once(
     if csv {
         print!(
             "{}",
-            append_proc_csv_companions(
-                render_agent_inventory_csv(&watched, &state_by_pid),
-                &gate,
-            )
-            .await?
+            append_proc_csv_companions(render_agent_inventory_csv(&watched, &state_by_pid), &gate,)
+                .await?
         );
         return Ok(());
     }
     if json {
         let (pool_panel, status_panel) = super::fetch_operator_pool_status_siblings().await?;
         let snap = AgentProcSnapshot {
-            agents: watched
-                .iter()
-                .map(|row| agent_row_from_watch(row, &state_by_pid))
-                .collect(),
+            agents: watched.iter().map(|row| agent_row_from_watch(row, &state_by_pid)).collect(),
             scanned: scanned_agents.len(),
             watched: watched.len(),
             gate,
@@ -1367,15 +1357,11 @@ pub async fn run(
                     eprint!("{footer}");
                     let _ = std::io::stderr().flush();
                 } else if csv_watch {
-                    println!(
-                        "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
-                    );
+                    println!("# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                     // AC-007.94: flush so `# [watch]` reaches pipe consumers this tick.
                     std::io::stdout().flush()?;
                 } else {
-                    println!(
-                        "\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
-                    );
+                    println!("\n[watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                     // AC-007.96: flush text `[watch]` footer same tick (parity with CSV).
                     std::io::stdout().flush()?;
                 }
@@ -1440,9 +1426,7 @@ pub async fn run(
                     eprint!("{footer}");
                     let _ = std::io::stderr().flush();
                 } else if csv_watch {
-                    println!(
-                        "# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop."
-                    );
+                    println!("# [watch] Refreshing every {interval_secs}s — press Ctrl-C to stop.");
                     // AC-007.94: flush so `# [watch]` reaches pipe consumers this tick.
                     std::io::stdout().flush()?;
                 } else {
@@ -1481,8 +1465,8 @@ fn host_agent_inventory_from_source(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sharecli_fleet::proc_scan::{DetectedAgent, FakeProcSource, ProcSnapshot};
     use sharecli_fleet::collect_forest_pids;
+    use sharecli_fleet::proc_scan::{DetectedAgent, FakeProcSource, ProcSnapshot};
 
     #[test]
     fn agent_row_from_watch_formats_rss() {
@@ -1521,8 +1505,23 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, false, false, Some(0), None, None, None, None, None, None, None, None, None,
-                None, None, None, None,
+                false,
+                false,
+                false,
+                Some(0),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             ))
             .expect_err("watch 0 MUST fail");
         assert!(
@@ -1603,7 +1602,13 @@ mod tests {
                 cmdline: vec!["claude".into()],
                 state: 'S',
             },
-            ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+            ProcSnapshot {
+                pid: 51,
+                ppid: 50,
+                comm: "node".into(),
+                cmdline: vec!["node".into()],
+                state: 'R',
+            },
         ]);
         let forests = sharecli_fleet::build_agent_forests(&src);
         assert_eq!(collect_forest_pids(&forests), vec![50, 51]);
@@ -1622,7 +1627,13 @@ mod tests {
                 cmdline: vec!["cursor-agent".into()],
                 state: 'R',
             },
-            ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+            ProcSnapshot {
+                pid: 51,
+                ppid: 50,
+                comm: "node".into(),
+                cmdline: vec!["node".into()],
+                state: 'R',
+            },
         ]);
         let forests = sharecli_fleet::build_agent_forests(&src);
         let state_by_pid = HashMap::from([(50, 'R'), (51, 'R')]);
@@ -1665,8 +1676,23 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, true, false, Some(0), None, None, None, None, None, None, None, None, None,
-                None, None, Some(42), None,
+                false,
+                true,
+                false,
+                Some(0),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(42),
+                None,
             ))
             .expect_err("pid+csv+watch 0 MUST fail");
         assert!(
@@ -1680,8 +1706,23 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let err = rt
             .block_on(super::run(
-                false, false, true, None, None, None, None, None, None, None, None, None, None,
-                None, None, Some(42), None,
+                false,
+                false,
+                true,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(42),
+                None,
             ))
             .expect_err("pid+tree MUST fail");
         assert!(

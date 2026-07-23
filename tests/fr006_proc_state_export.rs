@@ -17,7 +17,13 @@ fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
 
-fn watch(pid: u32, family: &'static str, comm: &'static str, rss: u64, fds: Option<u64>) -> DetectedAgentWatch {
+fn watch(
+    pid: u32,
+    family: &'static str,
+    comm: &'static str,
+    rss: u64,
+    fds: Option<u64>,
+) -> DetectedAgentWatch {
     DetectedAgentWatch {
         agent: DetectedAgent { pid, family, comm: comm.into() },
         resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: fds },
@@ -56,8 +62,7 @@ fn fr006_proc_state_export_flat_csv_includes_state_column() {
     let csv = render_agent_inventory_csv(&rows, &state_by_pid);
     let lines: Vec<&str> = csv.trim_end().lines().collect();
     assert_eq!(
-        lines[0],
-        "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+        lines[0], "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "flat CSV header MUST include state column; got: {}",
         lines[0]
     );
@@ -80,7 +85,13 @@ fn fr006_proc_state_export_tree_csv_includes_state_column() {
             cmdline: vec!["cursor-agent".into()],
             state: 'S',
         },
-        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+        ProcSnapshot {
+            pid: 51,
+            ppid: 50,
+            comm: "node".into(),
+            cmdline: vec!["node".into()],
+            state: 'R',
+        },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     let mut state_by_pid = HashMap::new();
@@ -89,8 +100,7 @@ fn fr006_proc_state_export_tree_csv_includes_state_column() {
     let csv = render_agent_tree_csv(&forests, &HashMap::new(), &HashMap::new(), &state_by_pid);
     let lines: Vec<&str> = csv.trim_end().lines().collect();
     assert_eq!(
-        lines[0],
-        "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+        lines[0], "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "tree CSV header MUST include state column; got: {}",
         lines[0]
     );
@@ -140,8 +150,7 @@ fn fr006_proc_state_export_cli_flat_csv_header() {
     assert!(out.status.success(), "proc --csv MUST exit 0; stderr: {:?}", out.stderr);
     let first = String::from_utf8_lossy(&out.stdout).lines().next().unwrap_or("").to_string();
     assert_eq!(
-        first,
-        "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+        first, "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "CLI flat CSV MUST include state column; got: {first}"
     );
 }
@@ -149,15 +158,11 @@ fn fr006_proc_state_export_cli_flat_csv_header() {
 /// FR-006 / AC-006.32 — CLI tree --csv header includes state column.
 #[test]
 fn fr006_proc_state_export_cli_tree_csv_header() {
-    let out = bin()
-        .args(["proc", "--tree", "--csv"])
-        .output()
-        .expect("spawn proc --tree --csv");
+    let out = bin().args(["proc", "--tree", "--csv"]).output().expect("spawn proc --tree --csv");
     assert!(out.status.success(), "proc --tree --csv MUST exit 0; stderr: {:?}", out.stderr);
     let first = String::from_utf8_lossy(&out.stdout).lines().next().unwrap_or("").to_string();
     assert_eq!(
-        first,
-        "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+        first, "root_index,depth,pid,ppid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "CLI tree CSV MUST include state column; got: {first}"
     );
 }
@@ -165,15 +170,10 @@ fn fr006_proc_state_export_cli_tree_csv_header() {
 /// FR-006 / AC-006.32 — --state filter composes with JSON/CSV export surfaces.
 #[test]
 fn fr006_proc_state_export_composes_with_state_filter() {
-    let out = bin()
-        .args(["proc", "--state", "S", "--csv"])
-        .output()
-        .expect("spawn proc --state S --csv");
+    let out =
+        bin().args(["proc", "--state", "S", "--csv"]).output().expect("spawn proc --state S --csv");
     assert!(out.status.success(), "proc --state S --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     let header = s.lines().next().unwrap_or("");
-    assert!(
-        header.contains("state"),
-        "filtered CSV MUST still expose state column; got: {s}"
-    );
+    assert!(header.contains("state"), "filtered CSV MUST still expose state column; got: {s}");
 }

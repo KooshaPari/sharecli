@@ -54,12 +54,7 @@ fn main() -> ExitCode {
     let selected: Vec<CellId> = if args.all {
         CellId::ALL.to_vec()
     } else if !args.cells.is_empty() {
-        match args
-            .cells
-            .iter()
-            .map(|s| s.parse::<CellId>())
-            .collect::<Result<Vec<_>, _>>()
-        {
+        match args.cells.iter().map(|s| s.parse::<CellId>()).collect::<Result<Vec<_>, _>>() {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("fuse-smoke: {e}");
@@ -89,10 +84,7 @@ fn main() -> ExitCode {
 
     for cell in &report.cells {
         let status = if cell.ok { "PASS" } else { "FAIL" };
-        let reason = cell
-            .fail_reason
-            .map(|r| format!(" ({r})"))
-            .unwrap_or_default();
+        let reason = cell.fail_reason.map(|r| format!(" ({r})")).unwrap_or_default();
         eprintln!(
             "[{status}] {}{} — {}",
             cell.cell.as_str(),
@@ -105,11 +97,7 @@ fn main() -> ExitCode {
             }
         );
     }
-    eprintln!(
-        "matrix: {} ({} cells)",
-        if report.ok { "PASS" } else { "FAIL" },
-        report.cells.len()
-    );
+    eprintln!("matrix: {} ({} cells)", if report.ok { "PASS" } else { "FAIL" }, report.cells.len());
 
     if args.json {
         match serde_json::to_string_pretty(&report) {

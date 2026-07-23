@@ -10,7 +10,8 @@ fn repo_root() -> PathBuf {
 
 #[test]
 fn c10_dashboard_html_references_ui_pack_assets() {
-    let html = fs::read_to_string(repo_root().join("src/dashboard.html")).expect("read dashboard.html");
+    let html =
+        fs::read_to_string(repo_root().join("src/dashboard.html")).expect("read dashboard.html");
     for needle in [
         "/assets/dashboard/ui/favicons/phenotype.ico",
         "/assets/dashboard/ui/favicons/phenotype_32.png",
@@ -47,8 +48,5 @@ fn c10_dashboard_assets_module_embeds_served_paths() {
     assert!(dashboard_assets::is_dashboard_asset_path(
         "/assets/dashboard/ui/favicons/phenotype_32.png"
     ));
-    assert_eq!(
-        dashboard_assets::URL_PREFIX,
-        "/assets/dashboard/ui"
-    );
+    assert_eq!(dashboard_assets::URL_PREFIX, "/assets/dashboard/ui");
 }

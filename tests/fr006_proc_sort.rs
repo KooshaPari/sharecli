@@ -76,7 +76,8 @@ fn fr006_proc_sort_tree_roots_by_rss() {
     let mut rss = HashMap::new();
     rss.insert(10, 500_u64);
     rss.insert(20, 100_u64);
-    let sorted = sort_agent_forests(&forests, ProcSort::Rss, &rss, &HashMap::new(), &HashMap::new());
+    let sorted =
+        sort_agent_forests(&forests, ProcSort::Rss, &rss, &HashMap::new(), &HashMap::new());
     assert_eq!(sorted.iter().map(|n| n.pid).collect::<Vec<_>>(), vec![10, 20]);
 }
 
@@ -124,7 +125,8 @@ fn fr006_proc_sort_tree_roots_by_state() {
     let mut state = HashMap::new();
     state.insert(10, 'S');
     state.insert(20, 'R');
-    let sorted = sort_agent_forests(&forests, ProcSort::State, &HashMap::new(), &HashMap::new(), &state);
+    let sorted =
+        sort_agent_forests(&forests, ProcSort::State, &HashMap::new(), &HashMap::new(), &state);
     assert_eq!(sorted.iter().map(|n| n.pid).collect::<Vec<_>>(), vec![20, 10]);
 }
 
@@ -134,10 +136,7 @@ fn fr006_proc_help_documents_sort_state() {
     let out = bin().args(["proc", "--help"]).output().expect("spawn sharecli proc --help");
     assert!(out.status.success(), "proc --help should exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
-    assert!(
-        s.contains("state"),
-        "proc --help MUST document state sort key; got: {s}"
-    );
+    assert!(s.contains("state"), "proc --help MUST document state sort key; got: {s}");
 }
 
 /// FR-006 / AC-006.19 — invalid sort key exits non-zero.

@@ -53,7 +53,12 @@ async fn fr006_hypervisor_runs_argv_as_is() {
         vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "fr006-no-wrap".to_string()];
 
     let outcome = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        })
         .await
         .expect("spawn argv as-is");
 

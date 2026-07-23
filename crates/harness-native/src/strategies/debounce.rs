@@ -17,9 +17,8 @@ fn run_with_hypervisor(
         .build()
         .map_err(|e| format!("harness debounce: tokio runtime: {e}"))?;
 
-    let outcome = rt
-        .block_on(hv.run(req))
-        .map_err(|e| format!("harness debounce: hypervisor: {e}"))?;
+    let outcome =
+        rt.block_on(hv.run(req)).map_err(|e| format!("harness debounce: hypervisor: {e}"))?;
 
     Ok(outcome.exit_code)
 }
@@ -39,13 +38,13 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
+    use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
     use std::path::Path;
     use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
-    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
-    use sharecli_ipc::{CachedResult, CoalesceCache, command_key};
     use tempfile::TempDir;
 
     use super::super::hypervisor_lane::{config_from_rule_opts, hypervisor_cache_root};
@@ -61,51 +60,31 @@ mod tests {
     #[test]
     fn debounce_strategy_executes_via_hypervisor() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            ttl: 300,
-            debounce_ms: 75,
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { ttl: 300, debounce_ms: 75, ..RuleOpts::default() };
         let hv = allow_hypervisor(tmp.path(), &opts);
-        let code = run_with_hypervisor(
-            &hv,
-            Path::new("/bin/echo"),
-            &["harness-debounce-ok"],
-            &opts,
-        )
-        .expect("debounce strategy MUST succeed");
-        assert_eq!(
-            code, 0,
-            "AC-008.18: harness debounce MUST run via Hypervisor::run"
-        );
+        let code =
+            run_with_hypervisor(&hv, Path::new("/bin/echo"), &["harness-debounce-ok"], &opts)
+                .expect("debounce strategy MUST succeed");
+        assert_eq!(code, 0, "AC-008.18: harness debounce MUST run via Hypervisor::run");
     }
 
     /// FR-008 / AC-008.18 — repeated identical invocations MUST coalesce via cache.
     #[test]
     fn debounce_strategy_serves_cache_on_replay() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            ttl: 300,
-            debounce_ms: 75,
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { ttl: 300, debounce_ms: 75, ..RuleOpts::default() };
         let hv = allow_hypervisor(tmp.path(), &opts);
         let req = spawn_request(Path::new("/bin/echo"), &["debounce-replay"], &opts)
             .expect("spawn request");
 
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("runtime");
+        let rt =
+            tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
 
         let first = rt.block_on(hv.run(req.clone())).expect("first debounce run");
         assert!(!first.from_cache, "AC-008.18: first debounce run MUST miss cache");
 
         let second = rt.block_on(hv.run(req)).expect("second debounce run");
-        assert!(
-            second.from_cache,
-            "AC-008.18: harness debounce MUST serve cache on replay"
-        );
+        assert!(second.from_cache, "AC-008.18: harness debounce MUST serve cache on replay");
         assert_eq!(second.exit_code, 0);
         let _ = hypervisor_cache_root(tmp.path());
     }
@@ -115,11 +94,8 @@ mod tests {
     fn debounce_strategy_shares_in_window_store() {
         let tmp = TempDir::new().expect("tempdir");
         let debounce = Duration::from_millis(120);
-        let opts = RuleOpts {
-            ttl: 300,
-            debounce_ms: debounce.as_millis() as u64,
-            ..RuleOpts::default()
-        };
+        let opts =
+            RuleOpts { ttl: 300, debounce_ms: debounce.as_millis() as u64, ..RuleOpts::default() };
         let cache_root = hypervisor_cache_root(tmp.path());
         let hv = allow_hypervisor(tmp.path(), &opts);
 
@@ -146,10 +122,8 @@ mod tests {
             hits_bg.fetch_add(1, Ordering::SeqCst);
         });
 
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("runtime");
+        let rt =
+            tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
         let outcome = rt.block_on(hv.run(req)).expect("debounced harness run");
 
         producer.join().expect("producer join");

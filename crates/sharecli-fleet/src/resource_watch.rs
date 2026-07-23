@@ -87,24 +87,18 @@ pub fn parse_rss_bytes(input: &str, flag: &str) -> Result<u64> {
     const MIB: u64 = 1_048_576;
     const GIB: u64 = 1_073_741_824;
     if let Some(num) = upper.strip_suffix('G') {
-        let value: f64 = num
-            .trim()
-            .parse()
-            .map_err(|_| anyhow::anyhow!("invalid {flag} size: {input}"))?;
+        let value: f64 =
+            num.trim().parse().map_err(|_| anyhow::anyhow!("invalid {flag} size: {input}"))?;
         return Ok((value * GIB as f64) as u64);
     }
     if let Some(num) = upper.strip_suffix('M') {
-        let value: f64 = num
-            .trim()
-            .parse()
-            .map_err(|_| anyhow::anyhow!("invalid {flag} size: {input}"))?;
+        let value: f64 =
+            num.trim().parse().map_err(|_| anyhow::anyhow!("invalid {flag} size: {input}"))?;
         return Ok((value * MIB as f64) as u64);
     }
     if let Some(num) = upper.strip_suffix('K') {
-        let value: f64 = num
-            .trim()
-            .parse()
-            .map_err(|_| anyhow::anyhow!("invalid {flag} size: {input}"))?;
+        let value: f64 =
+            num.trim().parse().map_err(|_| anyhow::anyhow!("invalid {flag} size: {input}"))?;
         return Ok((value * KIB as f64) as u64);
     }
     s.parse::<u64>().map_err(|_| anyhow::anyhow!("invalid {flag} size: {input}"))
@@ -418,19 +412,11 @@ mod tests {
     fn test_sum_detected_agent_rss_bytes() {
         let agents = vec![
             DetectedAgentWatch {
-                agent: DetectedAgent {
-                    pid: 1,
-                    family: "claude",
-                    comm: "claude".into(),
-                },
+                agent: DetectedAgent { pid: 1, family: "claude", comm: "claude".into() },
                 resource: AgentResourceSample { mem_rss_bytes: 1_000, fd_count: None },
             },
             DetectedAgentWatch {
-                agent: DetectedAgent {
-                    pid: 2,
-                    family: "forge",
-                    comm: "forge".into(),
-                },
+                agent: DetectedAgent { pid: 2, family: "forge", comm: "forge".into() },
                 resource: AgentResourceSample { mem_rss_bytes: 2_500, fd_count: None },
             },
         ];

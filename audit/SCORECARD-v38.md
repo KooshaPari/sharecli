@@ -24,26 +24,27 @@
 | C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
-| C10 | Visual Identity | L96–L107 | 34/36 | 94% | A | L99 skeletons; dashboard hex drift; error illustration tier-1 |
+| C10 | Visual Identity | L96–L107 | 35/36 | 97% | A | dashboard hex drift; error illustration tier-1; visual provenance ledger |
 | C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
 ## Overall
 
 **Weighted overall score:** 91% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+90+73+93+94+87)/12 = 1078/12 = **89.8% B**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+90+73+93+97+87)/12 = 1081/12 = **90.1% A**.)
 
-**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+90+73+93+94+87) = 760 + 698 = 1458 / 16 = **91.1%** (A).
+**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+90+73+93+97+87) = 760 + 701 = 1461 / 16 = **91.3%** (A).
 
 ## Headline Findings
 
-- **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C01 **93% A**.
-- **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb` — unweighted **90% A**.
+- **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C10 **97% A**; C01/C09 **93% A**.
+- **Wave15:** C10 L99 skeletons (#396) → C10 **35/36 (97% A)**; #399 coverage tests landed — pin still **83.48%** pending green `coverage.yml`.
+- **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06).
+- **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06); C10 dashboard hex drift.
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
-- **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**; unweighted **90.4% A → 89.8% B**.
-- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md`.
+- **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**.
+- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **90.1% A** / tier-1 **91% A** at `bba2411`.
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
 ## Supersedes
@@ -52,7 +53,17 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 
 ## Post-audit remediations
 
-<<<<<<< HEAD
+### 2026-07-22 (scorecard reconcile v6 — post-#392 lifts #396/#399 + governance sync)
+
+- **#396 C10 L99 2→3:** dashboard skeleton rows + operator panel skeletons; `docs/visual/loading-states.md`; `tests/c10_l99_skeleton_states.rs` (FR-003).
+- **#399 C01 coverage lift:** FR-003 tests landed (`922b4ae`); **no new measured broad-workspace %** — `coverage.yml` on `922b4ae` / `bba2411` failed at empty-suite guard (`Discovered tests: 0`) before llvm-cov; keep honest pin **83.48%** at `d3cb7c4` (`TEST_COVERAGE_MATRIX.md` + `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json`).
+- **WORK_DAG T-660:** READY→DONE (GHCR cosign hard publish shipped 2026-07-18 · #343).
+- **SCORECARD merge-conflict cleanup:** retained GPG L34 guide (#397/#400) + reconcile v5 Wave14 closeout entries.
+- **C10 34/36 (94% A) → 35/36 (97% A):** L99 2→3 (#396).
+- Top-3 C10 gaps: dashboard hex drift; error illustration tier-1; visual provenance ledger (L98/L103).
+- **Governance:** T-690 Wave15 reconcile sync (WBS/GAP/DAG/RC/SCORECARD); `audit_scorecard.json` pinned to `bba2411`.
+- Overall unweighted **90.1% A** (1081/12); tier-1 weighted **91% A** (1461/16).
+
 ### 2026-07-19/20 (docs — GPG Verified L34 guide + Feb recovery status)
 
 - Feb recovery [#397](https://github.com/KooshaPari/sharecli/pull/397) + CoW/`smart_merge`/worktree mesh [#400](https://github.com/KooshaPari/sharecli/pull/400) landed on `main` (product depth).
@@ -60,7 +71,7 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **L34 stays 2** until a green **Verified** badge lands on `main` — do **not** bump to 3 yet (ruleset 19181236 already active).
 - **C11 L112** still blocked on codesign/notarize secrets.
 - Highest-leverage remaining: L34 Verified evidence; C11 codesign secrets.
-=======
+
 ### 2026-07-19 (scorecard reconcile v5 — Wave14 #337–#340 + lifts through #391)
 
 - **Wave14 hard gates:** T-630 chaos ci-success (#337); T-620/T-625 coverage snapshot (#338); T-600 visual hard (#339); T-610 tray HTTP trace (#340).
@@ -68,7 +79,6 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **WORK_DAG T-650 dedupe:** Harbor soak → **T-675** EXTRACTED/N/A; proptest retains **T-650**.
 - **Governance:** T-680 Wave14 closeout sync (WBS/GAP/DAG/RC/SCORECARD).
 - Overall unweighted **89.8% B** (1078/12); tier-1 weighted **91% A** (1458/16) from Category Scores table.
->>>>>>> 858358d (chore(governance): Wave14 closeout sync after #337-#391 (FR-003))
 
 ### 2026-07-19 (C08 Harbor EXTRACTED/N/A formalize — FR-003)
 

@@ -27,11 +27,7 @@ pub fn force_unmount(mountpoint: &Path) -> std::io::Result<()> {
     #[cfg(target_os = "linux")]
     {
         for bin in ["fusermount3", "fusermount"] {
-            match std::process::Command::new(bin)
-                .arg("-uz")
-                .arg(mountpoint)
-                .status()
-            {
+            match std::process::Command::new(bin).arg("-uz").arg(mountpoint).status() {
                 Ok(status) if status.success() => return Ok(()),
                 _ => continue,
             }

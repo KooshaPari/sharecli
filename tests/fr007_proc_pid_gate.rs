@@ -19,10 +19,7 @@ const GATE_KEYS: [&str; 5] = [
 
 fn assert_gate_object(gate: &serde_json::Value) {
     for key in GATE_KEYS {
-        assert!(
-            gate.get(key).is_some(),
-            "gate MUST include {key} (AC-007.17); got: {gate}"
-        );
+        assert!(gate.get(key).is_some(), "gate MUST include {key} (AC-007.17); got: {gate}");
     }
 }
 
@@ -35,16 +32,10 @@ fn fr007_proc_pid_json_gate_shape() {
         .args(["proc", "--pid", &pid.to_string(), "--json"])
         .output()
         .expect("spawn sharecli proc --pid --json");
-    assert!(
-        out.status.success(),
-        "proc --pid --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc --pid --json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("proc --pid --json MUST emit valid JSON");
-    let gate = v
-        .get("gate")
-        .expect("proc --pid --json MUST include gate object (AC-007.17)");
+    let gate = v.get("gate").expect("proc --pid --json MUST include gate object (AC-007.17)");
     assert_gate_object(gate);
 }
 
@@ -57,11 +48,7 @@ fn fr007_proc_pid_text_gate_section() {
         .args(["proc", "--pid", &pid.to_string()])
         .output()
         .expect("spawn sharecli proc --pid");
-    assert!(
-        out.status.success(),
-        "proc --pid MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc --pid MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
         s.contains("=== Thermal Gate (FR-011) ==="),
@@ -71,12 +58,8 @@ fn fr007_proc_pid_text_gate_section() {
         s.contains("Gate decision:"),
         "proc --pid text MUST include gate decision (AC-007.17); got: {s}"
     );
-    let gate_pos = s
-        .find("=== Thermal Gate (FR-011) ===")
-        .expect("gate section");
-    let watch_pos = s
-        .find("=== Host Resource Watch ===")
-        .expect("host watch section");
+    let gate_pos = s.find("=== Thermal Gate (FR-011) ===").expect("gate section");
+    let watch_pos = s.find("=== Host Resource Watch ===").expect("host watch section");
     assert!(
         gate_pos < watch_pos,
         "gate section MUST precede host watch footer (AC-007.17); got: {s}"
@@ -120,9 +103,6 @@ fn fr007_proc_pid_json_gate_serializes_fields() {
     };
     let json = serde_json::to_string(&detail).expect("serialize proc detail snapshot");
     for key in GATE_KEYS {
-        assert!(
-            json.contains(&format!("\"{key}\"")),
-            "JSON MUST include {key}; got: {json}"
-        );
+        assert!(json.contains(&format!("\"{key}\"")), "JSON MUST include {key}; got: {json}");
     }
 }

@@ -57,11 +57,7 @@ fn assert_text_body_has_gate_and_host_watch(stdout: &[u8], context: &str) {
 #[serial_test::serial]
 fn fr007_status_text_stderr_silent() {
     let out = bin().args(["status"]).output().expect("spawn sharecli status");
-    assert!(
-        out.status.success(),
-        "status MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "status MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "status");
     assert_stderr_no_companion_markers(&out.stderr, "status");
     assert_text_body_has_gate_and_host_watch(&out.stdout, "status");

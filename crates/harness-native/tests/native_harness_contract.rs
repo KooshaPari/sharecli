@@ -190,10 +190,8 @@ fn missing_command_surfaces_not_found_error() {
 #[test]
 fn cache_key_args_mode_is_deterministic() {
     let bin = env!("CARGO_BIN_EXE_harness-cache-key");
-    let first = Command::new(bin)
-        .args(["args", "cargo", "build"])
-        .output()
-        .expect("run harness-cache-key");
+    let first =
+        Command::new(bin).args(["args", "cargo", "build"]).output().expect("run harness-cache-key");
     assert!(first.status.success(), "stderr: {}", String::from_utf8_lossy(&first.stderr));
     let second = Command::new(bin)
         .args(["args", "cargo", "build"])
@@ -205,13 +203,12 @@ fn cache_key_args_mode_is_deterministic() {
 #[test]
 fn cache_key_env_mode_includes_environment() {
     let bin = env!("CARGO_BIN_EXE_harness-cache-key");
-    let output = Command::new(bin)
-        .args(["env", "tool"])
-        .output()
-        .expect("run harness-cache-key env");
+    let output =
+        Command::new(bin).args(["env", "tool"]).output().expect("run harness-cache-key env");
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let hex = String::from_utf8_lossy(&output.stdout).trim();
     assert_eq!(hex.len(), 16, "expected 16-hex cache key, got: {hex}");
+}
 
 /// FR-008 / AC-008.15 — harness rules.conf `priority=` maps through operator resolver.
 #[test]

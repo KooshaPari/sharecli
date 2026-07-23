@@ -47,7 +47,12 @@ async fn fr011_refuse_thermally_throttled() {
     let argv = vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "gated".to_string()];
 
     let err = hv
-        .run(SpawnRequest { argv, cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal })
+        .run(SpawnRequest {
+            argv,
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        })
         .await
         .expect_err("Refuse MUST err after retries");
 

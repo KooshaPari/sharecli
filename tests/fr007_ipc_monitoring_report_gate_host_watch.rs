@@ -18,19 +18,13 @@ const GATE_KEYS: [&str; 5] = [
 
 fn assert_host_watch_object(host: &serde_json::Value) {
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.46); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.46); got: {host}");
     }
 }
 
 fn assert_gate_object(gate: &serde_json::Value) {
     for key in GATE_KEYS {
-        assert!(
-            gate.get(key).is_some(),
-            "gate MUST include {key} (AC-007.46); got: {gate}"
-        );
+        assert!(gate.get(key).is_some(), "gate MUST include {key} (AC-007.46); got: {gate}");
     }
 }
 
@@ -38,9 +32,7 @@ fn assert_json_gate_before_host_watch(raw: &str, context: &str) {
     let v: serde_json::Value =
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     let gate = v.get("gate").expect("{context} MUST include gate (AC-007.46)");
-    let host = v
-        .get("host_watch")
-        .expect("{context} MUST include host_watch (AC-007.46)");
+    let host = v.get("host_watch").expect("{context} MUST include host_watch (AC-007.46)");
     assert_gate_object(gate);
     assert_host_watch_object(host);
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
@@ -55,9 +47,7 @@ fn assert_json_gate_before_host_watch(raw: &str, context: &str) {
 #[tokio::test]
 async fn fr007_ipc_monitoring_report_gate_host_watch_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
-    let resp = handler
-        .dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#)
-        .await;
+    let resp = handler.dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#).await;
     assert!(
         resp.error.is_none(),
         "monitoring.report MUST succeed (AC-007.46); err={:?}",
@@ -66,18 +56,12 @@ async fn fr007_ipc_monitoring_report_gate_host_watch_live() {
     let raw = serde_json::to_string(&resp.result).expect("serialize monitoring.report result");
     assert_json_gate_before_host_watch(&raw, "monitoring.report");
     let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert!(
-        v.get("timestamp").is_some(),
-        "monitoring.report MUST include timestamp (AC-007.46)"
-    );
+    assert!(v.get("timestamp").is_some(), "monitoring.report MUST include timestamp (AC-007.46)");
     assert!(
         v.get("total_processes").is_some(),
         "monitoring.report MUST include total_processes (AC-007.46)"
     );
-    assert!(
-        v.get("processes").is_some(),
-        "monitoring.report MUST include processes (AC-007.46)"
-    );
+    assert!(v.get("processes").is_some(), "monitoring.report MUST include processes (AC-007.46)");
 }
 
 /// FR-007 / AC-007.46 — serialized MonitoringReportSnapshot preserves gate → host_watch key order.

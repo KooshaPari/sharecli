@@ -142,10 +142,7 @@ fn fr007_render_health_csv_body() {
         },
     };
     let csv = render_health_csv_body(&health);
-    assert!(
-        csv.contains(HEALTH_CSV_HEADER),
-        "health CSV body MUST include header; got: {csv}"
-    );
+    assert!(csv.contains(HEALTH_CSV_HEADER), "health CSV body MUST include header; got: {csv}");
     assert!(
         csv.lines().any(|line| line.starts_with("health,")),
         "health CSV body MUST include data row; got: {csv}"
@@ -169,10 +166,7 @@ fn fr007_render_pool_csv_body() {
         status: None,
     };
     let csv = render_pool_csv_body(&pool);
-    assert!(
-        csv.contains(POOL_BODY_CSV_HEADER),
-        "pool CSV body MUST include header; got: {csv}"
-    );
+    assert!(csv.contains(POOL_BODY_CSV_HEADER), "pool CSV body MUST include header; got: {csv}");
     assert!(
         csv.lines().any(|line| line.starts_with("pool,")),
         "pool CSV body MUST include data row; got: {csv}"
@@ -184,11 +178,7 @@ fn fr007_render_pool_csv_body() {
 #[serial_test::serial]
 fn fr007_health_csv_pool_status_companion() {
     let out = bin().args(["health", "--csv"]).output().expect("spawn sharecli health --csv");
-    assert!(
-        out.status.success(),
-        "health --csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "health --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert_body_precedes_companions(&s, HEALTH_CSV_HEADER, "health --csv");
     assert_csv_companion_order(&s, "health --csv");
@@ -200,11 +190,7 @@ fn fr007_health_csv_pool_status_companion() {
 #[serial_test::serial]
 fn fr007_pool_csv_pool_status_companion() {
     let out = bin().args(["pool", "--csv"]).output().expect("spawn sharecli pool --csv");
-    assert!(
-        out.status.success(),
-        "pool --csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "pool --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert_body_precedes_companions(&s, POOL_BODY_CSV_HEADER, "pool --csv");
     assert_csv_companion_order(&s, "pool --csv");
@@ -216,11 +202,7 @@ fn fr007_pool_csv_pool_status_companion() {
 #[serial_test::serial]
 fn fr007_status_csv_pool_status_companion() {
     let out = bin().args(["status", "--csv"]).output().expect("spawn sharecli status --csv");
-    assert!(
-        out.status.success(),
-        "status --csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "status --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert_body_precedes_companions(&s, STATUS_SUMMARY_CSV_HEADER, "status --csv");
     assert_csv_companion_order(&s, "status --csv");
@@ -231,14 +213,9 @@ fn fr007_status_csv_pool_status_companion() {
 #[test]
 #[serial_test::serial]
 fn fr007_pool_csv_rejects_json() {
-    let out = bin()
-        .args(["pool", "--csv", "--json"])
-        .output()
-        .expect("spawn sharecli pool --csv --json");
-    assert!(
-        !out.status.success(),
-        "pool --csv --json MUST fail loudly (AC-007.82)"
-    );
+    let out =
+        bin().args(["pool", "--csv", "--json"]).output().expect("spawn sharecli pool --csv --json");
+    assert!(!out.status.success(), "pool --csv --json MUST fail loudly (AC-007.82)");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("csv") && stderr.contains("json"),
@@ -260,12 +237,8 @@ fn fr007_health_pool_status_csv_companion_helpers_match_proc_shapes() {
     .format_csv_companion();
     assert!(pool_csv.contains(POOL_COMPANION_CSV_HEADER));
 
-    let status_csv = StatusOperatorPanel {
-        scanned: 1,
-        watched: 0,
-        total_processes: 3,
-        agent_rows: 0,
-    }
-    .format_csv_companion();
+    let status_csv =
+        StatusOperatorPanel { scanned: 1, watched: 0, total_processes: 3, agent_rows: 0 }
+            .format_csv_companion();
     assert!(status_csv.contains(STATUS_COMPANION_CSV_HEADER));
 }

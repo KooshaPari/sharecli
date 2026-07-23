@@ -20,10 +20,7 @@ const GATE_KEYS: [&str; 5] = [
 
 fn assert_gate_object(gate: &serde_json::Value) {
     for key in GATE_KEYS {
-        assert!(
-            gate.get(key).is_some(),
-            "gate MUST include {key} (AC-007.18); got: {gate}"
-        );
+        assert!(gate.get(key).is_some(), "gate MUST include {key} (AC-007.18); got: {gate}");
     }
 }
 
@@ -35,16 +32,10 @@ fn fr007_proc_tree_json_gate_shape() {
         .args(["proc", "--tree", "--json"])
         .output()
         .expect("spawn sharecli proc --tree --json");
-    assert!(
-        out.status.success(),
-        "proc --tree --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc --tree --json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("proc --tree --json MUST emit valid JSON");
-    let gate = v
-        .get("gate")
-        .expect("proc --tree --json MUST include gate object (AC-007.18)");
+    let gate = v.get("gate").expect("proc --tree --json MUST include gate object (AC-007.18)");
     assert_gate_object(gate);
 }
 
@@ -68,9 +59,7 @@ fn fr007_proc_tree_watch_json_gate_shape() {
     let v: serde_json::Value =
         serde_json::from_str(line.trim()).expect("tree watch NDJSON line MUST be valid JSON");
     assert!(v.get("ts").is_some(), "NDJSON line MUST include ts");
-    let gate = v
-        .get("gate")
-        .expect("tree watch NDJSON MUST include gate (AC-007.18)");
+    let gate = v.get("gate").expect("tree watch NDJSON MUST include gate (AC-007.18)");
     assert_gate_object(gate);
 
     let _ = child.kill();
@@ -105,9 +94,6 @@ fn fr007_proc_tree_json_gate_serializes_fields() {
     };
     let json = serde_json::to_string(&snap).expect("serialize tree snapshot");
     for key in GATE_KEYS {
-        assert!(
-            json.contains(&format!("\"{key}\"")),
-            "JSON MUST include {key}; got: {json}"
-        );
+        assert!(json.contains(&format!("\"{key}\"")), "JSON MUST include {key}; got: {json}");
     }
 }

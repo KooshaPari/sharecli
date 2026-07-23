@@ -134,11 +134,7 @@ fn fr007_report_text_stderr_silent() {
         .args(["report", "--format", "text"])
         .output()
         .expect("spawn sharecli report --format text");
-    assert!(
-        out.status.success(),
-        "report text MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "report text MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "report");
     assert_stderr_no_companion_markers(&out.stderr, "report");
     assert_text_body_has_gate_and_host_watch(&out.stdout, "report");

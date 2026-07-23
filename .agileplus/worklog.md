@@ -1,5 +1,11 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-22 (Wave15 governance reconcile — T-690 / FR-003)
+- Status: DONE — reconcile SCORECARD v6 after #392 merges (#396 C10 L99 2→3; #399 coverage tests at `922b4ae`); resolve SCORECARD merge conflict; WORK_DAG T-660 READY→DONE + Wave15 stub (T-685 DONE / T-691 READY / T-692 READY); pin `audit_scorecard.json` at `bba2411`
+- Coverage: measured post-#399 % **unavailable** (`coverage.yml` empty-suite on `922b4ae`/`bba2411`); honest pin remains **83.48%** @ `d3cb7c4`
+- Score: C10 34/36 (94% A) → 35/36 (97% A); unweighted **90.1% A**; tier-1 weighted **91% A**
+- FR: FR-003 · T-690
+
 ## 2026-07-19 (C08 Harbor EXTRACTED/N/A formalize — FR-003)
 - Status: DONE — ADR 0005 Phase 1; Harbor Phase 2–3 **EXTRACTED** to benchora `harbor-soft` / `portage-temp`; sharecli hosts no Harbor workflows
 - Score: L76 **1** (seeded N/A); C08 **22/30 (73% C)** unchanged; reconcile v3/v4 L76 interim lifts superseded

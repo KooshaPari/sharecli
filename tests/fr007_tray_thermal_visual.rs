@@ -78,7 +78,11 @@ fn fr007_tray_thermal_visual_windows_linux_parity() {
     for (thermal, decision, connected) in cases {
         let lv = linux_display::resolve_tray_gate_visual(thermal, decision, connected);
         let wv = win_display::resolve_tray_gate_visual(thermal, decision, connected);
-        assert_eq!(format!("{:?}", lv.severity), format!("{:?}", wv.severity), "{thermal}/{decision}");
+        assert_eq!(
+            format!("{:?}", lv.severity),
+            format!("{:?}", wv.severity),
+            "{thermal}/{decision}"
+        );
         assert_eq!(lv.decision_class, wv.decision_class);
         assert_eq!(lv.thermal_class, wv.thermal_class);
         assert_eq!(lv.color_hex, wv.color_hex);
@@ -141,7 +145,8 @@ fn fr007_tray_thermal_visual_swift_wires_operator_display() {
         "macOS status item MUST update icon from gate visual (AC-007.57)"
     );
 
-    let popover = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
+    let popover =
+        include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
     assert!(
         popover.contains("thermalBadge"),
         "Tray popover MUST show thermal badge from gate visual (AC-007.57)"
@@ -217,7 +222,8 @@ fn fr007_tray_thermal_visual_swift_health_view_wires_gate_visual() {
 /// FR-007 / AC-007.59 — Swift TrayPopoverView stats row Status cell uses gate visual.
 #[test]
 fn fr007_tray_thermal_visual_swift_popover_stats_row_wires_gate_visual() {
-    let popover = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
+    let popover =
+        include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
     assert!(
         popover.contains("gateVisual.swiftSymbolName"),
         "Tray popover stats row MUST use gate visual icon (AC-007.59)"

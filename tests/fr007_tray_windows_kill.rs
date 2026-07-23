@@ -7,7 +7,7 @@
 
 use sharecli_tray_linux::ipc::{kill, kill_all};
 use sharecli_tray_windows::ipc::{
-    IPC_METHOD_KILL, IPC_METHOD_KILL_ALL, kill_all_request_json, kill_request_json,
+    kill_all_request_json, kill_request_json, IPC_METHOD_KILL, IPC_METHOD_KILL_ALL,
 };
 
 /// FR-007 / AC-007.54 — Windows tray kill IPC methods match Linux/Swift contract.
@@ -39,18 +39,12 @@ fn fr007_tray_windows_kill_all_request_wire_parity() {
 #[test]
 fn fr007_tray_windows_kill_wires_tray_window() {
     let ipc_kill = include_str!("../windows/ShareCLITray/IpcKill.cs");
-    assert!(
-        ipc_kill.contains("process.kill"),
-        "IpcKill MUST call process.kill (AC-007.54)"
-    );
+    assert!(ipc_kill.contains("process.kill"), "IpcKill MUST call process.kill (AC-007.54)");
     assert!(
         ipc_kill.contains("process.kill_all"),
         "IpcKill MUST call process.kill_all (AC-007.54)"
     );
-    assert!(
-        ipc_kill.contains("pid"),
-        "IpcKill MUST pass pid param (AC-007.54)"
-    );
+    assert!(ipc_kill.contains("pid"), "IpcKill MUST pass pid param (AC-007.54)");
 
     let tray_cs = include_str!("../windows/ShareCLITray/TrayWindow.xaml.cs");
     assert!(

@@ -79,11 +79,7 @@ pub fn resolve_tray_gate_visual(
     let (color_hex, badge_label, linux_icon_name, swift_symbol_name) = match severity {
         TrayGateSeverity::Critical => ("#f85149", "Critical", "dialog-error", "flame.fill"),
         TrayGateSeverity::Warning => {
-            let label = if thermal_pressure == "UNAVAILABLE" {
-                "Unavailable"
-            } else {
-                "Warning"
-            };
+            let label = if thermal_pressure == "UNAVAILABLE" { "Unavailable" } else { "Warning" };
             ("#d29922", label, "dialog-warning", "exclamationmark.triangle.fill")
         }
         TrayGateSeverity::Normal => ("#3fb950", "Normal", "utilities-system-monitor", "cpu"),
@@ -101,7 +97,10 @@ pub fn resolve_tray_gate_visual(
     }
 }
 
-pub fn resolve_tray_gate_visual_from_gate(gate: &GateStatusSnapshot, connected: bool) -> TrayGateVisual {
+pub fn resolve_tray_gate_visual_from_gate(
+    gate: &GateStatusSnapshot,
+    connected: bool,
+) -> TrayGateVisual {
     resolve_tray_gate_visual(&gate.thermal_pressure, &gate.gate_decision, connected)
 }
 
@@ -199,7 +198,10 @@ pub fn format_status_snapshot_tray_line(status: &StatusSnapshot) -> String {
 }
 
 /// Supplementary pool + status operator lines (AC-007.69).
-pub fn format_pool_status_operator_lines(pool: &PoolSnapshot, status: &StatusSnapshot) -> Vec<String> {
+pub fn format_pool_status_operator_lines(
+    pool: &PoolSnapshot,
+    status: &StatusSnapshot,
+) -> Vec<String> {
     vec![format_pool_tray_line(pool), format_status_snapshot_tray_line(status)]
 }
 

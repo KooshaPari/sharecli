@@ -54,10 +54,7 @@ fn fr006_proc_pid_detail_self_json_shape() {
 #[test]
 fn fr006_proc_pid_detail_self_text_sections() {
     let pid = std::process::id();
-    let out = bin()
-        .args(["proc", "--pid", &pid.to_string()])
-        .output()
-        .expect("spawn proc --pid");
+    let out = bin().args(["proc", "--pid", &pid.to_string()]).output().expect("spawn proc --pid");
     assert!(out.status.success(), "proc --pid self MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(s.contains("Process detail"), "MUST print detail header; got: {s}");
@@ -66,4 +63,3 @@ fn fr006_proc_pid_detail_self_text_sections() {
     assert!(s.contains("RSS:"), "MUST print RSS line; got: {s}");
     assert!(s.contains("State:"), "MUST print State line; got: {s}");
 }
-

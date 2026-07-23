@@ -56,11 +56,7 @@ fn assert_text_body_has_gate_and_host_watch(stdout: &[u8], context: &str) {
 #[serial_test::serial]
 fn fr007_health_text_stderr_silent() {
     let out = bin().args(["health"]).output().expect("spawn sharecli health");
-    assert!(
-        out.status.success(),
-        "health MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "health MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "health");
     assert_stderr_no_companion_markers(&out.stderr, "health");
     assert_text_body_has_gate_and_host_watch(&out.stdout, "health");
@@ -71,11 +67,7 @@ fn fr007_health_text_stderr_silent() {
 #[serial_test::serial]
 fn fr007_pool_text_stderr_silent() {
     let out = bin().args(["pool"]).output().expect("spawn sharecli pool");
-    assert!(
-        out.status.success(),
-        "pool MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "pool MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "pool");
     assert_stderr_no_companion_markers(&out.stderr, "pool");
     assert_text_body_has_gate_and_host_watch(&out.stdout, "pool");

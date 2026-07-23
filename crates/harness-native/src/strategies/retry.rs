@@ -19,9 +19,8 @@ fn run_once(
         .build()
         .map_err(|e| format!("harness retry: tokio runtime: {e}"))?;
 
-    let outcome = rt
-        .block_on(hv.run(req))
-        .map_err(|e| format!("harness retry: hypervisor: {e}"))?;
+    let outcome =
+        rt.block_on(hv.run(req)).map_err(|e| format!("harness retry: hypervisor: {e}"))?;
 
     Ok(outcome.exit_code)
 }
@@ -64,9 +63,9 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use std::path::Path;
     use std::sync::Arc;
-    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use tempfile::TempDir;
 
     use super::super::hypervisor_lane::config_from_rule_opts;
@@ -82,17 +81,11 @@ mod tests {
     #[test]
     fn retry_strategy_executes_via_hypervisor() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            retry_max: 0,
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { retry_max: 0, ..RuleOpts::default() };
         let hv = allow_hypervisor(tmp.path(), &opts);
         let code = run_once(&hv, Path::new("/bin/echo"), &["harness-retry-ok"], &opts)
             .expect("retry strategy MUST succeed");
-        assert_eq!(
-            code, 0,
-            "AC-008.19: harness retry MUST run via Hypervisor::run"
-        );
+        assert_eq!(code, 0, "AC-008.19: harness retry MUST run via Hypervisor::run");
     }
 
     /// FR-008 / AC-008.19 — retry loop eventually returns non-zero on persistent failure.
@@ -114,9 +107,6 @@ mod tests {
                 break;
             }
         }
-        assert_ne!(
-            last, 0,
-            "AC-008.19: exhausted retry MUST surface non-zero exit"
-        );
+        assert_ne!(last, 0, "AC-008.19: exhausted retry MUST surface non-zero exit");
     }
 }

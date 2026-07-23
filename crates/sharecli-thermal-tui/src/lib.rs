@@ -29,8 +29,8 @@ use sharecli_fleet::{
     format_pool_operator_line, format_rss_bytes, format_status_operator_line,
     gate_status_snapshot_with_rss, global_coalesce_meters, global_slot_queue_meters,
     state_text_for_pid, sum_detected_agent_rss_bytes, watch_host_agents, AgentTreeNode,
-    CoalesceMeters, DetectedAgentWatch, GateStatusSnapshot, PoolOperatorPanel,
-    ResourceWatchSample, SlotQueueMeters, StatusOperatorPanel,
+    CoalesceMeters, DetectedAgentWatch, GateStatusSnapshot, PoolOperatorPanel, ResourceWatchSample,
+    SlotQueueMeters, StatusOperatorPanel,
 };
 use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
@@ -241,11 +241,7 @@ pub fn gate_panel_lines(
         return vec![Line::from(vec![
             Span::raw(" Gate: "),
             decision_span,
-            Span::raw(format!(
-                " RSS:{} {}",
-                snap.agent_total_rss_bytes,
-                snap.agent_contention
-            )),
+            Span::raw(format!(" RSS:{} {}", snap.agent_total_rss_bytes, snap.agent_contention)),
         ])];
     }
 
@@ -260,11 +256,7 @@ pub fn gate_panel_lines(
     };
 
     vec![
-        Line::from(vec![
-            Span::raw("  Gate decision: "),
-            decision_span,
-            Span::raw(hint),
-        ]),
+        Line::from(vec![Span::raw("  Gate decision: "), decision_span, Span::raw(hint)]),
         Line::from(format!(
             "  Agent RSS total: {} bytes ({})",
             snap.agent_total_rss_bytes,
@@ -298,7 +290,10 @@ pub fn pool_panel_lines(pool: Option<PoolOperatorPanel>, compact: bool) -> Vec<L
 }
 
 /// Lines for the proc-scan / status snapshot operator panel (FR-007 / AC-007.71 TUI slice).
-pub fn status_panel_lines(status: Option<StatusOperatorPanel>, compact: bool) -> Vec<Line<'static>> {
+pub fn status_panel_lines(
+    status: Option<StatusOperatorPanel>,
+    compact: bool,
+) -> Vec<Line<'static>> {
     let Some(status) = status else {
         let msg = if compact { " status unavailable" } else { "  Proc scan status unavailable" };
         return vec![Line::from(Span::styled(msg, Style::default().fg(Color::DarkGray)))];
@@ -556,7 +551,11 @@ fn format_tree_node_line(
 }
 
 fn format_comm_suffix(comm: &str) -> String {
-    if comm.is_empty() { String::new() } else { format!(" ({comm})") }
+    if comm.is_empty() {
+        String::new()
+    } else {
+        format!(" ({comm})")
+    }
 }
 
 fn append_agent_tree_lines(
@@ -987,7 +986,8 @@ fn render_status_panel(frame: &mut Frame, area: Rect, app: &App, compact: bool) 
 fn render_agents(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     let title = if compact { " Agents " } else { " Detected Agents " };
     let state_by_pid = app.agent_panel_state_by_pid();
-    let lines = agent_forest_lines(&app.agent_forests, &app.detected_agents, &state_by_pid, compact);
+    let lines =
+        agent_forest_lines(&app.agent_forests, &app.detected_agents, &state_by_pid, compact);
     let block = focused_block(title, app.focus == PanelFocus::Agents);
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
@@ -1013,9 +1013,10 @@ fn render_fuse_coalesce(frame: &mut Frame, area: Rect, app: &App, compact: bool)
 
 fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
     if app.show_help_overlay {
-        let help = Paragraph::new(Line::from(vec![
-            Span::styled(HELP_OVERLAY_HINT, Style::default().fg(Color::Yellow)),
-        ]))
+        let help = Paragraph::new(Line::from(vec![Span::styled(
+            HELP_OVERLAY_HINT,
+            Style::default().fg(Color::Yellow),
+        )]))
         .block(Block::default().borders(Borders::ALL).title(" help "));
         frame.render_widget(help, area);
         return;
@@ -1052,10 +1053,7 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App, compact: bool) {
 /// Supplementary pool/status poll hook (CLI/IPC-shaped snapshots for AC-007.71).
 pub type PoolStatusPollFn = dyn FnMut() -> (Option<PoolOperatorPanel>, Option<StatusOperatorPanel>);
 
-fn poll_pool_status_panels(
-    app: &mut App,
-    poll_pool_status: Option<&mut PoolStatusPollFn>,
-) {
+fn poll_pool_status_panels(app: &mut App, poll_pool_status: Option<&mut PoolStatusPollFn>) {
     if let Some(poll) = poll_pool_status {
         let (pool, status) = poll();
         app.apply_pool_status_panels(pool, status);
@@ -1205,10 +1203,7 @@ mod tests {
 
     #[test]
     fn test_handle_key_shift_tab_cycles_focus_backward() {
-        assert_eq!(
-            handle_key(&key_event(KeyCode::Tab, KeyModifiers::SHIFT)),
-            KeyAction::FocusPrev
-        );
+        assert_eq!(handle_key(&key_event(KeyCode::Tab, KeyModifiers::SHIFT)), KeyAction::FocusPrev);
     }
 
     #[test]
@@ -1301,10 +1296,7 @@ mod tests {
         terminal.draw(|f| render(f, &app)).unwrap();
         let buf = terminal.backend().buffer().clone();
         let rendered: String = buf.content.iter().map(|c| c.symbol().to_string()).collect();
-        assert!(
-            rendered.contains("Tab"),
-            "help overlay must list Tab cycle; got: {rendered}"
-        );
+        assert!(rendered.contains("Tab"), "help overlay must list Tab cycle; got: {rendered}");
         assert!(rendered.contains("agents"), "help overlay must list agents panel");
     }
 
@@ -1327,12 +1319,8 @@ mod tests {
 
     #[test]
     fn test_status_panel_lines_full() {
-        let status = StatusOperatorPanel {
-            scanned: 50,
-            watched: 1,
-            total_processes: 2,
-            agent_rows: 1,
-        };
+        let status =
+            StatusOperatorPanel { scanned: 50, watched: 1, total_processes: 2, agent_rows: 1 };
         let lines = status_panel_lines(Some(status), false);
         let text: String = lines.iter().map(|l| l.to_string()).collect();
         assert!(text.contains("Scanned:  50"));
@@ -1350,12 +1338,8 @@ mod tests {
             max_per_type: 4,
             healthy: true,
         };
-        let status = StatusOperatorPanel {
-            scanned: 50,
-            watched: 1,
-            total_processes: 2,
-            agent_rows: 1,
-        };
+        let status =
+            StatusOperatorPanel { scanned: 50, watched: 1, total_processes: 2, agent_rows: 1 };
         let pool_text: String =
             pool_panel_lines(Some(pool), true).iter().map(|l| l.to_string()).collect();
         let status_text: String =

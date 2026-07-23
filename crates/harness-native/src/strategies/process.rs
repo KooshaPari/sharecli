@@ -17,9 +17,8 @@ fn run_with_hypervisor(
         .build()
         .map_err(|e| format!("harness process: tokio runtime: {e}"))?;
 
-    let outcome = rt
-        .block_on(hv.run(req))
-        .map_err(|e| format!("harness process: hypervisor: {e}"))?;
+    let outcome =
+        rt.block_on(hv.run(req)).map_err(|e| format!("harness process: hypervisor: {e}"))?;
 
     Ok(outcome.exit_code)
 }
@@ -40,9 +39,9 @@ pub fn run_status(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use std::path::Path;
     use std::sync::Arc;
-    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use tempfile::TempDir;
 
     use super::super::hypervisor_lane::config_from_rule_opts;
@@ -62,10 +61,7 @@ mod tests {
         let hv = allow_hypervisor(tmp.path(), &opts);
         let code = run_with_hypervisor(&hv, Path::new("/bin/echo"), &["harness-process-ok"], &opts)
             .expect("process strategy MUST succeed");
-        assert_eq!(
-            code, 0,
-            "AC-008.19: harness process MUST run via Hypervisor::run"
-        );
+        assert_eq!(code, 0, "AC-008.19: harness process MUST run via Hypervisor::run");
     }
 
     /// FR-008 / AC-008.19 — missing binary fails loudly (no silent degrade).

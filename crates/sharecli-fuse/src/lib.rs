@@ -174,15 +174,9 @@ mod platform {
 
         /// Create with full Feb-parity mount options (`--cow`, `--cow-dir`, …).
         pub fn with_options(backing: &Path, opts: InterceptFsOptions) -> Self {
-            let session_id = if opts.session_id.is_empty() {
-                default_session_id()
-            } else {
-                opts.session_id
-            };
-            let default_agent = opts
-                .agent
-                .clone()
-                .unwrap_or_else(|| session_id.clone());
+            let session_id =
+                if opts.session_id.is_empty() { default_session_id() } else { opts.session_id };
+            let default_agent = opts.agent.clone().unwrap_or_else(|| session_id.clone());
             let cow_root = opts.cow_dir.unwrap_or_else(|| {
                 if opts.cow {
                     backing.join(".sharecli-cow")
@@ -190,10 +184,7 @@ mod platform {
                     backing.join(".sharecli-cow-staging")
                 }
             });
-            let agents_conf = opts
-                .agents_conf
-                .as_ref()
-                .and_then(|p| AgentsConf::load(p).ok());
+            let agents_conf = opts.agents_conf.as_ref().and_then(|p| AgentsConf::load(p).ok());
             Self {
                 backing: backing.to_path_buf(),
                 session_id,
@@ -416,11 +407,7 @@ mod platform {
             if let Some(parent) = abs.parent() {
                 fs::create_dir_all(parent)?;
             }
-            OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .mode(mode)
-                .open(&abs)?;
+            OpenOptions::new().write(true).create_new(true).mode(mode).open(&abs)?;
             self.after_create_at(rel, &abs)
         }
 
@@ -463,41 +450,23 @@ mod platform {
             Ok(())
         }
 
-        fn install_created_entry(
-            &self,
-            rel: PathBuf,
-            path: PathBuf,
-            reply: ReplyCreate,
-        ) {
+        fn install_created_entry(&self, rel: PathBuf, path: PathBuf, reply: ReplyCreate) {
             let mut map = self.inodes.lock().expect("inode map");
             let ino = map.alloc_or_get(rel);
             match fs::metadata(&path) {
                 Ok(meta) => {
                     let attr = Self::metadata_to_attr(ino, &meta);
-                    reply.created(
-                        &TTL,
-                        &attr,
-                        Generation(0),
-                        FileHandle(ino),
-                        FopenFlags::empty(),
-                    );
+                    reply.created(&TTL, &attr, Generation(0), FileHandle(ino), FopenFlags::empty());
                 }
                 Err(err) => reply.error(Self::io_errno(err)),
             }
         }
 
-        fn install_created_entry_plain(
-            &self,
-            rel: PathBuf,
-            path: PathBuf,
-            reply: ReplyEntry,
-        ) {
+        fn install_created_entry_plain(&self, rel: PathBuf, path: PathBuf, reply: ReplyEntry) {
             let mut map = self.inodes.lock().expect("inode map");
             let ino = map.alloc_or_get(rel);
             match fs::metadata(&path) {
-                Ok(meta) => {
-                    reply.entry(&TTL, &Self::metadata_to_attr(ino, &meta), Generation(0))
-                }
+                Ok(meta) => reply.entry(&TTL, &Self::metadata_to_attr(ino, &meta), Generation(0)),
                 Err(err) => reply.error(Self::io_errno(err)),
             }
         }
@@ -625,10 +594,8 @@ mod platform {
                 }
             };
             if let Some(new_size) = size {
-                if let Err(err) = OpenOptions::new()
-                    .write(true)
-                    .open(&path)
-                    .and_then(|f| f.set_len(new_size))
+                if let Err(err) =
+                    OpenOptions::new().write(true).open(&path).and_then(|f| f.set_len(new_size))
                 {
                     reply.error(Self::io_errno(err));
                     return;
@@ -1041,8 +1008,8 @@ mod platform {
             reply: ReplyAttr,
         ) {
             self.0.setattr(
-                req, ino, mode, uid, gid, size, atime, mtime, ctime, fh, crtime, chgtime,
-                bkuptime, flags, reply,
+                req, ino, mode, uid, gid, size, atime, mtime, ctime, fh, crtime, chgtime, bkuptime,
+                flags, reply,
             );
         }
         fn open(&self, req: &Request, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {

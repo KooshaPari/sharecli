@@ -13,8 +13,7 @@ pub const IPC_METHOD_KILL_ALL: &str = "process.kill_all";
 
 /// Build NDJSON-RPC request body for `process.kill` (WinUI + integration tests).
 pub fn kill_request_json(id: u64, pid: u32) -> String {
-    serde_json::json!({ "id": id, "method": IPC_METHOD_KILL, "params": { "pid": pid } })
-        .to_string()
+    serde_json::json!({ "id": id, "method": IPC_METHOD_KILL, "params": { "pid": pid } }).to_string()
 }
 
 /// Build NDJSON-RPC request body for `process.kill_all` (WinUI + integration tests).

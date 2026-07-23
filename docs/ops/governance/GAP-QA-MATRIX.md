@@ -4,8 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-07-19 (C08 Harbor EXTRACTED/N/A formalize FR-003; L76 N/A=1; C08 73% C)
-**Last sync:** 2026-07-19 (Wave14 #337–#340 + cluster lifts through #391; unweighted ~89.8% B / tier-1 ~91% A)
+**Last sync:** 2026-07-22 (Wave15 reconcile v6: #396 C10 L99 2→3; #399 tests landed — pin stays 83.48% at `d3cb7c4`; unweighted ~90.1% A / tier-1 ~91% A)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -41,7 +40,9 @@
 
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
-| C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-620/T-625 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` (83.48% pin) · `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json` · `tests/c01_coverage_pin_gate.rs` | agent-c01 |
+| C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-625 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` (83.48% @ `d3cb7c4`) · `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json` · `tests/c01_coverage_pin_gate.rs` | agent-c01 |
+| C01 | L11 | Post-#399 broad-workspace pin refresh | Med | W15.2 · T-691 · FR-003 | Status: Gap | `coverage.yml` empty-suite on `922b4ae`/`bba2411` (runs 29872308604, 29967745465); keep honest 83.48% pin | agent-c01 |
+| C10 | L98 | Dashboard hex drift vs tokens.css | Med | W15.4 · T-692 · FR-003 | Status: Gap | SCORECARD C10 top-3; `assets/tokens.css` vs `src/dashboard.html` hexes | agent-c10 |
 | C01 | L12 | FR↔acceptance-test SSOT | Med | T-670 · FR-003 | Status: Closed | `FUNCTIONAL_REQUIREMENTS.md` · `docs/specs/TRACEABILITY.md` · `tests/c01_fr_ssot_gate.rs` | agent-c01 |
 | C02 | L25 | Serve HTTP rate limit middleware | Med | W14 · FR-003 | Status: Closed | `src/serve_rate_limit.rs` · `src/commands/serve.rs` · `docs/ops/rate-limits.md` · `tests/c02_serve_rate_limit.rs` | agent-c02 |
 | C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `docs/ops/trace-multihop.md` · `docs/ops/live-pd.md` | agent-c05 |
@@ -66,6 +67,7 @@
 | C08 | L71 | Harbor eval stub | Med | W11.4 · #321 | Status: EXTRACTED / N/A (sharecli) | Destination: benchora `harbor-soft` · ADR 0002/0005 | agent-c08 |
 | C09 | L81.11 | Playwright baseline policy | Low | W11.3 | Status: Closed | `docs/a11y/playwright-viewports.md` | agent-c09 |
 | C09 | L81.11 | Committed PNG baselines + soft diff | Med | W13.2 · T-510 · #335 | Status: Closed | `tests/visual/dashboard/*.png` · `visual-soft.yml` · `docs/visual/golden-visual-tests.md` | agent-c09 |
+| C10 | L99 | Dashboard skeleton loading states | Med | W15.1 · FR-003 · #396 | Status: Closed | `src/dashboard.html` · `docs/visual/loading-states.md` · `tests/c10_l99_skeleton_states.rs` | agent-c10 |
 | C10 | L107 | Deterministic dashboard PNG hard gate | Med | FR-003 · W14.1 · T-600 | Status: Closed | `visual-soft.yml` · `scripts/a11y/playwright_viewports.mjs` · `tests/visual/dashboard/*.png` | agent-c10 |
 | C00 | L2 | Unified HTTP error envelope | High | W12.1 · T-400 · #330 | Status: Closed | `src/error_envelope.rs` · `tests/c00_serve_error_envelope.rs` | agent-c00 |
 | C00 | L2 | OpenAPI `ErrorEnvelope` component | High | W13.1 · T-500 · #332 | Status: Closed | `docs/openapi/serve.yaml` · `scripts/check-openapi-drift.py` | agent-c00 |

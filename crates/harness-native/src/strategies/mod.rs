@@ -67,23 +67,15 @@ pub fn execute(req: ExecRequest<'_>) -> Result<i32, String> {
 
     match req.strategy {
         "passthrough" => process::run_status(req.harness_home, req.real_cmd, &full_args, req.opts),
-        "coalesce" | "cache" => coalesce::run(
-            req.harness_home,
-            req.real_cmd,
-            req.cmd_name,
-            &full_args,
-            req.opts,
-        ),
+        "coalesce" | "cache" => {
+            coalesce::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
+        }
         "queue" | "priority_queue" => {
             queue::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
         }
-        "debounce" => debounce::run(
-            req.harness_home,
-            req.real_cmd,
-            req.cmd_name,
-            &full_args,
-            req.opts,
-        ),
+        "debounce" => {
+            debounce::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
+        }
         "retry" => retry::run(
             req.harness_home,
             req.real_cmd,
@@ -114,12 +106,7 @@ pub fn execute(req: ExecRequest<'_>) -> Result<i32, String> {
         "batch" => batch::run(req.harness_home, req.real_cmd, &full_args, req.opts),
         "causal_order" => causal_order::run(req.harness_home, req.real_cmd, &full_args, req.opts),
         _ => {
-            let _ = (
-                req.cmd_name,
-                req.subcmd,
-                req.cache_key,
-                req.agent_name,
-            );
+            let _ = (req.cmd_name, req.subcmd, req.cache_key, req.agent_name);
             coalesce::run(req.harness_home, req.real_cmd, req.cmd_name, &full_args, req.opts)
         }
     }

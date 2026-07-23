@@ -6,14 +6,20 @@
 use std::collections::HashMap;
 use std::process::Command;
 
-use sharecli::commands::proc::{render_agent_inventory_csv, ProcSort, sort_watched_agents};
+use sharecli::commands::proc::{render_agent_inventory_csv, sort_watched_agents, ProcSort};
 use sharecli_fleet::{AgentResourceSample, DetectedAgent, DetectedAgentWatch};
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
 
-fn watch(pid: u32, family: &'static str, comm: &'static str, rss: u64, fds: Option<u64>) -> DetectedAgentWatch {
+fn watch(
+    pid: u32,
+    family: &'static str,
+    comm: &'static str,
+    rss: u64,
+    fds: Option<u64>,
+) -> DetectedAgentWatch {
     DetectedAgentWatch {
         agent: DetectedAgent { pid, family, comm: comm.into() },
         resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: fds },
@@ -37,12 +43,15 @@ fn fr006_proc_csv_header_and_columns() {
     let lines: Vec<&str> = csv.trim_end().lines().collect();
     assert_eq!(lines.len(), 2, "MUST emit header + one data row; got: {csv}");
     assert_eq!(
-        lines[0],
-        "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+        lines[0], "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "header MUST match schema; got: {}",
         lines[0]
     );
-    assert!(lines[1].starts_with("42,claude,claude,,4096,"), "row MUST include pid/family/rss; got: {}", lines[1]);
+    assert!(
+        lines[1].starts_with("42,claude,claude,,4096,"),
+        "row MUST include pid/family/rss; got: {}",
+        lines[1]
+    );
     assert!(lines[1].ends_with(",7"), "fd_count MUST be present; got: {}", lines[1]);
 }
 
@@ -51,12 +60,11 @@ fn fr006_proc_csv_header_and_columns() {
 fn fr006_proc_csv_escapes_commas() {
     let rows = vec![watch(1, "codex", "node,main.js", 100, None)];
     let csv = render_agent_inventory_csv(&rows, &HashMap::new());
+    assert!(csv.contains("\"node,main.js\""), "comm with comma MUST be quoted; got: {csv}");
     assert!(
-        csv.contains("\"node,main.js\""),
-        "comm with comma MUST be quoted; got: {csv}"
+        csv.contains(",,") || csv.ends_with(",\n") || csv.contains(",,\n"),
+        "missing fd_count MUST leave empty field; got: {csv}"
     );
-    assert!(csv.contains(",,") || csv.ends_with(",\n") || csv.contains(",,\n"),
-        "missing fd_count MUST leave empty field; got: {csv}");
 }
 
 /// FR-006 / AC-006.24 — empty inventory emits header only.
@@ -78,8 +86,7 @@ fn fr006_proc_csv_cli_exits_zero() {
     let s = String::from_utf8_lossy(&out.stdout);
     let first = s.lines().next().unwrap_or("");
     assert_eq!(
-        first,
-        "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
+        first, "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count",
         "CLI MUST print CSV header; got: {s}"
     );
 }
@@ -89,11 +96,8 @@ fn fr006_proc_csv_cli_exits_zero() {
 fn fr006_proc_csv_rejects_json_combo() {
     let out = bin().args(["proc", "--csv", "--json"]).output().expect("spawn proc --csv --json");
     assert!(!out.status.success());
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    let combined =
+        format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
     assert!(
         combined.to_ascii_lowercase().contains("json") || combined.contains("--csv"),
         "MUST reject --csv with --json; got: {combined}"
@@ -104,7 +108,11 @@ fn fr006_proc_csv_rejects_json_combo() {
 #[test]
 fn fr006_proc_csv_flat_rejects_tree_without_csv_pairing() {
     let out = bin().args(["proc", "--csv", "--tree"]).output().expect("spawn proc --csv --tree");
-    assert!(out.status.success(), "proc --csv --tree MUST succeed (AC-006.26); stderr: {:?}", out.stderr);
+    assert!(
+        out.status.success(),
+        "proc --csv --tree MUST succeed (AC-006.26); stderr: {:?}",
+        out.stderr
+    );
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
         s.lines().next().unwrap_or("").starts_with("root_index,"),
@@ -122,10 +130,7 @@ fn fr006_proc_csv_respects_sort_order() {
     ];
     let sorted = sort_watched_agents(&rows, ProcSort::Rss, &HashMap::new());
     let csv = render_agent_inventory_csv(&sorted, &HashMap::new());
-    let pids: Vec<u32> = csv
-        .lines()
-        .skip(1)
-        .filter_map(|line| line.split(',').next()?.parse().ok())
-        .collect();
+    let pids: Vec<u32> =
+        csv.lines().skip(1).filter_map(|line| line.split(',').next()?.parse().ok()).collect();
     assert_eq!(pids, vec![20, 30, 10], "CSV rows MUST follow sort order; got: {csv}");
 }

@@ -14,11 +14,8 @@ const RSS_REFUSE_BYTES: u64 = 32 * 1_073_741_824;
 /// FR-007 / AC-007.26 — RSS refuse tier surfaces DENY + RSS total + REFUSE contention.
 #[test]
 fn fr007_thermal_tui_gate_parity_rss_refuse() {
-    let snap = sharecli_fleet::gate_status_snapshot_with_rss(
-        ThermalLevel::Green,
-        1,
-        RSS_REFUSE_BYTES,
-    );
+    let snap =
+        sharecli_fleet::gate_status_snapshot_with_rss(ThermalLevel::Green, 1, RSS_REFUSE_BYTES);
     assert_eq!(snap.gate_decision, "DENY");
     assert_eq!(snap.agent_contention, "REFUSE");
     assert_eq!(snap.agent_total_rss_bytes, RSS_REFUSE_BYTES);

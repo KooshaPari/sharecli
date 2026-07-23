@@ -17,8 +17,7 @@ const GATE_CSV_HEADER: &str =
 
 const HOST_CSV_HEADER: &str = "record,fd_count,net_rx_bytes,net_tx_bytes,mem_rss_bytes,load_1m";
 
-const POOL_CSV_HEADER: &str =
-    "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
+const POOL_CSV_HEADER: &str = "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
 
 const STATUS_CSV_HEADER: &str = "record,scanned,watched,total_processes,agent_rows";
 
@@ -78,10 +77,7 @@ fn fr007_pool_format_csv_companion() {
         healthy: false,
     }
     .format_csv_companion();
-    assert!(
-        csv.contains(POOL_CSV_HEADER),
-        "CSV companion MUST include pool header; got: {csv}"
-    );
+    assert!(csv.contains(POOL_CSV_HEADER), "CSV companion MUST include pool header; got: {csv}");
     assert!(
         csv.trim().ends_with("pool,2,1,0,0,4,false"),
         "CSV companion MUST include pool data row; got: {csv}"
@@ -91,13 +87,8 @@ fn fr007_pool_format_csv_companion() {
 /// FR-007 / AC-007.79 — unit helper renders companion CSV status record.
 #[test]
 fn fr007_status_format_csv_companion() {
-    let csv = StatusOperatorPanel {
-        scanned: 1,
-        watched: 0,
-        total_processes: 3,
-        agent_rows: 0,
-    }
-    .format_csv_companion();
+    let csv = StatusOperatorPanel { scanned: 1, watched: 0, total_processes: 3, agent_rows: 0 }
+        .format_csv_companion();
     assert!(
         csv.contains(STATUS_CSV_HEADER),
         "CSV companion MUST include status header; got: {csv}"
@@ -113,11 +104,7 @@ fn fr007_status_format_csv_companion() {
 #[serial_test::serial]
 fn fr007_proc_csv_pool_status_companion() {
     let out = bin().args(["proc", "--csv"]).output().expect("spawn sharecli proc --csv");
-    assert!(
-        out.status.success(),
-        "proc --csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
         s.lines().any(|line| line == "pid,family,comm,state,mem_rss_bytes,mem_rss,fd_count"),
@@ -130,15 +117,9 @@ fn fr007_proc_csv_pool_status_companion() {
 #[test]
 #[serial_test::serial]
 fn fr007_proc_tree_csv_pool_status_companion() {
-    let out = bin()
-        .args(["proc", "--tree", "--csv"])
-        .output()
-        .expect("spawn sharecli proc --tree --csv");
-    assert!(
-        out.status.success(),
-        "proc --tree --csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out =
+        bin().args(["proc", "--tree", "--csv"]).output().expect("spawn sharecli proc --tree --csv");
+    assert!(out.status.success(), "proc --tree --csv MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(
         s.lines().next().unwrap_or("").starts_with("root_index,"),

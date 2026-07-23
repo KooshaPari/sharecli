@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::process::Command;
 
 use sharecli::commands::proc::{
-    agent_tree_node_to_json, build_agent_state_map, build_forest_state_map,
-    render_agent_tree_csv, state_text_for_pid,
+    agent_tree_node_to_json, build_agent_state_map, build_forest_state_map, render_agent_tree_csv,
+    state_text_for_pid,
 };
 use sharecli_fleet::collect_forest_pids;
 use sharecli_fleet::proc_scan::{FakeProcSource, ProcSnapshot};
@@ -31,7 +31,13 @@ fn fr006_proc_tree_state_json_node_includes_state() {
             cmdline: vec!["cursor-agent".into()],
             state: 'S',
         },
-        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+        ProcSnapshot {
+            pid: 51,
+            ppid: 50,
+            comm: "node".into(),
+            cmdline: vec!["node".into()],
+            state: 'R',
+        },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     let mut state_by_pid = HashMap::new();
@@ -41,10 +47,7 @@ fn fr006_proc_tree_state_json_node_includes_state() {
     assert_eq!(root.state, "S");
     assert_eq!(root.children[0].state, "R");
     let json = serde_json::to_string(&root).expect("serialize tree node");
-    assert!(
-        json.contains("\"state\":\"S\""),
-        "tree JSON MUST include state on root; got: {json}"
-    );
+    assert!(json.contains("\"state\":\"S\""), "tree JSON MUST include state on root; got: {json}");
 }
 
 /// FR-006 / AC-006.34 — missing tree JSON state serializes as empty string.
@@ -70,10 +73,7 @@ fn fr006_proc_tree_state_json_missing_state_empty_string() {
 /// FR-006 / AC-006.34 — CLI proc --tree --json forests nodes expose state key.
 #[test]
 fn fr006_proc_tree_state_cli_json_includes_state_key() {
-    let out = bin()
-        .args(["proc", "--tree", "--json"])
-        .output()
-        .expect("spawn proc --tree --json");
+    let out = bin().args(["proc", "--tree", "--json"]).output().expect("spawn proc --tree --json");
     assert!(out.status.success(), "proc --tree --json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("proc --tree --json MUST emit valid JSON");
@@ -98,8 +98,20 @@ fn fr006_proc_tree_forest_state_collects_all_pids() {
             cmdline: vec!["cursor-agent".into()],
             state: 'S',
         },
-        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
-        ProcSnapshot { pid: 52, ppid: 51, comm: "bash".into(), cmdline: vec!["bash".into()], state: 'D' },
+        ProcSnapshot {
+            pid: 51,
+            ppid: 50,
+            comm: "node".into(),
+            cmdline: vec!["node".into()],
+            state: 'R',
+        },
+        ProcSnapshot {
+            pid: 52,
+            ppid: 51,
+            comm: "bash".into(),
+            cmdline: vec!["bash".into()],
+            state: 'D',
+        },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     let mut pids = collect_forest_pids(&forests);
@@ -119,7 +131,13 @@ fn fr006_proc_tree_forest_state_map_includes_child_states() {
             cmdline: vec!["cursor-agent".into()],
             state: 'S',
         },
-        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+        ProcSnapshot {
+            pid: 51,
+            ppid: 50,
+            comm: "node".into(),
+            cmdline: vec!["node".into()],
+            state: 'R',
+        },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     let agent_only = build_agent_state_map(&src, &[50]);
@@ -143,7 +161,13 @@ fn fr006_proc_tree_forest_state_csv_child_row_includes_state() {
             cmdline: vec!["codex".into()],
             state: 'S',
         },
-        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+        ProcSnapshot {
+            pid: 51,
+            ppid: 50,
+            comm: "node".into(),
+            cmdline: vec!["node".into()],
+            state: 'R',
+        },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     let state_by_pid = build_forest_state_map(&src, &forests);
@@ -166,7 +190,13 @@ fn fr006_proc_tree_forest_state_text_child_node_shows_state() {
             cmdline: vec!["codex".into()],
             state: 'S',
         },
-        ProcSnapshot { pid: 51, ppid: 50, comm: "node".into(), cmdline: vec!["node".into()], state: 'R' },
+        ProcSnapshot {
+            pid: 51,
+            ppid: 50,
+            comm: "node".into(),
+            cmdline: vec!["node".into()],
+            state: 'R',
+        },
     ]);
     let forests = sharecli_fleet::build_agent_forests(&src);
     let agent_only = build_agent_state_map(&src, &[50]);
@@ -183,8 +213,13 @@ fn fr006_proc_tree_state_cli_text_shows_state_on_nodes() {
     let s = String::from_utf8_lossy(&out.stdout);
     if s.contains('[') && s.chars().any(|c| c.is_ascii_digit()) {
         assert!(
-            s.contains("] ") && (s.contains("] R ") || s.contains("] S ") || s.contains("] D ")
-                || s.contains("] Z ") || s.contains("] T ") || s.contains("] - ")),
+            s.contains("] ")
+                && (s.contains("] R ")
+                    || s.contains("] S ")
+                    || s.contains("] D ")
+                    || s.contains("] Z ")
+                    || s.contains("] T ")
+                    || s.contains("] - ")),
             "tree text nodes MUST show state after PID bracket; got: {s}"
         );
     }

@@ -8,7 +8,7 @@ use sharecli::config::{
     CastConfig, Config, DefaultHarnessConfig, MonitoringConfig, PoolConfig, ServeConfig,
     SpawnPolicyConfig,
 };
-use sharecli::error::{ErrorCode, SharecliError, EXIT_IO, EXIT_SPAWN, EXIT_SERVE};
+use sharecli::error::{ErrorCode, SharecliError, EXIT_IO, EXIT_SERVE, EXIT_SPAWN};
 
 /// FR-003 / C01 — default config embeds registered projects and harness presets.
 #[test]
@@ -146,11 +146,7 @@ fn fr003_cast_where_prints_pane_map_path() {
 /// FR-003 / C01 — default harness config serde preserves numeric caps.
 #[test]
 fn fr003_default_harness_config_roundtrip() {
-    let preset = DefaultHarnessConfig {
-        enabled: false,
-        max_instances: 7,
-        memory_limit_mb: 128,
-    };
+    let preset = DefaultHarnessConfig { enabled: false, max_instances: 7, memory_limit_mb: 128 };
     let json = serde_json::to_string(&preset).expect("serialize");
     let parsed: DefaultHarnessConfig = serde_json::from_str(&json).expect("deserialize");
     assert!(!parsed.enabled);
@@ -214,15 +210,8 @@ fn fr003_config_load_init_save_roundtrip() {
 #[test]
 fn fr003_list_json_inventory() {
     let bin = env!("CARGO_BIN_EXE_sharecli");
-    let output = Command::new(bin)
-        .args(["list", "--json"])
-        .output()
-        .expect("run list --json");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let output = Command::new(bin).args(["list", "--json"]).output().expect("run list --json");
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("\"cast\""));
     assert!(stdout.contains("\"util\""));
@@ -232,15 +221,9 @@ fn fr003_list_json_inventory() {
 #[test]
 fn fr003_report_json_snapshot() {
     let bin = env!("CARGO_BIN_EXE_sharecli");
-    let output = Command::new(bin)
-        .args(["report", "--format", "json"])
-        .output()
-        .expect("run report json");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let output =
+        Command::new(bin).args(["report", "--format", "json"]).output().expect("run report json");
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains('{'));
 }
@@ -249,15 +232,9 @@ fn fr003_report_json_snapshot() {
 #[test]
 fn fr003_util_crc_checksum() {
     let bin = env!("CARGO_BIN_EXE_sharecli");
-    let output = Command::new(bin)
-        .args(["util", "crc", "sharecli"])
-        .output()
-        .expect("run util crc");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let output =
+        Command::new(bin).args(["util", "crc", "sharecli"]).output().expect("run util crc");
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(!stdout.trim().is_empty());
 }
@@ -266,25 +243,15 @@ fn fr003_util_crc_checksum() {
 #[test]
 fn fr003_optimize_dry_run() {
     let bin = env!("CARGO_BIN_EXE_sharecli");
-    let output = Command::new(bin)
-        .arg("optimize")
-        .output()
-        .expect("run optimize");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let output = Command::new(bin).arg("optimize").output().expect("run optimize");
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
 }
 
 /// FR-003 / C01 — `fleet status` surfaces NATS connectivity guidance.
 #[test]
 fn fr003_fleet_status_smoke() {
     let bin = env!("CARGO_BIN_EXE_sharecli");
-    let output = Command::new(bin)
-        .args(["fleet", "status"])
-        .output()
-        .expect("run fleet status");
+    let output = Command::new(bin).args(["fleet", "status"]).output().expect("run fleet status");
     let combined = format!(
         "{}{}",
         String::from_utf8_lossy(&output.stdout),

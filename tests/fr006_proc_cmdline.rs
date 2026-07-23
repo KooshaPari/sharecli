@@ -61,16 +61,10 @@ fn fr006_proc_cmdline_filter_substring_case_insensitive() {
         },
     ]);
     let cmdline_by_pid = build_agent_cmdline_map(&src, &[10, 11]);
-    let rows = vec![
-        watch_row("forge", "node", 10, 100),
-        watch_row("codex", "codex", 11, 200),
-    ];
+    let rows = vec![watch_row("forge", "node", 10, 100), watch_row("codex", "codex", 11, 200)];
     let filtered = filter_watched_agents(
         &rows,
-        &ProcFilter {
-            cmdline: Some("CONVERSATION".into()),
-            ..Default::default()
-        },
+        &ProcFilter { cmdline: Some("CONVERSATION".into()), ..Default::default() },
         &empty_ppid_map(),
         &cmdline_by_pid,
         &empty_state_map(),
@@ -99,10 +93,7 @@ fn fr006_proc_cmdline_composes_with_comm() {
         },
     ]);
     let cmdline_by_pid = build_agent_cmdline_map(&src, &[10, 11]);
-    let rows = vec![
-        watch_row("cursor", "node", 10, 100),
-        watch_row("cursor", "node", 11, 100),
-    ];
+    let rows = vec![watch_row("cursor", "node", 10, 100), watch_row("cursor", "node", 11, 100)];
     let filtered = filter_watched_agents(
         &rows,
         &ProcFilter {
@@ -143,10 +134,7 @@ fn fr006_proc_tree_cmdline_filter() {
     assert_eq!(forests.len(), 2);
     let filtered = filter_agent_forests(
         &forests,
-        &ProcFilter {
-            cmdline: Some("headless".into()),
-            ..Default::default()
-        },
+        &ProcFilter { cmdline: Some("headless".into()), ..Default::default() },
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &cmdline_by_pid,
@@ -159,13 +147,11 @@ fn fr006_proc_tree_cmdline_filter() {
 /// FR-006 / AC-006.30 — empty cmdline pattern fails loudly.
 #[test]
 fn fr006_proc_empty_cmdline_rejected() {
-    let out = bin().args(["proc", "--cmdline", ""]).output().expect("spawn sharecli proc --cmdline");
+    let out =
+        bin().args(["proc", "--cmdline", ""]).output().expect("spawn sharecli proc --cmdline");
     assert!(!out.status.success(), "empty --cmdline MUST fail");
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    let combined =
+        format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
     assert!(
         combined.to_ascii_lowercase().contains("cmdline"),
         "error MUST mention --cmdline; got: {combined}"

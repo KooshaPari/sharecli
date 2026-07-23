@@ -18,10 +18,7 @@ const WATCH_MARKER: &str = "=== Host Resource Watch ===";
 
 fn assert_host_watch_object(host: &serde_json::Value) {
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.44); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.44); got: {host}");
     }
 }
 
@@ -29,10 +26,7 @@ fn assert_json_gate_before_host_watch(raw: &str, context: &str) {
     let v: serde_json::Value =
         serde_json::from_str(raw.trim()).expect("{context} MUST emit valid JSON");
     assert!(v.get("gate").is_some(), "{context} MUST include gate (AC-007.44)");
-    assert!(
-        v.get("host_watch").is_some(),
-        "{context} MUST include host_watch (AC-007.44)"
-    );
+    assert!(v.get("host_watch").is_some(), "{context} MUST include host_watch (AC-007.44)");
     let gate_pos = raw.find("\"gate\"").expect("gate key in raw JSON");
     let host_pos = raw.find("\"host_watch\"").expect("host_watch key in raw JSON");
     assert!(
@@ -65,28 +59,17 @@ fn assert_stderr_no_companion_markers(stderr: &[u8], context: &str) {
 #[test]
 #[serial_test::serial]
 fn fr007_health_json_gate_host_watch_shape() {
-    let out = bin()
-        .args(["health", "--json"])
-        .output()
-        .expect("spawn sharecli health --json");
-    assert!(
-        out.status.success(),
-        "health --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["health", "--json"]).output().expect("spawn sharecli health --json");
+    assert!(out.status.success(), "health --json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("health --json MUST emit valid JSON");
-    assert!(
-        v.get("healthy").is_some(),
-        "health --json MUST include healthy (AC-007.44); got: {v}"
-    );
+    assert!(v.get("healthy").is_some(), "health --json MUST include healthy (AC-007.44); got: {v}");
     assert!(
         v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
         "health --json MUST include top-level gate (AC-007.44); got: {v}"
     );
-    let host = v
-        .get("host_watch")
-        .expect("health --json MUST include top-level host_watch (AC-007.44)");
+    let host =
+        v.get("host_watch").expect("health --json MUST include top-level host_watch (AC-007.44)");
     assert_host_watch_object(host);
 }
 
@@ -94,15 +77,8 @@ fn fr007_health_json_gate_host_watch_shape() {
 #[test]
 #[serial_test::serial]
 fn fr007_pool_json_gate_host_watch_shape() {
-    let out = bin()
-        .args(["pool", "--json"])
-        .output()
-        .expect("spawn sharecli pool --json");
-    assert!(
-        out.status.success(),
-        "pool --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["pool", "--json"]).output().expect("spawn sharecli pool --json");
+    assert!(out.status.success(), "pool --json MUST exit 0; stderr: {:?}", out.stderr);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("pool --json MUST emit valid JSON");
     assert!(
@@ -113,9 +89,8 @@ fn fr007_pool_json_gate_host_watch_shape() {
         v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
         "pool --json MUST include top-level gate (AC-007.44); got: {v}"
     );
-    let host = v
-        .get("host_watch")
-        .expect("pool --json MUST include top-level host_watch (AC-007.44)");
+    let host =
+        v.get("host_watch").expect("pool --json MUST include top-level host_watch (AC-007.44)");
     assert_host_watch_object(host);
 }
 
@@ -123,10 +98,7 @@ fn fr007_pool_json_gate_host_watch_shape() {
 #[test]
 #[serial_test::serial]
 fn fr007_health_json_gate_before_host_watch() {
-    let out = bin()
-        .args(["health", "--json"])
-        .output()
-        .expect("spawn sharecli health --json");
+    let out = bin().args(["health", "--json"]).output().expect("spawn sharecli health --json");
     assert!(out.status.success(), "health --json MUST exit 0");
     let raw = String::from_utf8_lossy(&out.stdout);
     assert_json_gate_before_host_watch(&raw, "health --json");
@@ -136,10 +108,7 @@ fn fr007_health_json_gate_before_host_watch() {
 #[test]
 #[serial_test::serial]
 fn fr007_pool_json_gate_before_host_watch() {
-    let out = bin()
-        .args(["pool", "--json"])
-        .output()
-        .expect("spawn sharecli pool --json");
+    let out = bin().args(["pool", "--json"]).output().expect("spawn sharecli pool --json");
     assert!(out.status.success(), "pool --json MUST exit 0");
     let raw = String::from_utf8_lossy(&out.stdout);
     assert_json_gate_before_host_watch(&raw, "pool --json");
@@ -149,15 +118,8 @@ fn fr007_pool_json_gate_before_host_watch() {
 #[test]
 #[serial_test::serial]
 fn fr007_health_json_stderr_silent() {
-    let out = bin()
-        .args(["health", "--json"])
-        .output()
-        .expect("spawn sharecli health --json");
-    assert!(
-        out.status.success(),
-        "health --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["health", "--json"]).output().expect("spawn sharecli health --json");
+    assert!(out.status.success(), "health --json MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "health --json");
     assert_stderr_no_companion_markers(&out.stderr, "health --json");
     let raw = String::from_utf8_lossy(&out.stdout);
@@ -168,15 +130,8 @@ fn fr007_health_json_stderr_silent() {
 #[test]
 #[serial_test::serial]
 fn fr007_pool_json_stderr_silent() {
-    let out = bin()
-        .args(["pool", "--json"])
-        .output()
-        .expect("spawn sharecli pool --json");
-    assert!(
-        out.status.success(),
-        "pool --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["pool", "--json"]).output().expect("spawn sharecli pool --json");
+    assert!(out.status.success(), "pool --json MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "pool --json");
     assert_stderr_no_companion_markers(&out.stderr, "pool --json");
     let raw = String::from_utf8_lossy(&out.stdout);

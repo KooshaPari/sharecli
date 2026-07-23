@@ -96,10 +96,7 @@ fn fr007_proc_watch_ndjson_stdout_no_companion_leak() {
         !stdout.contains("[watch]"),
         "NDJSON stdout MUST NOT contain watch footer (AC-007.28); got: {stdout}"
     );
-    assert!(
-        !stdout.contains("\x1b[2J"),
-        "NDJSON stdout MUST NOT contain terminal clear sequences"
-    );
+    assert!(!stdout.contains("\x1b[2J"), "NDJSON stdout MUST NOT contain terminal clear sequences");
 
     for line in stdout.lines().filter(|l| !l.is_empty()) {
         let _: serde_json::Value =

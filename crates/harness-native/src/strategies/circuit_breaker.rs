@@ -14,10 +14,7 @@ static WINDOW_START_MS: AtomicU64 = AtomicU64::new(0);
 static BREAKER_LOCK: Mutex<()> = Mutex::new(());
 
 fn now_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0)
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
 fn run_once(
@@ -50,9 +47,7 @@ pub fn run(
     args: &[&str],
     opts: &RuleOpts,
 ) -> Result<i32, String> {
-    let _guard = BREAKER_LOCK
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let _guard = BREAKER_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
 
     let window_ms = breaker_window_secs.saturating_mul(1000);
     let prev_start = WINDOW_START_MS.load(Ordering::SeqCst);
@@ -87,9 +82,9 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use std::path::Path;
     use std::sync::Arc;
-    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use tempfile::TempDir;
 
     use super::super::hypervisor_lane::config_from_rule_opts;
@@ -104,41 +99,26 @@ mod tests {
     /// FR-008 / AC-008.19 — harness `circuit_breaker` routes through Hypervisor.
     #[test]
     fn circuit_breaker_strategy_executes_via_hypervisor() {
-        let _guard = BREAKER_LOCK
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = BREAKER_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         FAILURE_COUNT.store(0, Ordering::SeqCst);
         WINDOW_START_MS.store(now_ms(), Ordering::SeqCst);
 
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            breaker_threshold: 3,
-            breaker_window: 60,
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { breaker_threshold: 3, breaker_window: 60, ..RuleOpts::default() };
         let hv = allow_hypervisor(tmp.path(), &opts);
         let code = run_once(&hv, Path::new("/bin/echo"), &["harness-breaker-ok"], &opts)
             .expect("circuit_breaker strategy MUST succeed");
-        assert_eq!(
-            code, 0,
-            "AC-008.19: harness circuit_breaker MUST run via Hypervisor::run"
-        );
+        assert_eq!(code, 0, "AC-008.19: harness circuit_breaker MUST run via Hypervisor::run");
     }
 
     /// FR-008 / AC-008.19 — open circuit fails loudly without spawning.
     #[test]
     fn circuit_breaker_open_fails_loudly() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            breaker_threshold: 1,
-            breaker_window: 3600,
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { breaker_threshold: 1, breaker_window: 3600, ..RuleOpts::default() };
 
         {
-            let _guard = BREAKER_LOCK
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let _guard = BREAKER_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             FAILURE_COUNT.store(5, Ordering::SeqCst);
             WINDOW_START_MS.store(now_ms(), Ordering::SeqCst);
         }
@@ -154,9 +134,7 @@ mod tests {
         .expect_err("open circuit MUST fail");
         assert_eq!(err, "circuit open", "AC-008.19: open circuit must fail loudly");
 
-        let _guard = BREAKER_LOCK
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = BREAKER_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         FAILURE_COUNT.store(0, Ordering::SeqCst);
         WINDOW_START_MS.store(0, Ordering::SeqCst);
     }

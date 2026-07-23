@@ -48,10 +48,7 @@ fn assert_gate_before_watch(segment: &str, context: &str) {
     let watch_pos = segment
         .find(WATCH_MARKER)
         .unwrap_or_else(|| panic!("{context} MUST include host watch section; got: {segment}"));
-    assert!(
-        gate_pos < watch_pos,
-        "{context} MUST print gate before host watch; got: {segment}"
-    );
+    assert!(gate_pos < watch_pos, "{context} MUST print gate before host watch; got: {segment}");
 }
 
 fn assert_text_envelope_order(stdout: &str, context: &str) {

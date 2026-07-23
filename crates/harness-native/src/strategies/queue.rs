@@ -40,9 +40,9 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use std::path::Path;
     use std::sync::Arc;
-    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use tempfile::TempDir;
 
     use super::super::hypervisor_lane::{config_from_rule_opts, hypervisor_cache_root};
@@ -58,19 +58,11 @@ mod tests {
     #[test]
     fn queue_strategy_executes_via_hypervisor() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            priority: "normal".to_string(),
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { priority: "normal".to_string(), ..RuleOpts::default() };
         let hv = allow_hypervisor(tmp.path(), &opts);
-        let code = run_with_hypervisor(
-            &hv,
-            Path::new("/bin/echo"),
-            "echo",
-            &["harness-queue-ok"],
-            &opts,
-        )
-        .expect("queue strategy MUST succeed");
+        let code =
+            run_with_hypervisor(&hv, Path::new("/bin/echo"), "echo", &["harness-queue-ok"], &opts)
+                .expect("queue strategy MUST succeed");
         assert_eq!(code, 0, "AC-008.16: harness queue MUST run via Hypervisor::run_queued");
     }
 
@@ -78,19 +70,11 @@ mod tests {
     #[test]
     fn priority_queue_strategy_executes_via_hypervisor() {
         let tmp = TempDir::new().expect("tempdir");
-        let opts = RuleOpts {
-            priority: "high".to_string(),
-            ..RuleOpts::default()
-        };
+        let opts = RuleOpts { priority: "high".to_string(), ..RuleOpts::default() };
         let hv = allow_hypervisor(tmp.path(), &opts);
-        let code = run_with_hypervisor(
-            &hv,
-            Path::new("/bin/echo"),
-            "echo",
-            &["priority-queue-ok"],
-            &opts,
-        )
-        .expect("priority_queue strategy MUST succeed");
+        let code =
+            run_with_hypervisor(&hv, Path::new("/bin/echo"), "echo", &["priority-queue-ok"], &opts)
+                .expect("priority_queue strategy MUST succeed");
         assert_eq!(
             code, 0,
             "AC-008.16: harness priority_queue MUST run via Hypervisor::run_queued"

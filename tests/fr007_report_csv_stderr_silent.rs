@@ -20,8 +20,7 @@ const GATE_CSV_HEADER: &str =
 
 const HOST_CSV_HEADER: &str = "record,fd_count,net_rx_bytes,net_tx_bytes,mem_rss_bytes,load_1m";
 
-const POOL_CSV_HEADER: &str =
-    "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
+const POOL_CSV_HEADER: &str = "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
 
 const STATUS_CSV_HEADER: &str = "record,scanned,watched,total_processes,agent_rows";
 
@@ -89,11 +88,7 @@ fn fr007_report_csv_stderr_silent() {
         .args(["report", "--format", "csv"])
         .output()
         .expect("spawn sharecli report --format csv");
-    assert!(
-        out.status.success(),
-        "report --format csv MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "report --format csv MUST exit 0; stderr: {:?}", out.stderr);
     assert_stderr_silent(&out.stderr, "report --format csv");
     assert_stderr_no_companion_markers(&out.stderr, "report --format csv");
     assert_csv_body_has_operator_companions(&out.stdout, "report --format csv");

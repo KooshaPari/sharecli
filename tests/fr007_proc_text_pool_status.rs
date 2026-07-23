@@ -98,9 +98,9 @@ fn assert_frame_operator_order(segment: &str, context: &str) {
     let pool_pos = segment
         .find(POOL_PREFIX)
         .unwrap_or_else(|| panic!("{context} MUST include pool operator line; got: {segment}"));
-    let proc_pos = segment
-        .find(PROC_PREFIX)
-        .unwrap_or_else(|| panic!("{context} MUST include proc-scan operator line; got: {segment}"));
+    let proc_pos = segment.find(PROC_PREFIX).unwrap_or_else(|| {
+        panic!("{context} MUST include proc-scan operator line; got: {segment}")
+    });
     assert!(
         gate_pos < watch_pos && watch_pos < pool_pos && pool_pos < proc_pos,
         "{context} MUST serialize gate → host_watch → pool → proc-scan (AC-007.75); got: {segment}"
@@ -129,11 +129,7 @@ fn assert_text_watch_stdout(stdout: &str, frame_header: &str, context: &str) {
 #[serial_test::serial]
 fn fr007_proc_text_pool_status_order() {
     let out = bin().args(["proc"]).output().expect("spawn sharecli proc");
-    assert!(
-        out.status.success(),
-        "proc MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "proc MUST exit 0; stderr: {:?}", out.stderr);
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert_stderr_silent(&out.stderr, "proc");
     assert_text_operator_order(&stdout, INVENTORY_HEADER, "proc");
@@ -143,15 +139,8 @@ fn fr007_proc_text_pool_status_order() {
 #[test]
 #[serial_test::serial]
 fn fr007_proc_tree_text_pool_status_order() {
-    let out = bin()
-        .args(["proc", "--tree"])
-        .output()
-        .expect("spawn sharecli proc --tree");
-    assert!(
-        out.status.success(),
-        "proc --tree MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["proc", "--tree"]).output().expect("spawn sharecli proc --tree");
+    assert!(out.status.success(), "proc --tree MUST exit 0; stderr: {:?}", out.stderr);
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert_stderr_silent(&out.stderr, "proc --tree");
     assert_text_operator_order(&stdout, TREE_HEADER, "proc --tree");

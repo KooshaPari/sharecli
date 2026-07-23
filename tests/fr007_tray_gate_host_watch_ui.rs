@@ -55,7 +55,9 @@ fn fr007_tray_gate_host_watch_ui_linux_format() {
 /// FR-007 / AC-007.56 — Windows tray Rust helpers stay byte-identical to Linux.
 #[test]
 fn fr007_tray_gate_host_watch_ui_windows_linux_parity() {
-    use sharecli_tray_windows::ipc::{GateStatusSnapshot as WinGate, HostResourceWatchJson as WinHost};
+    use sharecli_tray_windows::ipc::{
+        GateStatusSnapshot as WinGate, HostResourceWatchJson as WinHost,
+    };
 
     let linux_gate = sample_gate();
     let linux_host = sample_host();
@@ -116,7 +118,8 @@ fn fr007_tray_gate_host_watch_ui_swift_wires_operator_display() {
         "Swift gate line MUST include decision + thermal + agents + contention (AC-007.56)"
     );
 
-    let popover = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
+    let popover =
+        include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/TrayPopoverView.swift");
     assert!(
         popover.contains("OperatorDisplay.formatOperatorTrayLines"),
         "Tray popover MUST surface gate/host_watch lines (AC-007.56)"

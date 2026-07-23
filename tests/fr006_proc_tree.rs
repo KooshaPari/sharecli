@@ -26,7 +26,13 @@ fn fixture() -> FakeProcSource {
             cmdline: vec!["node".into(), "tool.js".into()],
             state: 'R',
         },
-        ProcSnapshot { pid: 60, ppid: 1, comm: "zsh".into(), cmdline: vec!["-i".into()], state: 'R' },
+        ProcSnapshot {
+            pid: 60,
+            ppid: 1,
+            comm: "zsh".into(),
+            cmdline: vec!["-i".into()],
+            state: 'R',
+        },
         ProcSnapshot {
             pid: 61,
             ppid: 60,

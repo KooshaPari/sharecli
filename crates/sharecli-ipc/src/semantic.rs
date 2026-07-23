@@ -17,10 +17,7 @@ pub fn semantic_normalize_argv(argv: &[String], cwd: &Path) -> Vec<String> {
         return Vec::new();
     }
 
-    let cmd = Path::new(&argv[0])
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or(argv[0].as_str());
+    let cmd = Path::new(&argv[0]).file_name().and_then(|s| s.to_str()).unwrap_or(argv[0].as_str());
 
     match cmd {
         "ruff" | "mypy" | "pylint" | "flake8" => {
@@ -47,9 +44,7 @@ fn normalize_lint_path_arg(arg: &str, cwd: &Path) -> String {
 }
 
 fn canonical_dir(path: &Path) -> Option<String> {
-    std::fs::canonicalize(path)
-        .ok()
-        .map(|p| p.to_string_lossy().into_owned())
+    std::fs::canonicalize(path).ok().map(|p| p.to_string_lossy().into_owned())
 }
 
 #[cfg(test)]

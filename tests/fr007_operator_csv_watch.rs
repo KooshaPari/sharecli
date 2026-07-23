@@ -28,8 +28,7 @@ const PS_MANAGED_CSV_HEADER: &str = "record,pid,name,memory_mb,project,harness,a
 const GATE_CSV_HEADER: &str =
     "record,thermal_pressure,detected_agents,agent_total_rss_bytes,agent_contention,gate_decision";
 const HOST_CSV_HEADER: &str = "record,fd_count,net_rx_bytes,net_tx_bytes,mem_rss_bytes,load_1m";
-const POOL_CSV_HEADER: &str =
-    "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
+const POOL_CSV_HEADER: &str = "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
 const STATUS_CSV_HEADER: &str = "record,scanned,watched,total_processes,agent_rows";
 
 fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
@@ -50,10 +49,7 @@ fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
     thread::sleep(dwell);
     let _ = child.kill();
     let _ = child.wait();
-    (
-        stdout_reader.join().expect("stdout drain"),
-        stderr_reader.join().expect("stderr drain"),
-    )
+    (stdout_reader.join().expect("stdout drain"), stderr_reader.join().expect("stderr drain"))
 }
 
 fn assert_csv_envelope(frame: &str, body_header: &str, context: &str) {
@@ -82,12 +78,7 @@ fn assert_csv_envelope(frame: &str, body_header: &str, context: &str) {
     );
 }
 
-fn assert_csv_watch_contract(
-    args: &[&str],
-    frame_marker: &str,
-    body_header: &str,
-    context: &str,
-) {
+fn assert_csv_watch_contract(args: &[&str], frame_marker: &str, body_header: &str, context: &str) {
     let mut child = bin()
         .args(args)
         .stdout(Stdio::piped())
@@ -97,19 +88,13 @@ fn assert_csv_watch_contract(
 
     let (stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(10_000));
 
-    assert!(
-        stderr.is_empty(),
-        "{context} MUST keep stderr silent (AC-007.89); stderr: {stderr:?}"
-    );
+    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.89); stderr: {stderr:?}");
     assert!(
         !stdout.contains("\x1b[2J"),
         "{context} MUST NOT emit ANSI clear (pipe-safe); got: {stdout}"
     );
-    let complete_frames: Vec<&str> = stdout
-        .split(frame_marker)
-        .skip(1)
-        .filter(|frame| frame.contains(body_header))
-        .collect();
+    let complete_frames: Vec<&str> =
+        stdout.split(frame_marker).skip(1).filter(|frame| frame.contains(body_header)).collect();
     assert!(
         complete_frames.len() >= 2,
         "{context} MUST emit >=2 complete frames; got {} in: {stdout}",
@@ -179,28 +164,16 @@ fn fr007_health_csv_json_watch_still_rejected() {
         .args(["health", "--csv", "--json", "--watch", "1"])
         .output()
         .expect("spawn health --csv --json --watch");
-    assert!(
-        !out.status.success(),
-        "health --csv --json --watch MUST fail (AC-007.89)"
-    );
+    assert!(!out.status.success(), "health --csv --json --watch MUST fail (AC-007.89)");
 }
 
 /// FR-007 / AC-007.89 — ps --csv --watch without --all remains rejected.
 #[test]
 fn fr007_ps_csv_watch_without_all_still_rejected() {
-    let out = bin()
-        .args(["ps", "--csv", "--watch", "1"])
-        .output()
-        .expect("spawn ps --csv --watch");
-    assert!(
-        !out.status.success(),
-        "ps --csv --watch without --all MUST fail (AC-007.89)"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stderr),
-        String::from_utf8_lossy(&out.stdout)
-    );
+    let out = bin().args(["ps", "--csv", "--watch", "1"]).output().expect("spawn ps --csv --watch");
+    assert!(!out.status.success(), "ps --csv --watch without --all MUST fail (AC-007.89)");
+    let combined =
+        format!("{}{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
     assert!(
         combined.contains("--all") || combined.contains("AC-007.83"),
         "MUST require --all for ps --csv --watch; got: {combined}"

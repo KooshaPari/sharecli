@@ -17,8 +17,8 @@ mod config;
 mod config_validator;
 mod config_watcher;
 mod crc64;
-mod dashboard_assets;
 mod csv_writer;
+mod dashboard_assets;
 mod error;
 mod error_envelope;
 mod hash_util;
@@ -701,15 +701,7 @@ async fn run() -> Result<()> {
 
     match &cli.command {
         Commands::Ps { project, harness, all, json, csv, watch } => {
-            ps(
-                project.as_deref(),
-                harness.as_deref(),
-                *all,
-                *json,
-                *csv,
-                *watch,
-            )
-            .await?
+            ps(project.as_deref(), harness.as_deref(), *all, *json, *csv, *watch).await?
         }
         Commands::Start { project, harness, cwd, args } => {
             start(project, harness, cwd.as_deref(), args).await?
@@ -720,7 +712,25 @@ async fn run() -> Result<()> {
         Commands::Status { verbose, json, csv, watch } => {
             status(*verbose, *json, *csv, *watch).await?
         }
-        Commands::Proc { json, csv, tree, watch, family, exclude_family, comm, cmdline, state, min_rss, max_rss, min_fd, max_fd, sort, limit, pid, ppid } => {
+        Commands::Proc {
+            json,
+            csv,
+            tree,
+            watch,
+            family,
+            exclude_family,
+            comm,
+            cmdline,
+            state,
+            min_rss,
+            max_rss,
+            min_fd,
+            max_fd,
+            sort,
+            limit,
+            pid,
+            ppid,
+        } => {
             commands::proc::run(
                 *json,
                 *csv,
@@ -822,24 +832,12 @@ async fn run() -> Result<()> {
             }
             FuseCmd::Unmount { mountpoint } => fuse_cmd::unmount(mountpoint)?,
             FuseCmd::Status { json } => fuse_cmd::status(*json)?,
-            FuseCmd::Commit {
-                relpath,
-                mountpoint,
-                agent,
-            } => fuse_cmd::commit(
-                relpath.as_deref(),
-                mountpoint.as_deref(),
-                agent.as_deref(),
-            )?,
-            FuseCmd::Discard {
-                relpath,
-                mountpoint,
-                agent,
-            } => fuse_cmd::discard(
-                relpath.as_deref(),
-                mountpoint.as_deref(),
-                agent.as_deref(),
-            )?,
+            FuseCmd::Commit { relpath, mountpoint, agent } => {
+                fuse_cmd::commit(relpath.as_deref(), mountpoint.as_deref(), agent.as_deref())?
+            }
+            FuseCmd::Discard { relpath, mountpoint, agent } => {
+                fuse_cmd::discard(relpath.as_deref(), mountpoint.as_deref(), agent.as_deref())?
+            }
             FuseCmd::List { json } => fuse_cmd::list(*json)?,
             FuseCmd::Provenance { path, json } => fuse_cmd::provenance(path, *json)?,
         },

@@ -7,9 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serial_test::serial;
-use sharecli_core::{
-    FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision,
-};
+use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision};
 use sharecli_ipc::{resolve_operator_queue_priority, QUEUE_PRIORITY_ENV};
 use tempfile::TempDir;
 
@@ -139,9 +137,7 @@ async fn fr008_hypervisor_operator_env_critical_before_normal() {
             .expect("holder nocache run")
     });
 
-    while !std::fs::read_to_string(&order_path)
-        .map(|s| s.contains("holder_start"))
-        .unwrap_or(false)
+    while !std::fs::read_to_string(&order_path).map(|s| s.contains("holder_start")).unwrap_or(false)
     {
         tokio::time::sleep(Duration::from_millis(5)).await;
     }

@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-19 (Wave14 #337–#340 + cluster lifts through #391; overall ~91% A weighted / ~89.8% B unweighted)
+**Last sync:** 2026-07-22 (Wave15 reconcile v6 after #392: #396 C10 L99; #399 tests landed / pin refresh Gap; pin `bba2411`; unweighted ~90.1% A / tier-1 ~91% A)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -34,7 +34,7 @@
 | C07 | DX / QEng / Portability | 90% | A | Wave1–2 + W10–W14 | Status: IN_PROGRESS |
 | C08 | Eval Coverage | 73% | C | Wave1–2 + W11–W14; L76 N/A=1 (ADR 0002/0005) | Status: IN_PROGRESS |
 | C09 | Accessibility + UX | 93% | A | Wave7 + W9–W14 | Status: IN_PROGRESS |
-| C10 | Visual Identity | 94% | A | Wave1 + W11–W14 | Status: IN_PROGRESS |
+| C10 | Visual Identity | 97% | A | Wave1 + W11–W15 | Status: IN_PROGRESS |
 | C11 | Packaging + Distribution | 87% | B | Wave4 + W11–W14 | Status: IN_PROGRESS |
 
 ## Phased WBS
@@ -177,7 +177,16 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W14.3 | OSV/GHSA hard gate | C04 L38 · T-655 · FR-003 | Status: DONE |
 | W14.4 | Mutants + cosign hard gates | C07 L65 · C06 L56 · T-640 · T-660 | Status: DONE |
 | W14.5 | Cluster score lifts (#364–#391) | C00–C11 lane evidence | Status: DONE |
-| W14.6 | Governance sync (WBS/GAP/DAG/RC/SCORECARD) | T-680 | Status: DONE |
+| W14.6 | Governance sync (WBS/GAP/DAG/RC/SCORECARD) | T-680 · #392 | Status: DONE |
+
+### Wave15 — Post-#392 reconcile (IN_PROGRESS)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W15.1 | C10 dashboard skeleton loading states | C10 L99 · FR-003 · #396 · T-685 · `tests/c10_l99_skeleton_states.rs` | Status: DONE |
+| W15.2 | Broad-workspace coverage lift (#399) + pin refresh | C01 L11 · FR-003 · #399 · T-691 · `TEST_COVERAGE_MATRIX.md` (honest 83.48% retained) | Status: IN_PROGRESS |
+| W15.3 | Governance reconcile v6 (SCORECARD/JSON/DAG) | T-690 · FR-003 | Status: DONE |
+| W15.4 | Dashboard hex drift (token alignment) | C10 L98 · FR-003 · T-692 | Status: READY |
 
 ## Sync protocol
 

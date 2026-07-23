@@ -132,11 +132,7 @@ impl FromStr for CellId {
             "all" => Err("use --all instead of --cell all".into()),
             other => Err(format!(
                 "unknown cell `{other}`; expected one of: {}",
-                CellId::ALL
-                    .iter()
-                    .map(|c| c.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                CellId::ALL.iter().map(|c| c.as_str()).collect::<Vec<_>>().join(", ")
             )),
         }
     }

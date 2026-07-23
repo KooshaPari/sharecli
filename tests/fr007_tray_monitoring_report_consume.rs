@@ -9,9 +9,7 @@
 #[tokio::test]
 async fn fr007_tray_monitoring_report_refresh_live() {
     let handler = sharecli_ipc::handler::Handler::new().await.expect("Handler::new");
-    let resp = handler
-        .dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#)
-        .await;
+    let resp = handler.dispatch(r#"{"id":1,"method":"monitoring.report","params":{}}"#).await;
     assert!(
         resp.error.is_none(),
         "monitoring.report MUST succeed (AC-007.48); err={:?}",

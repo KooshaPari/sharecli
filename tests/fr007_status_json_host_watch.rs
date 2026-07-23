@@ -14,10 +14,7 @@ const HOST_WATCH_KEYS: [&str; 5] =
 
 fn assert_host_watch_object(host: &serde_json::Value) {
     for key in HOST_WATCH_KEYS {
-        assert!(
-            host.get(key).is_some(),
-            "host_watch MUST include {key} (AC-007.25); got: {host}"
-        );
+        assert!(host.get(key).is_some(), "host_watch MUST include {key} (AC-007.25); got: {host}");
     }
 }
 
@@ -25,15 +22,8 @@ fn assert_host_watch_object(host: &serde_json::Value) {
 #[test]
 #[serial_test::serial]
 fn fr007_status_json_host_watch_shape() {
-    let out = bin()
-        .args(["status", "--json"])
-        .output()
-        .expect("spawn sharecli status --json");
-    assert!(
-        out.status.success(),
-        "status --json MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    let out = bin().args(["status", "--json"]).output().expect("spawn sharecli status --json");
+    assert!(out.status.success(), "status --json MUST exit 0; stderr: {:?}", out.stderr);
     let raw = String::from_utf8_lossy(&out.stdout);
     let v: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("status --json MUST emit valid JSON");
@@ -46,9 +36,8 @@ fn fr007_status_json_host_watch_shape() {
         v.get("scanned").is_some() && v.get("watched").is_some(),
         "status JSON MUST include scanned + watched (AC-007.25)"
     );
-    let host = v
-        .get("host_watch")
-        .expect("status --json MUST include top-level host_watch (AC-007.25)");
+    let host =
+        v.get("host_watch").expect("status --json MUST include top-level host_watch (AC-007.25)");
     assert_host_watch_object(host);
     assert!(
         v.get("gate").and_then(|g| g.get("gate_decision")).is_some(),
@@ -64,10 +53,7 @@ fn fr007_status_json_host_watch_shape() {
 #[test]
 #[serial_test::serial]
 fn fr007_status_json_gate_before_host_watch() {
-    let out = bin()
-        .args(["status", "--json"])
-        .output()
-        .expect("spawn sharecli status --json");
+    let out = bin().args(["status", "--json"]).output().expect("spawn sharecli status --json");
     assert!(out.status.success(), "status --json MUST exit 0");
     let raw = String::from_utf8_lossy(&out.stdout);
     let gate_pos = raw.find("\"gate\"").expect("gate key in status JSON");

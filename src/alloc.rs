@@ -17,7 +17,8 @@ static DHAT: dhat::Alloc = dhat::Alloc;
 pub fn active_allocator_label() -> &'static str {
     if cfg!(feature = "dhat-heap") {
         "dhat"
-    } else if cfg!(all(feature = "jemalloc", not(target_env = "msvc"), not(feature = "dhat-heap"))) {
+    } else if cfg!(all(feature = "jemalloc", not(target_env = "msvc"), not(feature = "dhat-heap")))
+    {
         "jemalloc"
     } else {
         "system"

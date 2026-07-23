@@ -83,9 +83,9 @@ pub use sharecli_fleet::{
 };
 pub use sharecli_ipc::{
     command_key, command_key_with_mode, has_nocache_arg, record_coalesce_lookup_hit,
-    record_nocache_run, resolve_operator_queue_priority, semantic_normalize_argv, CachedResult,
-    CacheKeyMode, CoalesceCache, CoalesceHitKind, CommandKey, SlotQueue, QueuePriority,
-    QUEUE_PRIORITY_ENV, DEFAULT_NOCACHE_ARGS,
+    record_nocache_run, resolve_operator_queue_priority, semantic_normalize_argv, CacheKeyMode,
+    CachedResult, CoalesceCache, CoalesceHitKind, CommandKey, QueuePriority, SlotQueue,
+    DEFAULT_NOCACHE_ARGS, QUEUE_PRIORITY_ENV,
 };
 pub use speculation::{SpeculationTracker, SPECULATION_THRESHOLD, SPECULATION_WINDOW};
 
@@ -493,12 +493,7 @@ impl SpawnRequest {
         env: Vec<(String, String)>,
         rule_priority: Option<&str>,
     ) -> Self {
-        Self {
-            argv,
-            cwd,
-            env,
-            queue_priority: resolve_operator_queue_priority(rule_priority),
-        }
+        Self { argv, cwd, env, queue_priority: resolve_operator_queue_priority(rule_priority) }
     }
 
     /// Override nocache queue priority for this spawn.
@@ -834,12 +829,8 @@ impl Hypervisor {
         } else {
             req.argv.clone()
         };
-        let key = command_key_with_mode(
-            self.config.cache_key_mode,
-            &argv_for_key,
-            &req.cwd,
-            &req.env,
-        );
+        let key =
+            command_key_with_mode(self.config.cache_key_mode, &argv_for_key, &req.cwd, &req.env);
         debug!(key = %key.0, argv = ?req.argv, "hypervisor::run");
 
         // Check the cache before acquiring the lock so that we can
@@ -848,9 +839,7 @@ impl Hypervisor {
             debug!(key = %key.0, "hypervisor::run — cache hit");
             record_coalesce_lookup_hit();
             // FR-008: record hit for speculation tracker.
-            self.speculation_tracker
-                .record_hit(&key, &req.argv, &req.cwd, &req.env)
-                .await;
+            self.speculation_tracker.record_hit(&key, &req.argv, &req.cwd, &req.env).await;
             return Ok(SpawnOutcome {
                 exit_code: cached.exit_code,
                 stdout: cached.stdout,
@@ -901,9 +890,7 @@ impl Hypervisor {
 
         // FR-008: record speculation hit when the lock-wait cache was shared.
         if hit_kind.shared_from_cache() {
-            self.speculation_tracker
-                .record_hit(&key, &req.argv, &req.cwd, &req.env)
-                .await;
+            self.speculation_tracker.record_hit(&key, &req.argv, &req.cwd, &req.env).await;
         }
 
         Ok(SpawnOutcome {
@@ -991,12 +978,7 @@ impl Hypervisor {
 
 /// Lane key for SlotQueue routing from argv (basename of argv[0]).
 fn queue_lane_from_argv(argv: &[String]) -> &str {
-    argv.first()
-        .map(|s| s.as_str())
-        .unwrap_or("unknown")
-        .rsplit('/')
-        .next()
-        .unwrap_or("unknown")
+    argv.first().map(|s| s.as_str()).unwrap_or("unknown").rsplit('/').next().unwrap_or("unknown")
 }
 
 /// Spawn `req.argv` synchronously (blocking) and capture its output.
@@ -1087,8 +1069,12 @@ mod tests {
         let dir = TempDir::new().expect("tempdir");
         let hv = allow_hypervisor(dir.path());
 
-        let req =
-            SpawnRequest { argv: echo_argv("hello"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
+        let req = SpawnRequest {
+            argv: echo_argv("hello"),
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        };
 
         let outcome = hv.run(req).await.expect("run should succeed");
 
@@ -1106,8 +1092,12 @@ mod tests {
         let dir = TempDir::new().expect("tempdir");
         let hv = allow_hypervisor(dir.path());
 
-        let req =
-            SpawnRequest { argv: echo_argv("world"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
+        let req = SpawnRequest {
+            argv: echo_argv("world"),
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        };
 
         // First call — live spawn.
         let first = hv.run(req.clone()).await.expect("first run");
@@ -1134,7 +1124,7 @@ mod tests {
             argv: echo_argv("green-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
-        queue_priority: QueuePriority::Normal,
+            queue_priority: QueuePriority::Normal,
         };
 
         let outcome = hv.run(req).await.expect("Green gate must allow spawn");
@@ -1154,7 +1144,7 @@ mod tests {
             argv: echo_argv("yellow-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
-        queue_priority: QueuePriority::Normal,
+            queue_priority: QueuePriority::Normal,
         };
 
         // Yellow must not block or error.
@@ -1177,7 +1167,7 @@ mod tests {
             argv: echo_argv("red-gate"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
-        queue_priority: QueuePriority::Normal,
+            queue_priority: QueuePriority::Normal,
         };
 
         let result = hv.run(req).await;
@@ -1221,8 +1211,12 @@ mod tests {
         let gate = Arc::new(OneRedThenGreen { calls: AtomicU32::new(0) });
         let hv = Hypervisor::with_thermal_gate(dir.path(), gate);
 
-        let req =
-            SpawnRequest { argv: echo_argv("recover"), cwd: dir.path().to_path_buf(), env: vec![], queue_priority: QueuePriority::Normal };
+        let req = SpawnRequest {
+            argv: echo_argv("recover"),
+            cwd: dir.path().to_path_buf(),
+            env: vec![],
+            queue_priority: QueuePriority::Normal,
+        };
 
         // With `start_paused` tokio::time::sleep resolves immediately in tests.
         let outcome = hv.run(req).await.expect("should succeed after one RED retry");
@@ -1415,7 +1409,7 @@ mod tests {
             argv: echo_argv("fuse-run"),
             cwd: dir.path().to_path_buf(),
             env: vec![],
-        queue_priority: QueuePriority::Normal,
+            queue_priority: QueuePriority::Normal,
         };
 
         let outcome = hv.run(req).await.expect("run must succeed with fuse-io wiring");
@@ -1479,7 +1473,7 @@ mod tests {
                 argv: echo_argv("gated"),
                 cwd: dir.path().to_path_buf(),
                 env: vec![],
-        queue_priority: QueuePriority::Normal,
+                queue_priority: QueuePriority::Normal,
             })
             .await
             .expect_err("agent contention Refuse MUST err after retries");

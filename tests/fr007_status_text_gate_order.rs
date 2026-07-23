@@ -18,16 +18,9 @@ const WATCH_MARKER: &str = "=== Host Resource Watch ===";
 #[serial_test::serial]
 fn fr007_status_text_gate_before_host_watch() {
     let out = bin().args(["status"]).output().expect("spawn sharecli status");
-    assert!(
-        out.status.success(),
-        "status MUST exit 0; stderr: {:?}",
-        out.stderr
-    );
+    assert!(out.status.success(), "status MUST exit 0; stderr: {:?}", out.stderr);
     let s = String::from_utf8_lossy(&out.stdout);
-    assert!(
-        s.contains(GATE_MARKER),
-        "status text MUST include gate section (AC-007.27); got: {s}"
-    );
+    assert!(s.contains(GATE_MARKER), "status text MUST include gate section (AC-007.27); got: {s}");
     assert!(
         s.contains(WATCH_MARKER),
         "status text MUST include host watch section (AC-007.27); got: {s}"

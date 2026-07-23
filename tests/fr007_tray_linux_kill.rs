@@ -11,10 +11,7 @@ use sharecli_tray_windows::ipc::{IPC_METHOD_KILL, IPC_METHOD_KILL_ALL};
 #[test]
 fn fr007_tray_linux_kill_ipc_methods() {
     let linux_ipc = include_str!("../crates/sharecli-tray-linux/src/ipc.rs");
-    assert!(
-        linux_ipc.contains("process.kill"),
-        "Linux ipc MUST define process.kill (AC-007.54)"
-    );
+    assert!(linux_ipc.contains("process.kill"), "Linux ipc MUST define process.kill (AC-007.54)");
     assert!(
         linux_ipc.contains("process.kill_all"),
         "Linux ipc MUST define process.kill_all (AC-007.54)"
