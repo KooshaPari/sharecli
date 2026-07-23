@@ -44,6 +44,10 @@ pub fn force_unmount(mountpoint: &Path) -> std::io::Result<()> {
             return Ok(());
         }
     }
+    #[cfg(windows)]
+    {
+        return crate::winfsp_mount::force_unmount_winfsp(mountpoint);
+    }
     Err(std::io::Error::other(format!(
         "sharecli-fuse: force_unmount failed for {}",
         mountpoint.display()
@@ -55,50 +59,86 @@ pub struct MountSession {
     mountpoint: PathBuf,
     _mount_dir: tempfile::TempDir,
     mount_thread: Option<JoinHandle<()>>,
+    #[cfg(windows)]
+    _winfsp: Option<crate::winfsp_mount::WinfspMountSession>,
 }
 
 impl MountSession {
     /// Mount `backing` at a fresh temp mountpoint; waits until the seed file is visible.
     pub fn start(backing: &Path, seed_rel: &Path) -> anyhow::Result<Self> {
-        let mount_dir = tempfile::tempdir()?;
-        let mountpoint = mount_dir.path().to_path_buf();
-        let backing = backing.to_path_buf();
-        let mp = mountpoint.clone();
-
-        let (fail_tx, fail_rx) = mpsc::channel::<String>();
-        let mount_thread = thread::spawn(move || {
-            if let Err(err) = crate::mount(&mp, &backing) {
-                let _ = fail_tx.send(err.to_string());
-            }
-        });
-
-        let seed_on_mount = mountpoint.join(seed_rel);
-        let deadline = Duration::from_secs(8);
-        let poll = Duration::from_millis(100);
-        let mut waited = Duration::ZERO;
-
-        while waited < deadline {
-            if seed_on_mount.is_file() {
-                if std::fs::read(&seed_on_mount).is_ok() {
+        #[cfg(windows)]
+        {
+            let mount_dir = tempfile::tempdir()?;
+            let mountpoint = mount_dir.path().to_path_buf();
+            let session = crate::winfsp_mount::WinfspMountSession::start(
+                &mountpoint,
+                backing,
+                &default_session_id(),
+            )?;
+            let seed_on_mount = mountpoint.join(seed_rel);
+            let deadline = Duration::from_secs(8);
+            let poll = Duration::from_millis(100);
+            let mut waited = Duration::ZERO;
+            while waited < deadline {
+                if seed_on_mount.is_file() && std::fs::read(&seed_on_mount).is_ok() {
                     return Ok(Self {
                         mountpoint,
                         _mount_dir: mount_dir,
-                        mount_thread: Some(mount_thread),
+                        mount_thread: None,
+                        _winfsp: Some(session),
                     });
                 }
+                thread::sleep(poll);
+                waited += poll;
             }
-            if let Ok(msg) = fail_rx.try_recv() {
-                anyhow::bail!("sharecli-fuse mount smoke: mount failed: {msg}");
-            }
-            thread::sleep(poll);
-            waited += poll;
+            drop(session);
+            anyhow::bail!(
+                "sharecli-fuse mount smoke: timed out waiting for {} (is WinFsp installed?)",
+                seed_on_mount.display()
+            );
         }
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            let mount_dir = tempfile::tempdir()?;
+            let mountpoint = mount_dir.path().to_path_buf();
+            let backing = backing.to_path_buf();
+            let mp = mountpoint.clone();
 
-        let _ = force_unmount(&mountpoint);
-        anyhow::bail!(
-            "sharecli-fuse mount smoke: timed out waiting for {} (is FUSE installed and permitted?)",
-            seed_on_mount.display()
-        )
+            let (fail_tx, fail_rx) = mpsc::channel::<String>();
+            let mount_thread = thread::spawn(move || {
+                if let Err(err) = crate::mount(&mp, &backing) {
+                    let _ = fail_tx.send(err.to_string());
+                }
+            });
+
+            let seed_on_mount = mountpoint.join(seed_rel);
+            let deadline = Duration::from_secs(8);
+            let poll = Duration::from_millis(100);
+            let mut waited = Duration::ZERO;
+
+            while waited < deadline {
+                if seed_on_mount.is_file() {
+                    if std::fs::read(&seed_on_mount).is_ok() {
+                        return Ok(Self {
+                            mountpoint,
+                            _mount_dir: mount_dir,
+                            mount_thread: Some(mount_thread),
+                        });
+                    }
+                }
+                if let Ok(msg) = fail_rx.try_recv() {
+                    anyhow::bail!("sharecli-fuse mount smoke: mount failed: {msg}");
+                }
+                thread::sleep(poll);
+                waited += poll;
+            }
+
+            let _ = force_unmount(&mountpoint);
+            anyhow::bail!(
+                "sharecli-fuse mount smoke: timed out waiting for {} (is FUSE installed and permitted?)",
+                seed_on_mount.display()
+            )
+        }
     }
 
     /// Path where the FUSE layer is mounted.

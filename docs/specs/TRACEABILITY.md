@@ -279,7 +279,7 @@
 | AC-009.22 | `crates/fuse-smoke-runner`; `Containerfile.fuse-smoke`; `docs/ops/fuse-mount-smoke-matrix.md`; `just fuse-smoke` | OS×arch privileged mount-smoke matrix + Linux container / Colima path (no host macFUSE reboot) |
 | AC-009.23 | `crates/fuse-smoke-runner` (`macos_native`, `mac_host_linux_colima`, `macos_vm_tart`) | macOS native + Mac-hosted Colima/Tart cells |
 | AC-009.24 | `crates/fuse-smoke-runner` (`wsl2`); `docs/ops/fuse-mount-smoke-matrix.md` | WSL2 Linux FUSE smoke cell |
-| AC-009.25 | `crates/sharecli-fuse` WinFsp adapter; `windows_winfsp` cell | Windows native WinFsp mount + smoke |
+| AC-009.25 | `crates/sharecli-fuse/src/winfsp_mount.rs`; `session_registry` Windows mounts; `docs/ops/winfsp-fuse-mount.md` | Windows WinFsp mount + smoke; loud `winfsp_missing` when absent |
 | AC-009.26 | `.github/workflows/fuse-mount-smoke.yml` | CI matrix mirroring local fuse-smoke cells |
 
 ### FR-010 — Mesh

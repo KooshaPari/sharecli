@@ -133,11 +133,21 @@ struct FuseMountEntry {
     _session: Option<BackgroundSession>,
 }
 
+/// WinFsp mount entry (AC-009.25) — passthrough + provenance; CoW via InterceptFs is Unix.
+#[cfg(windows)]
+struct WinfspMountEntry {
+    backing: PathBuf,
+    session_id: String,
+    _session: crate::winfsp_mount::WinfspMountSession,
+}
+
 /// Process-local table of active sharecli FUSE mounts.
 #[derive(Default)]
 pub struct FuseSessionRegistry {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     mounts: Mutex<HashMap<PathBuf, FuseMountEntry>>,
+    #[cfg(windows)]
+    winfsp_mounts: Mutex<HashMap<PathBuf, WinfspMountEntry>>,
 }
 
 impl FuseSessionRegistry {
@@ -265,7 +275,103 @@ impl FuseSessionRegistry {
         }
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(windows)]
+    pub fn mount_background(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        session_id: &str,
+    ) -> anyhow::Result<()> {
+        let mut opts = FuseMountOptions::default();
+        opts.session_id = Some(session_id.to_string());
+        self.mount_background_with(mountpoint, backing, &opts)
+    }
+
+    #[cfg(windows)]
+    pub fn mount_foreground(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        session_id: &str,
+    ) -> anyhow::Result<()> {
+        let mut opts = FuseMountOptions::default();
+        opts.session_id = Some(session_id.to_string());
+        self.mount_foreground_with(mountpoint, backing, &opts)
+    }
+
+    #[cfg(windows)]
+    pub fn mount_background_with(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        opts: &FuseMountOptions,
+    ) -> anyhow::Result<()> {
+        self.mount_winfsp(mountpoint, backing, opts, true)
+    }
+
+    #[cfg(windows)]
+    pub fn mount_foreground_with(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        opts: &FuseMountOptions,
+    ) -> anyhow::Result<()> {
+        self.mount_winfsp(mountpoint, backing, opts, false)
+    }
+
+    #[cfg(windows)]
+    fn mount_winfsp(
+        &self,
+        mountpoint: &Path,
+        backing: &Path,
+        opts: &FuseMountOptions,
+        background: bool,
+    ) -> anyhow::Result<()> {
+        if opts.cow {
+            anyhow::bail!(
+                "fuse mount: --cow is not supported on Windows WinFsp yet (AC-009.25); \
+                 use Linux/macOS for per-agent CoW"
+            );
+        }
+        if !backing.is_dir() {
+            anyhow::bail!(
+                "fuse mount: backing path must be an existing directory: {}",
+                backing.display()
+            );
+        }
+        std::fs::create_dir_all(mountpoint).with_context_mount(mountpoint)?;
+        let key = Self::normalize_key(mountpoint);
+        {
+            let mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
+            if mounts.contains_key(&key) {
+                anyhow::bail!("fuse mount: already registered at {}", key.display());
+            }
+        }
+        let session_id = opts
+            .session_id
+            .clone()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(crate::default_session_id);
+
+        if background {
+            let session =
+                crate::winfsp_mount::WinfspMountSession::start(mountpoint, backing, &session_id)?;
+            let mut mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
+            mounts.insert(
+                key,
+                WinfspMountEntry {
+                    backing: backing.to_path_buf(),
+                    session_id,
+                    _session: session,
+                },
+            );
+            Ok(())
+        } else {
+            crate::winfsp_mount::mount_blocking(mountpoint, backing, &session_id)
+        }
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     pub fn mount_background(
         &self,
         mountpoint: &Path,
@@ -273,10 +379,10 @@ impl FuseSessionRegistry {
         _session_id: &str,
     ) -> anyhow::Result<()> {
         let _ = (mountpoint, backing);
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     pub fn mount_foreground(
         &self,
         mountpoint: &Path,
@@ -284,10 +390,10 @@ impl FuseSessionRegistry {
         _session_id: &str,
     ) -> anyhow::Result<()> {
         let _ = (mountpoint, backing);
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     pub fn mount_background_with(
         &self,
         mountpoint: &Path,
@@ -295,10 +401,10 @@ impl FuseSessionRegistry {
         _opts: &FuseMountOptions,
     ) -> anyhow::Result<()> {
         let _ = (mountpoint, backing);
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     pub fn mount_foreground_with(
         &self,
         mountpoint: &Path,
@@ -306,7 +412,7 @@ impl FuseSessionRegistry {
         _opts: &FuseMountOptions,
     ) -> anyhow::Result<()> {
         let _ = (mountpoint, backing);
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
     }
 
     /// Unmount and drop a registered session (best-effort force-unmount).
@@ -324,10 +430,24 @@ impl FuseSessionRegistry {
             let _ = crate::mount_smoke::force_unmount(mountpoint);
             Ok(())
         }
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(windows)]
+        {
+            let key = Self::normalize_key(mountpoint);
+            let entry = {
+                let mut mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
+                mounts.remove(&key)
+            };
+            if entry.is_none() {
+                anyhow::bail!("fuse unmount: no registered mount at {}", mountpoint.display());
+            }
+            drop(entry);
+            let _ = crate::mount_smoke::force_unmount(mountpoint);
+            Ok(())
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
         {
             let _ = mountpoint;
-            anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+            anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
         }
     }
 
@@ -358,9 +478,17 @@ impl FuseSessionRegistry {
         }
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(windows)]
     pub fn resolve_fs(&self, _mountpoint: Option<&Path>) -> anyhow::Result<()> {
-        anyhow::bail!("sharecli-fuse is only supported on Linux and macOS")
+        anyhow::bail!(
+            "fuse commit/discard CoW requires InterceptFs (Linux/macOS); \
+             Windows WinFsp mounts are passthrough + provenance only (AC-009.25)"
+        )
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+    pub fn resolve_fs(&self, _mountpoint: Option<&Path>) -> anyhow::Result<()> {
+        anyhow::bail!("sharecli-fuse is only supported on Linux, macOS, and Windows (WinFsp)")
     }
 
     /// Enumerate registered mounts and pending CoW paths.
@@ -384,19 +512,38 @@ impl FuseSessionRegistry {
             out.sort_by(|a, b| a.mountpoint.cmp(&b.mountpoint));
             out
         }
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(windows)]
+        {
+            let mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
+            let mut out: Vec<FuseMountInfo> = mounts
+                .iter()
+                .map(|(mp, entry)| FuseMountInfo {
+                    mountpoint: mp.clone(),
+                    backing: entry.backing.clone(),
+                    session_id: entry.session_id.clone(),
+                    cow_enabled: false,
+                    cow_root: entry.backing.join(".sharecli-cow"),
+                    default_agent: entry.session_id.clone(),
+                    pending_relpaths: Vec::new(),
+                    pending_by_agent: Vec::new(),
+                })
+                .collect();
+            out.sort_by(|a, b| a.mountpoint.cmp(&b.mountpoint));
+            out
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
         {
             Vec::new()
         }
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 trait MountContext {
     fn with_context_mount(self, mountpoint: &Path) -> anyhow::Result<()>;
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 impl MountContext for std::io::Result<()> {
     fn with_context_mount(self, mountpoint: &Path) -> anyhow::Result<()> {
         self.map_err(|e| {
