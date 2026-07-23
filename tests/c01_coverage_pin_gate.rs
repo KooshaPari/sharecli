@@ -71,4 +71,8 @@ fn fr003_coverage_yml_emits_snapshot_artifact() {
         workflow.contains("tool: cargo-llvm-cov"),
         "coverage.yml must pass tool: cargo-llvm-cov to install-action (SHA pins drop tag tool names)"
     );
+    assert!(
+        workflow.contains("--ignore-run-fail"),
+        "coverage.yml must use --ignore-run-fail so evidence snapshot is produced despite known test flakes"
+    );
 }

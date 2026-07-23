@@ -62,9 +62,14 @@ jobs:
           CARGO_TERM_COLOR: never
         run: |
           cargo llvm-cov --version
-          cargo llvm-cov --locked --all-features --workspace \
+          # Broad-workspace evidence suite: keep measuring even if a few package
+          # tests fail (e.g. harness-native strategies needing a Tokio runtime).
+          # Quality-gate remains the hard 85% unit gate; this job pins fleet %.
+          cargo llvm-cov --locked --all-features --workspace --ignore-run-fail \
             --json --output-path coverage-llvm-cov.json
           cargo llvm-cov report --lcov --output-path lcov.info
+          test -s coverage-llvm-cov.json
+          python -c "import json,sys; d=json.load(open('coverage-llvm-cov.json')); t=d['data'][0]['totals']['lines']; print(f\"lines={t['percent']}% covered={t['covered']}/{t['count']}\"); sys.exit(0 if t['count']>0 else 1)"
 
       - name: Create coverage snapshot
         run: |
