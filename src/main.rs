@@ -6,6 +6,7 @@ use crate::error::SharecliError;
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
+use sharecli_session::{SessionService, SessionStore};
 use sharecli_thermal_tui as thermal_tui;
 
 mod apfs_uuid;
@@ -88,6 +89,11 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Inspect durable agent sessions
+    Session {
+        #[command(subcommand)]
+        cmd: SessionCmd,
+    },
     /// List managed processes
     Ps {
         /// Filter by project name
@@ -457,6 +463,26 @@ enum Commands {
 }
 
 #[derive(Subcommand, Debug)]
+enum SessionCmd {
+    /// List persisted sessions
+    List {
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+    /// Inspect one persisted session
+    Inspect {
+        id: String,
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+    /// Print the pending recovery plan
+    RecoveryPlan {
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
 enum FleetCmd {
     /// Show fleet registry status and thermal level
     Status,
@@ -700,6 +726,7 @@ async fn run() -> Result<()> {
     }
 
     match &cli.command {
+        Commands::Session { cmd } => session_cmd(cmd)?,
         Commands::Ps { project, harness, all, json, csv, watch } => {
             ps(project.as_deref(), harness.as_deref(), *all, *json, *csv, *watch).await?
         }
@@ -862,6 +889,30 @@ async fn run() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+fn session_cmd(cmd: &SessionCmd) -> Result<()> {
+    let (db, operation) = match cmd {
+        SessionCmd::List { db } => (db.clone(), None),
+        SessionCmd::Inspect { id, db } => (db.clone(), Some(id.as_str())),
+        SessionCmd::RecoveryPlan { db } => (db.clone(), None),
+    };
+    let path = db.unwrap_or_else(|| {
+        dirs::data_local_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
+            .join("sharecli")
+            .join("sessions.sqlite")
+    });
+    let service = SessionService::new(SessionStore::open(path)?);
+    let value = match cmd {
+        SessionCmd::List { .. } => serde_json::to_value(service.list()?)?,
+        SessionCmd::Inspect { .. } => {
+            serde_json::to_value(service.inspect(operation.expect("id"))?)?
+        }
+        SessionCmd::RecoveryPlan { .. } => serde_json::to_value(service.recovery_plan()?)?,
+    };
+    println!("{}", serde_json::to_string_pretty(&value)?);
     Ok(())
 }
 

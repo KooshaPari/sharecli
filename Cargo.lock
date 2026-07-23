@@ -4516,6 +4516,7 @@ dependencies = [
  "sharecli-fuse",
  "sharecli-ipc",
  "sharecli-mesh",
+ "sharecli-session",
  "sharecli-sync",
  "sharecli-thermal-tui",
  "sharecli-tray-linux",
