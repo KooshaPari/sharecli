@@ -37,6 +37,7 @@ pub mod proc_table;
 pub mod progress;
 pub mod runtime;
 pub mod scheduler;
+pub mod session;
 pub mod serve_auth;
 pub mod serve_lock;
 pub mod serve_rate_limit;
