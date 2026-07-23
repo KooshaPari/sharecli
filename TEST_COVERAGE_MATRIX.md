@@ -1,8 +1,8 @@
 # Test Coverage Matrix
 
 **Project**: sharecli  
-**Document Version**: 1.4
-**Last Updated**: 2026-07-19 (T-625 numeric pin)
+**Document Version**: 1.5
+**Last Updated**: 2026-07-22 (Wave15 — #399 evidence; honest pin retained)
 
 ---
 
@@ -13,7 +13,7 @@
 | Functional Requirements (Phase 3) | 5 (`FR-001`..`FR-005`) |
 | FR acceptance test files on disk | 8 (`fr001_*`..`fr004_*`) + 1 CLI smoke |
 | Integration / cast / coordination test files | 7 |
-| Test functions in `tests/` | 72 (`#[test]` / `#[tokio::test]`) |
+| Test functions in `tests/` | 72 (`#[test]` / `#[tokio::test]`) + #399 lift suites |
 | Unit-ish tests in `src/` + `crates/` | ~1500+ (includes generated/large suites) |
 | Coverage Target | 85% (see `.github/workflows/quality-gate.yml` `COVERAGE_THRESHOLD`) |
 | Current Coverage | **83.48% lines** (broad workspace; see pin below) |
@@ -31,10 +31,21 @@
 | Meets 85% unit gate? | **No** for broad workspace (`meets_lines_target: false`); PR hard gate uses scoped `--lib` ignores in `quality-gate.yml` |
 | CI artifact parity | `coverage.yml` uploads `coverage-snapshot-${{ github.sha }}` for 30 days |
 
+### Wave15 / #399 pin-refresh attempt (2026-07-22)
+
+| Field | Evidence |
+|-------|----------|
+| Coverage-lift merge | `922b4ae` — [#399](https://github.com/KooshaPari/sharecli/pull/399) (`feat/sharecli-c01-coverage-85`) |
+| Tip at reconcile | `bba2411` (`main` after #569) |
+| Sought artifact | `coverage-snapshot-922b4ae*` / later SHA-keyed snapshot from `coverage.yml` |
+| Result | **Unavailable** — no retained llvm-cov snapshot artifact for `922b4ae` or `bba2411` |
+| CI evidence | `coverage.yml` run [29872308604](https://github.com/KooshaPari/sharecli/actions/runs/29872308604) (`922b4ae`) and [29967745465](https://github.com/KooshaPari/sharecli/actions/runs/29967745465) (`bba2411`) both **failed** at *Guard — refuse empty test suite* (`Discovered tests: 0`) **before** llvm-cov / snapshot steps |
+| Honest action | Keep **83.48%** pin at `d3cb7c4`; do **not** invent a post-#399 percentage |
+
 The compact snapshot records covered/count/percentage totals for lines, functions,
 regions, and branches, plus the source SHA, Actions run ID, 85% target, and whether
 the measured line percentage meets that target. A future documentation update may
-pin a numeric percentage only from one of these retained snapshots.
+pin a numeric percentage only from one of these retained snapshots (T-691).
 
 ### 85% enforcement
 
@@ -95,6 +106,7 @@ fleet-visible coverage debt for prioritization.
 | FR-CAST-004 | WezTerm cast | `tests/cast_wezterm.rs` (9) | **Covered** (extension) |
 | FR-CAST-005 | Windows Terminal cast | `tests/cast_winterm.rs` (6) | **Covered** (extension) |
 | — | Coordination helpers | `tests/coordination.rs` (3) | Supporting |
+| — | #399 coverage lift suites | `tests/c01_coverage_lift.rs` (+ related FR-003 surfaces) | **Landed**; broad % pin pending T-691 |
 
 Canonical AC ↔ function map: [`docs/specs/TRACEABILITY.md`](docs/specs/TRACEABILITY.md).  
 Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
@@ -105,20 +117,21 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ### Critical Gaps
 1. Homebrew bottle sha still PLACEHOLDER (`WORK_DAG` Wave4 / C11).
+2. Broad-workspace llvm-cov pin stale vs #399 until `coverage.yml` discovers tests again (T-691).
 
 ---
 
 ## Recommendations
 
 ### Immediate Actions
-1. Claim Wave4 packaging (brew sha after `v*` attach) or T-310 C03 polish.
+1. Repair `coverage.yml` empty-suite discovery (`cargo test -- --list` → 0) so llvm-cov can emit a post-`922b4ae` snapshot.
 2. Keep FR annotations (`//! FR: FR-NNN`) on every new acceptance test.
 3. Sync status tokens in `docs/ops/governance/GAP-QA-MATRIX.md` + `WBS-PHASED.md`.
 
 ### Short-term Actions
-1. Optionally close T-310 after lane evidence sweep.
-2. Pin the next measured percentage from the retained `coverage-snapshot-<sha>` artifact.
+1. Pin the next measured percentage from the retained `coverage-snapshot-<sha>` artifact (T-691).
+2. Claim Wave4 packaging (brew sha after `v*` attach) or residual C10 hex drift (T-692).
 
 ---
 
-**Last Updated**: 2026-07-19 (T-670 FR SSOT gate)
+**Last Updated**: 2026-07-22 (Wave15 governance reconcile — honest #399 pin)

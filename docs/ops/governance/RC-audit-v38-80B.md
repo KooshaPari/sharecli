@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91% weighted)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)  
-**Pin commit:** `0fa1fd0` (`main` after #391)  
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **~91% A**, unweighted **~89.8% B**
+**Pin commit:** `bba2411` (`main` after #569)  
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **~91% A**, unweighted **~90.1% A**
 
 ## RC scope (what shipped Jul 14–19)
 
@@ -16,6 +16,8 @@
 | Wave13 lifts | #332–#336 | OpenAPI component, soak scaffold, IPC/tray trace, PNG bytes + soft diff, governance sync |
 | Wave14 hard gates | #337–#340 | chaos ci-success, coverage snapshot, visual hard, tray HTTP trace |
 | Cluster lifts | #364–#391 | proptest expand, C09/C01/C03/C04/C10/C05/C06/C07/C11 score lifts, Harbor N/A rescore, product fixes |
+| Wave15 lifts | #396, #399 | C10 L99 skeletons; C01 coverage-lift tests (#399) — pin refresh pending green `coverage.yml` |
+| Feb recovery mesh | #397, #400 | GPG L34 operator guide; CoW/worktree recovery docs |
 
 ## Cluster snapshot
 
@@ -23,8 +25,8 @@
 |---------|:---:|:-----:|---------|
 | C03 | 100% | A | Agent readiness — hold |
 | C00 | 97% | A | L4/L6 async shutdown + perf budgets (#373) |
-| C01 | 93% | A | coverage pin (#338) + FR SSOT (#368) |
-| C09/C10 | 93–94% | A | keyboard/Vale/FAQ + empty/error states |
+| C01 | 93% | A | coverage pin 83.48% (#338/#399 pending refresh) + FR SSOT (#368) |
+| C09/C10 | 93–97% | A | keyboard/Vale/FAQ + skeleton loading states |
 | C02/C07 | 90% | A | rate limit + e2e tier (#384) |
 | C04/C05/C06/C11 | 87% | B | OSV hard, chaos ci-success, netblock, systemd `.deb` |
 | C08 | 73% | C | Harbor L76 EXTRACTED/N/A (ADR 0002/0005) |
