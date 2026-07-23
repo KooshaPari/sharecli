@@ -37,18 +37,26 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # cargo-llvm-cov
 
+      # Guard must not inherit workflow CARGO_TERM_COLOR=always: libtest paints
+      # "test" with ANSI, so `grep ': test$'` falsely reports an empty suite and
+      # aborts before llvm-cov (post-#399 Wave15 failure mode).
       - name: Guard — refuse empty test suite
+        env:
+          CARGO_TERM_COLOR: never
         run: |
           set -euo pipefail
-          OUT=$(cargo test --locked --all-features --workspace -- --list 2>/dev/null || true)
-          COUNT=$(printf '%s\n' "$OUT" | grep -c ': test$' || true)
+          OUT=$(cargo test --locked --all-features --workspace -- --list)
+          COUNT=$(printf '%s\n' "$OUT" | grep -cE ': test$' || true)
           echo "Discovered tests: $COUNT"
           if [ "${COUNT:-0}" -le 0 ]; then
             echo "No tests discovered (cargo test -- --list). Failing coverage job."
+            printf '%s\n' "$OUT" | tail -n 80
             exit 1
           fi
 
       - name: Run coverage (llvm-cov)
+        env:
+          CARGO_TERM_COLOR: never
         run: |
           cargo llvm-cov --locked --all-features --workspace \
             --json --output-path coverage-llvm-cov.json
