@@ -58,11 +58,11 @@ fn fr003_l303_fr_guardrail_coverage_and_pin() {
     }
 
     assert!(
-        matrix.contains("83.48%"),
+        matrix.contains("80.51%"),
         "TEST_COVERAGE_MATRIX must pin measured broad-workspace line coverage"
     );
     assert!(
-        root.join("audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json").is_file(),
+        root.join("audit/coverage-snapshots/5d8dc08.coverage-snapshot.json").is_file(),
         "retained llvm-cov snapshot artifact must exist"
     );
     assert!(ci.contains("cargo nextest run"), "ci.yml must run nextest guardrail suite");

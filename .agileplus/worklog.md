@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-23 (C01 L11 honest coverage pin correction — T-691 / FR-003)
+- Status: DONE — corrected stale **83.48%** @ `d3cb7c4` claim to measured **80.51%** @ `5d8dc08` from Coverage run 29985746034 (`coverage-snapshot-5d8dc08…` artifact)
+- Artifacts: `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json`; `TEST_COVERAGE_MATRIX.md` v1.6; pin gates updated; prior `d3cb7c4` snapshot retained
+- Score: L11 stays **3**; C01 **28/30 (93% A)** unchanged (documentation honesty, not a lift)
+- Note: do **not** invent a higher percentage — broad workspace still below 85% unit gate
+- FR: FR-003 · C01 L11 · T-691
+
 ## 2026-07-22 (C11 L108 unsigned dmg/msi soft layouts — FR-003)
 - Status: DONE — phase 3.5 soft scaffolds (`build_dmg_layout.sh`, `build_msi_layout.sh`, `wix/sharecli.wxs`, `assert_dmg_msi_soft.sh`, packaging-soft `dmg-msi-soft`, FR-003 tests)
 - Score: C11 **39/45 (87% B)** unchanged (append); L112 still Blocked

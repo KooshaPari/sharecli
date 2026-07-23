@@ -184,7 +184,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
 | W15.1 | C10 dashboard skeleton loading states | C10 L99 · FR-003 · #396 · T-685 · `tests/c10_l99_skeleton_states.rs` | Status: DONE |
-| W15.2 | Broad-workspace coverage lift (#399) + pin refresh | C01 L11 · FR-003 · #399 · T-691 · `TEST_COVERAGE_MATRIX.md` (honest 83.48% retained) | Status: IN_PROGRESS |
+| W15.2 | Broad-workspace coverage lift (#399) + pin refresh | C01 L11 · FR-003 · #399 · T-691 · `TEST_COVERAGE_MATRIX.md` (honest **80.51%** @ `5d8dc08`) | Status: DONE |
 | W15.3 | Governance reconcile v6 (SCORECARD/JSON/DAG) | T-690 · FR-003 | Status: DONE |
 | W15.4 | Dashboard hex drift (token alignment) | C10 L98 · FR-003 · T-692 | Status: READY |
 

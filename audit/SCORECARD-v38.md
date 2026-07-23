@@ -38,7 +38,7 @@
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C10 **97% A**; C01/C09 **93% A**.
-- **Wave15:** C10 L99 skeletons (#396) → C10 **35/36 (97% A)**; #399 coverage tests landed — pin still **83.48%** pending green `coverage.yml`.
+- **Wave15:** C10 L99 skeletons (#396) → C10 **35/36 (97% A)**; #399 coverage tests landed; broad pin corrected to measured **80.51%** @ `5d8dc08` (run 29985746034 / post-#580).
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06); C10 dashboard hex drift.
@@ -52,6 +52,13 @@
 Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 30-pillar auto-scan for fleet ranking.
 
 ## Post-audit remediations
+
+### 2026-07-23 (C01 L11 honest coverage pin correction — FR-003 / T-691)
+
+- **Pin correction (not a score lift):** Matrix still claimed **83.48%** at `d3cb7c4` after #399 workspace growth; post-remeasure llvm-cov (Coverage run [29985746034](https://github.com/KooshaPari/sharecli/actions/runs/29985746034), artifact SHA `5d8dc08…`) measured **80.51%** lines (40,077 / 32,266 covered).
+- Retained `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json`; updated `TEST_COVERAGE_MATRIX.md` + `tests/c01_coverage_pin_gate.rs` / `tests/c03_l30_agent_readiness_gate.rs`. Prior `d3cb7c4` snapshot kept as historical evidence.
+- **Do not invent a higher %** — L11 stays **3**; C01 stays **28/30 (93% A)**. Broad workspace remains below the 85% unit gate (`meets_lines_target: false`).
+- FR: FR-003 · C01 L11 · T-691.
 
 ### 2026-07-22 (scorecard reconcile v6 — post-#392 lifts #396/#399 + governance sync)
 
