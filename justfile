@@ -126,6 +126,17 @@ wsl-parity-check:
     @echo "3) Optional WSLg: sharecli-tray on Linux session"
     @echo ">> wsl-parity-check OK"
 
+# -------- FUSE mount smoke matrix (AC-009.22+) --------
+[group: 'test']
+fuse-smoke *args:
+    @echo ">> fuse-smoke matrix (docs/ops/fuse-mount-smoke-matrix.md)"
+    @cargo run -p fuse-smoke-runner --locked -- {{args}}
+
+[group: 'test']
+fuse-smoke-colima:
+    @echo ">> Mac-hosted Linux FUSE smoke via Colima (no host macFUSE reboot)"
+    @cargo run -p fuse-smoke-runner --locked -- --cell mac_host_linux_colima --json
+
 # -------- testing --------
 [group: 'test']
 test:

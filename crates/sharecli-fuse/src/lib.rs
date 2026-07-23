@@ -59,6 +59,8 @@ pub use provenance::{
 pub use read_cache::{global_read_cache_meters, ReadCacheMeters, ReadContentCache};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use session_registry::default_fuser_config;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub use session_registry::smoke_fuser_config;
 pub use session_registry::{FuseMountInfo, FuseMountOptions, FuseSessionRegistry};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 pub use write_serialize_meters::{
@@ -115,9 +117,9 @@ mod platform {
     };
 
     use fuser::{
-        Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation, INodeNo,
-        OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty,
-        ReplyEntry, ReplyOpen, ReplyWrite, Request, WriteFlags,
+        BsdFileFlags, Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation,
+        INodeNo, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory,
+        ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, Request, TimeOrNow, WriteFlags,
     };
     use tracing::{debug, trace};
 
@@ -587,6 +589,64 @@ mod platform {
             }
         }
 
+        fn setattr(
+            &self,
+            _req: &Request,
+            ino: INodeNo,
+            mode: Option<u32>,
+            _uid: Option<u32>,
+            _gid: Option<u32>,
+            size: Option<u64>,
+            _atime: Option<TimeOrNow>,
+            _mtime: Option<TimeOrNow>,
+            _ctime: Option<SystemTime>,
+            _fh: Option<FileHandle>,
+            _crtime: Option<SystemTime>,
+            _chgtime: Option<SystemTime>,
+            _bkuptime: Option<SystemTime>,
+            _flags: Option<BsdFileFlags>,
+            reply: ReplyAttr,
+        ) {
+            // Required for std::fs::write (open+truncate) through the mount — default
+            // fuser setattr is ENOSYS and breaks privileged mount smoke (AC-009.8).
+            let path = {
+                let map = self.inodes.lock().expect("inode map");
+                match map.abs_path(&self.backing, ino.0) {
+                    Some(p) => p,
+                    None => {
+                        reply.error(Errno::ENOENT);
+                        return;
+                    }
+                }
+            };
+            if let Some(new_size) = size {
+                if let Err(err) = OpenOptions::new()
+                    .write(true)
+                    .open(&path)
+                    .and_then(|f| f.set_len(new_size))
+                {
+                    reply.error(Self::io_errno(err));
+                    return;
+                }
+            }
+            if let Some(mode) = mode {
+                let perms = fs::Permissions::from_mode(mode);
+                if let Err(err) = fs::set_permissions(&path, perms) {
+                    reply.error(Self::io_errno(err));
+                    return;
+                }
+            }
+            match fs::metadata(&path) {
+                Ok(meta) => {
+                    if let Ok(mut cache) = self.read_cache.lock() {
+                        cache.invalidate(&path);
+                    }
+                    reply.attr(&TTL, &Self::metadata_to_attr(ino.0, &meta));
+                }
+                Err(err) => reply.error(Self::io_errno(err)),
+            }
+        }
+
         fn open(&self, _req: &Request, ino: INodeNo, _flags: OpenFlags, reply: ReplyOpen) {
             let map = self.inodes.lock().expect("inode map");
             let Some(path) = map.abs_path(&self.backing, ino.0) else {
@@ -940,8 +1000,9 @@ mod platform {
         session_id: &str,
     ) -> anyhow::Result<()> {
         let fs = InterceptFs::with_session(backing, session_id);
-        // AutoUnmount + RootAndOwner ACL: fuser rejects AutoUnmount with Owner ACL.
-        let config = crate::session_registry::default_fuser_config();
+        // Smoke/ephemeral mounts: no AutoUnmount (avoids allow_other / user_allow_other).
+        // Callers and FuseGuard Drop force-unmount explicitly.
+        let config = crate::session_registry::smoke_fuser_config();
         fuser::mount2(fs, mountpoint, &config)?;
         Ok(())
     }
@@ -955,6 +1016,29 @@ mod platform {
         }
         fn getattr(&self, req: &Request, ino: INodeNo, fh: Option<FileHandle>, reply: ReplyAttr) {
             self.0.getattr(req, ino, fh, reply);
+        }
+        fn setattr(
+            &self,
+            req: &Request,
+            ino: INodeNo,
+            mode: Option<u32>,
+            uid: Option<u32>,
+            gid: Option<u32>,
+            size: Option<u64>,
+            atime: Option<TimeOrNow>,
+            mtime: Option<TimeOrNow>,
+            ctime: Option<SystemTime>,
+            fh: Option<FileHandle>,
+            crtime: Option<SystemTime>,
+            chgtime: Option<SystemTime>,
+            bkuptime: Option<SystemTime>,
+            flags: Option<BsdFileFlags>,
+            reply: ReplyAttr,
+        ) {
+            self.0.setattr(
+                req, ino, mode, uid, gid, size, atime, mtime, ctime, fh, crtime, chgtime,
+                bkuptime, flags, reply,
+            );
         }
         fn open(&self, req: &Request, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
             self.0.open(req, ino, flags, reply);

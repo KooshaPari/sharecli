@@ -1,0 +1,82 @@
+# Privileged FUSE mount-smoke matrix (AC-009.26)
+# Local gate: `just fuse-smoke` / docs/ops/fuse-mount-smoke-matrix.md
+# KooshaPari Actions billing often fails immediately — do not block merges on this workflow.
+
+name: FUSE mount smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'crates/sharecli-fuse/**'
+      - 'crates/fuse-smoke-runner/**'
+      - 'Containerfile.fuse-smoke'
+      - 'tests/fr009_fuse_intercept.rs'
+      - '.github/workflows/fuse-mount-smoke.yml'
+  pull_request:
+    paths:
+      - 'crates/sharecli-fuse/**'
+      - 'crates/fuse-smoke-runner/**'
+      - 'Containerfile.fuse-smoke'
+      - 'tests/fr009_fuse_intercept.rs'
+      - '.github/workflows/fuse-mount-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  linux-native:
+    name: linux_native (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install fuse3
+        run: sudo apt-get update && sudo apt-get install -y fuse3 libfuse3-dev pkg-config
+      - name: Privileged mount smoke
+        env:
+          SHARECLI_FUSE_MOUNT_SMOKE: '1'
+        run: |
+          cargo test -p sharecli --test fr009_fuse_intercept fr009_privileged_mount_smoke -- --nocapture --test-threads=1
+
+  linux-container:
+    name: linux_container (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + run Containerfile.fuse-smoke
+        run: |
+          docker build -f Containerfile.fuse-smoke -t sharecli-fuse-smoke:ci .
+          docker run --rm --device /dev/fuse --cap-add SYS_ADMIN \
+            --security-opt apparmor=unconfined sharecli-fuse-smoke:ci
+
+  macos-native:
+    name: macos_native (macos-latest)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Matrix cell macos_native (loud fail OK without macFUSE)
+        run: cargo run -p fuse-smoke-runner --locked -- --cell macos_native --json --report-only
+
+  windows-winfsp:
+    name: windows_winfsp (windows-latest)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Matrix cell windows_winfsp (loud fail without WinFsp)
+        run: cargo run -p fuse-smoke-runner --locked -- --cell windows_winfsp --json --report-only
+
+  runner-unit:
+    name: fuse-smoke-runner unit
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p fuse-smoke-runner --locked

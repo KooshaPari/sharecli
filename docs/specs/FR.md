@@ -1019,9 +1019,13 @@ be served from the coalesce cache.
 
 ## FR-009 — FUSE IO Intercept
 
-**Statement:** On Linux and macOS, sharecli MUST provide a FUSE attach point
-(`InterceptFs` / `mount`) over a backing path as the hypervisor IO intercept
-extension point. Other platforms MUST return a clear unsupported error.
+**Statement:** On Linux, macOS, and Windows (WinFsp), sharecli MUST provide a
+FUSE/WinFsp attach point (`InterceptFs` / `mount`) over a backing path as the
+hypervisor IO intercept extension point. WSL2 uses the Linux path when
+`/dev/fuse` is available. Other platforms MUST return a clear unsupported
+error. Privileged mount smoke MUST be runnable via the OS×arch matrix
+(`fuse-smoke` / `Containerfile.fuse-smoke`) without requiring a macOS host
+reboot when the Linux-on-Mac (Colima) cell is used.
 Core VFS ops (lookup, getattr, open, read, write, readdir, mkdir, unlink,
 rmdir, rename) MUST forward to the backing filesystem via an inode map.
 In-process read content cache MUST key by path+mtime with hit/miss meters.
@@ -1126,8 +1130,22 @@ until create / mkdir / rename-into invalidates the entry.
 - **AC-009.21:** `sharecli fuse mount` MUST loud-reject invalid `--agent` ids and missing
   `--agents-conf` paths before attempting a FUSE mount. `fuse mount --help` MUST document
   Feb-parity flags `--cow`, `--cow-dir`, `--agent`, `--agents-conf`, and `--no-serialize`.
+- **AC-009.22:** [`fuse-smoke`](crates/fuse-smoke-runner) MUST run an OS×arch privileged
+  mount-smoke matrix with structured loud-fail reasons (never silent skip when a cell is
+  selected). [`Containerfile.fuse-smoke`](Containerfile.fuse-smoke) MUST provide a Linux
+  libfuse3 smoke image distinct from the hardened serve Containerfile. On macOS,
+  `mac_host_linux_colima` MUST be able to green without a host macFUSE reboot.
+- **AC-009.23:** Matrix cells `macos_native`, `mac_host_linux_colima`, and `macos_vm_tart`
+  MUST be implemented; missing Driver Extension / Tart tooling MUST fail with
+  `driver_missing` / `tooling_missing`.
+- **AC-009.24:** Matrix cell `wsl2` MUST run Linux FUSE smoke inside WSL2 when selected on
+  Windows; missing WSL or `/dev/fuse` MUST fail loudly.
+- **AC-009.25:** On Windows, `mount` MUST use WinFsp when installed; matrix cell
+  `windows_winfsp` MUST run privileged smoke or fail with `winfsp_missing`.
+- **AC-009.26:** CI workflow `fuse-mount-smoke.yml` MUST mirror matrix cells; local
+  `just fuse-smoke` remains the merge gate when Actions billing blocks runners.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`).
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`); `fuse-smoke-runner` unit tests; `docs/ops/fuse-mount-smoke-matrix.md`.
 
 ---
 

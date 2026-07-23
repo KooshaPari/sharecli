@@ -276,6 +276,11 @@
 | AC-009.19 | `crates/sharecli-fuse/src/agent_cow.rs` (`ac_009_19_*`); `src/commands/fuse.rs` (`--cow` / `--agent`) | Per-agent CoW isolation + commit_all/discard_all |
 | AC-009.20 | `crates/sharecli-fuse/src/agent_cow.rs` (`ac_009_20_no_serialize_runs_callback`); `src/commands/fuse.rs` (`--no-serialize`) | `--no-serialize` skips per-path write locks |
 | AC-009.21 | `tests/fr009_fuse_cli.rs` (`fr009_cli_fuse_mount_rejects_*`, `fr009_cli_fuse_mount_help_documents_feb_flags`); `src/commands/fuse.rs` | CLI loud-reject invalid agent / missing agents.conf; help documents Feb flags |
+| AC-009.22 | `crates/fuse-smoke-runner`; `Containerfile.fuse-smoke`; `docs/ops/fuse-mount-smoke-matrix.md`; `just fuse-smoke` | OS×arch privileged mount-smoke matrix + Linux container / Colima path (no host macFUSE reboot) |
+| AC-009.23 | `crates/fuse-smoke-runner` (`macos_native`, `mac_host_linux_colima`, `macos_vm_tart`) | macOS native + Mac-hosted Colima/Tart cells |
+| AC-009.24 | `crates/fuse-smoke-runner` (`wsl2`); `docs/ops/fuse-mount-smoke-matrix.md` | WSL2 Linux FUSE smoke cell |
+| AC-009.25 | `crates/sharecli-fuse` WinFsp adapter; `windows_winfsp` cell | Windows native WinFsp mount + smoke |
+| AC-009.26 | `.github/workflows/fuse-mount-smoke.yml` | CI matrix mirroring local fuse-smoke cells |
 
 ### FR-010 — Mesh
 
@@ -309,6 +314,9 @@
 
 ## Change log
 
+- **2026-07-23 — FR-009 FUSE mount-smoke matrix (AC-009.22..26):**
+  `fuse-smoke-runner` + `Containerfile.fuse-smoke` + Colima/mac/WSL/WinFsp cells;
+  workflow `fuse-mount-smoke.yml`; docs `fuse-mount-smoke-matrix.md`.
 - **2026-07-22 — FR-009 fuse CLI Feb-flag validation + TRACE backfill (AC-009.18..21):**
   TRACE rows for agents.conf / AgentCowStore / `--no-serialize`; AC-009.21 CLI loud-rejects
   invalid `--agent` and missing `--agents-conf`, and locks `fuse mount --help` Feb flags.

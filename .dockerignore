@@ -1,0 +1,15 @@
+# Keep fuse-smoke image builds lean (AC-009.22).
+.git
+**/.git
+**/target
+**/target-*
+**/.target
+**/node_modules
+**/.venv
+**/dist
+**/.archive
+docs/sessions
+recovery
+*.dmg
+*.zip
+*.tar.gz
