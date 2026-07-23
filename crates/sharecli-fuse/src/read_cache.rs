@@ -20,11 +20,7 @@ impl ReadCacheMeters {
     /// Hit rate as an integer percentage in `[0, 100]` (0 when no events recorded).
     pub fn hit_rate_pct(self) -> u64 {
         let total = self.hits.saturating_add(self.misses);
-        if total == 0 {
-            0
-        } else {
-            self.hits.saturating_mul(100) / total
-        }
+        self.hits.saturating_mul(100).checked_div(total).unwrap_or(0)
     }
 
     /// Operator-facing status block for `sharecli status` (FR-007 / AC-007.9).
