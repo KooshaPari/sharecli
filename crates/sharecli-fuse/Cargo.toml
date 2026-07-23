@@ -18,7 +18,7 @@ tempfile = "3"
 
 # Linux / macOS — fuser (libfuse3 / macFUSE)
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
-fuser = "0.17"
+fuser = "0.18"
 libc = "0.2"
 # wraps: xattr 1.x — portable setxattr/getxattr for write provenance
 xattr = "1.6"
