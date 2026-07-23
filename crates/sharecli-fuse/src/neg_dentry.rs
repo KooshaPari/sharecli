@@ -28,10 +28,7 @@ impl NegDentryMeters {
     /// Hit rate as an integer percentage in `[0, 100]` (0 when no events recorded).
     pub fn hit_rate_pct(self) -> u64 {
         let total = self.hits.saturating_add(self.misses);
-        self.hits
-            .saturating_mul(100)
-            .checked_div(total)
-            .unwrap_or(0)
+        self.hits.saturating_mul(100).checked_div(total).unwrap_or(0)
     }
 
     /// Operator-facing status block for `sharecli status` (FR-009 / AC-009.9).
