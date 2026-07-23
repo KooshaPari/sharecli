@@ -117,7 +117,7 @@ fn fr007_tray_thermal_visual_linux_main_wires_icon() {
         "Linux tray icon MUST follow resolve_tray_gate_visual (AC-007.57)"
     );
     assert!(
-        main_rs.contains("fn status(&self) -> ksni::IconStatus"),
+        main_rs.contains("fn status(&self) -> ksni::Status"),
         "Linux tray MUST expose SNI attention for warn/critical (AC-007.57)"
     );
     assert!(
