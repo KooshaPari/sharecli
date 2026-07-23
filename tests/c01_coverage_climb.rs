@@ -1,3 +1,5 @@
+//! FR: FR-003
+
 //! C01 — coverage climb toward 85% broad-workspace lines (FR-003).
 //!
 //! Targets high-impact `src/` library modules counted by llvm-cov without

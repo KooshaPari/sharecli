@@ -1,3 +1,5 @@
+//! FR: FR-003
+
 //! FR-003 / C01 — CowMountHandle edge-path coverage (all supported OS).
 
 use std::fs;

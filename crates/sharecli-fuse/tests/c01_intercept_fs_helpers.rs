@@ -1,3 +1,5 @@
+//! FR: FR-003
+
 //! FR-003 / C01 — InterceptFs no-mount helper coverage (Linux/macOS).
 //!
 //! Exercises the high-line InterceptFs API surface that does not require a live

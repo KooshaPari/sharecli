@@ -1,3 +1,5 @@
+//! FR: FR-003
+
 //! FR-003 / C01 — sharecli-ipc JSON-RPC handler dispatch coverage.
 
 use sharecli_ipc::handler::Handler;
