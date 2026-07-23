@@ -88,9 +88,8 @@ impl WinfspMountSession {
         let mp_t = mp.clone();
         let handle_t = Arc::clone(&handle);
 
-        let join = thread::spawn(move || {
-            run_host(&mp_t, &backing, &session, handle_t, stop_t, ready_t)
-        });
+        let join =
+            thread::spawn(move || run_host(&mp_t, &backing, &session, handle_t, stop_t, ready_t));
 
         let deadline = Duration::from_secs(20);
         let started = std::time::Instant::now();
@@ -138,14 +137,7 @@ pub fn mount_blocking(
     ensure_winfsp()?;
     let stop = Arc::new(AtomicBool::new(false));
     let ready = Arc::new(AtomicBool::new(false));
-    run_host(
-        mountpoint,
-        backing,
-        session_id,
-        handle,
-        stop,
-        ready,
-    )
+    run_host(mountpoint, backing, session_id, handle, stop, ready)
 }
 
 fn run_host(
@@ -365,8 +357,7 @@ impl FileSystemContext for PassthroughCtx {
         } else {
             file.seek(SeekFrom::Start(offset)).map_err(|_| FspError::from(0xC0000001))?;
         }
-        file.write_all(buffer)
-            .map_err(|_| FspError::from(0xC0000001))?;
+        file.write_all(buffer).map_err(|_| FspError::from(0xC0000001))?;
         let path = context.path.clone();
         let session = self.session_id.clone();
         let n = buffer.len() as u32;

@@ -28,14 +28,8 @@ impl CowMountHandle {
         } else {
             opts.session_id.clone()
         };
-        let default_agent = opts
-            .agent
-            .clone()
-            .unwrap_or_else(|| session_id.clone());
-        let cow_root = opts
-            .cow_dir
-            .clone()
-            .unwrap_or_else(|| backing.join(".sharecli-cow"));
+        let default_agent = opts.agent.clone().unwrap_or_else(|| session_id.clone());
+        let cow_root = opts.cow_dir.clone().unwrap_or_else(|| backing.join(".sharecli-cow"));
         Self {
             backing: backing.to_path_buf(),
             session_id,
@@ -204,11 +198,9 @@ mod tests {
         };
         let h = CowMountHandle::from_options(&backing, &opts);
         assert!(h.cow_enabled());
-        h.stage_rel_for_agent(Some("agent-a"), Path::new("f.txt"), b"new")
-            .unwrap();
+        h.stage_rel_for_agent(Some("agent-a"), Path::new("f.txt"), b"new").unwrap();
         assert_eq!(fs::read(&target).unwrap(), b"old");
-        h.commit_rel_for_agent(Some("agent-a"), Path::new("f.txt"))
-            .unwrap();
+        h.commit_rel_for_agent(Some("agent-a"), Path::new("f.txt")).unwrap();
         assert_eq!(fs::read(&target).unwrap(), b"new");
         let prov = crate::read_provenance(&target).unwrap().expect("provenance");
         assert_eq!(prov.session_id, "sess-27");
