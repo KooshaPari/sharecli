@@ -197,8 +197,7 @@ impl SessionStore {
         let conn = self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?;
         let mut stmt =
             conn.prepare("SELECT id,harness,session_id,cwd,resume_json,confidence,state FROM sessions ORDER BY id")?;
-        let rows =
-            stmt.query_map([], |row| Self::row(row))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        let rows = stmt.query_map([], Self::row)?.collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
     pub fn get(&self, id: &str) -> Result<Option<AgentSession>> {
