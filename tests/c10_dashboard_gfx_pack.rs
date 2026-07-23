@@ -19,7 +19,7 @@ fn c10_dashboard_html_references_ui_pack_assets() {
         "/assets/dashboard/ui/banners/dashboard_1280x320.png",
         "/assets/dashboard/ui/empty-states/no-data.svg",
         "/assets/dashboard/ui/empty-states/no-results.svg",
-        "/assets/dashboard/ui/empty-states/error.svg",
+        "/assets/dashboard/ui/error-states/disconnect.svg",
     ] {
         assert!(html.contains(needle), "dashboard.html must reference {needle}");
     }
@@ -35,6 +35,7 @@ fn c10_dashboard_ui_pack_files_present_on_disk() {
         "empty-states/no-data.svg",
         "empty-states/no-results.svg",
         "empty-states/error.svg",
+        "error-states/disconnect.svg",
     ] {
         let path = base.join(rel);
         assert!(path.is_file(), "missing ui-pack file: {}", path.display());

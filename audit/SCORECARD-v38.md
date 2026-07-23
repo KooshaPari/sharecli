@@ -24,7 +24,7 @@
 | C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
-| C10 | Visual Identity | L96–L107 | 35/36 | 97% | A | error illustration tier-1; visual provenance ledger; PNG regen after hex lock |
+| C10 | Visual Identity | L96–L107 | 35/36 | 97% | A | visual provenance ledger; PNG regen after hex lock; light-theme dashboard matrix |
 | C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
 ## Overall
@@ -629,3 +629,10 @@ Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 3
 - **C10 remains 35/36 (97% A) after Wave15 L99; L105 remains 3:** residual hex drift closed without inventing a further cluster lift (rubric line already maxed).
 - Top-3 C10 gaps: error illustration tier-1; Ubuntu PNG baseline regen after accent SoT alignment; light-theme dashboard matrix.
 - Docs: `docs/visual/{VISUAL_SPEC,golden-visual-tests}.md`, `docs/a11y/{high-contrast,contrast}.md`.
+
+### 2026-07-22 (C10 L101 error illustration tier-1 — FR-003)
+- Hand-authored `assets/dashboard/ui/error-states/disconnect.svg` (severed serve↔dashboard WebSocket scene, Backbone-2 `--bb2-error`); wired into `renderDisconnectError`; embedded via `src/dashboard_assets.rs`.
+- Docs: `docs/visual/error-states.md`, `PROVENANCE.md` (tier 1), `VISUAL_SPEC.md` §5, `README.md`; MANIFEST notes pack `empty-states/error.svg` is not the disconnect SoT.
+- Gate: `tests/c10_l101_error_states.rs` (markup + asset scene tokens + provenance + embed path).
+- **C10 remains 35/36 (97% A); L101 remains 3:** soft-goal residual closed; evidence-only SCORECARD append (no rubric lift — already maxed at L101 disconnect panel).
+- Top-3 C10 gaps: visual provenance ledger; PNG regen after hex lock; light-theme dashboard matrix.

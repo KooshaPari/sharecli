@@ -65,6 +65,10 @@ fn lookup(relative_path: &str) -> Option<EmbeddedAsset> {
             bytes: include_bytes!("../assets/dashboard/ui/empty-states/error.png"),
             content_type: "image/png",
         },
+        "error-states/disconnect.svg" => EmbeddedAsset {
+            bytes: include_bytes!("../assets/dashboard/ui/error-states/disconnect.svg"),
+            content_type: "image/svg+xml",
+        },
         "icons/phenotype_icon.png" => EmbeddedAsset {
             bytes: include_bytes!("../assets/dashboard/ui/icons/phenotype_icon.png"),
             content_type: "image/png",
@@ -99,6 +103,7 @@ mod tests {
     fn embedded_favicon_and_empty_states_resolve() {
         assert!(lookup("favicons/phenotype_32.png").is_some());
         assert!(lookup("empty-states/no-data.svg").is_some());
+        assert!(lookup("error-states/disconnect.svg").is_some());
         assert!(lookup("banners/dashboard_1280x320.png").is_some());
         assert!(lookup("video/brand_intro.mp4").is_none());
     }
