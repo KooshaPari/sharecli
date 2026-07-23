@@ -35,24 +35,41 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # cargo-llvm-cov
+        uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # v2
+        with:
+          tool: cargo-llvm-cov
 
+      # Guard must not inherit workflow CARGO_TERM_COLOR=always: libtest paints
+      # "test" with ANSI, so `grep ': test$'` falsely reports an empty suite and
+      # aborts before llvm-cov (post-#399 Wave15 failure mode).
+      # Suite: full --workspace --all-features (same scope as llvm-cov below).
       - name: Guard — refuse empty test suite
+        env:
+          CARGO_TERM_COLOR: never
         run: |
           set -euo pipefail
-          OUT=$(cargo test --locked --all-features --workspace -- --list 2>/dev/null || true)
-          COUNT=$(printf '%s\n' "$OUT" | grep -c ': test$' || true)
+          OUT=$(cargo test --locked --all-features --workspace -- --list)
+          COUNT=$(printf '%s\n' "$OUT" | grep -cE ': test$' || true)
           echo "Discovered tests: $COUNT"
           if [ "${COUNT:-0}" -le 0 ]; then
             echo "No tests discovered (cargo test -- --list). Failing coverage job."
+            printf '%s\n' "$OUT" | tail -n 80
             exit 1
           fi
 
       - name: Run coverage (llvm-cov)
+        env:
+          CARGO_TERM_COLOR: never
         run: |
-          cargo llvm-cov --locked --all-features --workspace \
+          cargo llvm-cov --version
+          # Broad-workspace evidence suite: keep measuring even if a few package
+          # tests fail (e.g. harness-native strategies needing a Tokio runtime).
+          # Quality-gate remains the hard 85% unit gate; this job pins fleet %.
+          cargo llvm-cov --locked --all-features --workspace --ignore-run-fail \
             --json --output-path coverage-llvm-cov.json
           cargo llvm-cov report --lcov --output-path lcov.info
+          test -s coverage-llvm-cov.json
+          python -c "import json,sys; d=json.load(open('coverage-llvm-cov.json')); t=d['data'][0]['totals']['lines']; print(f\"lines={t['percent']}% covered={t['covered']}/{t['count']}\"); sys.exit(0 if t['count']>0 else 1)"
 
       - name: Create coverage snapshot
         run: |

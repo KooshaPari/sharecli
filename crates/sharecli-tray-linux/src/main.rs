@@ -54,13 +54,14 @@ mod linux {
             self.gate_visual.linux_icon_name.into()
         }
 
-        fn status(&self) -> ksni::IconStatus {
-            use ksni::IconStatus;
+        // ksni 0.3 renamed IconStatus → Status (StatusNotifierItem status enum).
+        fn status(&self) -> ksni::Status {
+            use ksni::Status;
             match self.gate_visual.severity {
-                operator_display::TrayGateSeverity::Normal => IconStatus::Passive,
-                operator_display::TrayGateSeverity::Warning => IconStatus::NeedsAttention,
-                operator_display::TrayGateSeverity::Critical => IconStatus::NeedsAttention,
-                operator_display::TrayGateSeverity::Offline => IconStatus::NeedsAttention,
+                operator_display::TrayGateSeverity::Normal => Status::Passive,
+                operator_display::TrayGateSeverity::Warning => Status::NeedsAttention,
+                operator_display::TrayGateSeverity::Critical => Status::NeedsAttention,
+                operator_display::TrayGateSeverity::Offline => Status::NeedsAttention,
             }
         }
 

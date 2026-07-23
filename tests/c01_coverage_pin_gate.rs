@@ -57,4 +57,22 @@ fn fr003_coverage_yml_emits_snapshot_artifact() {
         workflow.contains("coverage-snapshot-"),
         "coverage.yml must upload SHA-keyed coverage-snapshot artifact"
     );
+    // Empty-suite false positive: workflow env sets CARGO_TERM_COLOR=always, but the
+    // guard must force never so libtest ANSI does not break `grep ': test$'`.
+    assert!(
+        workflow.contains("CARGO_TERM_COLOR: never"),
+        "coverage.yml guard/llvm-cov steps must force CARGO_TERM_COLOR=never"
+    );
+    assert!(
+        !workflow.contains("2>/dev/null || true"),
+        "coverage.yml must not swallow cargo test --list failures"
+    );
+    assert!(
+        workflow.contains("tool: cargo-llvm-cov"),
+        "coverage.yml must pass tool: cargo-llvm-cov to install-action (SHA pins drop tag tool names)"
+    );
+    assert!(
+        workflow.contains("--ignore-run-fail"),
+        "coverage.yml must use --ignore-run-fail so evidence snapshot is produced despite known test flakes"
+    );
 }

@@ -352,21 +352,10 @@ impl FuseSessionRegistry {
                 std::sync::Arc::clone(&handle),
             )?;
             let mut mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
-            mounts.insert(
-                key,
-                WinfspMountEntry {
-                    handle,
-                    _session: session,
-                },
-            );
+            mounts.insert(key, WinfspMountEntry { handle, _session: session });
             Ok(())
         } else {
-            crate::winfsp_mount::mount_blocking(
-                mountpoint,
-                backing,
-                &session_id,
-                handle,
-            )
+            crate::winfsp_mount::mount_blocking(mountpoint, backing, &session_id, handle)
         }
     }
 
@@ -495,11 +484,11 @@ impl FuseSessionRegistry {
             }
             None => {
                 if mounts.len() == 1 {
-                    Ok(std::sync::Arc::clone(
-                        &mounts.values().next().expect("one mount").handle,
-                    ))
+                    Ok(std::sync::Arc::clone(&mounts.values().next().expect("one mount").handle))
                 } else if mounts.is_empty() {
-                    anyhow::bail!("fuse: no active FUSE mounts registered (run `fuse mount` first)");
+                    anyhow::bail!(
+                        "fuse: no active FUSE mounts registered (run `fuse mount` first)"
+                    );
                 } else {
                     anyhow::bail!(
                         "fuse: multiple mounts registered; pass --mountpoint <path> \
