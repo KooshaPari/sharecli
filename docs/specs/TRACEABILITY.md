@@ -281,6 +281,7 @@
 | AC-009.24 | `crates/fuse-smoke-runner` (`wsl2`); `docs/ops/fuse-mount-smoke-matrix.md` | WSL2 Linux FUSE smoke cell |
 | AC-009.25 | `crates/sharecli-fuse/src/winfsp_mount.rs`; `session_registry` Windows mounts; `docs/ops/winfsp-fuse-mount.md` | Windows WinFsp mount + smoke; loud `winfsp_missing` when absent |
 | AC-009.26 | `.github/workflows/fuse-mount-smoke.yml` | CI matrix mirroring local fuse-smoke cells |
+| AC-009.27 | `crates/sharecli-fuse/src/cow_session.rs`; Windows `session_registry` + `winfsp_mount` | WinFsp `--cow` + `fuse commit|discard` via shared CowMountHandle |
 
 ### FR-010 — Mesh
 

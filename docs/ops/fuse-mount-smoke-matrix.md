@@ -57,12 +57,28 @@ just fuse-smoke-colima
 
 Host reboot stays skipped; bake macFUSE **once inside the guest image**:
 
-1. `brew install cirruslabs/cli/tart`
-2. Create/clone a macOS VM; inside the guest install macFUSE and enable
-   **Driver Extensions**, then reboot **the guest** once.
+1. Install Tart: `brew trust cirruslabs/cli && brew install cirruslabs/cli/tart`
+   (Homebrew may refuse the tap until trusted).
+2. Create/clone a macOS VM (`tart create` / `tart clone`); inside the **guest**:
+   - Install macFUSE (pkg from https://osxfuse.github.io or brew in guest).
+   - Enable **System Settings → General → Login Items & Extensions → Driver Extensions**
+     for macFUSE; reboot **the guest** once (not the host).
 3. Snapshot/name the VM `sharecli-fuse-macos` (or set `SHARECLI_TART_FUSE_IMAGE`).
-4. Ensure SSH works and the sharecli checkout is reachable at the same path
-   (or adjust the remote `cd` in the runner).
+4. Ensure SSH works (`tart ip` + SSH keys) and the sharecli checkout is reachable
+   at the same path (or adjust the remote `cd` in the runner).
+
+**Host status (2026-07-22):** Tart is not installed by default on Phenotype Macs;
+`macos_vm_tart` loud-fails with `tooling_missing` until steps 1–4 complete.
+`mac_host_linux_colima` remains the no-reboot green path.
+
+### macOS native Driver Extension (`macos_native`)
+
+1. Install macFUSE if missing.
+2. Open **System Settings → General → Login Items & Extensions → Driver Extensions**,
+   enable macFUSE, then reboot the Mac (or a macOS guest).
+3. Confirm `/dev/macfuse*` exists, then: `just fuse-smoke -- --cell macos_native`.
+
+Without the extension, the cell fails loudly with `driver_missing` (never a soft pass).
 
 ## WSL2
 

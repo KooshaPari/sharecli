@@ -133,11 +133,10 @@ struct FuseMountEntry {
     _session: Option<BackgroundSession>,
 }
 
-/// WinFsp mount entry (AC-009.25) — passthrough + provenance; CoW via InterceptFs is Unix.
+/// WinFsp mount entry (AC-009.25/27) — passthrough + optional CoW via [`CowMountHandle`].
 #[cfg(windows)]
 struct WinfspMountEntry {
-    backing: PathBuf,
-    session_id: String,
+    handle: std::sync::Arc<crate::CowMountHandle>,
     _session: crate::winfsp_mount::WinfspMountSession,
 }
 
@@ -327,12 +326,6 @@ impl FuseSessionRegistry {
         opts: &FuseMountOptions,
         background: bool,
     ) -> anyhow::Result<()> {
-        if opts.cow {
-            anyhow::bail!(
-                "fuse mount: --cow is not supported on Windows WinFsp yet (AC-009.25); \
-                 use Linux/macOS for per-agent CoW"
-            );
-        }
         if !backing.is_dir() {
             anyhow::bail!(
                 "fuse mount: backing path must be an existing directory: {}",
@@ -347,23 +340,33 @@ impl FuseSessionRegistry {
                 anyhow::bail!("fuse mount: already registered at {}", key.display());
             }
         }
-        let session_id = opts
-            .session_id
-            .clone()
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(crate::default_session_id);
+        let intercept = opts.to_intercept_options();
+        let handle = std::sync::Arc::new(crate::CowMountHandle::from_options(backing, &intercept));
+        let session_id = handle.session_id().to_string();
 
         if background {
-            let session =
-                crate::winfsp_mount::WinfspMountSession::start(mountpoint, backing, &session_id)?;
+            let session = crate::winfsp_mount::WinfspMountSession::start(
+                mountpoint,
+                backing,
+                &session_id,
+                std::sync::Arc::clone(&handle),
+            )?;
             let mut mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
             mounts.insert(
                 key,
-                WinfspMountEntry { backing: backing.to_path_buf(), session_id, _session: session },
+                WinfspMountEntry {
+                    handle,
+                    _session: session,
+                },
             );
             Ok(())
         } else {
-            crate::winfsp_mount::mount_blocking(mountpoint, backing, &session_id)
+            crate::winfsp_mount::mount_blocking(
+                mountpoint,
+                backing,
+                &session_id,
+                handle,
+            )
         }
     }
 
@@ -477,11 +480,34 @@ impl FuseSessionRegistry {
     }
 
     #[cfg(windows)]
-    pub fn resolve_fs(&self, _mountpoint: Option<&Path>) -> anyhow::Result<()> {
-        anyhow::bail!(
-            "fuse commit/discard CoW requires InterceptFs (Linux/macOS); \
-             Windows WinFsp mounts are passthrough + provenance only (AC-009.25)"
-        )
+    pub fn resolve_fs(
+        &self,
+        mountpoint: Option<&Path>,
+    ) -> anyhow::Result<std::sync::Arc<crate::CowMountHandle>> {
+        let mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
+        match mountpoint {
+            Some(mp) => {
+                let key = Self::normalize_key(mp);
+                mounts
+                    .get(&key)
+                    .map(|e| std::sync::Arc::clone(&e.handle))
+                    .ok_or_else(|| anyhow::anyhow!("fuse: no active mount at {}", mp.display()))
+            }
+            None => {
+                if mounts.len() == 1 {
+                    Ok(std::sync::Arc::clone(
+                        &mounts.values().next().expect("one mount").handle,
+                    ))
+                } else if mounts.is_empty() {
+                    anyhow::bail!("fuse: no active FUSE mounts registered (run `fuse mount` first)");
+                } else {
+                    anyhow::bail!(
+                        "fuse: multiple mounts registered; pass --mountpoint <path> \
+                         (see `fuse list`)"
+                    );
+                }
+            }
+        }
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
@@ -517,13 +543,13 @@ impl FuseSessionRegistry {
                 .iter()
                 .map(|(mp, entry)| FuseMountInfo {
                     mountpoint: mp.clone(),
-                    backing: entry.backing.clone(),
-                    session_id: entry.session_id.clone(),
-                    cow_enabled: false,
-                    cow_root: entry.backing.join(".sharecli-cow"),
-                    default_agent: entry.session_id.clone(),
-                    pending_relpaths: Vec::new(),
-                    pending_by_agent: Vec::new(),
+                    backing: entry.handle.backing().to_path_buf(),
+                    session_id: entry.handle.session_id().to_string(),
+                    cow_enabled: entry.handle.cow_enabled(),
+                    cow_root: entry.handle.cow_root().to_path_buf(),
+                    default_agent: entry.handle.default_agent().to_string(),
+                    pending_relpaths: entry.handle.pending_rel_paths().unwrap_or_default(),
+                    pending_by_agent: entry.handle.pending_by_agent().unwrap_or_default(),
                 })
                 .collect();
             out.sort_by(|a, b| a.mountpoint.cmp(&b.mountpoint));

@@ -13,7 +13,11 @@ until Apple/Windows signing secrets land.
 | Linux | N/A for Gatekeeper | Cosign/SLSA cover supply-chain (C06); not OS code-sign |
 | Ad-hoc `codesign --sign -` | Dev only | Never for release assets |
 
-**Secret inventory (2026-07-19):** `gh secret list -R KooshaPari/sharecli` returned **zero** Actions secrets. No `APPLE_*` / `WINDOWS_CERT_*` (or any other) repo secrets are configured. Status remains **Blocked** — do not invent secrets.
+**Secret inventory (2026-07-22):** `gh secret list -R KooshaPari/sharecli` still
+returns **zero** Actions secrets. No `APPLE_*` / `WINDOWS_CERT_*` (or any other)
+repo secrets are configured. Status remains **Blocked** — do not invent secrets.
+Agent follow-up cannot flip L112 without the operator adding secrets in GitHub
+(Settings → Secrets and variables → Actions).
 
 ## Required secrets (when unblocked)
 

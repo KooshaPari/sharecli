@@ -1147,8 +1147,11 @@ until create / mkdir / rename-into invalidates the entry.
   privileged smoke or fail with `winfsp_missing`.
 - **AC-009.26:** CI workflow `fuse-mount-smoke.yml` MUST mirror matrix cells; local
   `just fuse-smoke` remains the merge gate when Actions billing blocks runners.
+- **AC-009.27:** On Windows, `fuse mount --cow` MUST register a [`CowMountHandle`](crates/sharecli-fuse/src/cow_session.rs)
+  so `fuse commit|discard` works via the session registry (same AgentCowStore semantics
+  as Linux/macOS). Missing `--cow` when staging MUST fail loudly.
 
-**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`, `winfsp_mount` probe); `fuse-smoke-runner` unit tests; `docs/ops/fuse-mount-smoke-matrix.md`; `docs/ops/winfsp-fuse-mount.md`.
+**Test refs:** `tests/fr009_fuse_intercept.rs`; `tests/fr009_fuse_cli.rs`; `tests/fr009_fuse_hypervisor_session.rs`; `tests/fr004_status_health.rs`; `tests/fr007_thermal_tui_watch.rs`; `sharecli-fuse` unit tests (`agents_conf`, `agent_cow`, `cow_session`, `winfsp_mount` probe); `fuse-smoke-runner` unit tests; `docs/ops/fuse-mount-smoke-matrix.md`; `docs/ops/winfsp-fuse-mount.md`.
 
 ---
 

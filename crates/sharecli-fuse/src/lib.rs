@@ -27,6 +27,8 @@
 
 mod agent_cow;
 mod agents_conf;
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
+mod cow_session;
 mod inode_map;
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 mod mount_smoke;
@@ -43,6 +45,8 @@ mod write_serialize_meters;
 
 pub use agent_cow::{AgentCowStore, AgentPending};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
+pub use cow_session::CowMountHandle;
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use mount_smoke::{
@@ -1145,7 +1149,18 @@ pub fn mount_with_session(
     }
     #[cfg(windows)]
     {
-        winfsp_mount::mount_blocking(mountpoint, backing, session_id)
+        let handle = std::sync::Arc::new(crate::CowMountHandle::from_options(
+            backing,
+            &InterceptFsOptions {
+                session_id: session_id.to_string(),
+                cow: false,
+                cow_dir: None,
+                agent: None,
+                serialize: true,
+                agents_conf: None,
+            },
+        ));
+        winfsp_mount::mount_blocking(mountpoint, backing, session_id, handle)
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     {

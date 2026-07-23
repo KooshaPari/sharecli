@@ -69,8 +69,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Matrix cell windows_winfsp (loud fail without WinFsp)
-        run: cargo run -p fuse-smoke-runner --locked -- --cell windows_winfsp --json --report-only
+      - name: Install WinFsp (Developer)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi"
+          $msi = "$env:RUNNER_TEMP\winfsp.msi"
+          Invoke-WebRequest -Uri $url -OutFile $msi
+          Start-Process msiexec.exe -Wait -ArgumentList "/i `"$msi`" /qn ADDLOCAL=ALL"
+          Get-ChildItem "C:\Program Files*\WinFsp\bin\winfsp-*.dll" -ErrorAction SilentlyContinue
+      - name: Privileged WinFsp mount smoke
+        shell: pwsh
+        env:
+          SHARECLI_FUSE_MOUNT_SMOKE: '1'
+        run: |
+          cargo run -p sharecli-fuse --locked --bin fuse-mount-smoke
+          if ($LASTEXITCODE -ne 0) {
+            cargo run -p fuse-smoke-runner --locked -- --cell windows_winfsp --json --report-only
+          }
 
   runner-unit:
     name: fuse-smoke-runner unit

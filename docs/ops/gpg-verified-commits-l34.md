@@ -22,18 +22,21 @@ See [`feb-recovery.md`](feb-recovery.md) and [ADR 0006](../adr/0006-feb-harness-
 
 ---
 
-## Diagnosis (current machine as of 2026-07-19)
+## Diagnosis (current machine as of 2026-07-22)
 
 | Fact | Detail |
 |------|--------|
 | GitHub GPG key | `60BC1DAF830B0BC4` for `kooshapari@gmail.com` |
-| Local secret keys | Often only an unrelated ArgisOS key (different key id) |
+| Local secret keys | Often blocked: `gpg` hit `database_open … waiting for lock` (another agent/process holds `~/.gnupg`) |
 | Symptom | Commits push fine but GitHub shows **Unverified** / no Verified badge |
-| Root cause | Signing key ≠ key published on GitHub → identity mismatch |
+| Root cause | Signing key ≠ key published on GitHub → identity mismatch; agents cannot invent Verified |
 
 **Agents cannot invent Verified.** Without the private key that matches GitHub key id
 `60BC1DAF830B0BC4` (or a registered SSH signing key), no agent workflow can produce a
 green Verified badge. Do not fake signatures, strip signing requirements, or skip hooks.
+
+**Operator unblock (interactive Terminal):** close other gpg/agent holders, then run the
+one-time setup below. Prefer SSH signing if the GPG private key is not on this machine.
 
 ---
 
