@@ -26,10 +26,15 @@ pub fn fuse_mount_smoke_enabled() -> bool {
 pub fn force_unmount(mountpoint: &Path) -> std::io::Result<()> {
     #[cfg(target_os = "linux")]
     {
-        let status =
-            std::process::Command::new("fusermount").arg("-uz").arg(mountpoint).status()?;
-        if status.success() {
-            return Ok(());
+        for bin in ["fusermount3", "fusermount"] {
+            match std::process::Command::new(bin)
+                .arg("-uz")
+                .arg(mountpoint)
+                .status()
+            {
+                Ok(status) if status.success() => return Ok(()),
+                _ => continue,
+            }
         }
     }
     #[cfg(target_os = "macos")]

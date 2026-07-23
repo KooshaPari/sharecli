@@ -48,8 +48,10 @@ thegent Python modules remain **recovery donors / temporary shims** until adapte
 ## Remaining (highest leverage)
 
 1. **C04 L34 — GPG Verified commits (operator)** — ruleset `main-signed-commits` (**19181236**) is active; L34 stays **2** until a maintainer-signed commit shows **Verified** on `main`. Operator guide: [`gpg-verified-commits-l34.md`](gpg-verified-commits-l34.md) (see also [`signed-commits.md`](signed-commits.md), [`ruleset-checklist.md`](ruleset-checklist.md)).
-2. **Optional privileged FUSE mount e2e** — opt in with `SHARECLI_FUSE_MOUNT_SMOKE=1`
-   (`tests/fr009_fuse_intercept.rs::fr009_privileged_mount_smoke`; requires macFUSE/libfuse).
+2. **Privileged FUSE mount e2e (matrix)** — prefer `just fuse-smoke` /
+   `mac_host_linux_colima` (no host macFUSE reboot). See
+   [`fuse-mount-smoke-matrix.md`](fuse-mount-smoke-matrix.md). Opt-in cargo test still
+   uses `SHARECLI_FUSE_MOUNT_SMOKE=1` (`fr009_privileged_mount_smoke`).
 3. **C11 L112 — codesign/notarize secrets** — still blocked (zero repo secrets); hard signed dmg/msi path deferred until secrets land ([`codesign-notarize.md`](codesign-notarize.md)).
 
 ## UX / tray note

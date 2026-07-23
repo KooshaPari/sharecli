@@ -1,0 +1,34 @@
+# Dev-only FUSE mount smoke image (AC-009.22).
+# NOT the production serve Containerfile — requires /dev/fuse + SYS_ADMIN.
+# Builds only sharecli-fuse + fuse-mount-smoke binary (fast path).
+
+FROM rust:1.89-bookworm AS builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        fuse3 \
+        libfuse3-dev \
+        pkg-config \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+# Minimal cargo workspace for fuse crate only
+COPY crates/sharecli-fuse/Cargo.toml crates/sharecli-fuse/Cargo.toml
+COPY crates/sharecli-fuse/src crates/sharecli-fuse/src
+# Synthetic workspace so cargo can resolve the package path
+RUN printf '%s\n' \
+  '[workspace]' \
+  'members = ["crates/sharecli-fuse"]' \
+  'resolver = "2"' \
+  > Cargo.toml \
+  && cargo build -p sharecli-fuse --release --bin fuse-mount-smoke
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fuse3 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /src/target/release/fuse-mount-smoke /usr/local/bin/fuse-mount-smoke
+ENV SHARECLI_FUSE_MOUNT_SMOKE=1
+CMD ["fuse-mount-smoke"]

@@ -41,6 +41,23 @@ pub fn default_fuser_config() -> Config {
     config
 }
 
+/// FUSE config for privileged mount smoke / ephemeral mounts.
+///
+/// Omits `AutoUnmount` (and the implied `allow_other`) so smoke works without
+/// `user_allow_other` in `/etc/fuse.conf`. Callers MUST unmount via
+/// [`crate::mount_smoke::force_unmount`] / Drop.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub fn smoke_fuser_config() -> Config {
+    let mut config = Config::default();
+    config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
+    // RootAndOwner → allow_other (needed on Colima/Lima); no AutoUnmount (Drop unmounts).
+    #[cfg(target_os = "linux")]
+    {
+        config.acl = SessionACL::RootAndOwner;
+    }
+    config
+}
+
 /// Mount flags for CLI / hypervisor (`--cow`, `--cow-dir`, …).
 #[derive(Debug, Clone)]
 pub struct FuseMountOptions {

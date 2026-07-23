@@ -203,6 +203,7 @@ members = [
     "crates/sharecli-fuse",
     "crates/sharecli-core",
     "crates/sharecli-thermal-tui",
+    "crates/fuse-smoke-runner",
 ]
 
 # ---------------------------------------------------------------------------
