@@ -49,11 +49,7 @@ fn fr003_spawn_policy_harness_and_permits() {
     assert!(is_build_harness("cmake"));
     assert!(!is_build_harness("node"));
 
-    let cfg = SpawnPolicyConfig {
-        nice_level: 5,
-        max_concurrent_builds: 2,
-        use_sccache: false,
-    };
+    let cfg = SpawnPolicyConfig { nice_level: 5, max_concurrent_builds: 2, use_sccache: false };
     let policy = SpawnPolicy::new(cfg);
     assert_eq!(policy.available_permits(), 2);
     let permit = policy.try_acquire_build_permit().expect("permit");
