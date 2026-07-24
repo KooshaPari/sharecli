@@ -1,5 +1,12 @@
 # AgilePlus worklog — sharecli
 
+## 2026-07-23 (C01 L11 post-#583 coverage pin — 81.17% / FR-003)
+- Status: DONE — pin broad-workspace **81.17%** lines @ `8c68bb5` from Coverage run 30005505196 (`coverage-snapshot-8c68bb5…` artifact); functions **84.17%** · regions **82.74%**; `meets_lines_target: false`
+- Artifacts: `audit/coverage-snapshots/8c68bb5.coverage-snapshot.json`; `TEST_COVERAGE_MATRIX.md` v1.7; pin gates updated; prior `5d8dc08` / `d3cb7c4` snapshots retained
+- Score: L11 stays **3**; C01 **28/30 (93% A)** unchanged (honest pin refresh after #583 climb, not a rubric lift)
+- Note: still below 85% unit gate — do **not** invent a higher percentage
+- FR: FR-003 · C01 L11 · post-#583 / tip after #584 (`8c42dce`)
+
 ## 2026-07-23 (C01 L11 honest coverage pin correction — T-691 / FR-003)
 - Status: DONE — corrected stale **83.48%** @ `d3cb7c4` claim to measured **80.51%** @ `5d8dc08` from Coverage run 29985746034 (`coverage-snapshot-5d8dc08…` artifact)
 - Artifacts: `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json`; `TEST_COVERAGE_MATRIX.md` v1.6; pin gates updated; prior `d3cb7c4` snapshot retained

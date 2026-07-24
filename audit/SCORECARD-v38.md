@@ -38,7 +38,7 @@
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C10 **97% A**; C01/C09 **93% A**.
-- **Wave15:** C10 L99 skeletons (#396) → C10 **35/36 (97% A)**; #399 coverage tests landed; broad pin corrected to measured **80.51%** @ `5d8dc08` (run 29985746034 / post-#580).
+- **Wave15:** C10 L99 skeletons (#396) → C10 **35/36 (97% A)**; #399 coverage tests landed; broad pin refreshed to measured **81.17%** @ `8c68bb5` (run 30005505196 / post-#583; prior **80.51%** @ `5d8dc08`).
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06); C10 dashboard hex drift.
@@ -52,6 +52,13 @@
 Root `audit_scorecard.json` tracks this v38 card. Do not use the legacy Python 30-pillar auto-scan for fleet ranking.
 
 ## Post-audit remediations
+
+### 2026-07-23 (C01 L11 post-#583 coverage pin — 81.17% / FR-003)
+
+- **Pin refresh (not a score lift):** After [#583](https://github.com/KooshaPari/sharecli/pull/583) coverage climb @ `8c68bb5`, Coverage run [30005505196](https://github.com/KooshaPari/sharecli/actions/runs/30005505196) measured **81.17%** lines (40,074 / 32,529 covered); functions **84.17%** · regions **82.74%**; `meets_lines_target: false`.
+- Retained `audit/coverage-snapshots/8c68bb5.coverage-snapshot.json`; updated `TEST_COVERAGE_MATRIX.md` + `tests/c01_coverage_pin_gate.rs` / `tests/c03_l30_agent_readiness_gate.rs`. Prior `5d8dc08` / `d3cb7c4` snapshots kept as historical evidence.
+- **Do not invent a higher %** — L11 stays **3**; C01 stays **28/30 (93% A)**. Broad workspace remains below the 85% unit gate.
+- Base tip: `8c42dce` (post-#584). FR: FR-003 · C01 L11.
 
 ### 2026-07-23 (C01 L11 honest coverage pin correction — FR-003 / T-691)
 

@@ -16,11 +16,11 @@ fn fr003_coverage_matrix_pins_numeric_line_percent() {
         .expect("read TEST_COVERAGE_MATRIX.md");
 
     assert!(
-        matrix.contains("80.51%"),
+        matrix.contains("81.17%"),
         "TEST_COVERAGE_MATRIX must pin measured broad-workspace line coverage"
     );
     assert!(
-        matrix.contains("audit/coverage-snapshots/5d8dc08.coverage-snapshot.json"),
+        matrix.contains("audit/coverage-snapshots/8c68bb5.coverage-snapshot.json"),
         "TEST_COVERAGE_MATRIX must cite retained snapshot artifact path"
     );
 }
@@ -28,19 +28,19 @@ fn fr003_coverage_matrix_pins_numeric_line_percent() {
 /// FR-003 / C01 L11 — retained snapshot is machine-readable and matches the matrix pin.
 #[test]
 fn fr003_coverage_snapshot_artifact_matches_pin() {
-    let path = repo_root().join("audit/coverage-snapshots/5d8dc08.coverage-snapshot.json");
+    let path = repo_root().join("audit/coverage-snapshots/8c68bb5.coverage-snapshot.json");
     let raw = fs::read_to_string(&path).expect("read coverage snapshot artifact");
     let snapshot: serde_json::Value =
         serde_json::from_str(&raw).expect("parse coverage snapshot JSON");
 
     let lines_percent = snapshot["coverage"]["lines"]["percent"].as_f64().expect("lines.percent");
     assert!(
-        (lines_percent - 80.51).abs() < 0.01,
+        (lines_percent - 81.17).abs() < 0.01,
         "snapshot lines.percent must match matrix pin; got {lines_percent}"
     );
 
     let sha = snapshot["source"]["git_sha"].as_str().expect("source.git_sha");
-    assert!(sha.starts_with("5d8dc08"), "snapshot git_sha must match filename pin; got {sha}");
+    assert!(sha.starts_with("8c68bb5"), "snapshot git_sha must match filename pin; got {sha}");
 }
 
 /// FR-003 / C01 L11 — coverage workflow retains compact llvm-cov snapshot artifact.
