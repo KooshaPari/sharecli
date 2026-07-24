@@ -5,8 +5,9 @@
 use std::time::Duration;
 
 use sharecli_ipc::{
-    has_nocache_arg, parse_nocache_args_csv, resolve_operator_queue_priority, should_bypass_coalesce,
-    CachedResult, CoalesceCache, CommandKey, QueuePriority, SlotQueue, DEFAULT_NOCACHE_ARGS,
+    has_nocache_arg, parse_nocache_args_csv, resolve_operator_queue_priority,
+    should_bypass_coalesce, CachedResult, CoalesceCache, CommandKey, QueuePriority, SlotQueue,
+    DEFAULT_NOCACHE_ARGS,
 };
 use tempfile::TempDir;
 
@@ -21,10 +22,7 @@ fn fr003_coalesce_cache_store_hit_and_ttl_miss() {
     assert!(cache.lookup(&key).expect("lookup miss").is_none());
 
     cache
-        .store(
-            &key,
-            &CachedResult { exit_code: 0, stdout: b"ok".to_vec(), stderr: Vec::new() },
-        )
+        .store(&key, &CachedResult { exit_code: 0, stdout: b"ok".to_vec(), stderr: Vec::new() })
         .expect("store");
     let hit = cache.lookup(&key).expect("lookup hit").expect("present");
     assert_eq!(hit.exit_code, 0);
@@ -62,9 +60,7 @@ fn fr003_slot_queue_and_priority_edges() {
     assert_eq!(q.max_concurrent(), 2);
     assert!(q.root().ends_with("q"));
 
-    let v = q
-        .with_slot("lane-a", QueuePriority::Normal, || Ok(99u8))
-        .expect("slot");
+    let v = q.with_slot("lane-a", QueuePriority::Normal, || Ok(99u8)).expect("slot");
     assert_eq!(v, 99);
 
     assert_eq!(QueuePriority::parse("high"), QueuePriority::High);

@@ -37,10 +37,7 @@ fn fr003_write_serialize_stage_commit_discard_and_pending() {
     ws.stage_bytes(&backing, b"again").expect("stage2");
     ws.discard_pending(&backing).expect("discard");
     assert_eq!(fs::read(&backing).expect("unchanged"), b"staged");
-    assert!(matches!(
-        ws.discard_pending(&backing),
-        Err(WriteSerializeError::NoPending(_))
-    ));
+    assert!(matches!(ws.discard_pending(&backing), Err(WriteSerializeError::NoPending(_))));
 }
 
 /// FR-003 / C01 — WriteSerializeMeters formatting + global record helpers.
@@ -57,12 +54,7 @@ fn fr003_write_serialize_meters_format_and_global_records() {
     assert!(after.commits >= before.commits + 1);
     assert!(after.discards >= before.discards + 1);
 
-    let meters = WriteSerializeMeters {
-        passthrough_writes: 3,
-        stages: 2,
-        commits: 1,
-        discards: 1,
-    };
+    let meters = WriteSerializeMeters { passthrough_writes: 3, stages: 2, commits: 1, discards: 1 };
     let section = meters.format_status_section();
     assert!(!section.is_empty());
 }
@@ -80,12 +72,8 @@ fn fr003_agent_cow_store_multi_agent_pending_and_commit() {
     assert!(store.serialize());
     assert_eq!(store.cow_root(), cow.as_path());
 
-    store
-        .stage_bytes(Some("alpha"), &backing, b"alpha-edit")
-        .expect("stage alpha");
-    store
-        .stage_bytes(Some("beta"), &backing, b"beta-edit")
-        .expect("stage beta");
+    store.stage_bytes(Some("alpha"), &backing, b"alpha-edit").expect("stage alpha");
+    store.stage_bytes(Some("beta"), &backing, b"beta-edit").expect("stage beta");
 
     let pending_a = store.pending_for_agent(Some("alpha")).expect("pending a");
     assert!(!pending_a.is_empty());
@@ -96,9 +84,7 @@ fn fr003_agent_cow_store_multi_agent_pending_and_commit() {
     store.commit_pending(Some("alpha"), &backing).expect("commit alpha");
     assert_eq!(fs::read(&backing).expect("committed"), b"alpha-edit");
 
-    let locked = store
-        .with_locked_path(Some("alpha"), &backing, || 42u32)
-        .expect("lock");
+    let locked = store.with_locked_path(Some("alpha"), &backing, || 42u32).expect("lock");
     assert_eq!(locked, 42);
 }
 
