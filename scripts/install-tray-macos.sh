@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# Install ShareCLITray.app to ~/Applications with bundled FFI dylib and IPC sidecar.
+# Install ShareCLITray.app with bundled FFI dylib and IPC sidecar.
+#
+# Usage:
+#   ./scripts/install-tray-macos.sh               # install to ~/Applications (user-scope, no sudo)
+#   ./scripts/install-tray-macos.sh --system      # install to /Applications (requires sudo)
+#
+# Prerequisite: build artifacts present (run `./desktop/build.sh --release` first).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,12 +17,32 @@ TRAY_BIN="$BIN_DIR/ShareCLITray"
 FFI_DYLIB="$TARGET/libsharecli_ffi.dylib"
 IPC_BIN="$TARGET/sharecli-ipc"
 APP_NAME="ShareCLITray.app"
-INSTALL_DIR="${HOME}/Applications"
-APP_PATH="$INSTALL_DIR/$APP_NAME"
+APP_PATH=""
+
+SYSTEM_INSTALL=0
+for arg in "$@"; do
+  case "$arg" in
+    --system) SYSTEM_INSTALL=1 ;;
+    --user)   SYSTEM_INSTALL=0 ;;
+    *) echo "Unknown arg: $arg" >&2; exit 2 ;;
+  esac
+done
+
+if [[ "$SYSTEM_INSTALL" -eq 1 ]]; then
+  INSTALL_DIR="/Applications"
+  APP_PATH="$INSTALL_DIR/$APP_NAME"
+  if [[ ! -w "$INSTALL_DIR" ]]; then
+    echo "Re-running with sudo to write $APP_PATH"
+    exec sudo "$0" --system "$@"
+  fi
+else
+  INSTALL_DIR="${HOME}/Applications"
+  APP_PATH="$INSTALL_DIR/$APP_NAME"
+fi
 
 for f in "$TRAY_BIN" "$FFI_DYLIB" "$IPC_BIN"; do
   if [[ ! -f "$f" ]]; then
-    echo "Missing build artifact: $f (run 'just build-tray-macos' first)" >&2
+    echo "Missing build artifact: $f (run './desktop/build.sh --release' first)" >&2
     exit 1
   fi
 done
@@ -74,4 +100,13 @@ chmod +x "$APP_PATH/Contents/MacOS/ShareCLITray" "$APP_PATH/Contents/Resources/b
 install_name_tool -change "@rpath/libsharecli_ffi.dylib" "@executable_path/../Frameworks/libsharecli_ffi.dylib" \
   "$APP_PATH/Contents/MacOS/ShareCLITray" 2>/dev/null || true
 
+# Code-sign ad-hoc so launchd / Gatekeeper accept on first launch (developer-id
+# signing is preferred for distribution; ad-hoc is enough for local use).
+codesign --force --deep --sign - "$APP_PATH" 2>/dev/null || true
+
 echo "Installed: $APP_PATH"
+if [[ "$SYSTEM_INSTALL" -eq 1 ]]; then
+  echo "  (system-wide; visible in Launchpad, Spotlight)"
+else
+  echo "  (user-scope; visible in ~/Applications). For /Applications, rerun with --system."
+fi
