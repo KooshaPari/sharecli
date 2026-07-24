@@ -129,7 +129,7 @@ struct FuseMountEntry {
     fs: Arc<InterceptFs>,
     backing: PathBuf,
     session_id: String,
-    /// Held for background mounts; `None` while a foreground `mount2` blocks.
+    /// Held for background mounts; `None` while a foreground `mount` blocks.
     _session: Option<BackgroundSession>,
 }
 
@@ -244,8 +244,8 @@ impl FuseSessionRegistry {
 
         if background {
             let session =
-                fuser::spawn_mount2(SharedInterceptFs(Arc::clone(&fs)), mountpoint, &config)
-                    .map_err(|e| anyhow::anyhow!("fuse mount: spawn_mount2 failed: {e}"))?;
+                fuser::spawn_mount(SharedInterceptFs(Arc::clone(&fs)), mountpoint, &config)
+                    .map_err(|e| anyhow::anyhow!("fuse mount: spawn_mount failed: {e}"))?;
             let mut mounts = self.mounts.lock().expect("fuse registry lock");
             mounts.insert(
                 key,
@@ -270,10 +270,10 @@ impl FuseSessionRegistry {
                     },
                 );
             }
-            let result = fuser::mount2(SharedInterceptFs(fs), mountpoint, &config);
+            let result = fuser::mount(SharedInterceptFs(fs), mountpoint, &config);
             let mut mounts = self.mounts.lock().expect("fuse registry lock");
             mounts.remove(&key);
-            result.map_err(|e| anyhow::anyhow!("fuse mount: mount2 ended with error: {e}"))?;
+            result.map_err(|e| anyhow::anyhow!("fuse mount: mount ended with error: {e}"))?;
             Ok(())
         }
     }
