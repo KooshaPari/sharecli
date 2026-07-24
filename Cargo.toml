@@ -55,6 +55,7 @@ sharecli-fuse = { path = "crates/sharecli-fuse" }
 sharecli-sync = { path = "crates/sharecli-sync" }
 # Mesh: Maildir task queue + SmartMerger / WorktreePool (FR-010 CLI)
 sharecli-mesh = { path = "crates/sharecli-mesh" }
+sharecli-session = { path = "crates/sharecli-session" }
 
 # Thermal TUI
 sharecli-thermal-tui = { path = "crates/sharecli-thermal-tui" }
@@ -204,6 +205,7 @@ members = [
     "crates/sharecli-core",
     "crates/sharecli-thermal-tui",
     "crates/fuse-smoke-runner",
+    "crates/sharecli-session",
 ]
 
 # ---------------------------------------------------------------------------
