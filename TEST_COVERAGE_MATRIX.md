@@ -2,7 +2,7 @@
 
 **Project**: sharecli  
 **Document Version**: 1.7
-**Last Updated**: 2026-07-23 (post-#583 coverage pin — 81.17%)
+**Last Updated**: 2026-07-24 (post-#606 coverage re-measure — 81.22%)
 
 ---
 
@@ -16,7 +16,7 @@
 | Test functions in `tests/` | 72 (`#[test]` / `#[tokio::test]`) + #399 lift suites |
 | Unit-ish tests in `src/` + `crates/` | ~1500+ (includes generated/large suites) |
 | Coverage Target | 85% (see `.github/workflows/quality-gate.yml` `COVERAGE_THRESHOLD`) |
-| Current Coverage | **81.17% lines** (broad workspace; see pin below) |
+| Current Coverage | **81.22% lines** (broad workspace; see pin below) |
 
 ---
 
@@ -24,12 +24,12 @@
 
 | Field | Evidence |
 |-------|----------|
-| Source revision | `8c68bb560ae16010c3aecc98db5282224ba5223f` (post-#583 coverage climb) |
-| Retained snapshot | `audit/coverage-snapshots/8c68bb5.coverage-snapshot.json` |
-| Measured line percentage | **81.17%** (40,074 lines; 32,529 covered) |
-| Functions / regions | 84.17% functions · 82.74% regions (same snapshot) |
+| Source revision | `28bfb101ecf4523131cd1dfb71950b46189b9e65` (post-#606 fuser/climb-2 re-measure) |
+| Retained snapshot | CI run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303) |
+| Measured line percentage | **81.22%** (40,392 lines; 32,806 covered) |
+| Functions / regions | 84.17% functions · 82.75% regions (same snapshot) |
 | Meets 85% unit gate? | **No** for broad workspace (`meets_lines_target: false`); PR hard gate uses scoped `--lib` ignores in `quality-gate.yml` |
-| CI artifact parity | Coverage run [30005505196](https://github.com/KooshaPari/sharecli/actions/runs/30005505196) uploaded `coverage-snapshot-8c68bb560ae16010c3aecc98db5282224ba5223f` |
+| CI artifact parity | Coverage run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303) uploaded `coverage-snapshot-28bfb101ecf4523131cd1dfb71950b46189b9e65` |
 
 ### Prior pin (superseded)
 
@@ -38,7 +38,7 @@
 | Prior revision | `5d8dc08928c7258110f8a20c7e0fafd9f474f22e` (post-remeasure / #580) |
 | Prior snapshot | `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` (retained) |
 | Prior line percentage | **80.51%** (40,077 lines; 32,266 covered) |
-| Note | Superseded by post-#583 climb pin **81.17%** @ `8c68bb5` — prior snapshot retained |
+| Note | Superseded by post-#606 re-measure pin **81.22%** @ `28bfb10` — prior snapshot retained |
 
 ### Wave15 / #399 → remeasure → #583 climb (2026-07-22..23)
 
@@ -48,7 +48,7 @@
 | Empty-suite stall | Runs [29872308604](https://github.com/KooshaPari/sharecli/actions/runs/29872308604) / [29967745465](https://github.com/KooshaPari/sharecli/actions/runs/29967745465) failed guard before llvm-cov |
 | Remeasure | [#580](https://github.com/KooshaPari/sharecli/pull/580) fixed `CARGO_TERM_COLOR=never` / empty-suite false positive; run [29985746034](https://github.com/KooshaPari/sharecli/actions/runs/29985746034) produced **80.51%** @ `5d8dc08` |
 | Coverage climb | [#583](https://github.com/KooshaPari/sharecli/pull/583) @ `8c68bb5`; run [30005505196](https://github.com/KooshaPari/sharecli/actions/runs/30005505196) measured **81.17%** lines |
-| Honest action | Pin **81.17%** at `8c68bb5` from CI artifact — do **not** invent a higher percentage |
+| Honest action | Pin **81.22%** at `28bfb10` from CI artifact — do **not** invent a higher percentage |
 
 The compact snapshot records covered/count/percentage totals for lines, functions,
 regions, and branches, plus the source SHA, Actions run ID, 85% target, and whether
@@ -71,7 +71,7 @@ below 85% makes the `unit-tests` job fail. The broader workspace snapshot in
 | Layer | Target | Scope |
 |-------|--------|-------|
 | `quality-gate.yml` | **85% lines** (hard) | `--lib` unit scope with documented filename ignores |
-| `coverage.yml` snapshot | **81.17% lines** (pinned evidence) | `--workspace --all-features` broad measurement |
+| `coverage.yml` snapshot | **81.22% lines** (pinned evidence) | `--workspace --all-features` broad measurement |
 | Codecov `project` | 70% + 1% threshold | `src/**/*.rs` upload from quality-gate LCOV |
 | Codecov `patch` | 80% + 1% threshold | PR diff only |
 
@@ -114,7 +114,7 @@ fleet-visible coverage debt for prioritization.
 | FR-CAST-004 | WezTerm cast | `tests/cast_wezterm.rs` (9) | **Covered** (extension) |
 | FR-CAST-005 | Windows Terminal cast | `tests/cast_winterm.rs` (6) | **Covered** (extension) |
 | — | Coordination helpers | `tests/coordination.rs` (3) | Supporting |
-| — | #399 coverage lift suites | `tests/c01_coverage_lift.rs` (+ related FR-003 surfaces) | **Landed**; broad % pinned at **80.51%** (T-691) |
+| — | #399 coverage lift suites | `tests/c01_coverage_lift.rs` (+ related FR-003 surfaces) | **Landed**; broad % pinned at **81.22%** (post-#606) |
 
 Canonical AC ↔ function map: [`docs/specs/TRACEABILITY.md`](docs/specs/TRACEABILITY.md).  
 Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
@@ -125,7 +125,7 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ### Critical Gaps
 1. Homebrew bottle sha still PLACEHOLDER (`WORK_DAG` Wave4 / C11).
-2. Broad-workspace line coverage **80.51%** is below the 85% unit gate target (gap for prioritization; unit gate unchanged).
+2. Broad-workspace line coverage **81.22%** is below the 85% unit gate target (gap for prioritization; unit gate unchanged).
 
 ---
 
@@ -141,4 +141,4 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ---
 
-**Last Updated**: 2026-07-23 (T-691 honest pin correction — 80.51% @ `5d8dc08`)
+**Last Updated**: 2026-07-24 (T-692 re-measure — 81.22% @ `28bfb10`)
