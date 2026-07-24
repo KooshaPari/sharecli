@@ -19,7 +19,7 @@ Implementation: `print_ps_empty_hint` in `src/commands/mod.rs`. Regression: `tes
 | `first-run` | Connected, snapshot has zero processes, never had rows | No processes yet | `sharecli start <project> <harness>` |
 | `cleared` | Snapshot empty after at least one process was shown | All processes stopped | `sharecli ps` |
 
-Visual fixture (`SHARECLI_VISUAL_FIXTURE=1`) sends `{ "processes": [] }` after WebSocket connect so golden PNGs capture the first-run panel.
+Visual fixture (`SHARECLI_VISUAL_FIXTURE=1`) waits for `data-empty-kind="first-run"` after WebSocket connect (300ms idle timeout) so golden PNGs capture the first-run panel.
 
 ## Acceptance
 
