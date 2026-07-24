@@ -1,7 +1,9 @@
 use std::process::Command;
 use tempfile::TempDir;
 
-fn bin() -> Command { Command::new(env!("CARGO_BIN_EXE_sharecli")) }
+fn bin() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_sharecli"))
+}
 
 #[test]
 fn session_list_accepts_explicit_database() {
