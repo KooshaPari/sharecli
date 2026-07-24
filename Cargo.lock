@@ -4525,7 +4525,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.19",
  "tracing",
- "windows 0.61.3",
+ "windows 0.62.2",
  "winfsp",
  "xattr",
 ]
