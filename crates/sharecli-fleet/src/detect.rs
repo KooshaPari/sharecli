@@ -56,12 +56,13 @@ pub fn match_known_agent(comm: &str, cmdline: &[impl AsRef<str>]) -> Option<&'st
 
 /// Match argv fingerprints when comm/token heuristics did not resolve (AC-006.20).
 fn match_fingerprint_only(cmdline: &[impl AsRef<str>]) -> Option<&'static str> {
-    for (family, _) in CMDLINE_FINGERPRINTS {
+    CMDLINE_FINGERPRINTS.iter().find_map(|(family, _)| {
         if cmdline_has_fingerprint(family, cmdline) {
-            return Some(family);
+            Some(*family)
+        } else {
+            None
         }
-    }
-    None
+    })
 }
 
 fn family_allowed(

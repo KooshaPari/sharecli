@@ -73,10 +73,10 @@ fn fr003_slot_queue_and_priority_edges() {
 /// FR-003 / C01 — nocache argv detection + CSV parse.
 #[test]
 fn fr003_nocache_argv_and_csv_parse() {
-    let argv = ["cargo".into(), "fmt".into(), "--".into(), "--check".into()];
+    let argv = ["cargo", "fmt", "--", "--check"];
     assert!(!should_bypass_coalesce(&argv, DEFAULT_NOCACHE_ARGS));
 
-    let mutating = ["ruff".into(), "check".into(), "--fix".into()];
+    let mutating = ["ruff", "check", "--fix"];
     assert!(should_bypass_coalesce(&mutating, DEFAULT_NOCACHE_ARGS));
     assert!(has_nocache_arg(&mutating, DEFAULT_NOCACHE_ARGS));
 

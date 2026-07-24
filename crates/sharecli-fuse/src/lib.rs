@@ -979,7 +979,7 @@ mod platform {
         // Smoke/ephemeral mounts: no AutoUnmount (avoids allow_other / user_allow_other).
         // Callers and FuseGuard Drop force-unmount explicitly.
         let config = crate::session_registry::smoke_fuser_config();
-        fuser::mount2(fs, mountpoint, &config)?;
+        fuser::mount(fs, mountpoint, &config)?;
         Ok(())
     }
 
@@ -1120,7 +1120,7 @@ pub use platform::InterceptFs;
 
 /// Mount the sharecli FUSE layer at `mountpoint` over `backing`.
 ///
-/// On Linux and macOS this calls `fuser::mount2`; on Windows this uses WinFsp
+/// On Linux and macOS this calls `fuser::mount`; on Windows this uses WinFsp
 /// (AC-009.25). Other platforms return an unsupported-platform error.
 pub fn mount(mountpoint: &Path, backing: &Path) -> anyhow::Result<()> {
     #[cfg(any(target_os = "linux", target_os = "macos", windows))]
