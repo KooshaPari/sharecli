@@ -100,6 +100,27 @@ chmod +x "$APP_PATH/Contents/MacOS/ShareCLITray" "$APP_PATH/Contents/Resources/b
 install_name_tool -change "@rpath/libsharecli_ffi.dylib" "@executable_path/../Frameworks/libsharecli_ffi.dylib" \
   "$APP_PATH/Contents/MacOS/ShareCLITray" 2>/dev/null || true
 
+# SwiftPM linked the tray binary against libsharecli_ffi.dylib with an
+# absolute build-tree path baked into LC_LOAD_DYLIB (because we passed
+# -Ltarget_dir + -lbasename — dyld records the resolved absolute path).
+# Rewrite that absolute path back to the relative @rpath form so the .app is
+# portable and the bundled dylib in Contents/Frameworks resolves correctly.
+install_name_tool -change \
+  "$REPO_ROOT/target/release/libsharecli_ffi.dylib" \
+  "@rpath/libsharecli_ffi.dylib" \
+  "$APP_PATH/Contents/MacOS/ShareCLITray" 2>/dev/null || true
+# Also handle the deps/ path that cargo actually emits:
+install_name_tool -change \
+  "$REPO_ROOT/target/release/deps/libsharecli_ffi.dylib" \
+  "@rpath/libsharecli_ffi.dylib" \
+  "$APP_PATH/Contents/MacOS/ShareCLITray" 2>/dev/null || true
+
+# Rewrite the bundled dylib's own ID so it no longer points at the build tree
+# (prevents dyld warnings when launching from /Applications where the build
+# tree no longer exists or is inaccessible).
+install_name_tool -id "@rpath/libsharecli_ffi.dylib" \
+  "$APP_PATH/Contents/Frameworks/libsharecli_ffi.dylib" 2>/dev/null || true
+
 # Code-sign ad-hoc so launchd / Gatekeeper accept on first launch (developer-id
 # signing is preferred for distribution; ad-hoc is enough for local use).
 codesign --force --deep --sign - "$APP_PATH" 2>/dev/null || true

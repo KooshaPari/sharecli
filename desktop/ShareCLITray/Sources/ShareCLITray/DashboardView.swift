@@ -177,7 +177,7 @@ struct ConfigEditorView: View {
 
                 configSection("Process Pool") {
                     Toggle("Enabled", isOn: $poolEnabled)
-                        .onChange(of: poolEnabled) { v in apply("pool.enabled", value: .bool(v)) }
+                        .onChange(of: poolEnabled) { _, v in apply("pool.enabled", value: .bool(v)) }
                     row("max_per_type", binding: $maxPerType,
                         key: "pool.max_per_type", asInt: true)
                     row("idle_timeout_secs", binding: $idleTimeoutSecs,
@@ -201,7 +201,7 @@ struct ConfigEditorView: View {
                         }
                         .labelsHidden()
                         .frame(width: 120)
-                        .onChange(of: defaultHarness) { v in apply("spawn.default_harness", value: .string(v)) }
+                        .onChange(of: defaultHarness) { _, v in apply("spawn.default_harness", value: .string(v)) }
                     }
                 }
 

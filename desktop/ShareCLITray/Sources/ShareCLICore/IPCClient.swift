@@ -161,12 +161,12 @@ public actor IPCClient {
         self.socketPath = socketPath
     }
 
-    public convenience init() {
+    public static func defaultClient() -> IPCClient {
         let env = ProcessInfo.processInfo.environment["SHARECLI_IPC_SOCK"]
         let defaultPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/sharecli/ipc.sock")
             .path
-        self.init(socketPath: env ?? defaultPath)
+        return IPCClient(socketPath: env ?? defaultPath)
     }
 
     private func nextRequestId() -> Int {

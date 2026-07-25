@@ -18,17 +18,17 @@ let package = Package(
             publicHeadersPath: "."
         ),
 
-        // Main tray + app target
+        // Main tray + app target. Icon resources are bundled into the .app
+        // post-build by scripts/install-tray-macos.sh (which copies
+        // assets/icons/sharecli.icns into Contents/Resources/AppIcon.icns).
+        // We intentionally do NOT declare them here — SwiftPM requires
+        // resources to live inside the package, but icons live one
+        // directory up at sharecli/assets/.
         .executableTarget(
             name: "ShareCLITray",
             dependencies: ["ShareCLICore", "CShareCLIFFI"],
-            path: "Sources/ShareCLITray",
-            resources: [
-                .copy("../../../../assets/icons/sharecli.iconset"),
-                .copy("../../../../assets/icons/sharecli-256x256.png"),
-                .copy("../../../../assets/icons/sharecli-512x512.png"),
-            ]
-            // Link libsharecli_ffi via just build-tray-macos / desktop/build.sh -Xlinker flags.
+            path: "Sources/ShareCLITray"
+            // Link libsharecli_ffi via desktop/build.sh -Xlinker flags.
         ),
 
         // Shared core (IPC client, data models)

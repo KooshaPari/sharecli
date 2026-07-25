@@ -16,7 +16,7 @@ public final class AppState: ObservableObject {
     @Published public var lastError: String?
     @Published public var isConnected: Bool = false
 
-    private let client = IPCClient()
+    private let client = IPCClient.defaultClient()
     private var pollTask: Task<Void, Never>?
 
     public init() {}
@@ -88,4 +88,10 @@ public final class AppState: ObservableObject {
             lastError = "config.set \(key): \(error.localizedDescription)"
         }
     }
+}
+
+public extension Notification.Name {
+    /// Posted on the main thread whenever AppState.refresh() completes
+    /// (carries a HealthSnapshot? as object — nil when IPC disconnected).
+    static let sharecliHealthChanged = Notification.Name("sharecliHealthChanged")
 }
