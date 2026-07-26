@@ -98,6 +98,7 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
             memory_mb: 128,
             project: Some("demo".into()),
             harness: None,
+            start_time: 0,
         }],
         gate: gate.clone(),
         host_watch: host_watch.clone(),
