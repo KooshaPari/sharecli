@@ -151,6 +151,63 @@ public struct StatusSnapshot: Decodable {
     public let watched: Int
     public let gate: GateStatusSnapshot
     public let host_watch: HostResourceWatchJson
+    /// Filesystem path to the sharecli log file (PR 8 of dashboard expansion).
+    /// The Swift tray reads this file directly with tail -F semantics — no
+    /// separate log.tail IPC needed. Tolerant of older sidecar builds that
+    /// don't yet emit log_location (yields a nil live_log_path).
+    public let log_location: String?
+    /// Convenience accessor — `FileManager.tilde`-expanded path or nil.
+    public var live_log_path: URL? {
+        guard let raw = log_location, !raw.isEmpty else { return nil }
+        let fm = FileManager.default
+        let expanded = (raw as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expanded)
+        return fm.fileExists(atPath: url.path) ? url : nil
+    }
+}
+
+/// IPC `pool.effectiveness` envelope (PR 4 of dashboard expansion plan).
+///
+/// Aggregates Hypervisor coalesce cache + SlotQueue counters from
+/// `sharecli_fleet` global atomics. Cheap, snapshot-style — no
+/// per-process scanning.
+public struct CoalesceMetersSnapshot: Decodable, Hashable {
+    public let hits: UInt64
+    public let misses: UInt64
+    public let nocache_runs: UInt64
+
+    public var hitRatePct: Double {
+        let total = hits + misses
+        guard total > 0 else { return 0 }
+        return Double(hits) / Double(total) * 100.0
+    }
+}
+
+public struct SlotQueueMetersSnapshot: Decodable, Hashable {
+    public let acquires: UInt64
+    public let waits: UInt64
+    public let timeouts: UInt64
+}
+
+public struct PoolEffectivenessSnapshot: Decodable, Hashable {
+    public let coalesce: CoalesceMetersSnapshot
+    public let slot_queue: SlotQueueMetersSnapshot
+    public let sampled_at: UInt64
+}
+
+/// IPC `process.cmdline` envelope (PR 5 of dashboard expansion plan).
+///
+/// Returns the full command-line for a given PID, plus the parsed argv
+/// (whitespace-split, naive). `cmdline` is the raw
+/// `/proc/<pid>/cmdline` buffer (NUL-separated, '\n'-joined) so the
+/// tray can render it verbatim. `argv` is the whitespace-split array
+/// for table-friendly display.
+///
+/// On macOS the sidecar returns `cmdline: ""` (no `/proc` filesystem).
+public struct ProcessCmdline: Decodable, Hashable {
+    public let pid: UInt32
+    public let cmdline: String
+    public let argv: [String]
 }
 
 // ---------------------------------------------------------------------------
@@ -229,6 +286,16 @@ public actor IPCClient {
         return snap
     }
 
+    public func poolEffectiveness() async throws -> PoolEffectivenessSnapshot {
+        let resp: IPCResponse<PoolEffectivenessSnapshot> = try await call(
+            method: "pool.effectiveness", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("pool.effectiveness")
+        }
+        return snap
+    }
+
     public func statusSnapshot() async throws -> StatusSnapshot {
         let resp: IPCResponse<StatusSnapshot> = try await call(
             method: "status.snapshot", params: [:]
@@ -237,6 +304,17 @@ public actor IPCClient {
             throw IPCError.nilResult("status.snapshot")
         }
         return snap
+    }
+
+    /// Fetch the command-line + argv for a specific PID.
+    /// Returns `nil` (not throws) if the sidecar returns an empty
+    /// cmdline (process gone, or non-Linux platform).
+    public func fetchCmdline(pid: UInt32) async throws -> ProcessCmdline? {
+        let resp: IPCResponse<ProcessCmdline> = try await call(
+            method: "process.cmdline", params: ["pid": .uint(pid)]
+        )
+        guard let snap = resp.result else { return nil }
+        return snap.cmdline.isEmpty ? nil : snap
     }
 
     public func getConfig() async throws -> Data {

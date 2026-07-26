@@ -22,7 +22,10 @@ use sharecli::monitoring::HostResourceWatchJson;
 use sharecli::runtime::SharedRuntime;
 use sharecli::{ProcessInfo, ProcessPool};
 use sharecli_fleet::thermal::ThermalGovernor;
-use sharecli_fleet::{count_host_agents, gate_status_snapshot, GateStatusSnapshot};
+use sharecli_fleet::{
+    count_host_agents, gate_status_snapshot, global_coalesce_meters, global_slot_queue_meters,
+    CoalesceMeters, GateStatusSnapshot, SlotQueueMeters,
+};
 use tokio::sync::RwLock;
 
 // ---------------------------------------------------------------------------
@@ -146,6 +149,32 @@ pub struct StatusSnapshot {
     pub pool: Option<Box<PoolSnapshot>>,
 }
 
+/// IPC `pool.effectiveness` envelope (PR 4 of dashboard expansion plan).
+///
+/// Aggregates Hypervisor coalesce cache + SlotQueue counters from
+/// `sharecli_fleet` so the dashboard can render pool effectiveness
+/// without having to scan TUI telemetry files.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PoolEffectivenessSnapshot {
+    pub coalesce: CoalesceMeters,
+    pub slot_queue: SlotQueueMeters,
+    pub sampled_at: u64,
+}
+
+/// IPC `process.cmdline` envelope (PR 5 of dashboard expansion plan).
+///
+/// Returns the full command-line for a given PID, plus the parsed argv
+/// (whitespace-split, naive — suitable for display, not execution).
+/// `cmdline` is the raw `/proc/<pid>/cmdline` buffer (NUL-separated,
+/// '\n'-joined) so the tray can render it verbatim. `argv` is the
+/// whitespace-split array for table-friendly display.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ProcessCmdline {
+    pub pid: u32,
+    pub cmdline: String,
+    pub argv: Vec<String>,
+}
+
 /// IPC `monitoring.report` envelope (FR-007 / AC-007.46, pool/status AC-007.72).
 ///
 /// Fleet monitoring fields precede live `gate`, `host_watch`, `pool`, and `status`
@@ -241,6 +270,22 @@ impl Handler {
         })
     }
 
+    /// Read the process command-line for a given PID from `/proc/<pid>/cmdline`.
+    /// Returns an empty `cmdline` (and empty `argv`) if the process is gone
+    /// or the buffer is unreadable. Cross-platform: on macOS the tray
+    /// surveys `sysctl(KERN_PROCARGS2)`; on Linux we read `/proc/<pid>/cmdline`.
+    /// The current implementation is Linux-only — the macOS sidecar returns
+    /// a placeholder here, sufficient for the dashboard's display purposes.
+    async fn capture_process_cmdline(&self, pid: u32) -> Result<ProcessCmdline> {
+        let cmdline = read_proc_cmdline(pid).unwrap_or_default();
+        let argv = if cmdline.is_empty() {
+            Vec::new()
+        } else {
+            cmdline.split_whitespace().map(|s| s.to_string()).collect()
+        };
+        Ok(ProcessCmdline { pid, cmdline, argv })
+    }
+
     pub async fn dispatch(&self, raw: &str) -> Response {
         let req: Request = match serde_json::from_str(raw) {
             Ok(r) => r,
@@ -302,6 +347,11 @@ impl Handler {
                 Ok(serde_json::to_value(snap)?)
             }
 
+            "pool.effectiveness" => {
+                // Constant-time snapshot of sharecli_fleet coalesce + slot queue counters.
+                Ok(serde_json::to_value(self.capture_effectiveness())?)
+            }
+
             "status.snapshot" => {
                 let mut snap = self.capture_status_snapshot().await?;
                 let (gate, host_watch) = capture_gate_host_watch()?;
@@ -320,6 +370,14 @@ impl Handler {
                 let value = &req.params["value"];
                 self.apply_config_patch(key, value).await?;
                 Ok(Value::Bool(true))
+            }
+
+            "process.cmdline" => {
+                let pid = req.params.get("pid")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| anyhow::anyhow!("process.cmdline: missing required `pid` parameter"))?
+                    as u32;
+                Ok(serde_json::to_value(self.capture_process_cmdline(pid).await?)?)
             }
 
             "monitoring.report" => {
@@ -360,6 +418,20 @@ impl Handler {
         }
     }
 
+    /// Sample the latest Hypervisor coalesce + SlotQueue counters
+    /// (PR 4 of dashboard expansion plan). Counters are global atomics
+    /// in `sharecli-fleet`, so this is a constant-time snapshot.
+    fn capture_effectiveness(&self) -> PoolEffectivenessSnapshot {
+        PoolEffectivenessSnapshot {
+            coalesce: global_coalesce_meters(),
+            slot_queue: global_slot_queue_meters(),
+            sampled_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+        }
+    }
+
     /// Apply a dot-path config patch: "runtime.max_memory_mb" → 8192
     async fn apply_config_patch(&self, key: &str, value: &Value) -> Result<()> {
         let mut cfg = self.config.write().await;
@@ -386,5 +458,34 @@ fn set_nested(val: &mut Value, path: &[&str], new: Value) -> Result<(), String> 
             set_nested(entry, &path[1..], new)
         }
         _ => Err(format!("expected object at segment '{}'", path[0])),
+    }
+}
+
+/// Read `/proc/<pid>/cmdline` on Linux (NUL-separated argv).
+/// On macOS, returns `Err` (the platform does not expose a `/proc` filesystem)
+/// — the caller treats that as an empty cmdline.
+///
+/// `Some(non-empty)` ⇒ success.
+/// `Some(empty)`     ⇒ process detached between snapshot & read (treat as "gone").
+/// `None`            ⇒ not available.
+fn read_proc_cmdline(pid: u32) -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        let path = format!("/proc/{pid}/cmdline");
+        let bytes = std::fs::read(&path).ok()?;
+        if bytes.is_empty() {
+            return Some(String::new());
+        }
+        // Replace NULs with spaces and trim trailing whitespace.
+        let s: String = bytes
+            .iter()
+            .map(|b| if *b == 0 { ' ' } else { *b as char })
+            .collect();
+        Some(s.trim_end().to_string())
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = pid;
+        None
     }
 }
