@@ -116,7 +116,8 @@ public struct MonitoringReportSnapshot: Decodable {
     }
 }
 
-public struct AgentProcRow: Decodable, Hashable {
+public struct AgentProcRow: Decodable, Hashable, Identifiable {
+    public var id: UInt32 { pid }
     public let pid: UInt32
     public let family: String
     public let comm: String

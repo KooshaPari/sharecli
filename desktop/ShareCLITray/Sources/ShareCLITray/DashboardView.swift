@@ -15,6 +15,7 @@ struct DashboardView: View {
     enum Section: String, CaseIterable, Identifiable {
         var id: String { rawValue }
         case processes = "Processes"
+        case agents = "Agents"
         case config = "Config"
         case health = "Health"
     }
@@ -30,6 +31,7 @@ struct DashboardView: View {
             Group {
                 switch selection {
                 case .processes: ProcessTableView(state: state)
+                case .agents: AgentsPage(state: state)
                 case .config: ConfigEditorView(state: state)
                 case .health: HealthView(state: state)
                 }
@@ -58,6 +60,7 @@ struct DashboardView: View {
     private func iconName(for sec: Section) -> String {
         switch sec {
         case .processes: return "cpu"
+        case .agents: return "person.2.fill"
         case .config: return "gearshape"
         case .health: return "heart.fill"
         }
