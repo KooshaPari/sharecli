@@ -151,6 +151,19 @@ public struct StatusSnapshot: Decodable {
     public let watched: Int
     public let gate: GateStatusSnapshot
     public let host_watch: HostResourceWatchJson
+    /// Filesystem path to the sharecli log file (PR 8 of dashboard expansion).
+    /// The Swift tray reads this file directly with tail -F semantics — no
+    /// separate log.tail IPC needed. Tolerant of older sidecar builds that
+    /// don't yet emit log_location (yields a nil live_log_path).
+    public let log_location: String?
+    /// Convenience accessor — `FileManager.tilde`-expanded path or nil.
+    public var live_log_path: URL? {
+        guard let raw = log_location, !raw.isEmpty else { return nil }
+        let fm = FileManager.default
+        let expanded = (raw as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expanded)
+        return fm.fileExists(atPath: url.path) ? url : nil
+    }
 }
 
 /// IPC `pool.effectiveness` envelope (PR 4 of dashboard expansion plan).

@@ -701,10 +701,43 @@ async fn run() -> Result<()> {
             .map(|v| v.eq_ignore_ascii_case("json"))
             .unwrap_or(false);
         let filter = tracing_subscriber::filter::LevelFilter::from_level(level);
+        // File-rotation layer for the Logs dashboard (PR 8 of the dashboard
+        // expansion). Default log directory is ~/.sharecli/logs/sharecli.log,
+        // overridable via SHARECLI_LOG_PATH for test/CI isolation. The Swift
+        // tray reads this file directly via the StatusSnapshot.log_location
+        // field — no separate log.tail IPC needed.
+        let log_path: std::path::PathBuf =
+            std::env::var_os("SHARECLI_LOG_PATH")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| {
+                    let home = std::env::var_os("HOME")
+                        .or_else(|| std::env::var_os("USERPROFILE"))
+                        .map(std::path::PathBuf::from)
+                        .unwrap_or_else(|| std::path::PathBuf::from("."));
+                    home.join(".sharecli").join("logs").join("sharecli.log")
+                });
+        if let Some(parent) = log_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        // Wrap the log file path so the layer can re-open the file on demand.
+        let log_path_for_writer = log_path.clone();
+        let file_make_writer = move || -> Box<dyn std::io::Write + Send> {
+            Box::new(
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&log_path_for_writer)
+                    .expect("reopen log file"),
+            )
+        };
         if json {
             let fmt_layer =
-                tracing_subscriber::fmt::layer().json().with_ansi(false).with_filter(filter);
-            let registry = tracing_subscriber::registry().with(fmt_layer);
+                tracing_subscriber::fmt::layer().json().with_ansi(false).with_writer(std::io::stderr).with_filter(filter);
+            let file_layer = tracing_subscriber::fmt::layer()
+                .json()
+                .with_ansi(false)
+                .with_writer(file_make_writer);
+            let registry = tracing_subscriber::registry().with(fmt_layer).with(file_layer);
             if let Some(otel_layer) = crate::otel::try_otel_layer() {
                 registry.with(otel_layer).init();
             } else {
@@ -712,15 +745,18 @@ async fn run() -> Result<()> {
             }
         } else {
             let fmt_layer =
-                tracing_subscriber::fmt::layer().with_ansi(!is_no_color()).with_filter(filter);
-            let registry = tracing_subscriber::registry().with(fmt_layer);
+                tracing_subscriber::fmt::layer().with_ansi(!is_no_color()).with_writer(std::io::stderr).with_filter(filter);
+            let file_layer = tracing_subscriber::fmt::layer()
+                .with_ansi(false)
+                .with_writer(file_make_writer);
+            let registry = tracing_subscriber::registry().with(fmt_layer).with(file_layer);
             if let Some(otel_layer) = crate::otel::try_otel_layer() {
                 registry.with(otel_layer).init();
             } else {
                 registry.init();
             }
         }
-        tracing::debug!(allocator = alloc::active_allocator_label(), "global_allocator");
+        tracing::debug!(path = %log_path.display(), "sharecli log file");
     } else {
         crate::otel::ensure_trace_context_propagator();
     }

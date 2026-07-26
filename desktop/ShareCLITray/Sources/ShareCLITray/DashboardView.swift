@@ -21,6 +21,7 @@ struct DashboardView: View {
         case effectiveness = "Pool effectiveness"
         case config = "Config"
         case health = "Health"
+        case logs = "Logs"
     }
 
     var body: some View {
@@ -39,6 +40,7 @@ struct DashboardView: View {
                 case .effectiveness: PoolEffectivenessPage(state: state)
                 case .config: ConfigPage(state: state)
                 case .health: HealthPage(state: state)
+                case .logs: LogsPage(state: state)
                 }
             }
             .frame(minWidth: 600)
@@ -70,6 +72,7 @@ struct DashboardView: View {
         case .effectiveness: return "chart.line.uptrend.xyaxis"
         case .config: return "gearshape"
         case .health: return "heart.fill"
+        case .logs: return "text.alignleft"
         }
     }
 }
