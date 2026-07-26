@@ -2,8 +2,9 @@
 ///
 /// Navigation sidebar:
 ///   Processes  → live process table with per-row kill + filter by project/harness
+///   Agents     → fleet agent process roster (PR 1)
 ///   Config     → spawn_policy + pool + monitoring config editor with live apply
-///   Health     → memory + process count charts
+///   Health     → Memory / Thermal gate / Host watch (PR 6, subpages in HealthPage)
 
 import SwiftUI
 import ShareCLICore
@@ -33,7 +34,7 @@ struct DashboardView: View {
                 case .processes: ProcessesPage(state: state)
                 case .agents: AgentsPage(state: state)
                 case .config: ConfigEditorView(state: state)
-                case .health: HealthView(state: state)
+                case .health: HealthPage(state: state)
                 }
             }
             .frame(minWidth: 600)
@@ -253,152 +254,5 @@ struct ConfigEditorView: View {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             applyStatus = ""
         }
-    }
-}
-
-// MARK: - Health View
-
-struct HealthView: View {
-    @ObservedObject var state: AppState
-
-    private var gateVisual: TrayGateVisual {
-        if let h = state.health, state.isConnected {
-            return OperatorDisplay.resolveTrayGateVisual(gate: h.gate, connected: true)
-        }
-        return OperatorDisplay.resolveTrayGateVisual(
-            thermalPressure: "UNAVAILABLE",
-            gateDecision: "UNAVAILABLE",
-            connected: false
-        )
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Health")
-                    .font(.largeTitle)
-                    .bold()
-
-                if let h = state.health {
-                    HStack(spacing: 24) {
-                        metricCard(
-                            title: "Managed Processes",
-                            value: "\(h.managed_processes)",
-                            icon: "cpu",
-                            color: .blue
-                        )
-                        metricCard(
-                            title: "Used Memory",
-                            value: "\(h.used_memory_mb) MB",
-                            icon: "memorychip",
-                            color: .orange
-                        )
-                        metricCard(
-                            title: "Total Memory",
-                            value: "\(h.total_memory_mb) MB",
-                            icon: "externaldrive",
-                            color: .gray
-                        )
-                        metricCard(
-                            title: "Thermal Gate",
-                            value: gateVisual.badgeLabel,
-                            icon: gateVisual.swiftSymbolName,
-                            color: gateVisual.swiftColor
-                        )
-                    }
-
-                    // Memory bar
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Memory Utilization")
-                            .font(.headline)
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(.quaternary)
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(h.used_memory_mb > h.total_memory_mb / 2 ? Color.orange : .blue)
-                                    .frame(width: geo.size.width * CGFloat(h.used_memory_mb) / CGFloat(max(h.total_memory_mb, 1)))
-                            }
-                        }
-                        .frame(height: 16)
-                        Text("\(h.used_memory_mb) MB / \(h.total_memory_mb) MB")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.top, 8)
-
-                    if state.isConnected {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                Text("Thermal Gate")
-                                    .font(.headline)
-                                thermalGateBadge
-                            }
-                            Text(OperatorDisplay.formatGateTrayLine(h.gate))
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundStyle(gateVisual.swiftColor)
-                            Text(OperatorDisplay.formatGateRssTrayLine(h.gate))
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(gateVisual.swiftColor.opacity(0.85))
-
-                            Text("Host Resource Watch")
-                                .font(.headline)
-                                .padding(.top, 4)
-                            Text(OperatorDisplay.formatHostWatchTrayLine(h.host_watch))
-                                .font(.system(.body, design: .monospaced))
-                            Text(OperatorDisplay.formatHostNetTrayLine(h.host_watch))
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.top, 8)
-                    }
-
-                    if let pool = state.poolStatus, let status = state.statusSnapshot, state.isConnected {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Pool + Proc Scan")
-                                .font(.headline)
-                                .padding(.top, 4)
-                            ForEach(OperatorDisplay.formatPoolStatusOperatorLines(pool: pool, status: status), id: \.self) { line in
-                                Text(line)
-                                    .font(.system(.body, design: .monospaced))
-                            }
-                        }
-                        .padding(.top, 8)
-                    }
-                } else {
-                    Text(state.isConnected ? "Loading health data…" : "Not connected to sharecli-ipc")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(24)
-        }
-    }
-
-    private var thermalGateBadge: some View {
-        Text(gateVisual.badgeLabel)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .foregroundStyle(gateVisual.swiftColor)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(gateVisual.swiftColor, lineWidth: 1)
-            )
-    }
-
-    private func metricCard(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: icon).foregroundStyle(color)
-                Text(title).font(.caption).foregroundStyle(.secondary)
-            }
-            Text(value)
-                .font(.system(.title2, design: .monospaced))
-                .bold()
-        }
-        .padding(14)
-        .frame(minWidth: 140, alignment: .leading)
-        .background(.quaternary)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
