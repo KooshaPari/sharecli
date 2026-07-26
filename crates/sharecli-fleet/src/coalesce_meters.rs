@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Snapshot of Hypervisor coalesce cache hit/miss counters.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub struct CoalesceMeters {
     /// Results served from cache (lookup, lock-recheck, debounce-recheck).
     pub hits: u64,

@@ -89,7 +89,7 @@ struct HealthPage: View {
 
 /// Standard 4-up summary card used by every subpage. Mirrors the visual
 /// language established by `AgentsPage` / `ProcessesPage`.
-private struct MetricCard: View {
+struct MetricCard: View {
     let title: String
     let value: String
     let sub: String

@@ -22,7 +22,10 @@ use sharecli::monitoring::HostResourceWatchJson;
 use sharecli::runtime::SharedRuntime;
 use sharecli::{ProcessInfo, ProcessPool};
 use sharecli_fleet::thermal::ThermalGovernor;
-use sharecli_fleet::{count_host_agents, gate_status_snapshot, GateStatusSnapshot};
+use sharecli_fleet::{
+    count_host_agents, gate_status_snapshot, global_coalesce_meters, global_slot_queue_meters,
+    CoalesceMeters, GateStatusSnapshot, SlotQueueMeters,
+};
 use tokio::sync::RwLock;
 
 // ---------------------------------------------------------------------------
@@ -144,6 +147,18 @@ pub struct StatusSnapshot {
     /// Runtime pool sibling; only emitted by `status.snapshot` (AC-007.78).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pool: Option<Box<PoolSnapshot>>,
+}
+
+/// IPC `pool.effectiveness` envelope (PR 4 of dashboard expansion plan).
+///
+/// Aggregates Hypervisor coalesce cache + SlotQueue counters from
+/// `sharecli_fleet` so the dashboard can render pool effectiveness
+/// without having to scan TUI telemetry files.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PoolEffectivenessSnapshot {
+    pub coalesce: CoalesceMeters,
+    pub slot_queue: SlotQueueMeters,
+    pub sampled_at: u64,
 }
 
 /// IPC `monitoring.report` envelope (FR-007 / AC-007.46, pool/status AC-007.72).
@@ -302,6 +317,11 @@ impl Handler {
                 Ok(serde_json::to_value(snap)?)
             }
 
+            "pool.effectiveness" => {
+                // Constant-time snapshot of sharecli_fleet coalesce + slot queue counters.
+                Ok(serde_json::to_value(self.capture_effectiveness())?)
+            }
+
             "status.snapshot" => {
                 let mut snap = self.capture_status_snapshot().await?;
                 let (gate, host_watch) = capture_gate_host_watch()?;
@@ -357,6 +377,20 @@ impl Handler {
             }
 
             other => Err(anyhow::anyhow!("unknown method: {other}")),
+        }
+    }
+
+    /// Sample the latest Hypervisor coalesce + SlotQueue counters
+    /// (PR 4 of dashboard expansion plan). Counters are global atomics
+    /// in `sharecli-fleet`, so this is a constant-time snapshot.
+    fn capture_effectiveness(&self) -> PoolEffectivenessSnapshot {
+        PoolEffectivenessSnapshot {
+            coalesce: global_coalesce_meters(),
+            slot_queue: global_slot_queue_meters(),
+            sampled_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
         }
     }
 

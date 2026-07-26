@@ -17,6 +17,8 @@ struct DashboardView: View {
         var id: String { rawValue }
         case processes = "Processes"
         case agents = "Agents"
+        case pool = "Pool"
+        case effectiveness = "Pool effectiveness"
         case config = "Config"
         case health = "Health"
     }
@@ -33,6 +35,8 @@ struct DashboardView: View {
                 switch selection {
                 case .processes: ProcessesPage(state: state)
                 case .agents: AgentsPage(state: state)
+                case .pool: PoolPage(state: state)
+                case .effectiveness: PoolEffectivenessPage(state: state)
                 case .config: ConfigEditorView(state: state)
                 case .health: HealthPage(state: state)
                 }
@@ -62,6 +66,8 @@ struct DashboardView: View {
         switch sec {
         case .processes: return "cpu"
         case .agents: return "person.2.fill"
+        case .pool: return "rectangle.stack.fill"
+        case .effectiveness: return "chart.line.uptrend.xyaxis"
         case .config: return "gearshape"
         case .health: return "heart.fill"
         }

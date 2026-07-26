@@ -153,6 +153,35 @@ public struct StatusSnapshot: Decodable {
     public let host_watch: HostResourceWatchJson
 }
 
+/// IPC `pool.effectiveness` envelope (PR 4 of dashboard expansion plan).
+///
+/// Aggregates Hypervisor coalesce cache + SlotQueue counters from
+/// `sharecli_fleet` global atomics. Cheap, snapshot-style — no
+/// per-process scanning.
+public struct CoalesceMetersSnapshot: Decodable, Hashable {
+    public let hits: UInt64
+    public let misses: UInt64
+    public let nocache_runs: UInt64
+
+    public var hitRatePct: Double {
+        let total = hits + misses
+        guard total > 0 else { return 0 }
+        return Double(hits) / Double(total) * 100.0
+    }
+}
+
+public struct SlotQueueMetersSnapshot: Decodable, Hashable {
+    public let acquires: UInt64
+    public let waits: UInt64
+    public let timeouts: UInt64
+}
+
+public struct PoolEffectivenessSnapshot: Decodable, Hashable {
+    public let coalesce: CoalesceMetersSnapshot
+    public let slot_queue: SlotQueueMetersSnapshot
+    public let sampled_at: UInt64
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -225,6 +254,16 @@ public actor IPCClient {
         )
         guard let snap = resp.result else {
             throw IPCError.nilResult("pool.status")
+        }
+        return snap
+    }
+
+    public func poolEffectiveness() async throws -> PoolEffectivenessSnapshot {
+        let resp: IPCResponse<PoolEffectivenessSnapshot> = try await call(
+            method: "pool.effectiveness", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("pool.effectiveness")
         }
         return snap
     }

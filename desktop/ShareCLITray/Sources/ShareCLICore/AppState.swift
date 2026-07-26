@@ -93,6 +93,7 @@ public final class AppState: ObservableObject {
     @Published public var health: HealthSnapshot?
     @Published public var poolStatus: PoolSnapshot?
     @Published public var statusSnapshot: StatusSnapshot?
+    @Published public var poolEffectiveness: PoolEffectivenessSnapshot?
     @Published public var lastError: String?
     @Published public var isConnected: Bool = false
 
@@ -101,6 +102,11 @@ public final class AppState: ObservableObject {
 
     /// Rolling window of gate decision observations (most recent last).
     @Published public var gateDecisionHistory: [GateDecisionSample] = []
+
+    /// Rolling window of pool effectiveness samples (most recent last).
+    /// Cap mirrors host_watch history; effectiveness samples are cheap to keep.
+    public static let poolEffectivenessHistoryCap = 60
+    @Published public var poolEffectivenessHistory: [PoolEffectivenessSnapshot] = []
 
     private let client = IPCClient.defaultClient()
     private var pollTask: Task<Void, Never>?
@@ -125,11 +131,13 @@ public final class AppState: ObservableObject {
     public func refresh() async {
         do {
             let report = try await client.monitoringReport()
+            let effectiveness = (try? await client.poolEffectiveness())
             let now = Date()
             processes = report.asProcessSummaries()
             health = report.asHealthSnapshot()
             poolStatus = report.pool
             statusSnapshot = report.status
+            poolEffectiveness = effectiveness
             isConnected = true
             lastError = nil
 
@@ -145,6 +153,17 @@ public final class AppState: ObservableObject {
             gateDecisionHistory.append(GateDecisionSample(timestamp: now, gate: report.gate))
             if gateDecisionHistory.count > Self.gateDecisionHistoryCap {
                 gateDecisionHistory.removeFirst(gateDecisionHistory.count - Self.gateDecisionHistoryCap)
+            }
+            // Pool effectiveness rolling window — captured separately because
+            // effectiveness is its own IPC round-trip. Cheap; same cap as
+            // host watch.
+            if let eff = effectiveness {
+                poolEffectivenessHistory.append(eff)
+                if poolEffectivenessHistory.count > Self.poolEffectivenessHistoryCap {
+                    poolEffectivenessHistory.removeFirst(
+                        poolEffectivenessHistory.count - Self.poolEffectivenessHistoryCap
+                    )
+                }
             }
 
             NotificationCenter.default.post(
