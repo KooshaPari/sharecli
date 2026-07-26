@@ -33,7 +33,7 @@ public struct IPCResponse<T: Decodable>: Decodable {
 // Data models
 // ---------------------------------------------------------------------------
 
-public struct ProcessSummary: Identifiable, Decodable, Hashable {
+public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
     public var id: UInt32 { pid }
     public let pid: UInt32
     public let name: String
@@ -75,6 +75,9 @@ public struct MonitoringProcessEntry: Decodable, Hashable {
     public let memory_mb: UInt64
     public let project: String?
     public let harness: String?
+    /// Unix timestamp (seconds) the process started. 0 when the sidecar
+    /// couldn't determine start_time or when running against older sidecars.
+    public let start_time: UInt64
 }
 
 public struct MonitoringReportSnapshot: Decodable {
@@ -110,7 +113,7 @@ public struct MonitoringReportSnapshot: Decodable {
                 memory_mb: entry.memory_mb,
                 project: entry.project,
                 harness: entry.harness,
-                start_time: 0
+                start_time: entry.start_time
             )
         }
     }

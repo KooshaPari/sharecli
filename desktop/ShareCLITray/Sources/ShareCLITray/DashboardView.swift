@@ -30,7 +30,7 @@ struct DashboardView: View {
         } detail: {
             Group {
                 switch selection {
-                case .processes: ProcessTableView(state: state)
+                case .processes: ProcessesPage(state: state)
                 case .agents: AgentsPage(state: state)
                 case .config: ConfigEditorView(state: state)
                 case .health: HealthView(state: state)

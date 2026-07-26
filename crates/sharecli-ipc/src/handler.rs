@@ -102,6 +102,11 @@ pub struct MonitoringProcessEntry {
     pub memory_mb: u64,
     pub project: Option<String>,
     pub harness: Option<String>,
+    /// Unix timestamp (seconds) the process started, as captured by `sysinfo`.
+    /// Used by tray dashboards to render an "Age" column on the Processes page.
+    /// Always 0 if the sidecar couldn't determine start_time.
+    #[serde(default)]
+    pub start_time: u64,
 }
 
 /// IPC `pool.status` envelope (FR-007 / AC-007.67, nested status AC-007.78).
@@ -340,6 +345,7 @@ impl Handler {
                             memory_mb: p.memory_mb,
                             project: p.project.clone(),
                             harness: p.harness.clone(),
+                            start_time: p.start_time,
                         })
                         .collect(),
                     gate,
