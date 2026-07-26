@@ -123,7 +123,7 @@ fn fr003_monitoring_host_watch_and_health_helpers() {
     assert!(stats.is_idle(100));
     assert!(!stats.is_idle(10_000));
     let with_watch = stats.with_resource_watch().expect("resource watch");
-    assert!(with_watch.mem_rss_bytes > 0 || with_watch.fd_count >= 0);
+    assert!(with_watch.mem_rss_bytes > 0 || with_watch.fd_count > 0);
 }
 
 /// FR-003 / C01 — SharedRuntime empty-pool health/status + ProcessPool find filters.
