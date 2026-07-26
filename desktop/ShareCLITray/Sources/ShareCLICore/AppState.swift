@@ -261,6 +261,17 @@ public final class AppState: ObservableObject {
             lastError = "config.set \(key): \(error.localizedDescription)"
         }
     }
+
+    /// Fetch the live config from the sidecar (PR 7 of dashboard expansion plan).
+    /// Returns the raw JSON `Data` — the page parses it for the form + JSON preview.
+    public func getConfig() async -> Data? {
+        do {
+            return try await client.getConfig()
+        } catch {
+            lastError = "config.get: \(error.localizedDescription)"
+            return nil
+        }
+    }
 }
 
 public extension Notification.Name {

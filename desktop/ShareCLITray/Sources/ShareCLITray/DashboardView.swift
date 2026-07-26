@@ -37,7 +37,7 @@ struct DashboardView: View {
                 case .agents: AgentsPage(state: state)
                 case .pool: PoolPage(state: state)
                 case .effectiveness: PoolEffectivenessPage(state: state)
-                case .config: ConfigEditorView(state: state)
+                case .config: ConfigPage(state: state)
                 case .health: HealthPage(state: state)
                 }
             }
@@ -148,117 +148,8 @@ struct ProcessTableView: View {
 }
 
 // MARK: - Config Editor
-
-struct ConfigEditorView: View {
-    @ObservedObject var state: AppState
-
-    // Pool settings
-    @State private var poolEnabled: Bool = true
-    @State private var maxPerType: String = "5"
-    @State private var idleTimeoutSecs: String = "300"
-
-    // Runtime settings
-    @State private var maxMemoryMB: String = "4096"
-    @State private var maxProcesses: String = "100"
-
-    // Monitoring settings
-    @State private var healthCheckInterval: String = "30"
-    @State private var highMemThreshold: String = "4096"
-
-    // Spawn settings
-    @State private var defaultHarness: String = "claude"
-
-    @State private var applyStatus: String = ""
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Configuration")
-                    .font(.largeTitle)
-                    .bold()
-                    .padding(.bottom, 4)
-
-                configSection("Runtime") {
-                    row("max_memory_mb", binding: $maxMemoryMB,
-                        key: "runtime.max_memory_mb", asInt: true)
-                    row("max_processes", binding: $maxProcesses,
-                        key: "runtime.max_processes", asInt: true)
-                }
-
-                configSection("Process Pool") {
-                    Toggle("Enabled", isOn: $poolEnabled)
-                        .onChange(of: poolEnabled) { _, v in apply("pool.enabled", value: .bool(v)) }
-                    row("max_per_type", binding: $maxPerType,
-                        key: "pool.max_per_type", asInt: true)
-                    row("idle_timeout_secs", binding: $idleTimeoutSecs,
-                        key: "pool.idle_timeout_secs", asInt: true)
-                }
-
-                configSection("Monitoring") {
-                    row("health_check_interval_secs", binding: $healthCheckInterval,
-                        key: "monitoring.health_check_interval_secs", asInt: true)
-                    row("high_memory_threshold_mb", binding: $highMemThreshold,
-                        key: "monitoring.high_memory_threshold_mb", asInt: true)
-                }
-
-                configSection("Spawn") {
-                    HStack {
-                        Text("default_harness")
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 200, alignment: .leading)
-                        Picker("", selection: $defaultHarness) {
-                            ForEach(["claude", "forge", "node", "bun"], id: \.self) { Text($0) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 120)
-                        .onChange(of: defaultHarness) { _, v in apply("spawn.default_harness", value: .string(v)) }
-                    }
-                }
-
-                if !applyStatus.isEmpty {
-                    Text(applyStatus)
-                        .font(.caption)
-                        .foregroundStyle(applyStatus.hasPrefix("Error") ? .red : .green)
-                }
-            }
-            .padding(24)
-        }
-    }
-
-    private func configSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Divider()
-            content()
-        }
-    }
-
-    private func row(_ label: String, binding: Binding<String>, key: String, asInt: Bool) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(.body, design: .monospaced))
-                .frame(width: 240, alignment: .leading)
-            TextField("", text: binding)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 120)
-                .onSubmit {
-                    if asInt, let i = Int(binding.wrappedValue) {
-                        apply(key, value: .int(i))
-                    } else {
-                        apply(key, value: .string(binding.wrappedValue))
-                    }
-                }
-        }
-    }
-
-    private func apply(_ key: String, value: AnyCodable) {
-        Task {
-            await state.setConfig(key: key, value: value)
-            applyStatus = "Applied: \(key)"
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            applyStatus = ""
-        }
-    }
-}
+//
+// Removed in PR 7 of the dashboard expansion plan. The new ConfigPage
+// (Sources/ShareCLITray/ConfigPage.swift) replaces it with a live-fetched
+// form + JSON preview + Defaults subpanel. The page is wired into
+// DashboardView.Section.config.
