@@ -66,6 +66,8 @@ pub struct ProcessSummary {
     pub project: Option<String>,
     pub harness: Option<String>,
     pub start_time: u64,
+    #[serde(default)]
+    pub cpu_percent: f32,
 }
 
 impl From<ProcessInfo> for ProcessSummary {
@@ -78,6 +80,7 @@ impl From<ProcessInfo> for ProcessSummary {
             project: p.project,
             harness: p.harness,
             start_time: p.start_time,
+            cpu_percent: p.cpu_percent,
         }
     }
 }
@@ -110,6 +113,13 @@ pub struct MonitoringProcessEntry {
     /// Always 0 if the sidecar couldn't determine start_time.
     #[serde(default)]
     pub start_time: u64,
+    /// CPU utilization percentage reported by `sysinfo` (0..100 * num_cores).
+    /// Requires sysinfo to have collected at least two samples — the first
+    /// refresh after a process start reports 0. Used by tray dashboards to
+    /// render a "CPU %" column on the Processes page. Defaults to 0 for
+    /// backward compatibility with older sidecars.
+    #[serde(default)]
+    pub cpu_percent: f32,
 }
 
 /// IPC `pool.status` envelope (FR-007 / AC-007.67, nested status AC-007.78).
@@ -404,6 +414,7 @@ impl Handler {
                             project: p.project.clone(),
                             harness: p.harness.clone(),
                             start_time: p.start_time,
+                            cpu_percent: p.cpu_percent,
                         })
                         .collect(),
                     gate,

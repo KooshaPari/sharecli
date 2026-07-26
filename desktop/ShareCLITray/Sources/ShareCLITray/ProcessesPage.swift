@@ -387,6 +387,17 @@ struct AllProcessesView: View {
                 }
                 .width(110)
 
+                TableColumn("CPU %", value: \.cpu_percent) { p in
+                    HStack(spacing: 4) {
+                        Text(String(format: "%.1f%%", p.cpu_percent))
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(cpuColor(p.cpu_percent))
+                            .frame(width: 56, alignment: .trailing)
+                        cpuBar(p.cpu_percent)
+                    }
+                }
+                .width(140)
+
                 TableColumn("Age") { p in
                     Text(formatAge(p.start_time))
                         .font(.system(.caption, design: .monospaced))
@@ -418,10 +429,13 @@ struct AllProcessesView: View {
         let selectedRSS = filtered
             .filter { selection.contains($0.pid) }
             .reduce(UInt64(0)) { $0 + $1.memory_mb * 1024 * 1024 }
+        let topCPU = state.processes
+            .max(by: { $0.cpu_percent < $1.cpu_percent })?.cpu_percent ?? 0
         return HStack(spacing: 12) {
             summaryCard("Total", "\(total)", filteredCount == total ? "processes" : "\(filteredCount) shown", .blue)
             summaryCard("Total RSS", ByteCountFormatter.string(fromByteCount: Int64(totalRSSBytes), countStyle: .memory), "fleet", .orange)
             summaryCard("Selected", "\(selection.count)", selection.isEmpty ? "—" : ByteCountFormatter.string(fromByteCount: Int64(selectedRSS), countStyle: .memory), .purple)
+            summaryCard("Top CPU", String(format: "%.1f%%", topCPU), "fleet peak", cpuColor(topCPU))
             summaryCard("Filtered", "\(filteredCount)", "of \(total)", .green)
         }
         .padding(10)
@@ -552,7 +566,7 @@ struct AllProcessesView: View {
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
-        var lines: [String] = ["pid,name,memory_mb,project,harness,start_time,age_seconds"]
+        var lines: [String] = ["pid,name,memory_mb,project,harness,start_time,age_seconds,cpu_percent"]
         let now = UInt64(Date().timeIntervalSince1970)
         for p in filtered {
             let age = p.start_time > 0 ? (now >= p.start_time ? now - p.start_time : 0) : 0
@@ -563,7 +577,8 @@ struct AllProcessesView: View {
                 csvEscape(p.project ?? ""),
                 csvEscape(p.harness ?? ""),
                 "\(p.start_time)",
-                "\(age)"
+                "\(age)",
+                String(format: "%.2f", p.cpu_percent)
             ]
             lines.append(cells.joined(separator: ","))
         }
@@ -596,5 +611,26 @@ struct AllProcessesView: View {
         if mb > 512 { return .orange }
         if mb > 128 { return .yellow }
         return .primary
+    }
+
+    private func cpuColor(_ pct: Float) -> Color {
+        if pct > 90 { return .red }
+        if pct > 60 { return .orange }
+        if pct > 25 { return .yellow }
+        return .secondary
+    }
+
+    private func cpuBar(_ pct: Float) -> some View {
+        let width = max(0, min(1, pct / 100.0))
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(.quaternary)
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(cpuColor(pct).opacity(0.85))
+                    .frame(width: geo.size.width * CGFloat(width))
+            }
+        }
+        .frame(height: 6)
     }
 }

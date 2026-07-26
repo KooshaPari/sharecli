@@ -77,6 +77,10 @@ pub struct ProcessInfo {
     pub cmd: Vec<String>,
     pub memory_mb: u64,
     pub start_time: u64,
+    /// CPU utilization percentage reported by `sysinfo` (0..100 * num_cores).
+    /// Requires sysinfo to have collected at least two samples; the first
+    /// refresh after a process start reports 0.
+    pub cpu_percent: f32,
     pub project: Option<String>,
     pub harness: Option<String>,
 }
@@ -89,6 +93,7 @@ impl ProcessInfo {
             cmd: p.cmd().iter().map(|s| s.to_string_lossy().into_owned()).collect(),
             memory_mb: p.memory() / 1024 / 1024,
             start_time: p.start_time(),
+            cpu_percent: p.cpu_usage(),
             project: None,
             harness: None,
         })
@@ -259,6 +264,7 @@ impl ProcessPool {
             cmd: vec![effective_cmd].into_iter().chain(effective_args).collect(),
             memory_mb: 0,
             start_time: 0,
+            cpu_percent: 0.0,
             project,
             harness,
         };

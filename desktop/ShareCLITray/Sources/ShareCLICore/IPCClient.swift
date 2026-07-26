@@ -42,6 +42,48 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
     public let project: String?
     public let harness: String?
     public let start_time: UInt64
+    /// CPU utilization percentage (0..100 * num_cores). Defaults to 0 when
+    /// the sidecar is older than the cpu_percent IPC extension, or on the
+    /// very first sysinfo sample for a freshly-spawned process. Backed by
+    /// explicit CodingKeys + init(from:) so older sidecars (missing the
+    /// `cpu_percent` key) still decode cleanly.
+    public let cpu_percent: Float
+
+    private enum CodingKeys: String, CodingKey {
+        case pid, name, cmd, memory_mb, project, harness, start_time, cpu_percent
+    }
+
+    public init(
+        pid: UInt32,
+        name: String,
+        cmd: [String],
+        memory_mb: UInt64,
+        project: String? = nil,
+        harness: String? = nil,
+        start_time: UInt64 = 0,
+        cpu_percent: Float = 0
+    ) {
+        self.pid = pid
+        self.name = name
+        self.cmd = cmd
+        self.memory_mb = memory_mb
+        self.project = project
+        self.harness = harness
+        self.start_time = start_time
+        self.cpu_percent = cpu_percent
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        pid        = try c.decode(UInt32.self, forKey: .pid)
+        name       = try c.decode(String.self, forKey: .name)
+        cmd        = try c.decode([String].self, forKey: .cmd)
+        memory_mb  = try c.decode(UInt64.self, forKey: .memory_mb)
+        project    = try c.decodeIfPresent(String.self, forKey: .project)
+        harness    = try c.decodeIfPresent(String.self, forKey: .harness)
+        start_time = try c.decode(UInt64.self, forKey: .start_time)
+        cpu_percent = (try? c.decode(Float.self, forKey: .cpu_percent)) ?? 0
+    }
 }
 
 public struct GateStatusSnapshot: Decodable, Hashable {
@@ -78,6 +120,10 @@ public struct MonitoringProcessEntry: Decodable, Hashable {
     /// Unix timestamp (seconds) the process started. 0 when the sidecar
     /// couldn't determine start_time or when running against older sidecars.
     public let start_time: UInt64
+    /// CPU utilization percentage (0..100 * num_cores). 0 when the sidecar
+    /// is older than the cpu_percent IPC extension, or on the very first
+    /// sysinfo sample for a freshly-spawned process.
+    public let cpu_percent: Float
 }
 
 public struct MonitoringReportSnapshot: Decodable {
@@ -113,7 +159,8 @@ public struct MonitoringReportSnapshot: Decodable {
                 memory_mb: entry.memory_mb,
                 project: entry.project,
                 harness: entry.harness,
-                start_time: entry.start_time
+                start_time: entry.start_time,
+                cpu_percent: entry.cpu_percent
             )
         }
     }
