@@ -182,6 +182,21 @@ public struct PoolEffectivenessSnapshot: Decodable, Hashable {
     public let sampled_at: UInt64
 }
 
+/// IPC `process.cmdline` envelope (PR 5 of dashboard expansion plan).
+///
+/// Returns the full command-line for a given PID, plus the parsed argv
+/// (whitespace-split, naive). `cmdline` is the raw
+/// `/proc/<pid>/cmdline` buffer (NUL-separated, '\n'-joined) so the
+/// tray can render it verbatim. `argv` is the whitespace-split array
+/// for table-friendly display.
+///
+/// On macOS the sidecar returns `cmdline: ""` (no `/proc` filesystem).
+public struct ProcessCmdline: Decodable, Hashable {
+    public let pid: UInt32
+    public let cmdline: String
+    public let argv: [String]
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -276,6 +291,17 @@ public actor IPCClient {
             throw IPCError.nilResult("status.snapshot")
         }
         return snap
+    }
+
+    /// Fetch the command-line + argv for a specific PID.
+    /// Returns `nil` (not throws) if the sidecar returns an empty
+    /// cmdline (process gone, or non-Linux platform).
+    public func fetchCmdline(pid: UInt32) async throws -> ProcessCmdline? {
+        let resp: IPCResponse<ProcessCmdline> = try await call(
+            method: "process.cmdline", params: ["pid": .uint(pid)]
+        )
+        guard let snap = resp.result else { return nil }
+        return snap.cmdline.isEmpty ? nil : snap
     }
 
     public func getConfig() async throws -> Data {

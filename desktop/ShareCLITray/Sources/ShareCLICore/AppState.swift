@@ -108,6 +108,19 @@ public final class AppState: ObservableObject {
     public static let poolEffectivenessHistoryCap = 60
     @Published public var poolEffectivenessHistory: [PoolEffectivenessSnapshot] = []
 
+    /// Per-agent RSS history ring buffer (PR 5 of dashboard expansion plan).
+    /// Each value is an RSS sample in bytes, taken from successive
+    /// `monitoring.report` polls. Capped at `agentRSSHistoryCap` per PID.
+    /// Older entries are evicted FIFO.
+    public static let agentRSSHistoryCap = 60
+    @Published public var agentRSSHistory: [UInt32: [UInt64]] = [:]
+
+    /// Cmdline cache (PR 5 of dashboard expansion plan). Keyed by PID so
+    /// navigating between agents on the Agents page doesn't re-fetch
+    /// the same cmdline. TTL-free for now — the entry stays until the
+    /// PID disappears from the agents list (then we evict).
+    @Published public var cmdlineCache: [UInt32: ProcessCmdline] = [:]
+
     private let client = IPCClient.defaultClient()
     private var pollTask: Task<Void, Never>?
 
@@ -166,6 +179,26 @@ public final class AppState: ObservableObject {
                 }
             }
 
+            // Per-agent RSS history ring buffer (PR 5). Each agent's RSS
+            // is appended to its own per-PID array. New PIDs get a fresh
+            // array; PIDs that have left the agents list have their entry
+            // evicted from the agentRSSHistory map (and their cmdline
+            // cache entry too).
+            let livePIDs = Set(report.status.agents.map { $0.pid })
+            for agent in report.status.agents {
+                var series = agentRSSHistory[agent.pid] ?? []
+                series.append(agent.mem_rss_bytes)
+                if series.count > Self.agentRSSHistoryCap {
+                    series.removeFirst(series.count - Self.agentRSSHistoryCap)
+                }
+                agentRSSHistory[agent.pid] = series
+            }
+            let stalePIDs = Set(agentRSSHistory.keys).subtracting(livePIDs)
+            for pid in stalePIDs {
+                agentRSSHistory.removeValue(forKey: pid)
+                cmdlineCache.removeValue(forKey: pid)
+            }
+
             NotificationCenter.default.post(
                 name: .sharecliHealthChanged,
                 object: health
@@ -199,6 +232,23 @@ public final class AppState: ObservableObject {
             await refresh()
         } catch {
             lastError = "kill_all: \(error.localizedDescription)"
+        }
+    }
+
+    /// Fetch the cmdline for `pid` if not already cached. Returns the
+    /// cached value on subsequent calls. Returns `nil` if the sidecar
+    /// couldn't read the cmdline (process gone, non-Linux platform).
+    public func fetchCmdlineIfNeeded(pid: UInt32) async -> ProcessCmdline? {
+        if let cached = cmdlineCache[pid] { return cached }
+        do {
+            let snap = try await client.fetchCmdline(pid: pid)
+            if let snap = snap {
+                cmdlineCache[pid] = snap
+            }
+            return snap
+        } catch {
+            lastError = "process.cmdline \(pid): \(error.localizedDescription)"
+            return nil
         }
     }
 

@@ -161,6 +161,20 @@ pub struct PoolEffectivenessSnapshot {
     pub sampled_at: u64,
 }
 
+/// IPC `process.cmdline` envelope (PR 5 of dashboard expansion plan).
+///
+/// Returns the full command-line for a given PID, plus the parsed argv
+/// (whitespace-split, naive — suitable for display, not execution).
+/// `cmdline` is the raw `/proc/<pid>/cmdline` buffer (NUL-separated,
+/// '\n'-joined) so the tray can render it verbatim. `argv` is the
+/// whitespace-split array for table-friendly display.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ProcessCmdline {
+    pub pid: u32,
+    pub cmdline: String,
+    pub argv: Vec<String>,
+}
+
 /// IPC `monitoring.report` envelope (FR-007 / AC-007.46, pool/status AC-007.72).
 ///
 /// Fleet monitoring fields precede live `gate`, `host_watch`, `pool`, and `status`
@@ -256,6 +270,22 @@ impl Handler {
         })
     }
 
+    /// Read the process command-line for a given PID from `/proc/<pid>/cmdline`.
+    /// Returns an empty `cmdline` (and empty `argv`) if the process is gone
+    /// or the buffer is unreadable. Cross-platform: on macOS the tray
+    /// surveys `sysctl(KERN_PROCARGS2)`; on Linux we read `/proc/<pid>/cmdline`.
+    /// The current implementation is Linux-only — the macOS sidecar returns
+    /// a placeholder here, sufficient for the dashboard's display purposes.
+    async fn capture_process_cmdline(&self, pid: u32) -> Result<ProcessCmdline> {
+        let cmdline = read_proc_cmdline(pid).unwrap_or_default();
+        let argv = if cmdline.is_empty() {
+            Vec::new()
+        } else {
+            cmdline.split_whitespace().map(|s| s.to_string()).collect()
+        };
+        Ok(ProcessCmdline { pid, cmdline, argv })
+    }
+
     pub async fn dispatch(&self, raw: &str) -> Response {
         let req: Request = match serde_json::from_str(raw) {
             Ok(r) => r,
@@ -342,6 +372,14 @@ impl Handler {
                 Ok(Value::Bool(true))
             }
 
+            "process.cmdline" => {
+                let pid = req.params.get("pid")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| anyhow::anyhow!("process.cmdline: missing required `pid` parameter"))?
+                    as u32;
+                Ok(serde_json::to_value(self.capture_process_cmdline(pid).await?)?)
+            }
+
             "monitoring.report" => {
                 self.pool.refresh().await;
                 let procs = self.pool.list().await;
@@ -420,5 +458,34 @@ fn set_nested(val: &mut Value, path: &[&str], new: Value) -> Result<(), String> 
             set_nested(entry, &path[1..], new)
         }
         _ => Err(format!("expected object at segment '{}'", path[0])),
+    }
+}
+
+/// Read `/proc/<pid>/cmdline` on Linux (NUL-separated argv).
+/// On macOS, returns `Err` (the platform does not expose a `/proc` filesystem)
+/// — the caller treats that as an empty cmdline.
+///
+/// `Some(non-empty)` ⇒ success.
+/// `Some(empty)`     ⇒ process detached between snapshot & read (treat as "gone").
+/// `None`            ⇒ not available.
+fn read_proc_cmdline(pid: u32) -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        let path = format!("/proc/{pid}/cmdline");
+        let bytes = std::fs::read(&path).ok()?;
+        if bytes.is_empty() {
+            return Some(String::new());
+        }
+        // Replace NULs with spaces and trim trailing whitespace.
+        let s: String = bytes
+            .iter()
+            .map(|b| if *b == 0 { ' ' } else { *b as char })
+            .collect();
+        Some(s.trim_end().to_string())
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = pid;
+        None
     }
 }
