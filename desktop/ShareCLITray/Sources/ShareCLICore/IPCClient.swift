@@ -262,11 +262,14 @@ public struct ProcessCmdline: Decodable, Hashable {
 // ---------------------------------------------------------------------------
 
 public actor IPCClient {
-    private let socketPath: String
+    private let _socketPath: String
+    /// Public read-only accessor for the Unix socket path this client
+    /// connects to. Used by the preferences sheet + status bar tooltip.
+    public var socketPath: String { _socketPath }
     private var nextId: Int = 1
 
     public init(socketPath: String) {
-        self.socketPath = socketPath
+        self._socketPath = socketPath
     }
 
     public static func defaultClient() -> IPCClient {
@@ -275,6 +278,18 @@ public actor IPCClient {
             .appendingPathComponent("Library/Application Support/sharecli/ipc.sock")
             .path
         return IPCClient(socketPath: env ?? defaultPath)
+    }
+
+    /// Free helper for views that want the default Unix socket path
+    /// without holding a client reference. Returns the tilde-expanded
+    /// path the tray would use to connect to the sidecar.
+    public static func defaultSocketPath() -> String {
+        let env = ProcessInfo.processInfo.environment["SHARECLI_IPC_SOCK"]
+        let defaultPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/sharecli/ipc.sock")
+            .path
+        let raw = env ?? defaultPath
+        return (raw as NSString).expandingTildeInPath
     }
 
     private func nextRequestId() -> Int {

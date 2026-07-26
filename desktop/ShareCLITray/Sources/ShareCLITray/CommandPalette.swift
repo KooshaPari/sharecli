@@ -1,0 +1,187 @@
+/// CommandPalette.swift — Cmd+K command palette for the dashboard.
+///
+/// SwiftUI sheet that overlays a fuzzy-search list of all navigable
+/// destinations and a curated set of actions (kill all, export, etc).
+/// Submits on Enter; Escape closes via .onKeyPress.
+import SwiftUI
+import ShareCLICore
+
+struct CommandPalette: View {
+    @ObservedObject var state: AppState
+    @Binding var isVisible: Bool
+    let onNavigate: (DashboardView.Section) -> Void
+    let onAction: (CommandAction) -> Void
+
+    @State private var query: String = ""
+    @State private var filtered: [CommandEntry] = []
+    @State private var selectedIndex: Int = 0
+
+    enum CommandAction: Hashable {
+        case refreshAll
+        case killAll
+        case exportProcessesJSON
+        case exportProcessesCSV
+        case clearFilter
+        case showHelp
+        case openLogFile
+        case openPreferences
+    }
+
+    private struct CommandEntry: Identifiable, Hashable {
+        let id: String
+        let title: String
+        let subtitle: String
+        let icon: String
+        enum Kind: Hashable { case navigate(DashboardView.Section), action(CommandAction) }
+        let kind: Kind
+        static func == (lhs: CommandEntry, rhs: CommandEntry) -> Bool { lhs.id == rhs.id }
+        func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    }
+
+    private var allEntries: [CommandEntry] {
+        let nav: [CommandEntry] = DashboardView.Section.allCases.map { sec in
+            CommandEntry(
+                id: "nav-\(sec.rawValue)",
+                title: sec.rawValue,
+                subtitle: sectionSubtitle(sec),
+                icon: sec.icon,
+                kind: .navigate(sec)
+            )
+        }
+        let acts: [CommandEntry] = [
+            .init(id: "act-refresh", title: "Refresh all panels", subtitle: "Force an immediate IPC refresh", icon: "arrow.clockwise", kind: .action(.refreshAll)),
+            .init(id: "act-killall", title: "Kill all processes", subtitle: "Send SIGTERM to every process in the fleet pool", icon: "xmark.octagon.fill", kind: .action(.killAll)),
+            .init(id: "act-json", title: "Export processes (JSON)", subtitle: "Save the current filtered set to JSON", icon: "square.and.arrow.down", kind: .action(.exportProcessesJSON)),
+            .init(id: "act-csv", title: "Export processes (CSV)", subtitle: "Save the current filtered set to CSV", icon: "tablecells", kind: .action(.exportProcessesCSV)),
+            .init(id: "act-clearfilter", title: "Clear all filters", subtitle: "Reset text + family + min-RSS", icon: "line.3.horizontal.decrease.circle", kind: .action(.clearFilter)),
+            .init(id: "act-help", title: "Show keyboard shortcuts", subtitle: "Reference: ⌘1..7 / ⌘R / ⌘K / ⌘W / ⌘/", icon: "keyboard", kind: .action(.showHelp)),
+            .init(id: "act-log", title: "Reveal log file in Finder", subtitle: state.statusSnapshot?.live_log_path?.path ?? "—", icon: "magnifyingglass.circle", kind: .action(.openLogFile)),
+            .init(id: "act-prefs", title: "Open preferences", subtitle: "Refresh interval · log buffer cap · IPC endpoint", icon: "gearshape", kind: .action(.openPreferences)),
+        ]
+        return nav + acts
+    }
+
+    private func sectionSubtitle(_ sec: DashboardView.Section) -> String {
+        switch sec {
+        case .processes: return "All live processes with bulk actions"
+        case .agents: return "Spawned fleet agents"
+        case .pool: return "Runtime pool composition + gate"
+        case .effectiveness: return "Coalesce cache + slot-queue meters"
+        case .config: return "Live config editor + JSON preview"
+        case .health: return "Memory / thermal / host resource watch"
+        case .logs: return "Live log tail with filter + export"
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.42)
+                .ignoresSafeArea()
+                .onTapGesture { isVisible = false }
+            VStack(spacing: 0) {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search pages + actions…", text: $query)
+                        .textFieldStyle(.plain)
+                        .font(.title3)
+                    if !query.isEmpty {
+                        Button {
+                            query = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                    Text("esc")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.quaternary)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .padding(14)
+                Divider()
+                if filtered.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.tertiary)
+                        Text("No matches for \"\(query)\"")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 200)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(Array(filtered.enumerated()), id: \.element.id) { i, entry in
+                                Button {
+                                    submit(entry)
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: entry.icon)
+                                            .frame(width: 22)
+                                            .foregroundStyle(i == selectedIndex ? Color.white : Color.secondary)
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(entry.title)
+                                                .font(.body)
+                                                .foregroundStyle(i == selectedIndex ? Color.white : Color.primary)
+                                            Text(entry.subtitle)
+                                                .font(.caption2)
+                                                .foregroundStyle(i == selectedIndex ? Color.white.opacity(0.7) : Color.secondary)
+                                                .lineLimit(1)
+                                        }
+                                        Spacer()
+                                        if i == selectedIndex {
+                                            Text("↵")
+                                                .font(.caption.monospaced())
+                                                .foregroundStyle(.white.opacity(0.6))
+                                        }
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(i == selectedIndex ? Color.accentColor : Color.clear)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.pressable)
+                            }
+                        }
+                        .padding(8)
+                    }
+                }
+            }
+            .frame(width: 560, height: 380)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.30), radius: 24, y: 8)
+            .onExitCommand { isVisible = false }
+        }
+        .transition(.scale(scale: 0.96).combined(with: .opacity))
+        .onAppear {
+            filtered = allEntries
+        }
+        .onChange(of: query) { _, newValue in
+            let q = newValue.lowercased().trimmingCharacters(in: .whitespaces)
+            if q.isEmpty {
+                filtered = allEntries
+            } else {
+                filtered = allEntries.filter { e in
+                    e.title.lowercased().contains(q)
+                        || e.subtitle.lowercased().contains(q)
+                        || e.icon.contains(q)
+                }
+            }
+            selectedIndex = 0
+        }
+    }
+
+    private func submit(_ entry: CommandEntry) {
+        switch entry.kind {
+        case .navigate(let sec): onNavigate(sec)
+        case .action(let act): onAction(act)
+        }
+        isVisible = false
+    }
+}

@@ -16,6 +16,9 @@ struct DashboardView: View {
     @ObservedObject var state: AppState
     @AppStorage("dashboard.sidebar.selection") private var selectionRaw: String = Section.processes.rawValue
     @AppStorage("dashboard.sidebar.columnWidth") private var sidebarColumnWidth: Double = 168
+    @State private var paletteVisible: Bool = false
+    @State private var helpVisible: Bool = false
+    @State private var prefsVisible: Bool = false
 
     private var selection: Binding<Section> {
         Binding(
@@ -63,6 +66,22 @@ struct DashboardView: View {
             attachShortcutMonitor(window: window)
         })
         .toolbar { toolbar }
+        .overlay {
+            if paletteVisible {
+                CommandPalette(
+                    state: state,
+                    isVisible: $paletteVisible,
+                    onNavigate: { sec in selectionRaw = sec.rawValue },
+                    onAction: { action in handleAction(action) }
+                )
+            }
+        }
+        .sheet(isPresented: $helpVisible) {
+            HelpSheet(isVisible: $helpVisible)
+        }
+        .sheet(isPresented: $prefsVisible) {
+            PreferencesSheet(isVisible: $prefsVisible, state: state)
+        }
         .onAppear {
             // Persist a sensible default if the @AppStorage above was missing.
             if Section(rawValue: selectionRaw) == nil {
@@ -108,6 +127,14 @@ struct DashboardView: View {
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             Button {
+                prefsVisible = true
+            } label: {
+                Label("Preferences", systemImage: "gearshape")
+            }
+            .help("Open preferences (⌘,)")
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button {
                 Task { await state.refresh() }
             } label: {
                 Label("Refresh", systemImage: "arrow.clockwise")
@@ -145,11 +172,51 @@ struct DashboardView: View {
                 Task { await state.refresh() }
                 return nil
             }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "k" {
+                self.paletteVisible.toggle()
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "w" {
+                NSApp.keyWindow?.performClose(nil)
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "/" {
+                self.helpVisible.toggle()
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "," {
+                self.prefsVisible.toggle()
+                return nil
+            }
             return event
         }
         if let window = window, let token = monitor {
             // Keep the monitor alive at least as long as the window.
             objc_setAssociatedObject(window, &Self.monitorKey, token, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+
+    private func handleAction(_ action: CommandPalette.CommandAction) {
+        switch action {
+        case .refreshAll:
+            Task { await state.refresh() }
+        case .killAll:
+            Task { await state.killAll() }
+        case .exportProcessesJSON, .exportProcessesCSV, .clearFilter:
+            // Navigate to Processes page; the user can use the toolbar there.
+            selectionRaw = Section.processes.rawValue
+        case .showHelp:
+            helpVisible = true
+        case .openPreferences:
+            prefsVisible = true
+        case .openLogFile:
+            if let url = state.statusSnapshot?.live_log_path {
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            }
         }
     }
 
