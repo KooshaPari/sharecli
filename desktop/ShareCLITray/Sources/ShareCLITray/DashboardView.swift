@@ -189,17 +189,3 @@ private struct WindowAccessor: NSViewRepresentable {
     }
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
-
-// MARK: - ProcessTableView (kept for backward compat with @AppStorage refs)
-//
-// The legacy single-table ProcessTableView has been superseded by
-// ProcessesPage (PR 2). This minimal stub remains so any leftover
-// Build reference compiles — the only call site (DashboardView switch)
-// now routes to ProcessesPage directly.
-
-struct ProcessTableView: View {
-    @ObservedObject var state: AppState
-    var body: some View {
-        ProcessesPage(state: state)
-    }
-}
