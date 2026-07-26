@@ -361,7 +361,34 @@ struct AllProcessesView: View {
             filterBar
             bulkActionBar
             Divider()
-            Table(filtered, selection: $selection, sortOrder: $sortOrder) {
+            if filtered.isEmpty {
+                EmptyStateView(
+                    icon: "tray",
+                    title: state.processes.isEmpty
+                        ? "No processes yet"
+                        : "No processes match your filter",
+                    subtitle: state.processes.isEmpty
+                        ? "The fleet pool will list registered processes here once the host directory contains bun sockets or any host-tracked CLI processes."
+                        : "Try widening the text filter, lowering the minimum RSS slider, or clearing the filter entirely.",
+                    variant: .hero,
+                    primaryTitle: state.processes.isEmpty ? "Refresh now" : "Clear filter",
+                    primaryIcon: state.processes.isEmpty ? "arrow.clockwise" : "xmark.circle",
+                    primaryAction: {
+                        if state.processes.isEmpty {
+                            Task { await state.refresh() }
+                        } else {
+                            filterText = ""
+                            minRSS = 0
+                        }
+                    },
+                    secondaryTitle: state.processes.isEmpty ? "How does this work?" : nil,
+                    secondaryIcon: "questionmark.circle",
+                    secondaryAction: state.processes.isEmpty ? {
+                        if let url = URL(string: "https://docs.sharecli.dev/processes") { NSWorkspace.shared.open(url) }
+                    } : nil
+                )
+            } else {
+                Table(filtered, selection: $selection, sortOrder: $sortOrder) {
                 TableColumn("PID", value: \.pid) { p in
                     Text("\(p.pid)").font(.system(.body, design: .monospaced))
                 }
@@ -417,6 +444,7 @@ struct AllProcessesView: View {
                 .width(40)
             }
             .frame(minHeight: 240)
+            } // end Table
         }
     }
 

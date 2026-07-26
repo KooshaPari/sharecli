@@ -44,32 +44,49 @@ struct PoolPage: View {
     }
 
     var body: some View {
-        HSplitView {
-            compositionPane
-                .frame(minWidth: 360, idealWidth: 460)
-            issuesOrGatePane
-                .frame(minWidth: 320, idealWidth: 380)
-        }
-        .frame(minWidth: 720, minHeight: 460)
-        .toolbar {
-            ToolbarItem {
-                Picker("", selection: $view) {
-                    ForEach(Subpage.allCases) { v in
-                        Text(v.label).tag(v)
+        if state.poolStatus == nil {
+            EmptyStateView(
+                icon: "rectangle.stack.badge.minus",
+                title: "No pool snapshot yet",
+                subtitle: "The sidecar hasn't reported a pool snapshot. The pool is normally populated within ~1s of the daemon starting — if it's blank for longer, the sharecli-ipc daemon may be down or the socket path is unreachable.",
+                variant: .hero,
+                primaryTitle: "Refresh now",
+                primaryIcon: "arrow.clockwise",
+                primaryAction: { Task { await state.refresh() } },
+                secondaryTitle: "Pool docs",
+                secondaryIcon: "book",
+                secondaryAction: {
+                    if let url = URL(string: "https://docs.sharecli.dev/pool") { NSWorkspace.shared.open(url) }
+                }
+            )
+        } else {
+            HSplitView {
+                compositionPane
+                    .frame(minWidth: 360, idealWidth: 460)
+                issuesOrGatePane
+                    .frame(minWidth: 320, idealWidth: 380)
+            }
+            .frame(minWidth: 720, minHeight: 460)
+            .toolbar {
+                ToolbarItem {
+                    Picker("", selection: $view) {
+                        ForEach(Subpage.allCases) { v in
+                            Text(v.label).tag(v)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 280)
+                    .onChange(of: view) { _, newValue in
+                        viewRaw = newValue.rawValue
                     }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 280)
-                .onChange(of: view) { _, newValue in
-                    viewRaw = newValue.rawValue
-                }
             }
-        }
-        .onAppear {
-            if !didLoadView {
-                view = Subpage(rawValue: viewRaw) ?? .composition
-                didLoadView = true
+            .onAppear {
+                if !didLoadView {
+                    view = Subpage(rawValue: viewRaw) ?? .composition
+                    didLoadView = true
+                }
             }
         }
     }

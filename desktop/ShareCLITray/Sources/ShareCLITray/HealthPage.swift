@@ -51,35 +51,52 @@ struct HealthPage: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("", selection: $subpage) {
-                ForEach(Subpage.allCases) { sp in
-                    Text(sp.label).tag(sp)
+        if state.health == nil {
+            EmptyStateView(
+                icon: "heart.text.square",
+                title: "No health snapshot yet",
+                subtitle: "The health.status IPC hasn't returned. The sidecar emits a new health snapshot every ~2s; if it's blank for longer, the sidecar is hung or the socket is unreachable.",
+                variant: .hero,
+                primaryTitle: "Refresh now",
+                primaryIcon: "arrow.clockwise",
+                primaryAction: { Task { await state.refresh() } },
+                secondaryTitle: "Health docs",
+                secondaryIcon: "book",
+                secondaryAction: {
+                    if let url = URL(string: "https://docs.sharecli.dev/health") { NSWorkspace.shared.open(url) }
+                }
+            )
+        } else {
+            VStack(spacing: 0) {
+                Picker("", selection: $subpage) {
+                    ForEach(Subpage.allCases) { sp in
+                        Text(sp.label).tag(sp)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .onChange(of: subpage) { _, newValue in
+                    subpageRaw = newValue.rawValue
+                }
+
+                Divider()
+
+                switch subpage {
+                case .memory:
+                    MemorySubpage(state: state)
+                case .thermal:
+                    ThermalGateSubpage(state: state)
+                case .hostWatch:
+                    HostWatchSubpage(state: state)
                 }
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .onChange(of: subpage) { _, newValue in
-                subpageRaw = newValue.rawValue
-            }
-
-            Divider()
-
-            switch subpage {
-            case .memory:
-                MemorySubpage(state: state)
-            case .thermal:
-                ThermalGateSubpage(state: state)
-            case .hostWatch:
-                HostWatchSubpage(state: state)
-            }
-        }
-        .frame(minWidth: 720, minHeight: 460)
-        .onAppear {
-            if !didLoadSubpage {
-                subpage = Subpage(rawValue: subpageRaw) ?? .memory
-                didLoadSubpage = true
+            .frame(minWidth: 720, minHeight: 460)
+            .onAppear {
+                if !didLoadSubpage {
+                    subpage = Subpage(rawValue: subpageRaw) ?? .memory
+                    didLoadSubpage = true
+                }
             }
         }
     }

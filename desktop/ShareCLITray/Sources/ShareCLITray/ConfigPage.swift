@@ -38,15 +38,32 @@ struct ConfigPage: View {
     @State private var binRoot: String = ""
 
     var body: some View {
-        HStack(spacing: 0) {
-            formPanel
-            .frame(minWidth: 460, idealWidth: 520)
-            jsonPreviewPanel
-            .frame(minWidth: 360, idealWidth: 420)
-        }
-        .frame(minWidth: 820, minHeight: 480)
-        .task {
-            await loadConfig()
+        if !loading && parsedTree.isEmpty && applyStatus.isEmpty {
+            EmptyStateView(
+                icon: "gearshape.questionmark",
+                title: "Couldn't load config from sidecar",
+                subtitle: "The first config.get call hasn't returned yet, or the sidecar responded with empty. Try refreshing — if the issue persists, the sidecar's config subsystem may be locked or the response envelope is malformed.",
+                variant: .hero,
+                primaryTitle: "Retry load",
+                primaryIcon: "arrow.clockwise",
+                primaryAction: { Task { await loadConfig() } },
+                secondaryTitle: "Open docs",
+                secondaryIcon: "book",
+                secondaryAction: {
+                    if let url = URL(string: "https://docs.sharecli.dev/config") { NSWorkspace.shared.open(url) }
+                }
+            )
+        } else {
+            HStack(spacing: 0) {
+                formPanel
+                .frame(minWidth: 460, idealWidth: 520)
+                jsonPreviewPanel
+                .frame(minWidth: 360, idealWidth: 420)
+            }
+            .frame(minWidth: 820, minHeight: 480)
+            .task {
+                await loadConfig()
+            }
         }
     }
 

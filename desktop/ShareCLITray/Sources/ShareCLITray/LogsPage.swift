@@ -37,7 +37,23 @@ struct LogsPage: View {
     @State private var copyToast: String? = nil
 
     var body: some View {
-        HSplitView {
+        if state.statusSnapshot?.live_log_path == nil {
+            EmptyStateView(
+                icon: "text.alignleft",
+                title: "No log file configured",
+                subtitle: "The sidecar didn't report a log_location. This usually means SHARECLI_LOG_PATH isn't set (or the file isn't writable). Set SHARECLI_LOG_PATH=/path/to/sharecli.log in the sidecar's environment, then restart the daemon.",
+                variant: .hero,
+                primaryTitle: "Refresh now",
+                primaryIcon: "arrow.clockwise",
+                primaryAction: { Task { await state.refresh() } },
+                secondaryTitle: "Logging docs",
+                secondaryIcon: "book",
+                secondaryAction: {
+                    if let url = URL(string: "https://docs.sharecli.dev/logs") { NSWorkspace.shared.open(url) }
+                }
+            )
+        } else {
+            HSplitView {
             // Filter / source / export bar (left side)
             VStack(alignment: .leading, spacing: 12) {
                 Text("Logs")
@@ -125,6 +141,7 @@ struct LogsPage: View {
         .onChange(of: state.statusSnapshot?.live_log_path) { _, _ in
             Task { await startStreaming() }
         }
+        } // end else
     }
 
     // MARK: - Filtering

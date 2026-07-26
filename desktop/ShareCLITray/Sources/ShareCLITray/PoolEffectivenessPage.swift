@@ -29,28 +29,45 @@ struct PoolEffectivenessPage: View {
     @State private var tickTimer: Timer?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                summaryStrip
-                HStack(alignment: .top, spacing: 16) {
-                    coalescePanel
-                    slotQueuePanel
+        if state.poolEffectiveness == nil {
+            EmptyStateView(
+                icon: "chart.line.uptrend.xyaxis",
+                title: "No effectiveness samples yet",
+                subtitle: "Pool effectiveness is reported by the sharecli-fleet hypervisor. Once any worker has made at least one acquire/release/evict, the hit-rate and queue-wait counters will populate here in 5-second sample windows.",
+                variant: .hero,
+                primaryTitle: "Refresh now",
+                primaryIcon: "arrow.clockwise",
+                primaryAction: { Task { await state.refresh() } },
+                secondaryTitle: "What is this?",
+                secondaryIcon: "questionmark.circle",
+                secondaryAction: {
+                    if let url = URL(string: "https://docs.sharecli.dev/effectiveness") { NSWorkspace.shared.open(url) }
                 }
-                glossaryPanel
-                if !state.isConnected {
-                    HStack(spacing: 6) {
-                        Image(systemName: "wifi.slash").foregroundStyle(.orange)
-                        Text(state.lastError ?? "Not connected to sharecli-ipc")
-                            .foregroundStyle(.secondary)
+            )
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    summaryStrip
+                    HStack(alignment: .top, spacing: 16) {
+                        coalescePanel
+                        slotQueuePanel
                     }
-                    .font(.caption)
+                    glossaryPanel
+                    if !state.isConnected {
+                        HStack(spacing: 6) {
+                            Image(systemName: "wifi.slash").foregroundStyle(.orange)
+                            Text(state.lastError ?? "Not connected to sharecli-ipc")
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.caption)
+                    }
                 }
+                .padding(16)
             }
-            .padding(16)
+            .frame(minWidth: 720, minHeight: 460)
+            .onAppear { startTick() }
+            .onDisappear { stopTick() }
         }
-        .frame(minWidth: 720, minHeight: 460)
-        .onAppear { startTick() }
-        .onDisappear { stopTick() }
     }
 
     // MARK: - Summary strip

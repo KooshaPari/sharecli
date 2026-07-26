@@ -91,7 +91,24 @@ struct AgentsPage: View {
         VStack(spacing: 0) {
             summaryStrip
             filterBar
-            agentsTable
+            if allAgents.isEmpty {
+                EmptyStateView(
+                    icon: "person.2.slash",
+                    title: "No agents observed yet",
+                    subtitle: "The /proc scanner hasn't detected any host agents. Once a Claude, Forge, Node, Bun, or other family-compatible process is running on the host, it'll appear here automatically.",
+                    variant: .hero,
+                    primaryTitle: "Refresh now",
+                    primaryIcon: "arrow.clockwise",
+                    primaryAction: { Task { await state.refresh() } },
+                    secondaryTitle: "What are agents?",
+                    secondaryIcon: "questionmark.circle",
+                    secondaryAction: {
+                        if let url = URL(string: "https://docs.sharecli.dev/agents") { NSWorkspace.shared.open(url) }
+                    }
+                )
+            } else {
+                agentsTable
+            }
         }
     }
 
@@ -108,18 +125,24 @@ struct AgentsPage: View {
                 sub: filteredCount == total ? "agents" : "\(filteredCount) shown",
                 color: .blue
             )
+            .animateInOnAppear(delay: 0.0)
+            .hoverGlow()
             summaryCard(
                 title: "Running",
                 value: "\(runningCount)",
                 sub: "in state *run*",
                 color: .green
             )
+            .animateInOnAppear(delay: 0.06)
+            .hoverGlow()
             summaryCard(
                 title: "Total RSS",
                 value: ByteCountFormatter.string(fromByteCount: Int64(totalRSS), countStyle: .memory),
                 sub: "across all agents",
                 color: .orange
             )
+            .animateInOnAppear(delay: 0.12)
+            .hoverGlow()
             summaryCard(
                 title: "Families",
                 value: "\(families.count)",
@@ -127,6 +150,8 @@ struct AgentsPage: View {
                     + (families.count > 3 ? "…" : ""),
                 color: .purple
             )
+            .animateInOnAppear(delay: 0.18)
+            .hoverGlow()
         }
         .padding(10)
         .background(.quaternary.opacity(0.5))
@@ -136,6 +161,8 @@ struct AgentsPage: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption2).foregroundStyle(.secondary)
             Text(value).font(.system(.title3, design: .monospaced)).bold().foregroundStyle(color)
+                .contentTransition(.numericText())
+                .animation(.easeOut(duration: 0.32), value: value)
             Text(sub).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
