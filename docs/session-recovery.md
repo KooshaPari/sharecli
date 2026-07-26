@@ -19,7 +19,7 @@ sharecli session recover             # dry-run
 sharecli session recover --execute   # explicit launch
 ```
 
-The plist assumes Homebrew's `/opt/homebrew/bin/sharecli`; edit
-`ProgramArguments` for another installation path. Ghostty remains the stable
+The plist targets the current Cargo install at `/Users/kooshapari/.cargo/bin/sharecli`;
+edit `ProgramArguments` for another installation path. Ghostty remains the stable
 daily terminal. zmx provides durable PTYs, while a future Ghostty fork may add
 capability-scoped Unix-socket surface control without changing this contract.

@@ -6,7 +6,7 @@
   <string>com.phenotype.sharecli.session-watch</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/opt/homebrew/bin/sharecli</string>
+    <string>/Users/kooshapari/.cargo/bin/sharecli</string>
     <string>session</string>
     <string>watch</string>
     <string>--interval-seconds</string>
