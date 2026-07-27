@@ -1,3 +1,32 @@
+/// One sample of fleet-wide aggregates. Captured per poll and pushed
+/// onto `AppState.fleetHistory`. Used by the Processes page Trends
+/// subpage to draw memory + CPU + process-count sparklines.
+public struct FleetSample: Identifiable, Hashable {
+    public var id: Date { timestamp }
+    public let timestamp: Date
+    public let totalProcesses: Int
+    public let totalMemoryMB: UInt64
+    public let usedMemoryMB: UInt64
+    public let cpuAvgPercent: Float
+    public let poolHealthy: Bool
+
+    public init(
+        timestamp: Date,
+        totalProcesses: Int,
+        totalMemoryMB: UInt64,
+        usedMemoryMB: UInt64,
+        cpuAvgPercent: Float,
+        poolHealthy: Bool
+    ) {
+        self.timestamp = timestamp
+        self.totalProcesses = totalProcesses
+        self.totalMemoryMB = totalMemoryMB
+        self.usedMemoryMB = usedMemoryMB
+        self.cpuAvgPercent = cpuAvgPercent
+        self.poolHealthy = poolHealthy
+    }
+}
+
 /// AppState.swift — Observable state for the tray popover + main window.
 ///
 /// Polls the IPC server on `TrayPoll.intervalSeconds` cadence for live data via a single
@@ -115,13 +144,24 @@ public final class AppState: ObservableObject {
     public static let agentRSSHistoryCap = 60
     @Published public var agentRSSHistory: [UInt32: [UInt64]] = [:]
 
+    /// Fleet-wide aggregate sample (PR 2b of processes-page expansion).
+    /// Captured on every successful poll. Used by the Trends subpage to
+    /// render memory + CPU + process-count sparklines over the last 60
+    /// polls (~3 minutes at the default 3s interval).
+    public static let fleetHistoryCap = 60
+    @Published public var fleetHistory: [FleetSample] = []
+
+    /// IPC client reference (process-page expansion: Spawn subpage needs
+    /// to call process.spawn directly). Kept `public` so views can
+    /// invoke one-shot IPC methods without round-tripping through AppState.
+    public let client: IPCClient = IPCClient.defaultClient()
+
     /// Cmdline cache (PR 5 of dashboard expansion plan). Keyed by PID so
     /// navigating between agents on the Agents page doesn't re-fetch
     /// the same cmdline. TTL-free for now — the entry stays until the
     /// PID disappears from the agents list (then we evict).
     @Published public var cmdlineCache: [UInt32: ProcessCmdline] = [:]
 
-    private let client = IPCClient.defaultClient()
     private var pollTask: Task<Void, Never>?
 
     public init() {}
@@ -197,6 +237,27 @@ public final class AppState: ObservableObject {
             for pid in stalePIDs {
                 agentRSSHistory.removeValue(forKey: pid)
                 cmdlineCache.removeValue(forKey: pid)
+            }
+
+            // Fleet aggregates (PR 2b of processes-page expansion).
+            // Total RSS = sum of all processes' memory_mb. Used RSS =
+            // total minus idle-row-excluded; for now we just use total.
+            let totalRSS = report.processes.reduce(UInt64(0)) { $0 + UInt64($1.memory_mb) * 1024 * 1024 }
+            let avgCPU: Float = report.processes.isEmpty
+                ? 0
+                : report.processes.reduce(Float(0)) { $0 + $1.cpu_percent }
+                  / Float(report.processes.count)
+            let sample = FleetSample(
+                timestamp: now,
+                totalProcesses: report.processes.count,
+                totalMemoryMB: report.processes.reduce(UInt64(0)) { $0 + UInt64($1.memory_mb) },
+                usedMemoryMB: report.processes.reduce(UInt64(0)) { $0 + UInt64($1.memory_mb) },
+                cpuAvgPercent: avgCPU,
+                poolHealthy: report.pool.healthy
+            )
+            fleetHistory.append(sample)
+            if fleetHistory.count > Self.fleetHistoryCap {
+                fleetHistory.removeFirst(fleetHistory.count - Self.fleetHistoryCap)
             }
 
             NotificationCenter.default.post(
