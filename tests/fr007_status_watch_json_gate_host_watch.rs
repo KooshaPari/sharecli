@@ -191,7 +191,7 @@ fn fr007_status_watch_ndjson_gate_order_serializes_fields() {
             load_1m: 1.25,
         },
         pool: None,
-        log_location: None,
+    log_location: None,
     };
     let line = StatusNdjsonLine { ts: 1_700_000_000, snapshot: envelope };
     let json = serde_json::to_string(&line).expect("serialize status watch NDJSON envelope");
