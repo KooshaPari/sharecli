@@ -48,9 +48,26 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
     /// explicit CodingKeys + init(from:) so older sidecars (missing the
     /// `cpu_percent` key) still decode cleanly.
     public let cpu_percent: Float
+    /// Parent PID. nil when unavailable (kernel threads, sandboxed).
+    public let ppid: UInt32?
+    /// Current working directory (best-effort).
+    public let cwd: String?
+    /// Number of env vars on the process.
+    public let env_count: UInt32
+    /// Stable process state enum ("idle" / "run" / "sleep" / "stop" /
+    /// "zombie" / "tracing" / "dead" / "unknown").
+    public let state: String
+    /// Disk read bytes (Linux-only).
+    public let disk_read_bytes: UInt64?
+    /// Disk write bytes (Linux-only).
+    public let disk_write_bytes: UInt64?
+    /// Open FD count (computed via `lsof`).
+    public let fd_count: UInt32?
 
     private enum CodingKeys: String, CodingKey {
-        case pid, name, cmd, memory_mb, project, harness, start_time, cpu_percent
+        case pid, name, cmd, memory_mb, project, harness, start_time
+        case cpu_percent, ppid, cwd, env_count, state
+        case disk_read_bytes, disk_write_bytes, fd_count
     }
 
     public init(
@@ -61,7 +78,14 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
         project: String? = nil,
         harness: String? = nil,
         start_time: UInt64 = 0,
-        cpu_percent: Float = 0
+        cpu_percent: Float = 0,
+        ppid: UInt32? = nil,
+        cwd: String? = nil,
+        env_count: UInt32 = 0,
+        state: String = "unknown",
+        disk_read_bytes: UInt64? = nil,
+        disk_write_bytes: UInt64? = nil,
+        fd_count: UInt32? = nil
     ) {
         self.pid = pid
         self.name = name
@@ -71,6 +95,13 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
         self.harness = harness
         self.start_time = start_time
         self.cpu_percent = cpu_percent
+        self.ppid = ppid
+        self.cwd = cwd
+        self.env_count = env_count
+        self.state = state
+        self.disk_read_bytes = disk_read_bytes
+        self.disk_write_bytes = disk_write_bytes
+        self.fd_count = fd_count
     }
 
     public init(from decoder: Decoder) throws {
@@ -83,6 +114,13 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
         harness    = try c.decodeIfPresent(String.self, forKey: .harness)
         start_time = try c.decode(UInt64.self, forKey: .start_time)
         cpu_percent = (try? c.decode(Float.self, forKey: .cpu_percent)) ?? 0
+        ppid        = try c.decodeIfPresent(UInt32.self, forKey: .ppid)
+        cwd         = try c.decodeIfPresent(String.self, forKey: .cwd)
+        env_count   = (try? c.decode(UInt32.self, forKey: .env_count)) ?? 0
+        state       = (try? c.decode(String.self, forKey: .state)) ?? "unknown"
+        disk_read_bytes  = try c.decodeIfPresent(UInt64.self, forKey: .disk_read_bytes)
+        disk_write_bytes = try c.decodeIfPresent(UInt64.self, forKey: .disk_write_bytes)
+        fd_count    = try c.decodeIfPresent(UInt32.self, forKey: .fd_count)
     }
 }
 
@@ -124,6 +162,26 @@ public struct MonitoringProcessEntry: Decodable, Hashable {
     /// is older than the cpu_percent IPC extension, or on the very first
     /// sysinfo sample for a freshly-spawned process.
     public let cpu_percent: Float
+    /// Parent PID for tree view. `nil` for kernel threads or when the
+    /// platform couldn't resolve one (e.g. macOS sandboxed process).
+    public let ppid: UInt32?
+    /// Current working directory (best-effort). Empty on platforms where
+    /// the kernel doesn't expose it.
+    public let cwd: String?
+    /// Count of environment variables on the process. Cross-platform
+    /// (computed from `sysinfo::Process::environ().len()`).
+    public let env_count: UInt32
+    /// Process state mapped through `ProcState` for stable serialization.
+    public let state: String
+    /// Total bytes read from disk. Linux-only (via
+    /// `disk_usage().total_read_bytes`); `nil` on macOS/Windows.
+    public let disk_read_bytes: UInt64?
+    /// Total bytes written to disk. Linux-only.
+    public let disk_write_bytes: UInt64?
+    /// Open file descriptor count. Computed cross-platform via
+    /// `lsof -p <pid>` (macOS/Linux); `nil` if lsof is unavailable or the
+    /// sidecar lacks permission.
+    public let fd_count: UInt32?
 }
 
 public struct MonitoringReportSnapshot: Decodable {
@@ -160,7 +218,14 @@ public struct MonitoringReportSnapshot: Decodable {
                 project: entry.project,
                 harness: entry.harness,
                 start_time: entry.start_time,
-                cpu_percent: entry.cpu_percent
+                cpu_percent: entry.cpu_percent,
+                ppid: entry.ppid,
+                cwd: entry.cwd,
+                env_count: entry.env_count,
+                state: entry.state,
+                disk_read_bytes: entry.disk_read_bytes,
+                disk_write_bytes: entry.disk_write_bytes,
+                fd_count: entry.fd_count
             )
         }
     }
@@ -255,6 +320,48 @@ public struct ProcessCmdline: Decodable, Hashable {
     public let pid: UInt32
     public let cmdline: String
     public let argv: [String]
+}
+
+// MARK: - Per-process detail IPC (process.fdcount, process.io)
+
+public struct ProcessFdcountResult: Decodable, Hashable {
+    public let pid: UInt32
+    public let fd_count: UInt32?
+    public let sampled_at: UInt64
+    public let note: String?
+}
+
+public struct ProcessIoResult: Decodable, Hashable {
+    public let pid: UInt32
+    public let disk_read_bytes: UInt64?
+    public let disk_write_bytes: UInt64?
+    public let sampled_at: UInt64
+    public let note: String?
+}
+
+// MARK: - Tree view (process.tree)
+
+public struct ProcessTreeNode: Decodable, Hashable, Identifiable {
+    public var id: UInt32 { pid }
+    public let pid: UInt32
+    public let name: String
+    public let children: [ProcessTreeNode]
+}
+
+// MARK: - Spawn (process.spawn)
+
+public struct ProcessSpawnPayload: Encodable {
+    public let name: String
+    public let command: String
+    public let args: [String]
+    public let project: String?
+    public let harness: String?
+}
+
+public struct ProcessSpawnResult: Decodable, Hashable {
+    public let pid: UInt32
+    public let success: Bool
+    public let error: String?
 }
 
 // ---------------------------------------------------------------------------
@@ -377,6 +484,51 @@ public actor IPCClient {
         )
         guard let snap = resp.result else { return nil }
         return snap.cmdline.isEmpty ? nil : snap
+    }
+
+    /// Per-process FD count (cross-platform via `lsof`).
+    /// Returns `fd_count: nil` + a `note` if the sidecar couldn't read it.
+    public func fetchFdcount(pid: UInt32) async throws -> ProcessFdcountResult {
+        let resp: IPCResponse<ProcessFdcountResult> = try await call(
+            method: "process.fdcount", params: ["pid": .uint(pid)]
+        )
+        guard let snap = resp.result else { throw IPCError.nilResult("process.fdcount") }
+        return snap
+    }
+
+    /// Per-process disk I/O bytes (Linux-only).
+    /// Returns `disk_read_bytes: nil` + a `note` if not available.
+    public func fetchIo(pid: UInt32) async throws -> ProcessIoResult {
+        let resp: IPCResponse<ProcessIoResult> = try await call(
+            method: "process.io", params: ["pid": .uint(pid)]
+        )
+        guard let snap = resp.result else { throw IPCError.nilResult("process.io") }
+        return snap
+    }
+
+    /// Fetch a flat tree of the process fleet (parent → children).
+    public func fetchProcessTree() async throws -> ProcessTreeNode? {
+        let resp: IPCResponse<ProcessTreeNode> = try await call(
+            method: "process.tree", params: [:]
+        )
+        return resp.result
+    }
+
+    /// Spawn a new process in the pool. The sidecar returns the assigned PID
+    /// on success, or `success: false` with `error` populated.
+    public func spawn(payload: ProcessSpawnPayload) async throws -> ProcessSpawnResult {
+        let resp: IPCResponse<ProcessSpawnResult> = try await call(
+            method: "process.spawn",
+            params: [
+                "name": .string(payload.name),
+                "command": .string(payload.command),
+                "args": .array(payload.args.map { .string($0) }),
+                "project": payload.project.map(AnyCodable.string) ?? .null,
+                "harness": payload.harness.map(AnyCodable.string) ?? .null
+            ]
+        )
+        guard let snap = resp.result else { throw IPCError.nilResult("process.spawn") }
+        return snap
     }
 
     public func getConfig() async throws -> Data {
