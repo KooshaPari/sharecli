@@ -20,6 +20,7 @@ use sharecli::commands::proc::{AgentProcRow, AgentProcSnapshot};
 use sharecli::config::Config;
 use sharecli::monitoring::HostResourceWatchJson;
 use sharecli::runtime::SharedRuntime;
+use sharecli::runtime::ProcState;
 use sharecli::{ProcessInfo, ProcessPool};
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
@@ -40,10 +41,37 @@ pub struct Request {
     pub params: Value,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Response {
     pub id: u64,
     pub result: Value,
+    #[serde(default)]
+    pub error: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ProcessSpawnPayload {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub command: String,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub project: Option<String>,
+    #[serde(default)]
+    pub harness: Option<String>,
+    #[serde(default)]
+    pub parent: Option<u32>,
+    #[serde(default)]
+    pub state: Option<ProcState>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ProcessSpawnResult {
+    pub pid: u32,
+    pub success: bool,
+    #[serde(default)]
     pub error: Option<String>,
 }
 
@@ -68,6 +96,18 @@ pub struct ProcessSummary {
     pub start_time: u64,
     #[serde(default)]
     pub cpu_percent: f32,
+    #[serde(default)]
+    pub ppid: Option<u32>,
+    #[serde(default)]
+    pub cwd: Option<String>,
+    #[serde(default)]
+    pub env_count: u32,
+    #[serde(default)]
+    pub state: ProcState,
+    #[serde(default)]
+    pub disk_read_bytes: Option<u64>,
+    #[serde(default)]
+    pub disk_write_bytes: Option<u64>,
 }
 
 impl From<ProcessInfo> for ProcessSummary {
@@ -81,6 +121,12 @@ impl From<ProcessInfo> for ProcessSummary {
             harness: p.harness,
             start_time: p.start_time,
             cpu_percent: p.cpu_percent,
+            ppid: p.ppid,
+            cwd: p.cwd,
+            env_count: p.env_count,
+            state: p.state,
+            disk_read_bytes: p.disk_read_bytes,
+            disk_write_bytes: p.disk_write_bytes,
         }
     }
 }
@@ -120,6 +166,32 @@ pub struct MonitoringProcessEntry {
     /// backward compatibility with older sidecars.
     #[serde(default)]
     pub cpu_percent: f32,
+    /// Parent PID for the tree view. `None` for kernel threads or when the
+    /// platform extension couldn't resolve a parent (e.g. macOS sandbox).
+    #[serde(default)]
+    pub ppid: Option<u32>,
+    /// Current working directory (best-effort). Empty on platforms where the
+    /// kernel doesn't expose it.
+    #[serde(default)]
+    pub cwd: Option<String>,
+    /// Number of environment variables. Cross-platform (computed from
+    /// `sysinfo::Process::environ().len()`).
+    #[serde(default)]
+    pub env_count: u32,
+    /// Process state mapped through `ProcState` for stable serialisation.
+    #[serde(default)]
+    pub state: ProcState,
+    /// Total bytes read from disk (Linux-only via `disk_usage().total_read_bytes`).
+    #[serde(default)]
+    pub disk_read_bytes: Option<u64>,
+    /// Total bytes written to disk (Linux-only).
+    #[serde(default)]
+    pub disk_write_bytes: Option<u64>,
+    /// Open file descriptor count. Computed cross-platform via `lsof -p <pid>`
+    /// (macOS/Linux); `None` if the sidecar doesn't have permission to query
+    /// or `lsof` is unavailable.
+    #[serde(default)]
+    pub fd_count: Option<u32>,
 }
 
 /// IPC `pool.status` envelope (FR-007 / AC-007.67, nested status AC-007.78).
@@ -390,6 +462,71 @@ impl Handler {
                 Ok(serde_json::to_value(self.capture_process_cmdline(pid).await?)?)
             }
 
+            "process.io" => {
+                let pid = req.params.get("pid")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| anyhow::anyhow!("process.io: missing required `pid` parameter"))?
+                    as u32;
+                self.pool.refresh().await;
+                let procs = self.pool.list().await;
+                let p = procs.iter().find(|p| p.pid == pid);
+                let disk_read = p.and_then(|p| p.disk_read_bytes);
+                let disk_write = p.and_then(|p| p.disk_write_bytes);
+                let fd_count = count_open_fds(pid);
+                let source = if disk_read.is_some() && disk_write.is_some() {
+                    "linux_sysinfo"
+                } else if fd_count.is_some() {
+                    "lsof"
+                } else if disk_read.is_some() || disk_write.is_some() {
+                    "linux_sysinfo_partial"
+                } else {
+                    "unavailable"
+                };
+                Ok(serde_json::to_value(ProcessIoSnapshot {
+                    pid,
+                    disk_read_bytes: disk_read,
+                    disk_write_bytes: disk_write,
+                    fd_count,
+                    source,
+                })?)
+            }
+
+            "process.spawn" => {
+                let cmd = req.params.get("cmd")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow::anyhow!("process.spawn: missing required `cmd` parameter"))?
+                    .to_string();
+                let args: Vec<String> = req.params.get("args")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect())
+                    .unwrap_or_default();
+                let cwd: Option<std::path::PathBuf> = req.params.get("cwd")
+                    .and_then(|v| v.as_str())
+                    .map(std::path::PathBuf::from);
+                let project = req.params.get("project")
+                    .and_then(|v| v.as_str()).map(|s| s.to_string());
+                let harness = req.params.get("harness")
+                    .and_then(|v| v.as_str()).map(|s| s.to_string());
+                match self.pool.spawn(&cmd, &args, cwd, project.clone(), harness.clone()).await {
+                    Ok(info) => Ok(serde_json::to_value(SpawnResultJson {
+                        pid: info.pid,
+                        cmd: info.cmd.clone(),
+                        project: info.project,
+                        harness: info.harness,
+                        success: true,
+                        error: None,
+                    })?),
+                    Err(e) => Ok(serde_json::to_value(SpawnResultJson {
+                        pid: 0,
+                        cmd: vec![cmd],
+                        project,
+                        harness,
+                        success: false,
+                        error: Some(format!("{e}")),
+                    })?),
+                }
+            }
+
             "monitoring.report" => {
                 self.pool.refresh().await;
                 let procs = self.pool.list().await;
@@ -407,14 +544,24 @@ impl Handler {
                     total_memory_mb: total,
                     processes: procs
                         .iter()
-                        .map(|p| MonitoringProcessEntry {
-                            pid: p.pid,
-                            name: p.name.clone(),
-                            memory_mb: p.memory_mb,
-                            project: p.project.clone(),
-                            harness: p.harness.clone(),
-                            start_time: p.start_time,
-                            cpu_percent: p.cpu_percent,
+                        .map(|p| {
+                            let fd_count = count_open_fds(p.pid);
+                            MonitoringProcessEntry {
+                                pid: p.pid,
+                                name: p.name.clone(),
+                                memory_mb: p.memory_mb,
+                                project: p.project.clone(),
+                                harness: p.harness.clone(),
+                                start_time: p.start_time,
+                                cpu_percent: p.cpu_percent,
+                                ppid: p.ppid,
+                                cwd: p.cwd.clone(),
+                                env_count: p.env_count,
+                                state: p.state,
+                                disk_read_bytes: p.disk_read_bytes,
+                                disk_write_bytes: p.disk_write_bytes,
+                                fd_count,
+                            }
                         })
                         .collect(),
                     gate,
@@ -499,4 +646,78 @@ fn read_proc_cmdline(pid: u32) -> Option<String> {
         let _ = pid;
         None
     }
+}
+
+/// Count open file descriptors for `pid`. Cross-platform: macOS + Linux
+/// both ship `lsof`; falls back to `/proc/<pid>/fd` on Linux for a
+/// faster in-process count when available. Returns `None` if neither
+/// path is reachable (process gone, no permission, `lsof` missing).
+fn count_open_fds(pid: u32) -> Option<u32> {
+    #[cfg(target_os = "linux")]
+    {
+        // Fast path: /proc/<pid>/fd is a directory of symlinks; counting
+        // its entries via read_dir avoids spawning a child process.
+        if let Ok(read) = std::fs::read_dir(format!("/proc/{pid}/fd")) {
+            let count = read
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_name() != "0") // exclude the dir itself
+                .count() as u32;
+            return Some(count);
+        }
+    }
+    // Fallback: shell out to lsof -p <pid> -F f | wc -l.
+    // lsof is in /usr/sbin on macOS (not on PATH for some shells) — call via
+    // absolute path so this works in any environment.
+    let lsof_paths: &[&str] = &["/usr/sbin/lsof", "/usr/bin/lsof", "/bin/lsof"];
+    for path in lsof_paths {
+        if !std::path::Path::new(path).exists() {
+            continue;
+        }
+        let output = std::process::Command::new(path)
+            .args(["-p", &pid.to_string(), "-F", "f"])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        // Each FD line starts with "f" followed by the FD number. lsof also
+        // emits a PID line ("p<pid>") and a header ("f") — count "f" lines
+        // starting with 'f' followed by a digit. Cheap: byte-level scan.
+        let text = String::from_utf8_lossy(&output.stdout);
+        let count = text
+            .lines()
+            .filter(|l| l.starts_with('f') && l.len() > 1 && l.as_bytes()[1].is_ascii_digit())
+            .count() as u32;
+        return Some(count);
+    }
+    None
+}
+
+/// IPC `process.io` envelope (PR-tree dashboard expansion).
+/// Per-process disk read/write byte totals + count of open file descriptors.
+/// All three are best-effort: macOS + Linux return real numbers; platforms
+/// without `/proc` or `lsof` return `None` for fd_count and disk_*.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ProcessIoSnapshot {
+    pub pid: u32,
+    pub disk_read_bytes: Option<u64>,
+    pub disk_write_bytes: Option<u64>,
+    pub fd_count: Option<u32>,
+    /// Source the values came from so the dashboard can render an honest
+    /// "n/a — unsupported" tooltip when fields are None.
+    pub source: &'static str,
+}
+
+/// IPC `process.spawn` envelope — return value of the spawn tool
+/// (PR-tree dashboard expansion). The command echoes back what was
+/// spawned (PID + argv + project/harness tag) so the dashboard can
+/// update its processes list immediately.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct SpawnResultJson {
+    pub pid: u32,
+    pub cmd: Vec<String>,
+    pub project: Option<String>,
+    pub harness: Option<String>,
+    pub success: bool,
+    pub error: Option<String>,
 }
