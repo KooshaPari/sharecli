@@ -219,6 +219,7 @@ fn fr007_ps_all_json_gate_order_serializes_fields() {
                 load_1m: 0.5,
             },
             pool: None,
+                log_location: None,
         },
     };
     let json = serde_json::to_string(&envelope).expect("serialize ps --all JSON envelope");
