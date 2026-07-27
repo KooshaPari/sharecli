@@ -38,7 +38,7 @@ dirs = "5"
 
 [dev-dependencies]
 tempfile = "3"
-serial_test = "3"
+serial_test = "4"
 
 [[bin]]
 name = "sharecli-ipc"
