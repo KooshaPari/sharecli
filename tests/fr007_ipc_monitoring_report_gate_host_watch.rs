@@ -68,11 +68,11 @@ async fn fr007_ipc_monitoring_report_gate_host_watch_live() {
 #[test]
 fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
     use sharecli::monitoring::HostResourceWatchJson;
-    use sharecli::runtime::ProcState;
     use sharecli_fleet::GateStatusSnapshot;
     use sharecli_ipc::handler::{
         MonitoringProcessEntry, MonitoringReportSnapshot, PoolSnapshot, StatusSnapshot,
     };
+
     let gate = GateStatusSnapshot {
         thermal_pressure: "GREEN".into(),
         detected_agents: 1,
@@ -99,15 +99,6 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
             project: Some("demo".into()),
             harness: None,
             start_time: 0,
-            cpu_percent: 0.0,
-            ppid: None,
-            cwd: None,
-            env_count: 0,
-            state: ProcState::default(),
-            disk_read_bytes: None,
-            disk_write_bytes: None,
-            fd_count: None,
-            log_location: None,
         }],
         gate: gate.clone(),
         host_watch: host_watch.clone(),
