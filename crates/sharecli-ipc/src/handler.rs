@@ -192,6 +192,11 @@ pub struct MonitoringProcessEntry {
     /// or `lsof` is unavailable.
     #[serde(default)]
     pub fd_count: Option<u32>,
+    /// Optional filesystem path to the process's primary log file (best-effort).
+    /// `None` when the sidecar couldn't resolve one or the platform doesn't
+    /// expose per-process log locations.
+    #[serde(default)]
+    pub log_location: Option<String>,
 }
 
 /// IPC `pool.status` envelope (FR-007 / AC-007.67, nested status AC-007.78).
@@ -561,6 +566,7 @@ impl Handler {
                                 disk_read_bytes: p.disk_read_bytes,
                                 disk_write_bytes: p.disk_write_bytes,
                                 fd_count,
+                                log_location: None,
                             }
                         })
                         .collect(),
