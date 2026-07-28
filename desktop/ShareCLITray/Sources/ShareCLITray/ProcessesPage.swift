@@ -460,6 +460,34 @@ struct AllProcessesView: View {
                 }
                 .width(96)
 
+                TableColumn("I/O") { p in
+                    if let r = p.disk_read_bytes, let w = p.disk_write_bytes {
+                        VStack(alignment: .trailing, spacing: 1) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.blue)
+                                Text(ioBytes(r))
+                                    .font(.system(.caption, design: .monospaced))
+                            }
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.purple)
+                                Text(ioBytes(w))
+                                    .font(.system(.caption, design: .monospaced))
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    } else {
+                        Text("n/a")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
+                .width(120)
+
                 TableColumn("Age") { p in
                     Text(formatAge(p.start_time))
                         .font(.system(.caption, design: .monospaced))
@@ -717,6 +745,10 @@ struct AllProcessesView: View {
             }
         }
         .frame(height: 6)
+    }
+
+    private func ioBytes(_ b: UInt64) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(b), countStyle: .file)
     }
 }
 
