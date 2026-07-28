@@ -280,6 +280,26 @@ pub struct StatusJson {
     /// Runtime pool sibling; only emitted by `status --json` (AC-007.77).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pool: Option<Box<PoolJson>>,
+    /// Filesystem path to the sharecli log file (PR 8 of dashboard expansion).
+    /// Swift tray reads this directly and tails the file with `tail -F`
+    /// semantics — no separate log.tail IPC needed. None when the file-rotation
+    /// subscriber hasn't been installed (e.g., quiet mode).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_location: Option<std::path::PathBuf>,
+}
+
+/// Returns the filesystem path to the current sharecli log file, if any.
+/// Read from the SHARECLI_LOG_PATH env var (with the same HOME fallback the
+/// tracing-appender setup uses in main.rs). Resolved at status-snapshot time so
+/// test isolation via env var is observed.
+fn sharecli_log_location() -> Option<std::path::PathBuf> {
+    if let Some(path) = std::env::var_os("SHARECLI_LOG_PATH") {
+        return Some(std::path::PathBuf::from(path));
+    }
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(std::path::PathBuf::from)?;
+    Some(home.join(".sharecli").join("logs").join("sharecli.log"))
 }
 
 impl From<PoolJson> for sharecli_fleet::PoolOperatorPanel {
@@ -799,6 +819,7 @@ pub(crate) async fn build_status_json() -> Result<StatusJson> {
         gate: snapshot.gate,
         host_watch: snapshot.host_watch,
         pool: None,
+        log_location: sharecli_log_location(),
     })
 }
 

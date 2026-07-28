@@ -33,7 +33,7 @@ public struct IPCResponse<T: Decodable>: Decodable {
 // Data models
 // ---------------------------------------------------------------------------
 
-public struct ProcessSummary: Identifiable, Decodable, Hashable {
+public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
     public var id: UInt32 { pid }
     public let pid: UInt32
     public let name: String
@@ -42,6 +42,86 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable {
     public let project: String?
     public let harness: String?
     public let start_time: UInt64
+    /// CPU utilization percentage (0..100 * num_cores). Defaults to 0 when
+    /// the sidecar is older than the cpu_percent IPC extension, or on the
+    /// very first sysinfo sample for a freshly-spawned process. Backed by
+    /// explicit CodingKeys + init(from:) so older sidecars (missing the
+    /// `cpu_percent` key) still decode cleanly.
+    public let cpu_percent: Float
+    /// Parent PID. nil when unavailable (kernel threads, sandboxed).
+    public let ppid: UInt32?
+    /// Current working directory (best-effort).
+    public let cwd: String?
+    /// Number of env vars on the process.
+    public let env_count: UInt32
+    /// Stable process state enum ("idle" / "run" / "sleep" / "stop" /
+    /// "zombie" / "tracing" / "dead" / "unknown").
+    public let state: String
+    /// Disk read bytes (Linux-only).
+    public let disk_read_bytes: UInt64?
+    /// Disk write bytes (Linux-only).
+    public let disk_write_bytes: UInt64?
+    /// Open FD count (computed via `lsof`).
+    public let fd_count: UInt32?
+
+    private enum CodingKeys: String, CodingKey {
+        case pid, name, cmd, memory_mb, project, harness, start_time
+        case cpu_percent, ppid, cwd, env_count, state
+        case disk_read_bytes, disk_write_bytes, fd_count
+    }
+
+    public init(
+        pid: UInt32,
+        name: String,
+        cmd: [String],
+        memory_mb: UInt64,
+        project: String? = nil,
+        harness: String? = nil,
+        start_time: UInt64 = 0,
+        cpu_percent: Float = 0,
+        ppid: UInt32? = nil,
+        cwd: String? = nil,
+        env_count: UInt32 = 0,
+        state: String = "unknown",
+        disk_read_bytes: UInt64? = nil,
+        disk_write_bytes: UInt64? = nil,
+        fd_count: UInt32? = nil
+    ) {
+        self.pid = pid
+        self.name = name
+        self.cmd = cmd
+        self.memory_mb = memory_mb
+        self.project = project
+        self.harness = harness
+        self.start_time = start_time
+        self.cpu_percent = cpu_percent
+        self.ppid = ppid
+        self.cwd = cwd
+        self.env_count = env_count
+        self.state = state
+        self.disk_read_bytes = disk_read_bytes
+        self.disk_write_bytes = disk_write_bytes
+        self.fd_count = fd_count
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        pid        = try c.decode(UInt32.self, forKey: .pid)
+        name       = try c.decode(String.self, forKey: .name)
+        cmd        = try c.decode([String].self, forKey: .cmd)
+        memory_mb  = try c.decode(UInt64.self, forKey: .memory_mb)
+        project    = try c.decodeIfPresent(String.self, forKey: .project)
+        harness    = try c.decodeIfPresent(String.self, forKey: .harness)
+        start_time = try c.decode(UInt64.self, forKey: .start_time)
+        cpu_percent = (try? c.decode(Float.self, forKey: .cpu_percent)) ?? 0
+        ppid        = try c.decodeIfPresent(UInt32.self, forKey: .ppid)
+        cwd         = try c.decodeIfPresent(String.self, forKey: .cwd)
+        env_count   = (try? c.decode(UInt32.self, forKey: .env_count)) ?? 0
+        state       = (try? c.decode(String.self, forKey: .state)) ?? "unknown"
+        disk_read_bytes  = try c.decodeIfPresent(UInt64.self, forKey: .disk_read_bytes)
+        disk_write_bytes = try c.decodeIfPresent(UInt64.self, forKey: .disk_write_bytes)
+        fd_count    = try c.decodeIfPresent(UInt32.self, forKey: .fd_count)
+    }
 }
 
 public struct GateStatusSnapshot: Decodable, Hashable {
@@ -75,6 +155,33 @@ public struct MonitoringProcessEntry: Decodable, Hashable {
     public let memory_mb: UInt64
     public let project: String?
     public let harness: String?
+    /// Unix timestamp (seconds) the process started. 0 when the sidecar
+    /// couldn't determine start_time or when running against older sidecars.
+    public let start_time: UInt64
+    /// CPU utilization percentage (0..100 * num_cores). 0 when the sidecar
+    /// is older than the cpu_percent IPC extension, or on the very first
+    /// sysinfo sample for a freshly-spawned process.
+    public let cpu_percent: Float
+    /// Parent PID for tree view. `nil` for kernel threads or when the
+    /// platform couldn't resolve one (e.g. macOS sandboxed process).
+    public let ppid: UInt32?
+    /// Current working directory (best-effort). Empty on platforms where
+    /// the kernel doesn't expose it.
+    public let cwd: String?
+    /// Count of environment variables on the process. Cross-platform
+    /// (computed from `sysinfo::Process::environ().len()`).
+    public let env_count: UInt32
+    /// Process state mapped through `ProcState` for stable serialization.
+    public let state: String
+    /// Total bytes read from disk. Linux-only (via
+    /// `disk_usage().total_read_bytes`); `nil` on macOS/Windows.
+    public let disk_read_bytes: UInt64?
+    /// Total bytes written to disk. Linux-only.
+    public let disk_write_bytes: UInt64?
+    /// Open file descriptor count. Computed cross-platform via
+    /// `lsof -p <pid>` (macOS/Linux); `nil` if lsof is unavailable or the
+    /// sidecar lacks permission.
+    public let fd_count: UInt32?
 }
 
 public struct MonitoringReportSnapshot: Decodable {
@@ -110,13 +217,22 @@ public struct MonitoringReportSnapshot: Decodable {
                 memory_mb: entry.memory_mb,
                 project: entry.project,
                 harness: entry.harness,
-                start_time: 0
+                start_time: entry.start_time,
+                cpu_percent: entry.cpu_percent,
+                ppid: entry.ppid,
+                cwd: entry.cwd,
+                env_count: entry.env_count,
+                state: entry.state,
+                disk_read_bytes: entry.disk_read_bytes,
+                disk_write_bytes: entry.disk_write_bytes,
+                fd_count: entry.fd_count
             )
         }
     }
 }
 
-public struct AgentProcRow: Decodable, Hashable {
+public struct AgentProcRow: Decodable, Hashable, Identifiable {
+    public var id: UInt32 { pid }
     public let pid: UInt32
     public let family: String
     public let comm: String
@@ -147,6 +263,113 @@ public struct StatusSnapshot: Decodable {
     public let watched: Int
     public let gate: GateStatusSnapshot
     public let host_watch: HostResourceWatchJson
+    /// Filesystem path to the sharecli log file (PR 8 of dashboard expansion).
+    /// The Swift tray reads this file directly with tail -F semantics — no
+    /// separate log.tail IPC needed. Tolerant of older sidecar builds that
+    /// don't yet emit log_location (yields a nil live_log_path).
+    public let log_location: String?
+    /// Convenience accessor — `FileManager.tilde`-expanded path or nil.
+    public var live_log_path: URL? {
+        guard let raw = log_location, !raw.isEmpty else { return nil }
+        let fm = FileManager.default
+        let expanded = (raw as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expanded)
+        return fm.fileExists(atPath: url.path) ? url : nil
+    }
+}
+
+/// IPC `pool.effectiveness` envelope (PR 4 of dashboard expansion plan).
+///
+/// Aggregates Hypervisor coalesce cache + SlotQueue counters from
+/// `sharecli_fleet` global atomics. Cheap, snapshot-style — no
+/// per-process scanning.
+public struct CoalesceMetersSnapshot: Decodable, Hashable {
+    public let hits: UInt64
+    public let misses: UInt64
+    public let nocache_runs: UInt64
+
+    public var hitRatePct: Double {
+        let total = hits + misses
+        guard total > 0 else { return 0 }
+        return Double(hits) / Double(total) * 100.0
+    }
+}
+
+public struct SlotQueueMetersSnapshot: Decodable, Hashable {
+    public let acquires: UInt64
+    public let waits: UInt64
+    public let timeouts: UInt64
+}
+
+public struct PoolEffectivenessSnapshot: Decodable, Hashable {
+    public let coalesce: CoalesceMetersSnapshot
+    public let slot_queue: SlotQueueMetersSnapshot
+    public let sampled_at: UInt64
+}
+
+/// IPC `process.cmdline` envelope (PR 5 of dashboard expansion plan).
+///
+/// Returns the full command-line for a given PID, plus the parsed argv
+/// (whitespace-split, naive). `cmdline` is the raw
+/// `/proc/<pid>/cmdline` buffer (NUL-separated, '\n'-joined) so the
+/// tray can render it verbatim. `argv` is the whitespace-split array
+/// for table-friendly display.
+///
+/// On macOS the sidecar returns `cmdline: ""` (no `/proc` filesystem).
+public struct ProcessCmdline: Decodable, Hashable {
+    public let pid: UInt32
+    public let cmdline: String
+    public let argv: [String]
+}
+
+// MARK: - Per-process detail IPC (process.fdcount, process.io)
+
+public struct ProcessFdcountResult: Decodable, Hashable {
+    public let pid: UInt32
+    public let fd_count: UInt32?
+    public let sampled_at: UInt64
+    public let note: String?
+}
+
+public struct ProcessIoResult: Decodable, Hashable {
+    public let pid: UInt32
+    public let disk_read_bytes: UInt64?
+    public let disk_write_bytes: UInt64?
+    public let sampled_at: UInt64
+    public let note: String?
+}
+
+// MARK: - Tree view (process.tree)
+
+public struct ProcessTreeNode: Decodable, Hashable, Identifiable {
+    public var id: UInt32 { pid }
+    public let pid: UInt32
+    public let name: String
+    public let children: [ProcessTreeNode]
+}
+
+// MARK: - Spawn (process.spawn)
+
+public struct ProcessSpawnPayload: Encodable {
+    public let name: String
+    public let command: String
+    public let args: [String]
+    public let project: String?
+    public let harness: String?
+
+    public init(name: String, command: String, args: [String], project: String?, harness: String?) {
+        self.name = name
+        self.command = command
+        self.args = args
+        self.project = project
+        self.harness = harness
+    }
+}
+
+public struct ProcessSpawnResult: Decodable, Hashable {
+    public let pid: UInt32
+    public let success: Bool
+    public let error: String?
 }
 
 // ---------------------------------------------------------------------------
@@ -154,19 +377,34 @@ public struct StatusSnapshot: Decodable {
 // ---------------------------------------------------------------------------
 
 public actor IPCClient {
-    private let socketPath: String
+    private let _socketPath: String
+    /// Public read-only accessor for the Unix socket path this client
+    /// connects to. Used by the preferences sheet + status bar tooltip.
+    public var socketPath: String { _socketPath }
     private var nextId: Int = 1
 
     public init(socketPath: String) {
-        self.socketPath = socketPath
+        self._socketPath = socketPath
     }
 
-    public convenience init() {
+    public static func defaultClient() -> IPCClient {
         let env = ProcessInfo.processInfo.environment["SHARECLI_IPC_SOCK"]
         let defaultPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/sharecli/ipc.sock")
             .path
-        self.init(socketPath: env ?? defaultPath)
+        return IPCClient(socketPath: env ?? defaultPath)
+    }
+
+    /// Free helper for views that want the default Unix socket path
+    /// without holding a client reference. Returns the tilde-expanded
+    /// path the tray would use to connect to the sidecar.
+    public static func defaultSocketPath() -> String {
+        let env = ProcessInfo.processInfo.environment["SHARECLI_IPC_SOCK"]
+        let defaultPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/sharecli/ipc.sock")
+            .path
+        let raw = env ?? defaultPath
+        return (raw as NSString).expandingTildeInPath
     }
 
     private func nextRequestId() -> Int {
@@ -225,6 +463,16 @@ public actor IPCClient {
         return snap
     }
 
+    public func poolEffectiveness() async throws -> PoolEffectivenessSnapshot {
+        let resp: IPCResponse<PoolEffectivenessSnapshot> = try await call(
+            method: "pool.effectiveness", params: [:]
+        )
+        guard let snap = resp.result else {
+            throw IPCError.nilResult("pool.effectiveness")
+        }
+        return snap
+    }
+
     public func statusSnapshot() async throws -> StatusSnapshot {
         let resp: IPCResponse<StatusSnapshot> = try await call(
             method: "status.snapshot", params: [:]
@@ -232,6 +480,62 @@ public actor IPCClient {
         guard let snap = resp.result else {
             throw IPCError.nilResult("status.snapshot")
         }
+        return snap
+    }
+
+    /// Fetch the command-line + argv for a specific PID.
+    /// Returns `nil` (not throws) if the sidecar returns an empty
+    /// cmdline (process gone, or non-Linux platform).
+    public func fetchCmdline(pid: UInt32) async throws -> ProcessCmdline? {
+        let resp: IPCResponse<ProcessCmdline> = try await call(
+            method: "process.cmdline", params: ["pid": .uint(pid)]
+        )
+        guard let snap = resp.result else { return nil }
+        return snap.cmdline.isEmpty ? nil : snap
+    }
+
+    /// Per-process FD count (cross-platform via `lsof`).
+    /// Returns `fd_count: nil` + a `note` if the sidecar couldn't read it.
+    public func fetchFdcount(pid: UInt32) async throws -> ProcessFdcountResult {
+        let resp: IPCResponse<ProcessFdcountResult> = try await call(
+            method: "process.fdcount", params: ["pid": .uint(pid)]
+        )
+        guard let snap = resp.result else { throw IPCError.nilResult("process.fdcount") }
+        return snap
+    }
+
+    /// Per-process disk I/O bytes (Linux-only).
+    /// Returns `disk_read_bytes: nil` + a `note` if not available.
+    public func fetchIo(pid: UInt32) async throws -> ProcessIoResult {
+        let resp: IPCResponse<ProcessIoResult> = try await call(
+            method: "process.io", params: ["pid": .uint(pid)]
+        )
+        guard let snap = resp.result else { throw IPCError.nilResult("process.io") }
+        return snap
+    }
+
+    /// Fetch a flat tree of the process fleet (parent → children).
+    public func fetchProcessTree() async throws -> ProcessTreeNode? {
+        let resp: IPCResponse<ProcessTreeNode> = try await call(
+            method: "process.tree", params: [:]
+        )
+        return resp.result
+    }
+
+    /// Spawn a new process in the pool. The sidecar returns the assigned PID
+    /// on success, or `success: false` with `error` populated.
+    public func spawn(payload: ProcessSpawnPayload) async throws -> ProcessSpawnResult {
+        let resp: IPCResponse<ProcessSpawnResult> = try await call(
+            method: "process.spawn",
+            params: [
+                "name": .string(payload.name),
+                "command": .string(payload.command),
+                "args": .array(payload.args.map { .string($0) }),
+                "project": payload.project.map(AnyCodable.string) ?? .null,
+                "harness": payload.harness.map(AnyCodable.string) ?? .null
+            ]
+        )
+        guard let snap = resp.result else { throw IPCError.nilResult("process.spawn") }
         return snap
     }
 

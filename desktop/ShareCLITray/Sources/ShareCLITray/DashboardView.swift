@@ -1,401 +1,258 @@
-/// DashboardView.swift — full NSWindow dashboard (process table + config editor).
+/// DashboardView.swift — full NSWindow dashboard with 7 sidebar pages.
 ///
-/// Navigation sidebar:
-///   Processes  → live process table with per-row kill + filter by project/harness
-///   Config     → spawn_policy + pool + monitoring config editor with live apply
-///   Health     → memory + process count charts
+/// Navigation sidebar (Cmd+1..7 to jump):
+///   1. Processes    → live process table with filter + bulk kill + export (PR 2)
+///   2. Agents       → fleet agent process roster (PR 1)
+///   3. Pool         → runtime pool composition + issues + host watch (PR 3)
+///   4. Effectiveness → cache/slot-queue hit rate counters from sharecli-fleet (PR 4)
+///   5. Config       → spawn_policy + pool + monitoring config editor (PR 7)
+///   6. Health       → Memory / Thermal gate / Host watch + subpages (PR 6)
+///   7. Logs         → live-tailing log viewer with filter + export (PR 8)
 
 import SwiftUI
 import ShareCLICore
 
 struct DashboardView: View {
     @ObservedObject var state: AppState
-    @State private var selection: Section = .processes
+    @AppStorage("dashboard.sidebar.selection") private var selectionRaw: String = Section.processes.rawValue
+    @AppStorage("dashboard.sidebar.columnWidth") private var sidebarColumnWidth: Double = 168
+    @State private var paletteVisible: Bool = false
+    @State private var helpVisible: Bool = false
+    @State private var prefsVisible: Bool = false
+
+    private var selection: Binding<Section> {
+        Binding(
+            get: { Section(rawValue: selectionRaw) ?? .processes },
+            set: { selectionRaw = $0.rawValue }
+        )
+    }
 
     enum Section: String, CaseIterable, Identifiable {
-        var id: String { rawValue }
         case processes = "Processes"
+        case agents = "Agents"
+        case pool = "Pool"
+        case effectiveness = "Pool effectiveness"
         case config = "Config"
         case health = "Health"
+        case logs = "Logs"
+        var id: String { rawValue }
+        var icon: String {
+            switch self {
+            case .processes: return "cpu"
+            case .agents: return "person.2.fill"
+            case .pool: return "rectangle.stack.fill"
+            case .effectiveness: return "chart.line.uptrend.xyaxis"
+            case .config: return "gearshape"
+            case .health: return "heart.fill"
+            case .logs: return "text.alignleft"
+            }
+        }
+        /// Cmd+N index for keyboard shortcuts (1-based per the plan §5.4).
+        var shortcutIndex: Int {
+            Section.allCases.firstIndex(of: self).map { $0 + 1 } ?? 0
+        }
     }
 
     var body: some View {
         NavigationSplitView {
-            List(Section.allCases, selection: $selection) { sec in
-                Label(sec.rawValue, systemImage: iconName(for: sec))
-                    .tag(sec)
-            }
-            .navigationSplitViewColumnWidth(min: 140, ideal: 160)
+            sidebar
         } detail: {
-            Group {
-                switch selection {
-                case .processes: ProcessTableView(state: state)
-                case .config: ConfigEditorView(state: state)
-                case .health: HealthView(state: state)
-                }
-            }
-            .frame(minWidth: 600)
+            detail
+                .frame(minWidth: 600)
         }
-        .frame(minWidth: 800, minHeight: 500)
-        .toolbar {
-            ToolbarItem {
-                Button {
-                    Task { await state.refresh() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-            }
-            ToolbarItem {
-                if let err = state.lastError {
-                    Label(err, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                }
+        .navigationSplitViewColumnWidth(min: 140, ideal: sidebarColumnWidth)
+        .frame(minWidth: 900, minHeight: 560)
+        .background(WindowAccessor { window in
+            attachShortcutMonitor(window: window)
+        })
+        .toolbar { toolbar }
+        .overlay {
+            if paletteVisible {
+                CommandPalette(
+                    state: state,
+                    isVisible: $paletteVisible,
+                    onNavigate: { sec in selectionRaw = sec.rawValue },
+                    onAction: { action in handleAction(action) }
+                )
             }
         }
-    }
-
-    private func iconName(for sec: Section) -> String {
-        switch sec {
-        case .processes: return "cpu"
-        case .config: return "gearshape"
-        case .health: return "heart.fill"
+        .sheet(isPresented: $helpVisible) {
+            HelpSheet(isVisible: $helpVisible)
         }
-    }
-}
-
-// MARK: - Process Table
-
-struct ProcessTableView: View {
-    @ObservedObject var state: AppState
-    @State private var filterText = ""
-    @State private var sortOrder = [KeyPathComparator(\ProcessSummary.memory_mb, order: .reverse)]
-
-    private var filtered: [ProcessSummary] {
-        let q = filterText.lowercased()
-        if q.isEmpty { return state.processes }
-        return state.processes.filter {
-            $0.name.lowercased().contains(q)
-            || ($0.project?.lowercased().contains(q) ?? false)
-            || ($0.harness?.lowercased().contains(q) ?? false)
+        .sheet(isPresented: $prefsVisible) {
+            PreferencesSheet(isVisible: $prefsVisible, state: state)
+        }
+        .onAppear {
+            // Persist a sensible default if the @AppStorage above was missing.
+            if Section(rawValue: selectionRaw) == nil {
+                selectionRaw = Section.processes.rawValue
+            }
         }
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Filter by name / project / harness", text: $filterText)
-                    .textFieldStyle(.plain)
-                Spacer()
-                Text("\(filtered.count) processes")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    @ViewBuilder
+    private var sidebar: some View {
+        List(Section.allCases, selection: selection) { sec in
+            Label {
+                HStack {
+                    Text(sec.rawValue)
+                    Spacer()
+                    if sec.shortcutIndex > 0 {
+                        Text("⌘\(sec.shortcutIndex)")
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            } icon: {
+                Image(systemName: sec.icon)
             }
-            .padding(10)
-            .background(.quaternary)
+            .help(sectionSummary(sec))
+        }
+    }
 
-            Table(filtered, sortOrder: $sortOrder) {
-                TableColumn("PID", value: \.pid) { p in
-                    Text("\(p.pid)").font(.system(.body, design: .monospaced))
-                }
-                .width(60)
+    @ViewBuilder
+    private var detail: some View {
+        switch Section(rawValue: selectionRaw) ?? .processes {
+        case .processes: ProcessesPage(state: state)
+        case .agents: AgentsPage(state: state)
+        case .pool: PoolPage(state: state)
+        case .effectiveness: PoolEffectivenessPage(state: state)
+        case .config: ConfigPage(state: state)
+        case .health: HealthPage(state: state)
+        case .logs: LogsPage(state: state)
+        }
+    }
 
-                TableColumn("Name", value: \.name) { p in
-                    Text(p.name).font(.system(.body, design: .monospaced))
-                }
-
-                TableColumn("Project") { p in
-                    if let proj = p.project {
-                        Badge(text: proj, color: .blue)
-                    }
-                }
-                .width(100)
-
-                TableColumn("Harness") { p in
-                    if let h = p.harness {
-                        Badge(text: h, color: .purple)
-                    }
-                }
-                .width(80)
-
-                TableColumn("Memory (MB)", value: \.memory_mb) { p in
-                    Text("\(p.memory_mb)").font(.system(.body, design: .monospaced))
-                }
-                .width(100)
-
-                TableColumn("Actions") { p in
-                    Button("Kill") {
-                        Task { await state.kill(pid: p.pid) }
-                    }
-                    .buttonStyle(.borderless)
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                prefsVisible = true
+            } label: {
+                Label("Preferences", systemImage: "gearshape")
+            }
+            .help("Open preferences (⌘,)")
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                Task { await state.refresh() }
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .help("Refresh all panels (⌘R)")
+        }
+        ToolbarItem(placement: .primaryAction) {
+            if let err = state.lastError {
+                Label(err, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
-                }
-                .width(50)
+                    .help(err)
             }
+        }
+    }
+
+    // MARK: - Keyboard shortcut plumbing
+
+    private func attachShortcutMonitor(window: NSWindow?) -> Void {
+        // Use a local event monitor so Cmd+1..7 work even when focus is on
+        // a SwiftUI subview (SwiftUI's .keyboardShortcut(_, modifiers:)
+        // attaches to a specific button; we want it for the whole window).
+        let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.command),
+               let chars = event.charactersIgnoringModifiers,
+               let c = chars.first,
+               let n = Int(String(c)),
+               (1...Section.allCases.count).contains(n),
+               let sec = Section.allCases[safe: n - 1] {
+                self.selectionRaw = sec.rawValue
+                NSLog("[DashboardView] Cmd+%d → %@", n, sec.rawValue)
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "r" {
+                Task { await state.refresh() }
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "k" {
+                self.paletteVisible.toggle()
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "w" {
+                NSApp.keyWindow?.performClose(nil)
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "/" {
+                self.helpVisible.toggle()
+                return nil
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers == "," {
+                self.prefsVisible.toggle()
+                return nil
+            }
+            return event
+        }
+        if let window = window, let token = monitor {
+            // Keep the monitor alive at least as long as the window.
+            objc_setAssociatedObject(window, &Self.monitorKey, token, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+
+    private func handleAction(_ action: CommandPalette.CommandAction) {
+        switch action {
+        case .refreshAll:
+            Task { await state.refresh() }
+        case .killAll:
+            Task { await state.killAll() }
+        case .exportProcessesJSON, .exportProcessesCSV, .clearFilter:
+            // Navigate to Processes page; the user can use the toolbar there.
+            selectionRaw = Section.processes.rawValue
+        case .showHelp:
+            helpVisible = true
+        case .openPreferences:
+            prefsVisible = true
+        case .openLogFile:
+            if let url = state.statusSnapshot?.live_log_path {
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            }
+        }
+    }
+
+    private static var monitorKey: UInt8 = 0
+
+    // MARK: - Helpers
+
+    private func sectionSummary(_ sec: Section) -> String {
+        switch sec {
+        case .processes: return "All live processes — bulk kill, JSON/CSV export, by-project/by-harness grouping. ⌘1"
+        case .agents: return "Spawned fleet agents (claude / forge / node / bun / etc). ⌘2"
+        case .pool: return "Runtime pool composition + gate decisions + host watch sparklines. ⌘3"
+        case .effectiveness: return "Hypervisor coalesce cache + slot-queue counters. ⌘4"
+        case .config: return "Spawn policy / pool / monitoring config editor with live apply. ⌘5"
+        case .health: return "Memory / Thermal gate / Host resource watch with subpages. ⌘6"
+        case .logs: return "Live tail of ~/.sharecli/logs/sharecli.log with filter + export. ⌘7"
         }
     }
 }
 
-// MARK: - Config Editor
-
-struct ConfigEditorView: View {
-    @ObservedObject var state: AppState
-
-    // Pool settings
-    @State private var poolEnabled: Bool = true
-    @State private var maxPerType: String = "5"
-    @State private var idleTimeoutSecs: String = "300"
-
-    // Runtime settings
-    @State private var maxMemoryMB: String = "4096"
-    @State private var maxProcesses: String = "100"
-
-    // Monitoring settings
-    @State private var healthCheckInterval: String = "30"
-    @State private var highMemThreshold: String = "4096"
-
-    // Spawn settings
-    @State private var defaultHarness: String = "claude"
-
-    @State private var applyStatus: String = ""
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Configuration")
-                    .font(.largeTitle)
-                    .bold()
-                    .padding(.bottom, 4)
-
-                configSection("Runtime") {
-                    row("max_memory_mb", binding: $maxMemoryMB,
-                        key: "runtime.max_memory_mb", asInt: true)
-                    row("max_processes", binding: $maxProcesses,
-                        key: "runtime.max_processes", asInt: true)
-                }
-
-                configSection("Process Pool") {
-                    Toggle("Enabled", isOn: $poolEnabled)
-                        .onChange(of: poolEnabled) { v in apply("pool.enabled", value: .bool(v)) }
-                    row("max_per_type", binding: $maxPerType,
-                        key: "pool.max_per_type", asInt: true)
-                    row("idle_timeout_secs", binding: $idleTimeoutSecs,
-                        key: "pool.idle_timeout_secs", asInt: true)
-                }
-
-                configSection("Monitoring") {
-                    row("health_check_interval_secs", binding: $healthCheckInterval,
-                        key: "monitoring.health_check_interval_secs", asInt: true)
-                    row("high_memory_threshold_mb", binding: $highMemThreshold,
-                        key: "monitoring.high_memory_threshold_mb", asInt: true)
-                }
-
-                configSection("Spawn") {
-                    HStack {
-                        Text("default_harness")
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 200, alignment: .leading)
-                        Picker("", selection: $defaultHarness) {
-                            ForEach(["claude", "forge", "node", "bun"], id: \.self) { Text($0) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 120)
-                        .onChange(of: defaultHarness) { v in apply("spawn.default_harness", value: .string(v)) }
-                    }
-                }
-
-                if !applyStatus.isEmpty {
-                    Text(applyStatus)
-                        .font(.caption)
-                        .foregroundStyle(applyStatus.hasPrefix("Error") ? .red : .green)
-                }
-            }
-            .padding(24)
-        }
-    }
-
-    private func configSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Divider()
-            content()
-        }
-    }
-
-    private func row(_ label: String, binding: Binding<String>, key: String, asInt: Bool) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(.body, design: .monospaced))
-                .frame(width: 240, alignment: .leading)
-            TextField("", text: binding)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 120)
-                .onSubmit {
-                    if asInt, let i = Int(binding.wrappedValue) {
-                        apply(key, value: .int(i))
-                    } else {
-                        apply(key, value: .string(binding.wrappedValue))
-                    }
-                }
-        }
-    }
-
-    private func apply(_ key: String, value: AnyCodable) {
-        Task {
-            await state.setConfig(key: key, value: value)
-            applyStatus = "Applied: \(key)"
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            applyStatus = ""
-        }
+private extension Array {
+    subscript(safe idx: Int) -> Element? {
+        indices.contains(idx) ? self[idx] : nil
     }
 }
 
-// MARK: - Health View
+// MARK: - Window accessor (SwiftUI 4+ on macOS)
 
-struct HealthView: View {
-    @ObservedObject var state: AppState
-
-    private var gateVisual: TrayGateVisual {
-        if let h = state.health, state.isConnected {
-            return OperatorDisplay.resolveTrayGateVisual(gate: h.gate, connected: true)
+private struct WindowAccessor: NSViewRepresentable {
+    let onResolve: (NSWindow?) -> Void
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { [weak view] in
+            onResolve(view?.window)
         }
-        return OperatorDisplay.resolveTrayGateVisual(
-            thermalPressure: "UNAVAILABLE",
-            gateDecision: "UNAVAILABLE",
-            connected: false
-        )
+        return view
     }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Health")
-                    .font(.largeTitle)
-                    .bold()
-
-                if let h = state.health {
-                    HStack(spacing: 24) {
-                        metricCard(
-                            title: "Managed Processes",
-                            value: "\(h.managed_processes)",
-                            icon: "cpu",
-                            color: .blue
-                        )
-                        metricCard(
-                            title: "Used Memory",
-                            value: "\(h.used_memory_mb) MB",
-                            icon: "memorychip",
-                            color: .orange
-                        )
-                        metricCard(
-                            title: "Total Memory",
-                            value: "\(h.total_memory_mb) MB",
-                            icon: "externaldrive",
-                            color: .gray
-                        )
-                        metricCard(
-                            title: "Thermal Gate",
-                            value: gateVisual.badgeLabel,
-                            icon: gateVisual.swiftSymbolName,
-                            color: gateVisual.swiftColor
-                        )
-                    }
-
-                    // Memory bar
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Memory Utilization")
-                            .font(.headline)
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(.quaternary)
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(h.used_memory_mb > h.total_memory_mb / 2 ? Color.orange : .blue)
-                                    .frame(width: geo.size.width * CGFloat(h.used_memory_mb) / CGFloat(max(h.total_memory_mb, 1)))
-                            }
-                        }
-                        .frame(height: 16)
-                        Text("\(h.used_memory_mb) MB / \(h.total_memory_mb) MB")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.top, 8)
-
-                    if state.isConnected {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                Text("Thermal Gate")
-                                    .font(.headline)
-                                thermalGateBadge
-                            }
-                            Text(OperatorDisplay.formatGateTrayLine(h.gate))
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundStyle(gateVisual.swiftColor)
-                            Text(OperatorDisplay.formatGateRssTrayLine(h.gate))
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(gateVisual.swiftColor.opacity(0.85))
-
-                            Text("Host Resource Watch")
-                                .font(.headline)
-                                .padding(.top, 4)
-                            Text(OperatorDisplay.formatHostWatchTrayLine(h.host_watch))
-                                .font(.system(.body, design: .monospaced))
-                            Text(OperatorDisplay.formatHostNetTrayLine(h.host_watch))
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.top, 8)
-                    }
-
-                    if let pool = state.poolStatus, let status = state.statusSnapshot, state.isConnected {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Pool + Proc Scan")
-                                .font(.headline)
-                                .padding(.top, 4)
-                            ForEach(OperatorDisplay.formatPoolStatusOperatorLines(pool: pool, status: status), id: \.self) { line in
-                                Text(line)
-                                    .font(.system(.body, design: .monospaced))
-                            }
-                        }
-                        .padding(.top, 8)
-                    }
-                } else {
-                    Text(state.isConnected ? "Loading health data…" : "Not connected to sharecli-ipc")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(24)
-        }
-    }
-
-    private var thermalGateBadge: some View {
-        Text(gateVisual.badgeLabel)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .foregroundStyle(gateVisual.swiftColor)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(gateVisual.swiftColor, lineWidth: 1)
-            )
-    }
-
-    private func metricCard(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: icon).foregroundStyle(color)
-                Text(title).font(.caption).foregroundStyle(.secondary)
-            }
-            Text(value)
-                .font(.system(.title2, design: .monospaced))
-                .bold()
-        }
-        .padding(14)
-        .frame(minWidth: 140, alignment: .leading)
-        .background(.quaternary)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }

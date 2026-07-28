@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Snapshot of nocache [`SlotQueue`] acquire / contention counters.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub struct SlotQueueMeters {
     /// Successful slot acquisitions (`with_slot` ran the closure).
     pub acquires: u64,

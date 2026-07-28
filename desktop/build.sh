@@ -1,22 +1,35 @@
 #!/usr/bin/env bash
-# build.sh — build the sharecli desktop client (macOS).
+# build.sh — build the sharecli desktop client (macOS) and bundle it as an .app.
 #
 # Usage:
-#   ./desktop/build.sh              # debug build
-#   ./desktop/build.sh --release    # release build
+#   ./desktop/build.sh                      # debug build, no install
+#   ./desktop/build.sh --release            # release build, no install
+#   ./desktop/build.sh --release --install            # release + install to ~/Applications
+#   ./desktop/build.sh --release --system --install   # release + install to /Applications (sudo)
 #
 # Prerequisites (macOS):
 #   - Rust toolchain (rustup)
 #   - Xcode Command Line Tools (swift, swiftc)
+#   - iconutil (Apple) for .icns generation
 #   - The sharecli repo root is the working directory
 
 set -euo pipefail
 
-RELEASE="${1:-}"
+RELEASE=""
+DO_INSTALL=0
+SYSTEM_INSTALL=0
+for arg in "$@"; do
+  case "$arg" in
+    --release) RELEASE="--release" ;;
+    --install) DO_INSTALL=1 ;;
+    --system)  SYSTEM_INSTALL=1 ;;
+    *) echo "Unknown arg: $arg" >&2; exit 2 ;;
+  esac
+done
+
 PROFILE="debug"
 CARGO_FLAGS=()
-
-if [[ "$RELEASE" == "--release" ]]; then
+if [[ -n "$RELEASE" ]]; then
     PROFILE="release"
     CARGO_FLAGS+=(--release)
 fi
@@ -53,6 +66,7 @@ cd "$REPO_ROOT/desktop/ShareCLITray"
 export SHARECLI_FFI_LIB_DIR="$TARGET_DIR"
 
 swift build \
+    -c "$PROFILE" \
     -Xlinker "-L$TARGET_DIR" \
     -Xlinker "-lsharecli_ffi" \
     -Xlinker "-rpath" \
@@ -60,14 +74,16 @@ swift build \
 
 SWIFT_BIN=".build/$PROFILE/ShareCLITray"
 echo "    Swift tray → $SWIFT_BIN"
-
 echo ""
 echo "==> Build complete."
-echo "    Run IPC sidecar:  $IPC_BIN"
-echo "    Run tray app:     $(pwd)/$SWIFT_BIN"
-echo ""
-echo "    Quick test:"
-echo "      # terminal 1"
-echo "      $IPC_BIN &"
-echo "      # terminal 2"
-echo "      $(pwd)/$SWIFT_BIN"
+echo "    Tray binary: $(pwd)/$SWIFT_BIN"
+echo "    FFI dylib:   $FFI_LIB"
+echo "    IPC binary:  $IPC_BIN"
+
+if [[ "$DO_INSTALL" -eq 1 ]]; then
+    echo ""
+    echo "==> Bundling .app and installing"
+    INSTALL_ARGS=()
+    [[ "$SYSTEM_INSTALL" -eq 1 ]] && INSTALL_ARGS+=(--system)
+    "$REPO_ROOT/scripts/install-tray-macos.sh" "${INSTALL_ARGS[@]}"
+fi

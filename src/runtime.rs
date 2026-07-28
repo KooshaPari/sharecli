@@ -13,7 +13,7 @@ use anyhow::{bail, Result};
 use runtime_process::CommandGroupProcess;
 use serde_json::json;
 use substrate::{ProcessHandle, ProcessPort, ProcessSpawnSpec};
-use sysinfo::{Pid, System};
+use sysinfo::{Pid, ProcessStatus, System};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
@@ -51,6 +51,133 @@ fn emit_stop_audit(project: &Option<String>, capability: &str, pid: u32, outcome
     );
 }
 
+/// Lightweight `ProcessStatus` value that survives serialisation. sysinfo's enum
+/// has many variants gated per-platform — for IPC purposes we only need the
+/// handful users ever see on the dashboard, mapped through this enum so the
+/// wire format is stable across the Linux/macOS/Windows tray crates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProcState {
+    Idle,
+    Run,
+    Sleep,
+    Stop,
+    Zombie,
+    Tracing,
+    Dead,
+    #[default]
+    Unknown,
+}
+
+impl From<ProcessStatus> for ProcState {
+    fn from(s: ProcessStatus) -> Self {
+        match s {
+            ProcessStatus::Idle => Self::Idle,
+            ProcessStatus::Run => Self::Run,
+            ProcessStatus::Sleep => Self::Sleep,
+            ProcessStatus::Stop => Self::Stop,
+            ProcessStatus::Zombie => Self::Zombie,
+            ProcessStatus::Tracing => Self::Tracing,
+            ProcessStatus::Dead => Self::Dead,
+            // Wakekill / Waking / Parked / Blocked / Unknown collapse to Unknown
+            // on the dashboard. The exact variant is rarely useful to the user.
+            _ => Self::Unknown,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProcessInfo {
+    pub pid: u32,
+    pub name: String,
+    pub cmd: Vec<String>,
+    pub memory_mb: u64,
+    pub start_time: u64,
+    /// CPU utilization percentage reported by `sysinfo` (0..100 * num_cores).
+    /// Requires sysinfo to have collected at least two samples; the first
+    /// refresh after a process start reports 0.
+    pub cpu_percent: f32,
+    pub project: Option<String>,
+    pub harness: Option<String>,
+    /// Parent PID (sysinfo extension trait). `None` for kernel threads / early
+    /// boot processes. Used by the tray dashboard tree view.
+    pub ppid: Option<u32>,
+    /// Current working directory (sysinfo extension trait). Empty when the
+    /// platform doesn't expose it (unknown/apple-sandbox).
+    pub cwd: Option<String>,
+    /// Number of environment variables. Computed from `sysinfo::Process::environ()`
+    /// length; cross-platform.
+    pub env_count: u32,
+    /// Process state (Idle/Run/Sleep/etc.) mapped through `ProcState` for
+    /// stable serialisation. Used by tray dashboard state-color coding.
+    pub state: ProcState,
+    /// Total bytes read from disk (Linux-only via `disk_usage()`). `None` on
+    /// macOS, Windows, and other platforms. Used by tray dashboard Io column.
+    pub disk_read_bytes: Option<u64>,
+    /// Total bytes written to disk (Linux-only). `None` on non-Linux.
+    pub disk_write_bytes: Option<u64>,
+}
+
+impl ProcessInfo {
+    pub fn from_sysinfo(pid: Pid, name: String, sys: &System) -> Option<Self> {
+        let p = sys.process(pid)?;
+        // sysinfo 0.39: parent/cwd/environ/status/disk_usage are direct
+        // methods on Process (no ProcessExt trait, which was removed in 0.32).
+        #[cfg(unix)]
+        let ppid = p.parent().map(|p| p.as_u32());
+        #[cfg(not(unix))]
+        let ppid: Option<u32> = None;
+
+        #[cfg(unix)]
+        let cwd = {
+            let s = p
+                .cwd()
+                .map(|c| c.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if s.is_empty() { None } else { Some(s) }
+        };
+        #[cfg(not(unix))]
+        let cwd: Option<String> = None;
+
+        #[cfg(unix)]
+        let env_count = p.environ().len() as u32;
+        #[cfg(not(unix))]
+        let env_count: u32 = 0;
+
+        let state: ProcState = {
+            #[cfg(unix)]
+            { p.status().into() }
+            #[cfg(not(unix))]
+            ProcState::Unknown
+        };
+
+        #[cfg(target_os = "linux")]
+        let (disk_read_bytes, disk_write_bytes) = {
+            let du = p.disk_usage();
+            (Some(du.total_read_bytes), Some(du.total_written_bytes))
+        };
+        #[cfg(not(target_os = "linux"))]
+        let (disk_read_bytes, disk_write_bytes): (Option<u64>, Option<u64>) = (None, None);
+
+        Some(ProcessInfo {
+            pid: pid.as_u32(),
+            name,
+            cmd: p.cmd().iter().map(|s| s.to_string_lossy().into_owned()).collect(),
+            memory_mb: p.memory() / 1024 / 1024,
+            start_time: p.start_time(),
+            cpu_percent: p.cpu_usage(),
+            project: None,
+            harness: None,
+            ppid,
+            cwd,
+            env_count,
+            state,
+            disk_read_bytes,
+            disk_write_bytes,
+        })
+    }
+}
+
 // ---------------------------------------------------------------------------
 // RAII env-var guard — restores a variable to its previous value on drop.
 // Used to temporarily inject CARGO_BUILD_JOBS / RUSTC_WRAPPER for a spawn.
@@ -67,31 +194,6 @@ impl Drop for EnvGuard {
             Some(v) => unsafe { std::env::set_var(&self.key, v) },
             None => unsafe { std::env::remove_var(&self.key) },
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ProcessInfo {
-    pub pid: u32,
-    pub name: String,
-    pub cmd: Vec<String>,
-    pub memory_mb: u64,
-    pub start_time: u64,
-    pub project: Option<String>,
-    pub harness: Option<String>,
-}
-
-impl ProcessInfo {
-    pub fn from_sysinfo(pid: Pid, name: String, sys: &System) -> Option<Self> {
-        sys.process(pid).map(|p| ProcessInfo {
-            pid: pid.as_u32(),
-            name,
-            cmd: p.cmd().iter().map(|s| s.to_string_lossy().into_owned()).collect(),
-            memory_mb: p.memory() / 1024 / 1024,
-            start_time: p.start_time(),
-            project: None,
-            harness: None,
-        })
     }
 }
 
@@ -259,8 +361,15 @@ impl ProcessPool {
             cmd: vec![effective_cmd].into_iter().chain(effective_args).collect(),
             memory_mb: 0,
             start_time: 0,
+            cpu_percent: 0.0,
             project,
             harness,
+            ppid: None,
+            cwd: None,
+            env_count: 0,
+            state: ProcState::Unknown,
+            disk_read_bytes: None,
+            disk_write_bytes: None,
         };
 
         let managed = ManagedProcess { info: info.clone(), handle };

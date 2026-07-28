@@ -140,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func ensureIPC() async {
         // Try connecting; if that fails, attempt to start the sidecar.
         do {
-            _ = try await IPCClient().health()
+            _ = try await IPCClient.defaultClient().health()
         } catch {
             // Sidecar not running — launch it.
             let exe = sidecarPath("sharecli-ipc")
@@ -171,6 +171,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-extension Notification.Name {
-    static let sharecliHealthChanged = Notification.Name("sharecliHealthChanged")
-}
+// Notification.Name.sharecliHealthChanged is declared in ShareCLICore/AppState.swift
+// so both targets see the same symbol.
