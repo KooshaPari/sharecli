@@ -49,6 +49,7 @@ struct ProcessesPage: View {
         case byProject = "byProject"
         case byHarness = "byHarness"
         case tree = "tree"
+        case trends = "trends"
         var id: String { rawValue }
         var label: String {
             switch self {
@@ -56,6 +57,7 @@ struct ProcessesPage: View {
             case .byProject: return "By Project"
             case .byHarness: return "By Harness"
             case .tree: return "Tree"
+            case .trends: return "Trends"
             }
         }
     }
@@ -81,6 +83,7 @@ struct ProcessesPage: View {
             case .byProject: groupedSubpage(by: \.project, groupLabel: "Project")
             case .byHarness: groupedSubpage(by: \.harness, groupLabel: "Harness")
             case .tree: treeSubpage
+            case .trends: trendsSubpage
             }
         }
         .frame(minWidth: 720, minHeight: 460)
@@ -102,6 +105,12 @@ struct ProcessesPage: View {
 
     private var treeSubpage: some View {
         TreeView(state: state)
+    }
+
+    // MARK: - Trends subpage
+
+    private var trendsSubpage: some View {
+        TrendsView(state: state)
     }
 
     // MARK: - Grouped subpage (By Project / By Harness)
@@ -988,5 +997,295 @@ struct TreeLeafRow: View {
         if pct > 60 { return .orange }
         if pct > 25 { return .yellow }
         return .secondary
+    }
+}
+
+// MARK: - Trends subpage
+
+/// Fleet-wide time series view. Reads from `AppState.fleetHistory`
+/// (a 60-sample rolling window captured per refresh), renders memory +
+/// CPU + process-count sparklines, and exposes min/avg/max summary cards.
+///
+/// No IPC additions — all data is already collected by `AppState.refresh()`.
+struct TrendsView: View {
+    @ObservedObject var state: AppState
+
+    private var samples: [FleetSample] {
+        state.fleetHistory.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            summaryStrip
+            Divider()
+            if samples.count < 2 {
+                EmptyStateView(
+                    icon: "chart.xyaxis.line",
+                    title: "Building history…",
+                    subtitle: "Fleet samples are captured on every refresh. After 2 samples (~5s) the trend chart renders.",
+                    variant: .quiet
+                )
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        TrendChartCard(
+                            title: "Total memory",
+                            subtitle: "Fleet-wide MB across all processes",
+                            series: samples.map { Double($0.totalMemoryMB) },
+                            timestamps: samples.map { $0.timestamp },
+                            unit: "MB",
+                            color: .orange,
+                            stats: stats(\.totalMemoryMB)
+                        )
+                        TrendChartCard(
+                            title: "Used memory",
+                            subtitle: "Fleet-wide used MB (excluding caches, free)",
+                            series: samples.map { Double($0.usedMemoryMB) },
+                            timestamps: samples.map { $0.timestamp },
+                            unit: "MB",
+                            color: .red,
+                            stats: stats(\.usedMemoryMB)
+                        )
+                        TrendChartCard(
+                            title: "Avg CPU %",
+                            subtitle: "Per-process average across fleet",
+                            series: samples.map { Double($0.cpuAvgPercent) },
+                            timestamps: samples.map { $0.timestamp },
+                            unit: "%",
+                            color: .blue,
+                            stats: stats(\.cpuAvgPercent)
+                        )
+                        TrendChartCard(
+                            title: "Process count",
+                            subtitle: "Total processes tracked by the fleet pool",
+                            series: samples.map { Double($0.totalProcesses) },
+                            timestamps: samples.map { $0.timestamp },
+                            unit: "procs",
+                            color: .green,
+                            stats: stats(\.totalProcesses)
+                        )
+                        poolHealthStrip
+                    }
+                    .padding(16)
+                }
+            }
+        }
+    }
+
+    private var summaryStrip: some View {
+        let count = samples.count
+        let span = samples.count >= 2
+            ? "\(Int(samples.last!.timestamp.timeIntervalSince(samples.first!.timestamp)))s"
+            : "—"
+        let latestRSS = samples.last?.totalMemoryMB ?? 0
+        let latestCPU = samples.last?.cpuAvgPercent ?? 0
+        return HStack(spacing: 12) {
+            card("Samples", "\(count)", "of \(AppState.fleetHistoryCap)", .blue)
+            card("Span", span, "rolling window", .purple)
+            card("Total RSS", "\(latestRSS) MB", "now", .orange)
+            card("Avg CPU", String(format: "%.1f%%", latestCPU), "now", latestCPU > 60 ? .red : .green)
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.5))
+    }
+
+    private func card(_ title: String, _ value: String, _ sub: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.system(.title3, design: .monospaced)).bold().foregroundStyle(color)
+            Text(sub).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(.quaternary)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func stats(_ keyPath: KeyPath<FleetSample, UInt64>) -> TrendStats {
+        let values = samples.map { Double($0[keyPath: keyPath]) }
+        return TrendStats(
+            min: values.min() ?? 0,
+            max: values.max() ?? 0,
+            avg: values.isEmpty ? 0 : values.reduce(0, +) / Double(values.count),
+            current: values.last ?? 0
+        )
+    }
+
+    private func stats(_ keyPath: KeyPath<FleetSample, Float>) -> TrendStats {
+        let values = samples.map { Double($0[keyPath: keyPath]) }
+        return TrendStats(
+            min: values.min() ?? 0,
+            max: values.max() ?? 0,
+            avg: values.isEmpty ? 0 : values.reduce(0, +) / Double(values.count),
+            current: values.last ?? 0
+        )
+    }
+
+    private func stats(_ keyPath: KeyPath<FleetSample, Int>) -> TrendStats {
+        let values = samples.map { Double($0[keyPath: keyPath]) }
+        return TrendStats(
+            min: values.min() ?? 0,
+            max: values.max() ?? 0,
+            avg: values.isEmpty ? 0 : values.reduce(0, +) / Double(values.count),
+            current: values.last ?? 0
+        )
+    }
+
+    private var poolHealthStrip: some View {
+        let healthy = samples.filter { $0.poolHealthy }.count
+        let pct = samples.isEmpty ? 0 : Double(healthy) / Double(samples.count)
+        return HStack(spacing: 12) {
+            Image(systemName: pct > 0.95 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .font(.title2)
+                .foregroundStyle(pct > 0.95 ? .green : .orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Pool health").font(.headline)
+                Text("\(healthy) / \(samples.count) samples were pool-healthy (\(Int(pct * 100))%)")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(.quaternary)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct TrendStats: Hashable {
+    let min: Double
+    let max: Double
+    let avg: Double
+    let current: Double
+}
+
+/// Single trend chart card. Renders a Path-based polyline with a gradient
+/// fill below it, axis labels, and min/avg/max summary stats.
+struct TrendChartCard: View {
+    let title: String
+    let subtitle: String
+    let series: [Double]
+    let timestamps: [Date]
+    let unit: String
+    let color: Color
+    let stats: TrendStats
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                stat("min", stats.min)
+                stat("avg", stats.avg)
+                stat("max", stats.max)
+                stat("now", stats.current)
+            }
+            chart
+                .frame(height: 90)
+                .background(.quaternary.opacity(0.3))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .padding(12)
+        .background(.quaternary)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func stat(_ label: String, _ v: Double) -> some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(label.uppercased()).font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary)
+            Text(formatValue(v))
+                .font(.system(.caption, design: .monospaced)).bold()
+                .foregroundStyle(color)
+        }
+        .frame(width: 64, alignment: .trailing)
+    }
+
+    private func formatValue(_ v: Double) -> String {
+        if unit == "%" { return String(format: "%.1f%%", v) }
+        if unit == "procs" { return "\(Int(v))" }
+        if v >= 1024 { return String(format: "%.1f GB", v / 1024) }
+        return String(format: "%.0f MB", v)
+    }
+
+    private var chart: some View {
+        GeometryReader { geo in
+            let minV = stats.min
+            let maxV = Swift.max(stats.max, minV + 1)
+            let range = maxV - minV
+            let w = geo.size.width
+            let h = geo.size.height
+            let step = series.count > 1 ? w / CGFloat(series.count - 1) : 0
+            ZStack(alignment: .leading) {
+                // Gradient fill below the line
+                Path { path in
+                    guard series.count >= 2 else { return }
+                    path.move(to: CGPoint(x: 0, y: h))
+                    for (i, v) in series.enumerated() {
+                        let x = CGFloat(i) * step
+                        let y = h - CGFloat((v - minV) / range) * h
+                        path.addLine(to: CGPoint(x: x, y: y))
+                    }
+                    path.addLine(to: CGPoint(x: w, y: h))
+                    path.closeSubpath()
+                }
+                .fill(LinearGradient(
+                    colors: [color.opacity(0.45), color.opacity(0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ))
+                // The line itself
+                Path { path in
+                    guard series.count >= 2 else { return }
+                    for (i, v) in series.enumerated() {
+                        let x = CGFloat(i) * step
+                        let y = h - CGFloat((v - minV) / range) * h
+                        if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
+                        else { path.addLine(to: CGPoint(x: x, y: y)) }
+                    }
+                }
+                .stroke(color, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+
+                // Latest-value dot
+                if let last = series.last {
+                    let x = CGFloat(series.count - 1) * step
+                    let y = h - CGFloat((last - minV) / range) * h
+                    Circle().fill(color).frame(width: 6, height: 6)
+                        .position(x: x, y: y)
+                }
+
+                // Time axis labels (first / mid / last timestamps)
+                VStack {
+                    Spacer()
+                    HStack {
+                        if let first = timestamps.first {
+                            Text(relativeTime(first)).font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if timestamps.count >= 3 {
+                            Text(relativeTime(timestamps[timestamps.count / 2]))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if let last = timestamps.last {
+                            Text(relativeTime(last)).font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 2)
+                }
+            }
+        }
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let secs = Int(Date().timeIntervalSince(date))
+        if secs < 60 { return "-\(secs)s" }
+        if secs < 3600 { return "-\(secs / 60)m" }
+        return "-\(secs / 3600)h"
     }
 }
