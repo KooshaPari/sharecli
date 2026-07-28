@@ -443,6 +443,23 @@ struct AllProcessesView: View {
                 }
                 .width(140)
 
+                TableColumn("FDs") { p in
+                    if let fd = p.fd_count {
+                        HStack(spacing: 4) {
+                            Text("\(fd)")
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundStyle(fdColor(fd))
+                                .frame(width: 38, alignment: .trailing)
+                            fdBar(fd)
+                        }
+                    } else {
+                        Text("n/a")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .width(96)
+
                 TableColumn("Age") { p in
                     Text(formatAge(p.start_time))
                         .font(.system(.caption, design: .monospaced))
@@ -674,6 +691,28 @@ struct AllProcessesView: View {
                     .fill(.quaternary)
                 RoundedRectangle(cornerRadius: 2)
                     .fill(cpuColor(pct).opacity(0.85))
+                    .frame(width: geo.size.width * CGFloat(width))
+            }
+        }
+        .frame(height: 6)
+    }
+
+    private func fdColor(_ fd: UInt32) -> Color {
+        if fd > 1024 { return .red }
+        if fd > 256 { return .orange }
+        if fd > 64 { return .yellow }
+        return .secondary
+    }
+
+    private func fdBar(_ fd: UInt32) -> some View {
+        // Map 0..2048 onto 0..1 (log-ish). 2048+ clamps to full bar.
+        let n = Double(min(fd, 2048))
+        let width = n / 2048.0
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2).fill(.quaternary)
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(fdColor(fd).opacity(0.85))
                     .frame(width: geo.size.width * CGFloat(width))
             }
         }
