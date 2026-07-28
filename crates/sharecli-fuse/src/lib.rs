@@ -26,6 +26,7 @@
 #![warn(missing_docs)]
 
 mod agent_cow;
+mod backend;
 mod agents_conf;
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 mod cow_session;
@@ -44,6 +45,7 @@ mod write_serialize;
 mod write_serialize_meters;
 
 pub use agent_cow::{AgentCowStore, AgentPending};
+pub use backend::{select_backend, FuseBackend};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use cow_session::CowMountHandle;
