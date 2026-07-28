@@ -272,6 +272,7 @@ fn fr007_ps_all_watch_ndjson_gate_order_serializes_fields() {
                 load_1m: 0.5,
             },
             pool: None,
+            log_location: None,
         },
     };
     let line = PsAllNdjsonLine { ts: 1_700_000_000, snapshot: envelope };

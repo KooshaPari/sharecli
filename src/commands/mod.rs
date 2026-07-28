@@ -21,7 +21,8 @@ use crate::monitoring::HostResourceWatchJson;
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
 use crate::progress::StepProgress;
 use crate::runtime::{
-    ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
+    ProcState, ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources,
+    SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
 use sharecli_fleet::global_coalesce_meters;
@@ -1626,8 +1627,15 @@ mod project_group_tests {
             cmd: vec![],
             memory_mb: 100,
             start_time: 0,
+            cpu_percent: 0.0,
             project: project.map(str::to_string),
             harness: harness.map(str::to_string),
+            ppid: None,
+            cwd: None,
+            env_count: 0,
+            state: ProcState::default(),
+            disk_read_bytes: None,
+            disk_write_bytes: None,
         }
     }
 
