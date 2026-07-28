@@ -356,6 +356,14 @@ public struct ProcessSpawnPayload: Encodable {
     public let args: [String]
     public let project: String?
     public let harness: String?
+
+    public init(name: String, command: String, args: [String], project: String?, harness: String?) {
+        self.name = name
+        self.command = command
+        self.args = args
+        self.project = project
+        self.harness = harness
+    }
 }
 
 public struct ProcessSpawnResult: Decodable, Hashable {
