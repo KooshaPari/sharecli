@@ -48,12 +48,14 @@ struct ProcessesPage: View {
         case all = "all"
         case byProject = "byProject"
         case byHarness = "byHarness"
+        case tree = "tree"
         var id: String { rawValue }
         var label: String {
             switch self {
             case .all: return "All"
             case .byProject: return "By Project"
             case .byHarness: return "By Harness"
+            case .tree: return "Tree"
             }
         }
     }
@@ -78,6 +80,7 @@ struct ProcessesPage: View {
             case .all: allSubpage
             case .byProject: groupedSubpage(by: \.project, groupLabel: "Project")
             case .byHarness: groupedSubpage(by: \.harness, groupLabel: "Harness")
+            case .tree: treeSubpage
             }
         }
         .frame(minWidth: 720, minHeight: 460)
@@ -93,6 +96,12 @@ struct ProcessesPage: View {
 
     private var allSubpage: some View {
         AllProcessesView(state: state)
+    }
+
+    // MARK: - Tree subpage
+
+    private var treeSubpage: some View {
+        TreeView(state: state)
     }
 
     // MARK: - Grouped subpage (By Project / By Harness)
@@ -660,5 +669,324 @@ struct AllProcessesView: View {
             }
         }
         .frame(height: 6)
+    }
+}
+
+// MARK: - Tree subpage
+
+/// In-memory tree model for the .tree subpage. Built lazily from
+/// `state.processes` by `TreeView`; nodes whose `ppid` either is nil or
+/// points at a PID not present in the current process set are treated as
+/// roots (this also handles "cycle" cases where a parent was missing or
+/// out-of-band). To keep the model robust against malformed `ppid`
+/// cycles (parent → child → parent), `TreeNode` is built by walking the
+/// forest top-down and skipping any parent link that would revisit a
+/// node already on the active ancestor chain.
+struct TreeNode: Identifiable, Hashable {
+    let process: ProcessSummary
+    var children: [TreeNode]
+    var id: UInt32 { process.pid }
+    var depth: Int
+}
+
+struct TreeView: View {
+    @ObservedObject var state: AppState
+
+    /// Persisted per-node expansion state, keyed by PID. Stored as
+    /// comma-separated string of expanded PIDs so we can keep it inside
+    /// @AppStorage (which is a String scalar).
+    @AppStorage("processes.treeExpanded") private var expandedRaw: String = ""
+
+    @State private var selection: UInt32?
+
+    private var expanded: Set<UInt32> {
+        Set(expandedRaw.split(separator: ",").compactMap { UInt32($0) })
+    }
+
+    private func setExpanded(_ pid: UInt32, _ on: Bool) {
+        var s = expanded
+        if on { s.insert(pid) } else { s.remove(pid) }
+        expandedRaw = s.sorted().map(String.init).joined(separator: ",")
+    }
+
+    private func toggle(_ pid: UInt32) {
+        let s = expanded
+        setExpanded(pid, !s.contains(pid))
+    }
+
+    /// Build the forest. Roots = processes whose ppid is nil, 0, or
+    /// points at a PID not in the current set. Cycle protection: a
+    /// node is never parented to an ancestor already on its own chain.
+    private var roots: [TreeNode] {
+        let rows = state.processes
+        let byPid: [UInt32: ProcessSummary] = Dictionary(uniqueKeysWithValues: rows.map { ($0.pid, $0) })
+
+        // children: ppid -> [pid] (only valid ppids that exist in the set)
+        var kids: [UInt32: [UInt32]] = [:]
+        for p in rows {
+            guard let pp = p.ppid, byPid[pp] != nil else { continue }
+            kids[pp, default: []].append(p.pid)
+        }
+        // Stable order: sort children by RSS desc within each parent.
+        for (k, v) in kids {
+            let rss: [UInt32: UInt64] = Dictionary(uniqueKeysWithValues: rows.map { ($0.pid, $0.memory_mb) })
+            kids[k] = v.sorted { (rss[$0] ?? 0) > (rss[$1] ?? 0) }
+        }
+
+        // Roots: ppid nil/0, or ppid not in byPid.
+        let rootPids = rows
+            .filter { p in
+                guard let pp = p.ppid, pp != 0 else { return true }
+                return byPid[pp] == nil
+            }
+            .map { $0.pid }
+            .sorted { (a, b) in
+                let ra = byPid[a]?.memory_mb ?? 0
+                let rb = byPid[b]?.memory_mb ?? 0
+                if ra != rb { return ra > rb }
+                return a < b
+            }
+
+        func build(_ pid: UInt32, depth: Int, chain: Set<UInt32>) -> TreeNode? {
+            guard let p = byPid[pid], !chain.contains(pid) else { return nil }
+            let nextChain = chain.union([pid])
+            let childPids = kids[pid] ?? []
+            let childNodes = childPids.compactMap { build($0, depth: depth + 1, chain: nextChain) }
+            return TreeNode(process: p, children: childNodes, depth: depth)
+        }
+
+        let topChain: Set<UInt32> = []
+        return rootPids.compactMap { build($0, depth: 0, chain: topChain) }
+    }
+
+    private var totalRSSBytes: UInt64 {
+        state.processes.reduce(UInt64(0)) { $0 + $1.memory_mb * 1024 * 1024 }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            summaryStrip
+            Divider()
+            if state.processes.isEmpty {
+                EmptyStateView(
+                    icon: "list.bullet.indent",
+                    title: "No processes to tree",
+                    subtitle: "The fleet will render a parent → child tree once processes are registered.",
+                    variant: .normal,
+                    primaryTitle: "Refresh now",
+                    primaryIcon: "arrow.clockwise",
+                    primaryAction: { Task { await state.refresh() } }
+                )
+            } else if roots.isEmpty {
+                EmptyStateView(
+                    icon: "exclamationmark.triangle",
+                    title: "No tree structure",
+                    subtitle: "Every process points at a parent that isn't visible — likely a cycle. Showing as a flat list below.",
+                    variant: .quiet
+                )
+                flatFallback
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(roots) { node in
+                            TreeRowView(
+                                node: node,
+                                expanded: expanded,
+                                selection: $selection,
+                                onToggle: { toggle($0) },
+                                onSelect: { selection = $0 },
+                                totalRSSBytes: totalRSSBytes
+                            )
+                        }
+                    }
+                    .padding(10)
+                }
+            }
+        }
+    }
+
+    private var summaryStrip: some View {
+        let total = state.processes.count
+        let orphans = state.processes.filter { p in
+            guard let pp = p.ppid, pp != 0 else { return false }
+            return !state.processes.contains(where: { $0.pid == pp })
+        }.count
+        let rootCount = roots.count
+        return HStack(spacing: 12) {
+            summaryCard("Processes", "\(total)", "fleet", .blue)
+            summaryCard("Tree roots", "\(rootCount)", "top-level", .green)
+            summaryCard("Orphans", "\(orphans)", "missing ppid", orphans > 0 ? .orange : .secondary)
+            summaryCard("Total RSS",
+                        ByteCountFormatter.string(fromByteCount: Int64(totalRSSBytes), countStyle: .memory),
+                        "fleet", .orange)
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.5))
+    }
+
+    private func summaryCard(_ title: String, _ value: String, _ sub: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.system(.title3, design: .monospaced)).bold().foregroundStyle(color)
+            Text(sub).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(.quaternary)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    /// Last-resort flat list shown when cycle protection eats everything.
+    private var flatFallback: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(state.processes.sorted { $0.pid < $1.pid }) { p in
+                TreeLeafRow(
+                    process: p,
+                    isSelected: selection == p.pid,
+                    onSelect: { _ in selection = p.pid },
+                    totalRSSBytes: totalRSSBytes
+                )
+            }
+        }
+        .padding(10)
+    }
+}
+
+/// Single row in the tree. Renders indent based on `node.depth`, an
+/// expand/collapse chevron when there are children, and the process
+/// summary (name + badges + RSS).
+struct TreeRowView: View {
+    let node: TreeNode
+    let expanded: Set<UInt32>
+    @Binding var selection: UInt32?
+    let onToggle: (UInt32) -> Void
+    let onSelect: (UInt32) -> Void
+    let totalRSSBytes: UInt64
+
+    private var isExpanded: Bool {
+        // Default-expand root nodes (depth 0) for the cold-start case
+        // if the user hasn't persisted any state yet. Once the user
+        // has touched a row, the persisted set drives everything.
+        if expanded.isEmpty { return node.depth < 2 }
+        return expanded.contains(node.process.pid)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                // Indent gutter
+                ForEach(0..<node.depth, id: \.self) { _ in
+                    Rectangle()
+                        .fill(.quaternary)
+                        .frame(width: 1, height: 16)
+                        .padding(.leading, 7)
+                }
+                // Expand/collapse chevron
+                if node.children.isEmpty {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 4))
+                        .foregroundStyle(.quaternary)
+                        .frame(width: 16)
+                } else {
+                    Button { onToggle(node.process.pid) } label: {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .frame(width: 16, height: 16)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                }
+                TreeLeafRow(
+                    process: node.process,
+                    isSelected: selection == node.process.pid,
+                    onSelect: onSelect,
+                    totalRSSBytes: totalRSSBytes
+                )
+            }
+            if isExpanded && !node.children.isEmpty {
+                ForEach(node.children) { child in
+                    TreeRowView(
+                        node: child,
+                        expanded: expanded,
+                        selection: $selection,
+                        onToggle: onToggle,
+                        onSelect: onSelect,
+                        totalRSSBytes: totalRSSBytes
+                    )
+                }
+            }
+        }
+    }
+}
+
+/// Leaf row content (used by both the tree row and the cycle fallback).
+struct TreeLeafRow: View {
+    let process: ProcessSummary
+    let isSelected: Bool
+    let onSelect: (UInt32) -> Void
+    let totalRSSBytes: UInt64
+
+    private var rssFraction: Double {
+        guard totalRSSBytes > 0 else { return 0 }
+        return Double(process.memory_mb * 1024 * 1024) / Double(totalRSSBytes)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("\(process.pid)")
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 50, alignment: .leading)
+                .foregroundStyle(.secondary)
+            Text(process.name)
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 140, alignment: .leading)
+                .lineLimit(1)
+            if let proj = process.project { Badge(text: proj, color: .blue) }
+            if let h = process.harness { Badge(text: h, color: .purple) }
+            if let pp = process.ppid {
+                Text("ppid \(pp)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 6)
+            // Tiny RSS bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2).fill(.quaternary)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(rssColor(process.memory_mb).opacity(0.85))
+                        .frame(width: max(2, geo.size.width * CGFloat(rssFraction)))
+                }
+            }
+            .frame(width: 60, height: 6)
+            Text("\(process.memory_mb) MB")
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 64, alignment: .trailing)
+            Text(String(format: "%.1f%%", process.cpu_percent))
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(cpuColor(process.cpu_percent))
+                .frame(width: 48, alignment: .trailing)
+        }
+        .padding(.vertical, 3)
+        .padding(.horizontal, 6)
+        .background(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .contentShape(Rectangle())
+        .onTapGesture { onSelect(process.pid) }
+    }
+
+    private func rssColor(_ mb: UInt64) -> Color {
+        if mb > 1024 { return .red }
+        if mb > 512 { return .orange }
+        if mb > 128 { return .yellow }
+        return .blue
+    }
+
+    private func cpuColor(_ pct: Float) -> Color {
+        if pct > 90 { return .red }
+        if pct > 60 { return .orange }
+        if pct > 25 { return .yellow }
+        return .secondary
     }
 }
