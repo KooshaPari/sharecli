@@ -15,7 +15,7 @@ use sharecli_fleet::GateStatusSnapshot;
 
 use crate::commands::{PoolJson, StatusJson};
 use crate::monitoring::HostResourceWatchJson;
-use crate::runtime::{ProcessInfo, ProcessPool};
+use crate::runtime::{ProcState, ProcessInfo, ProcessPool};
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -526,8 +526,15 @@ mod tests {
             cmd: vec![],
             memory_mb,
             start_time,
+            cpu_percent: 0.0,
             project: project.map(String::from),
             harness: None,
+            ppid: None,
+            cwd: None,
+            env_count: 0,
+            state: ProcState::default(),
+            disk_read_bytes: None,
+            disk_write_bytes: None,
         }
     }
 

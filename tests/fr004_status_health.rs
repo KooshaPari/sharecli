@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use sharecli::monitoring::{HealthStatus, ProcessStats, ResourceWatchSample};
-use sharecli::runtime::{ProcessInfo, ProcessPool, SharedRuntime};
+use sharecli::runtime::{ProcState, ProcessInfo, ProcessPool, SharedRuntime};
 use sharecli_fleet::format_gate_status_section;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fuse::{
@@ -81,8 +81,15 @@ fn sample_process(pid: u32, name: &str, memory_mb: u64, harness: &str) -> Proces
         cmd: vec![name.to_string()],
         memory_mb,
         start_time: 0,
+        cpu_percent: 0.0,
         project: Some("demo".to_string()),
         harness: Some(harness.to_string()),
+        ppid: None,
+        cwd: None,
+        env_count: 0,
+        state: ProcState::default(),
+        disk_read_bytes: None,
+        disk_write_bytes: None,
     }
 }
 

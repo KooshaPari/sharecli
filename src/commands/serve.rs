@@ -42,7 +42,7 @@ use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
 use crate::monitoring::HostResourceWatchJson;
 use crate::notifier::Notifier;
-use crate::runtime::ProcessPool;
+use crate::runtime::{ProcState, ProcessPool};
 use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 use crate::serve_rate_limit::{is_probe_path, ServeRateLimit, ServeRateLimitState};
@@ -915,8 +915,15 @@ mod tests {
             cmd: vec!["fake".to_string()],
             memory_mb,
             start_time: 0,
+            cpu_percent: 0.0,
             project: None,
             harness: None,
+            ppid: None,
+            cwd: None,
+            env_count: 0,
+            state: ProcState::default(),
+            disk_read_bytes: None,
+            disk_write_bytes: None,
         }
     }
 
