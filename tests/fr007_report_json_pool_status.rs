@@ -163,6 +163,7 @@ fn fr007_report_json_pool_status_serializes_fields() {
         gate: gate.clone(),
         host_watch,
         pool: None,
+        log_location: None,
     };
     let envelope = FleetReportJson {
         timestamp: 1,

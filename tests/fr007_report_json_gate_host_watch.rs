@@ -186,6 +186,7 @@ fn fr007_report_json_gate_order_serializes_fields() {
                 load_1m: 1.25,
             },
             pool: None,
+            log_location: None,
         },
     };
     let json = serde_json::to_string(&envelope).expect("serialize report JSON envelope");
