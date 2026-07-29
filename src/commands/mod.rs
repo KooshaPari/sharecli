@@ -1636,6 +1636,8 @@ mod project_group_tests {
             state: ProcState::default(),
             disk_read_bytes: None,
             disk_write_bytes: None,
+            fd_count: None,
+            thread_count: None,
         }
     }
 

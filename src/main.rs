@@ -706,16 +706,15 @@ async fn run() -> Result<()> {
         // overridable via SHARECLI_LOG_PATH for test/CI isolation. The Swift
         // tray reads this file directly via the StatusSnapshot.log_location
         // field — no separate log.tail IPC needed.
-        let log_path: std::path::PathBuf =
-            std::env::var_os("SHARECLI_LOG_PATH")
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|| {
-                    let home = std::env::var_os("HOME")
-                        .or_else(|| std::env::var_os("USERPROFILE"))
-                        .map(std::path::PathBuf::from)
-                        .unwrap_or_else(|| std::path::PathBuf::from("."));
-                    home.join(".sharecli").join("logs").join("sharecli.log")
-                });
+        let log_path: std::path::PathBuf = std::env::var_os("SHARECLI_LOG_PATH")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                let home = std::env::var_os("HOME")
+                    .or_else(|| std::env::var_os("USERPROFILE"))
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                home.join(".sharecli").join("logs").join("sharecli.log")
+            });
         if let Some(parent) = log_path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
@@ -731,8 +730,11 @@ async fn run() -> Result<()> {
             )
         };
         if json {
-            let fmt_layer =
-                tracing_subscriber::fmt::layer().json().with_ansi(false).with_writer(std::io::stderr).with_filter(filter);
+            let fmt_layer = tracing_subscriber::fmt::layer()
+                .json()
+                .with_ansi(false)
+                .with_writer(std::io::stderr)
+                .with_filter(filter);
             let file_layer = tracing_subscriber::fmt::layer()
                 .json()
                 .with_ansi(false)
@@ -744,11 +746,12 @@ async fn run() -> Result<()> {
                 registry.init();
             }
         } else {
-            let fmt_layer =
-                tracing_subscriber::fmt::layer().with_ansi(!is_no_color()).with_writer(std::io::stderr).with_filter(filter);
-            let file_layer = tracing_subscriber::fmt::layer()
-                .with_ansi(false)
-                .with_writer(file_make_writer);
+            let fmt_layer = tracing_subscriber::fmt::layer()
+                .with_ansi(!is_no_color())
+                .with_writer(std::io::stderr)
+                .with_filter(filter);
+            let file_layer =
+                tracing_subscriber::fmt::layer().with_ansi(false).with_writer(file_make_writer);
             let registry = tracing_subscriber::registry().with(fmt_layer).with(file_layer);
             if let Some(otel_layer) = crate::otel::try_otel_layer() {
                 registry.with(otel_layer).init();

@@ -24,14 +24,20 @@ pub fn select_backend() -> FuseBackend {
         // legacy filesystems, at which point callers can retry Kernel.
         return FuseBackend::Fskit;
     }
-    if kernel_backend_loaded() { FuseBackend::Kernel } else { FuseBackend::Unavailable }
+    if kernel_backend_loaded() {
+        FuseBackend::Kernel
+    } else {
+        FuseBackend::Unavailable
+    }
 }
 
 fn kernel_backend_loaded() -> bool {
     Command::new("kmutil")
         .args(["showloaded"])
         .output()
-        .map(|output| String::from_utf8_lossy(&output.stdout).to_ascii_lowercase().contains("macfuse"))
+        .map(|output| {
+            String::from_utf8_lossy(&output.stdout).to_ascii_lowercase().contains("macfuse")
+        })
         .unwrap_or(false)
 }
 

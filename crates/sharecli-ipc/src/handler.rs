@@ -19,8 +19,8 @@ use serde_json::Value;
 use sharecli::commands::proc::{AgentProcRow, AgentProcSnapshot};
 use sharecli::config::Config;
 use sharecli::monitoring::HostResourceWatchJson;
-use sharecli::runtime::SharedRuntime;
 use sharecli::runtime::ProcState;
+use sharecli::runtime::SharedRuntime;
 use sharecli::{ProcessInfo, ProcessPool};
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{
@@ -460,18 +460,16 @@ impl Handler {
             }
 
             "process.cmdline" => {
-                let pid = req.params.get("pid")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| anyhow::anyhow!("process.cmdline: missing required `pid` parameter"))?
-                    as u32;
+                let pid = req.params.get("pid").and_then(|v| v.as_u64()).ok_or_else(|| {
+                    anyhow::anyhow!("process.cmdline: missing required `pid` parameter")
+                })? as u32;
                 Ok(serde_json::to_value(self.capture_process_cmdline(pid).await?)?)
             }
 
             "process.io" => {
-                let pid = req.params.get("pid")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| anyhow::anyhow!("process.io: missing required `pid` parameter"))?
-                    as u32;
+                let pid = req.params.get("pid").and_then(|v| v.as_u64()).ok_or_else(|| {
+                    anyhow::anyhow!("process.io: missing required `pid` parameter")
+                })? as u32;
                 self.pool.refresh().await;
                 let procs = self.pool.list().await;
                 let p = procs.iter().find(|p| p.pid == pid);
@@ -497,21 +495,26 @@ impl Handler {
             }
 
             "process.spawn" => {
-                let cmd = req.params.get("cmd")
+                let cmd = req
+                    .params
+                    .get("cmd")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("process.spawn: missing required `cmd` parameter"))?
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("process.spawn: missing required `cmd` parameter")
+                    })?
                     .to_string();
-                let args: Vec<String> = req.params.get("args")
+                let args: Vec<String> = req
+                    .params
+                    .get("args")
                     .and_then(|v| v.as_array())
                     .map(|a| a.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect())
                     .unwrap_or_default();
-                let cwd: Option<std::path::PathBuf> = req.params.get("cwd")
-                    .and_then(|v| v.as_str())
-                    .map(std::path::PathBuf::from);
-                let project = req.params.get("project")
-                    .and_then(|v| v.as_str()).map(|s| s.to_string());
-                let harness = req.params.get("harness")
-                    .and_then(|v| v.as_str()).map(|s| s.to_string());
+                let cwd: Option<std::path::PathBuf> =
+                    req.params.get("cwd").and_then(|v| v.as_str()).map(std::path::PathBuf::from);
+                let project =
+                    req.params.get("project").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let harness =
+                    req.params.get("harness").and_then(|v| v.as_str()).map(|s| s.to_string());
                 match self.pool.spawn(&cmd, &args, cwd, project.clone(), harness.clone()).await {
                     Ok(info) => Ok(serde_json::to_value(SpawnResultJson {
                         pid: info.pid,
@@ -641,10 +644,7 @@ fn read_proc_cmdline(pid: u32) -> Option<String> {
             return Some(String::new());
         }
         // Replace NULs with spaces and trim trailing whitespace.
-        let s: String = bytes
-            .iter()
-            .map(|b| if *b == 0 { ' ' } else { *b as char })
-            .collect();
+        let s: String = bytes.iter().map(|b| if *b == 0 { ' ' } else { *b as char }).collect();
         Some(s.trim_end().to_string())
     }
     #[cfg(not(target_os = "linux"))]
