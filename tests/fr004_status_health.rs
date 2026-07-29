@@ -90,6 +90,8 @@ fn sample_process(pid: u32, name: &str, memory_mb: u64, harness: &str) -> Proces
         state: ProcState::default(),
         disk_read_bytes: None,
         disk_write_bytes: None,
+        fd_count: None,
+        thread_count: None,
     }
 }
 

@@ -139,7 +139,7 @@ fn fr007_render_health_csv_body() {
             gate: gate_status_snapshot(ThermalLevel::Green, 0),
             host_watch: sharecli::monitoring::HostResourceWatchJson::default(),
             pool: None,
-                log_location: None,
+            log_location: None,
         },
     };
     let csv = render_health_csv_body(&health);

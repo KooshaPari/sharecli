@@ -26,8 +26,8 @@
 #![warn(missing_docs)]
 
 mod agent_cow;
-mod backend;
 mod agents_conf;
+mod backend;
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 mod cow_session;
 mod inode_map;
@@ -45,8 +45,8 @@ mod write_serialize;
 mod write_serialize_meters;
 
 pub use agent_cow::{AgentCowStore, AgentPending};
-pub use backend::{select_backend, FuseBackend};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
+pub use backend::{select_backend, FuseBackend};
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use cow_session::CowMountHandle;
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
