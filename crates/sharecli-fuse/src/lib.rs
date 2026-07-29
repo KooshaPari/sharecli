@@ -977,12 +977,39 @@ mod platform {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let fs = InterceptFs::with_session(backing, session_id);
         // Smoke/ephemeral mounts: no AutoUnmount (avoids allow_other / user_allow_other).
         // Callers and FuseGuard Drop force-unmount explicitly.
-        let config = crate::session_registry::smoke_fuser_config();
-        fuser::mount(fs, mountpoint, &config)?;
-        Ok(())
+        #[cfg(target_os = "macos")]
+        {
+            use crate::{select_backend, FuseBackend};
+
+            let attempt = |backend: Option<FuseBackend>| {
+                let fs = InterceptFs::with_session(backing, session_id);
+                let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
+                fuser::mount(fs, mountpoint, &config)
+            };
+
+            match select_backend() {
+                FuseBackend::Kernel => match attempt(Some(FuseBackend::Kernel)) {
+                    Ok(()) => Ok(()),
+                    Err(_) => {
+                        let _ = crate::mount_smoke::force_unmount(mountpoint);
+                        attempt(Some(FuseBackend::Fskit))
+                    }
+                },
+                FuseBackend::Fskit => attempt(Some(FuseBackend::Fskit)),
+                FuseBackend::Unavailable => attempt(None),
+            }?;
+            Ok(())
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            let fs = InterceptFs::with_session(backing, session_id);
+            let config = crate::session_registry::smoke_fuser_config();
+            fuser::mount(fs, mountpoint, &config)?;
+            Ok(())
+        }
     }
 
     /// Share [`InterceptFs`] across FUSE session threads and the session registry.
