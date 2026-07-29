@@ -24,6 +24,30 @@ paths:
             text/html:
               schema:
                 type: string
+  /assets/dashboard/ui/{*path}:
+    get:
+      operationId: dashboardAsset
+      summary: Embedded dashboard UI asset
+      description: |
+        Serves an embedded dashboard favicon, banner, icon, or empty-state asset.
+        Unknown asset paths return 404.
+      parameters:
+        - name: path
+          in: path
+          required: true
+          description: Relative path below `assets/dashboard/ui/`.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Embedded dashboard asset
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Asset not found
   /healthz:
     get:
       operationId: healthz
