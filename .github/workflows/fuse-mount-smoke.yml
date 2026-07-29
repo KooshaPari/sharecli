@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Install fuse3
         run: sudo apt-get update && sudo apt-get install -y fuse3 libfuse3-dev pkg-config
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build + run Containerfile.fuse-smoke
         run: |
           docker build -f Containerfile.fuse-smoke -t sharecli-fuse-smoke:ci .
@@ -57,7 +57,7 @@ jobs:
     runs-on: macos-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Matrix cell macos_native (loud fail OK without macFUSE)
         run: cargo run -p fuse-smoke-runner --locked -- --cell macos_native --json --report-only
@@ -67,7 +67,7 @@ jobs:
     runs-on: windows-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Install WinFsp (Developer)
         shell: pwsh
@@ -92,6 +92,6 @@ jobs:
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test -p fuse-smoke-runner --locked
