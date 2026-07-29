@@ -20,6 +20,8 @@ use fuser::{BackgroundSession, Config, MountOption};
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::platform::{InterceptFs, SharedInterceptFs};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use crate::{select_backend, FuseBackend};
 use crate::InterceptFsOptions;
 
 /// Default [`fuser`] mount [`Config`] for sharecli-fuse sessions.
@@ -48,14 +50,41 @@ pub fn default_fuser_config() -> Config {
 /// [`crate::mount_smoke::force_unmount`] / Drop.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn smoke_fuser_config() -> Config {
-    let mut config = Config::default();
-    config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
-    // RootAndOwner → allow_other (needed on Colima/Lima); no AutoUnmount (Drop unmounts).
+    smoke_fuser_config_for_backend(None)
+}
+
+/// FUSE config for privileged mount smoke / ephemeral mounts with an explicit backend override.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub fn smoke_fuser_config_for_backend(backend: Option<FuseBackend>) -> Config {
     #[cfg(target_os = "linux")]
     {
+        let mut config = Config::default();
+        config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
         config.acl = SessionACL::RootAndOwner;
+        return config;
     }
-    config
+
+    #[cfg(target_os = "macos")]
+    {
+        let mut config = Config::default();
+        config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
+        match backend.unwrap_or_else(select_backend) {
+            FuseBackend::Kernel => {}
+            FuseBackend::Fskit => {
+                config
+                    .mount_options
+                    .push(MountOption::CUSTOM("backend=fskit".to_string()));
+            }
+            FuseBackend::Unavailable => {}
+        }
+        return config;
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        let mut config = Config::default();
+        config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
+        return config;
+    }
 }
 
 /// Mount flags for CLI / hypervisor (`--cow`, `--cow-dir`, …).
