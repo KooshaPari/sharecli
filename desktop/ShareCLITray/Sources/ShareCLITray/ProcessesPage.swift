@@ -1,9 +1,10 @@
 /// ProcessesPage.swift — expanded Processes page (PR 2 of dashboard expansion plan).
 ///
-/// Replaces the simple `ProcessTableView` inside `DashboardView` with a 3-subpage
-/// layout driven by `state.processes: [ProcessSummary]` (which now carries
-/// `start_time` after PR 2's sidecar extension — see
-/// `crates/sharecli-ipc/src/handler.rs:99-109`).
+/// Replaces the original Processes subpage layout with an 8-subpage surface
+/// driven by `state.processes: [ProcessSummary]` (which now carries
+/// `start_time`, `cpu_percent`, `ppid`, `cwd`, `env_count`, `state`,
+/// `disk_read_bytes`, `disk_write_bytes`, `fd_count`, and `thread_count`
+/// after the sidecar extensions — see `crates/sharecli-ipc/src/handler.rs`).
 ///
 /// Subpages (segmented at top):
 ///   ┌─────────────────────────────────────────────────────────────────┐
@@ -1579,23 +1580,6 @@ struct ResourcesView: View {
             .font(.caption)
             .foregroundStyle(.tertiary)
             .padding(.vertical, 4)
-    }
-
-    private func formatStart(_ ts: UInt64) -> String {
-        guard ts > 0 else { return "—" }
-        let date = Date(timeIntervalSince1970: TimeInterval(ts))
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return f.string(from: date)
-    }
-
-    private func formatAge(_ ts: UInt64) -> String {
-        guard ts > 0 else { return "—" }
-        let ageSeconds = UInt64(Date().timeIntervalSince1970) &- ts
-        if ageSeconds < 60 { return "\(ageSeconds)s" }
-        if ageSeconds < 3600 { return "\(ageSeconds / 60)m" }
-        if ageSeconds < 86400 { return "\(ageSeconds / 3600)h" }
-        return "\(ageSeconds / 86400)d"
     }
 
     private func ioSection(for p: ProcessSummary) -> some View {
