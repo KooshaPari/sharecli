@@ -19,7 +19,7 @@ use serde_json::Value;
 use sharecli::commands::proc::{AgentProcRow, AgentProcSnapshot};
 use sharecli::config::Config;
 use sharecli::monitoring::HostResourceWatchJson;
-use sharecli::runtime::ProcState;
+pub use sharecli::runtime::ProcState;
 use sharecli::runtime::SharedRuntime;
 use sharecli::{ProcessInfo, ProcessPool};
 use sharecli_fleet::thermal::ThermalGovernor;
