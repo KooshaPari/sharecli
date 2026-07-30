@@ -144,7 +144,7 @@ fn fr007_ps_csv_requires_all() {
 /// FR-007 / AC-007.83 — unit render_ps_all_csv_body preserves managed + agent sections.
 #[test]
 fn fr007_ps_all_csv_body_shape() {
-    use sharecli::runtime::ProcessInfo;
+    use sharecli::runtime::{ProcessInfo, ProcState};
     use sharecli_fleet::HostProcSource;
 
     let proc_source = HostProcSource;
@@ -156,6 +156,13 @@ fn fr007_ps_all_csv_body_shape() {
         harness: Some("claude".into()),
         cmd: vec![],
         start_time: 0,
+        cpu_percent: 0.0,
+        ppid: None,
+        cwd: None,
+        env_count: 0,
+        state: ProcState::default(),
+        disk_read_bytes: 0,
+        disk_write_bytes: 0,
         fd_count: None,
         thread_count: None,
     }];
