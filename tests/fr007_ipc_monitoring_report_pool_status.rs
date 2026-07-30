@@ -70,7 +70,7 @@ fn fr007_ipc_monitoring_report_snapshot_pool_status_order() {
     use sharecli::monitoring::HostResourceWatchJson;
     use sharecli_fleet::GateStatusSnapshot;
     use sharecli_ipc::handler::{
-        MonitoringProcessEntry, MonitoringReportSnapshot, PoolSnapshot, StatusSnapshot,
+        MonitoringProcessEntry, MonitoringReportSnapshot, PoolSnapshot, ProcState, StatusSnapshot,
     };
 
     let gate = GateStatusSnapshot {
