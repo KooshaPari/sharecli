@@ -161,8 +161,8 @@ fn fr007_ps_all_csv_body_shape() {
         cwd: None,
         env_count: 0,
         state: ProcState::default(),
-        disk_read_bytes: 0,
-        disk_write_bytes: 0,
+        disk_read_bytes: Some(0),
+        disk_write_bytes: Some(0),
         fd_count: None,
         thread_count: None,
     }];
