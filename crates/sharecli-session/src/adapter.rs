@@ -1,6 +1,6 @@
 //! Capability-gated terminal surface adapters.
 
-use crate::{ledger::SurfaceCapabilities, SurfaceRecord};
+use crate::{ledger::SurfaceCapabilities, LayoutRestoreReport, LayoutSnapshot, SurfaceRecord};
 use anyhow::Result;
 use std::sync::Arc;
 
@@ -8,6 +8,15 @@ use std::sync::Arc;
 pub trait SurfaceAdapter: Send + Sync {
     fn capabilities(&self, surface: &SurfaceRecord) -> Result<SurfaceCapabilities>;
     fn discover(&self) -> Result<Vec<SurfaceRecord>>;
+    /// Capture the adapter's current pane topology.
+    fn snapshot_layout(&self) -> Result<LayoutSnapshot> {
+        anyhow::bail!("surface layout snapshot unavailable")
+    }
+    /// Restore a previously validated pane topology.
+    fn restore_layout(&self, snapshot: &LayoutSnapshot) -> Result<LayoutRestoreReport> {
+        snapshot.validate()?;
+        anyhow::bail!("surface layout restore unavailable")
+    }
 }
 
 /// Targeted input/output operations for a terminal surface.
