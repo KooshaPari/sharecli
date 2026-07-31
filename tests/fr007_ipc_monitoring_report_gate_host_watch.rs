@@ -103,7 +103,7 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
             ppid: None,
             cwd: None,
             env_count: 0,
-            state: ProcState::Running,
+            state: ProcState::Run,
             disk_read_bytes: None,
             disk_write_bytes: None,
             fd_count: None,
