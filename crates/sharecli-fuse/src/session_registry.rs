@@ -33,12 +33,26 @@ use crate::InterceptFsOptions;
 /// [`crate::mount_smoke::force_unmount`] / session Drop already call `umount`.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn default_fuser_config() -> Config {
+    default_fuser_config_for_backend(None)
+}
+
+/// Default [`fuser`] mount configuration for a selected macOS backend.
+///
+/// `backend=fskit` is intentionally emitted only when the caller has selected
+/// [`FuseBackend::Fskit`]. The KEXT and unavailable selections must retain the
+/// default macFUSE behavior rather than accidentally requesting FSKit.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub fn default_fuser_config_for_backend(backend: Option<FuseBackend>) -> Config {
     let mut config = Config::default();
     config.mount_options = vec![MountOption::FSName("sharecli-fuse".to_string())];
     #[cfg(target_os = "linux")]
     {
         config.mount_options.push(MountOption::AutoUnmount);
         config.acl = SessionACL::RootAndOwner;
+    }
+    #[cfg(target_os = "macos")]
+    if matches!(backend, Some(FuseBackend::Fskit)) {
+        config.mount_options.push(MountOption::CUSTOM("backend=fskit".to_string()));
     }
     config
 }
@@ -263,6 +277,19 @@ impl FuseSessionRegistry {
         let intercept = opts.to_intercept_options();
         let fs = Arc::new(InterceptFs::with_options(backing, intercept));
         let session_id = fs.session_id().to_string();
+        #[cfg(target_os = "macos")]
+        let config = {
+            let selection = crate::select_backend_for_mount(mountpoint);
+            if selection.backend == FuseBackend::Unavailable {
+                let diagnostic = selection
+                    .diagnostic
+                    .map(|diagnostic| diagnostic.message())
+                    .unwrap_or("macFUSE unavailable; continuing without filesystem interception");
+                anyhow::bail!("fuse mount: {diagnostic}");
+            }
+            default_fuser_config_for_backend(Some(selection.backend))
+        };
+        #[cfg(target_os = "linux")]
         let config = default_fuser_config();
 
         if background {
@@ -595,7 +622,8 @@ impl MountContext for std::io::Result<()> {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[cfg(test)]
 mod default_mount_options_tests {
-    use super::default_fuser_config;
+    use super::{default_fuser_config, default_fuser_config_for_backend};
+    use crate::FuseBackend;
     use fuser::{MountOption, SessionACL};
 
     #[test]
@@ -608,6 +636,25 @@ mod default_mount_options_tests {
                 .any(|o| matches!(o, MountOption::FSName(name) if name == "sharecli-fuse")),
             "MUST set FSName=sharecli-fuse"
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn backend_option_is_emitted_only_for_an_actual_fskit_selection() {
+        let fskit = default_fuser_config_for_backend(Some(FuseBackend::Fskit));
+        assert!(fskit.mount_options.iter().any(
+            |option| matches!(option, MountOption::CUSTOM(value) if value == "backend=fskit")
+        ));
+
+        for backend in [None, Some(FuseBackend::Kernel), Some(FuseBackend::Unavailable)] {
+            let config = default_fuser_config_for_backend(backend);
+            assert!(
+                !config.mount_options.iter().any(
+                    |option| matches!(option, MountOption::CUSTOM(value) if value == "backend=fskit")
+                ),
+                "backend=fskit must be emitted only for the selected FSKit backend"
+            );
+        }
     }
 
     #[cfg(target_os = "linux")]

@@ -46,8 +46,10 @@ mod write_serialize_meters;
 
 pub use agent_cow::{AgentCowStore, AgentPending};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
-pub use backend::{select_backend, FuseBackend};
-pub use backend::{select_backend_with, FuseCapabilities};
+pub use backend::{
+    select_backend, select_backend_for_mount, select_backend_for_mount_with, select_backend_with,
+    FuseBackend, FuseBackendDiagnostic, FuseBackendSelection, FuseCapabilities,
+};
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use cow_session::CowMountHandle;
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
@@ -982,7 +984,7 @@ mod platform {
         // Callers and FuseGuard Drop force-unmount explicitly.
         #[cfg(target_os = "macos")]
         {
-            use crate::{select_backend, FuseBackend};
+            use crate::{select_backend_for_mount, FuseBackend};
 
             let attempt = |backend: Option<FuseBackend>| {
                 let fs = InterceptFs::with_session(backing, session_id);
@@ -990,11 +992,16 @@ mod platform {
                 fuser::mount(fs, mountpoint, &config)
             };
 
-            match select_backend() {
+            let selection = select_backend_for_mount(mountpoint);
+            match selection.backend {
                 FuseBackend::Kernel => attempt(Some(FuseBackend::Kernel)),
                 FuseBackend::Fskit => attempt(Some(FuseBackend::Fskit)),
                 FuseBackend::Unavailable => {
-                    anyhow::bail!("FUSE unavailable; continuing without filesystem interception")
+                    let diagnostic =
+                        selection.diagnostic.map(|diagnostic| diagnostic.message()).unwrap_or(
+                            "macFUSE unavailable; continuing without filesystem interception",
+                        );
+                    anyhow::bail!("{diagnostic}")
                 }
             }?;
             Ok(())

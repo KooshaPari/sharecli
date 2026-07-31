@@ -1,6 +1,6 @@
 //! Runtime backend negotiation for macFUSE on macOS.
 
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 /// Selected interception backend for ShareCLI's optional filesystem layer.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -22,6 +22,38 @@ pub struct FuseCapabilities {
     pub fskit_approved: bool,
 }
 
+/// Reason why macOS must continue without filesystem interception.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FuseBackendDiagnostic {
+    /// Neither the proven KEXT backend nor an explicitly approved FSKit backend is available.
+    NoVerifiedBackend,
+    /// FSKit cannot mount a volume outside `/Volumes`.
+    FskitRequiresVolumes,
+}
+
+impl FuseBackendDiagnostic {
+    /// Operator-facing explanation of the unavailable selection.
+    pub const fn message(self) -> &'static str {
+        match self {
+            Self::NoVerifiedBackend => {
+                "macFUSE unavailable: no loaded KEXT and no verified FSKit approval; continuing without filesystem interception"
+            }
+            Self::FskitRequiresVolumes => {
+                "macFUSE FSKit supports mount points only under /Volumes; continuing without filesystem interception"
+            }
+        }
+    }
+}
+
+/// Backend decision together with a fail-open diagnostic when no mount is safe.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FuseBackendSelection {
+    /// Backend that may be passed to a FUSE mount call.
+    pub backend: FuseBackend,
+    /// Why `backend` is unavailable, if it is unavailable.
+    pub diagnostic: Option<FuseBackendDiagnostic>,
+}
+
 /// Select KEXT first, then approved FSKit, otherwise fail open.
 pub fn select_backend_with(capabilities: FuseCapabilities) -> FuseBackend {
     if capabilities.kernel_loaded {
@@ -33,16 +65,39 @@ pub fn select_backend_with(capabilities: FuseCapabilities) -> FuseBackend {
     }
 }
 
-/// Select the safest available backend. `SHARECLI_FUSE_BACKEND` may force
-/// `fskit` or `kernel`; unsupported forcing degrades to `Unavailable`.
-pub fn select_backend() -> FuseBackend {
-    if let Ok(value) = std::env::var("SHARECLI_FUSE_BACKEND") {
-        return match value.to_ascii_lowercase().as_str() {
-            "fskit" if fskit_backend_approved() => FuseBackend::Fskit,
-            "kernel" if kernel_backend_loaded() => FuseBackend::Kernel,
-            _ => FuseBackend::Unavailable,
-        };
+/// Select a macOS backend for `mountpoint` without permitting an invalid FSKit mount.
+///
+/// macFUSE's FSKit backend supports mount points only under `/Volumes`. A loaded KEXT is
+/// deliberately preferred before this restriction is considered, because the KEXT backend can
+/// mount at the caller's requested path.
+pub fn select_backend_for_mount_with(
+    capabilities: FuseCapabilities,
+    mountpoint: &Path,
+) -> FuseBackendSelection {
+    match select_backend_with(capabilities) {
+        FuseBackend::Kernel => {
+            FuseBackendSelection { backend: FuseBackend::Kernel, diagnostic: None }
+        }
+        FuseBackend::Fskit if mountpoint.starts_with("/Volumes") => {
+            FuseBackendSelection { backend: FuseBackend::Fskit, diagnostic: None }
+        }
+        FuseBackend::Fskit => FuseBackendSelection {
+            backend: FuseBackend::Unavailable,
+            diagnostic: Some(FuseBackendDiagnostic::FskitRequiresVolumes),
+        },
+        FuseBackend::Unavailable => FuseBackendSelection {
+            backend: FuseBackend::Unavailable,
+            diagnostic: Some(FuseBackendDiagnostic::NoVerifiedBackend),
+        },
     }
+}
+
+/// Select the safest available backend.
+///
+/// The selector is intentionally deterministic: it never lets an environment override bypass
+/// a loaded KEXT or invent FSKit approval. Use [`select_backend_for_mount`] before mounting on
+/// macOS so the FSKit `/Volumes` restriction remains fail-open.
+pub fn select_backend() -> FuseBackend {
     if cfg!(target_os = "macos") {
         return select_backend_with(FuseCapabilities {
             kernel_loaded: kernel_backend_loaded(),
@@ -56,12 +111,30 @@ pub fn select_backend() -> FuseBackend {
     }
 }
 
+/// Select the safest available backend for a specific mountpoint.
+pub fn select_backend_for_mount(mountpoint: &Path) -> FuseBackendSelection {
+    if cfg!(target_os = "macos") {
+        return select_backend_for_mount_with(
+            FuseCapabilities {
+                kernel_loaded: kernel_backend_loaded(),
+                fskit_approved: fskit_backend_approved(),
+            },
+            mountpoint,
+        );
+    }
+    FuseBackendSelection { backend: select_backend(), diagnostic: None }
+}
+
 fn fskit_backend_approved() -> bool {
     #[cfg(target_os = "macos")]
     {
-        std::env::var("SHARECLI_FUSE_FSKIT_APPROVED")
+        let mfmount_available =
+            Path::new("/Library/Filesystems/macfuse.fs/Contents/Frameworks/MFMount.framework")
+                .is_dir();
+        let explicitly_approved = std::env::var("SHARECLI_FUSE_FSKIT_APPROVED")
             .map(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
-            .unwrap_or(false)
+            .unwrap_or(false);
+        mfmount_available && explicitly_approved
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -84,13 +157,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn invalid_override_degrades_closed() {
-        std::env::set_var("SHARECLI_FUSE_BACKEND", "invalid");
-        assert_eq!(select_backend(), FuseBackend::Unavailable);
-        std::env::remove_var("SHARECLI_FUSE_BACKEND");
-    }
-
-    #[test]
     fn backend_selection_is_kext_first_then_approved_fskit() {
         assert_eq!(
             select_backend_with(FuseCapabilities { kernel_loaded: true, fskit_approved: true }),
@@ -101,5 +167,49 @@ mod tests {
             FuseBackend::Fskit
         );
         assert_eq!(select_backend_with(FuseCapabilities::default()), FuseBackend::Unavailable);
+    }
+
+    #[test]
+    fn approved_fskit_outside_volumes_fails_open_with_a_specific_diagnostic() {
+        let selection = select_backend_for_mount_with(
+            FuseCapabilities { kernel_loaded: false, fskit_approved: true },
+            std::path::Path::new("/tmp/sharecli-fuse"),
+        );
+
+        assert_eq!(selection.backend, FuseBackend::Unavailable);
+        assert_eq!(selection.diagnostic, Some(FuseBackendDiagnostic::FskitRequiresVolumes));
+    }
+
+    #[test]
+    fn approved_fskit_under_volumes_is_selected() {
+        let selection = select_backend_for_mount_with(
+            FuseCapabilities { kernel_loaded: false, fskit_approved: true },
+            std::path::Path::new("/Volumes/sharecli-fuse"),
+        );
+
+        assert_eq!(selection.backend, FuseBackend::Fskit);
+        assert_eq!(selection.diagnostic, None);
+    }
+
+    #[test]
+    fn loaded_kernel_remains_first_choice_outside_volumes() {
+        let selection = select_backend_for_mount_with(
+            FuseCapabilities { kernel_loaded: true, fskit_approved: true },
+            std::path::Path::new("/tmp/sharecli-fuse"),
+        );
+
+        assert_eq!(selection.backend, FuseBackend::Kernel);
+        assert_eq!(selection.diagnostic, None);
+    }
+
+    #[test]
+    fn no_verified_backend_has_a_fail_open_diagnostic() {
+        let selection = select_backend_for_mount_with(
+            FuseCapabilities::default(),
+            std::path::Path::new("/Volumes/sharecli-fuse"),
+        );
+
+        assert_eq!(selection.backend, FuseBackend::Unavailable);
+        assert_eq!(selection.diagnostic, Some(FuseBackendDiagnostic::NoVerifiedBackend));
     }
 }
