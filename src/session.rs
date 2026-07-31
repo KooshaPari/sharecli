@@ -1,7 +1,10 @@
 //! Shell-free zmx and capability-gated Ghostty adapters.
 
-use std::path::Path;
+use serde_json::{json, Value};
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZmxCommand {
@@ -93,13 +96,84 @@ impl GhosttyCapabilities {
     pub fn from_probe(apple_events: bool, app_intents: bool, accessibility_readback: bool) -> Self {
         Self { apple_events, app_intents, accessibility_readback, control_socket: false }
     }
+
+    pub fn with_control_socket(mut self, available: bool) -> Self {
+        self.control_socket = available;
+        self
+    }
+}
+
+/// Minimal JSON-RPC client for a ShareCLI-enabled Ghostty control socket.
+///
+/// A stock Ghostty install reports an unavailable socket; callers must then
+/// use a degraded caster or zmx rather than pretending to have pane readback.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GhosttyControlClient {
+    socket: PathBuf,
+    token: Option<String>,
+}
+
+static REQUEST_ID: AtomicU64 = AtomicU64::new(1);
+
+impl GhosttyControlClient {
+    pub fn new(socket: impl Into<PathBuf>, token: Option<String>) -> Self {
+        Self { socket: socket.into(), token }
+    }
+
+    pub fn socket(&self) -> &Path {
+        &self.socket
+    }
+
+    pub fn request(&self, method: &str, params: Value) -> anyhow::Result<Value> {
+        #[cfg(unix)]
+        {
+            let mut stream = std::os::unix::net::UnixStream::connect(&self.socket)?;
+            let id = REQUEST_ID.fetch_add(1, Ordering::Relaxed);
+            let mut request = json!({"id": id, "method": method, "params": params});
+            if let Some(token) = &self.token {
+                request["token"] = Value::String(token.clone());
+            }
+            serde_json::to_writer(&mut stream, &request)?;
+            stream.write_all(b"\n")?;
+            stream.flush()?;
+            let mut response = String::new();
+            BufReader::new(stream).read_line(&mut response)?;
+            let response: Value = serde_json::from_str(&response)?;
+            if let Some(error) = response.get("error") {
+                anyhow::bail!("Ghostty RPC {method} failed: {error}");
+            }
+            Ok(response.get("result").cloned().unwrap_or(Value::Null))
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = (method, params);
+            anyhow::bail!("Ghostty control sockets require a Unix platform")
+        }
+    }
+
+    pub fn send_text(&self, surface_id: &str, text: &str) -> anyhow::Result<()> {
+        self.request("surface.io.send", json!({"surface_id": surface_id, "text": text}))?;
+        Ok(())
+    }
+
+    pub fn read_surface(&self, surface_id: &str, max_bytes: usize) -> anyhow::Result<Value> {
+        self.request("surface.io.read", json!({"surface_id": surface_id, "max_bytes": max_bytes}))
+    }
+
+    pub fn resize(&self, surface_id: &str, rows: u16, cols: u16) -> anyhow::Result<()> {
+        self.request(
+            "surface.io.resize",
+            json!({"surface_id": surface_id, "rows": rows, "cols": cols}),
+        )?;
+        Ok(())
+    }
 }
 
 pub struct GhosttyAdapter;
 
 impl GhosttyAdapter {
     pub fn degraded_reason(caps: &GhosttyCapabilities) -> Option<&'static str> {
-        (!caps.apple_events && !caps.app_intents)
+        (!caps.apple_events && !caps.app_intents && !caps.control_socket)
             .then_some("native surface API unavailable")
             .or_else(|| (!caps.control_socket).then_some("native RPC unavailable"))
     }

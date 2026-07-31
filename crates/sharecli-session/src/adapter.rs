@@ -1,0 +1,105 @@
+//! Capability-gated terminal surface adapters.
+
+use crate::{ledger::SurfaceCapabilities, SurfaceRecord};
+use anyhow::Result;
+use std::sync::Arc;
+
+/// A discovered terminal surface and its capabilities.
+pub trait SurfaceAdapter: Send + Sync {
+    fn capabilities(&self, surface: &SurfaceRecord) -> Result<SurfaceCapabilities>;
+    fn discover(&self) -> Result<Vec<SurfaceRecord>>;
+}
+
+/// Targeted input/output operations for a terminal surface.
+pub trait SurfaceIo: Send + Sync {
+    /// Send bytes to the surface's input stream.
+    fn send(&self, surface_id: &str, bytes: &[u8]) -> Result<()>;
+    /// Read a bounded snapshot from the surface's output stream.
+    ///
+    /// Adapters without readback must return an explicit error; callers must
+    /// not interpret an empty buffer as proof that the surface is idle.
+    fn read(&self, surface_id: &str, max_bytes: usize) -> Result<Vec<u8>> {
+        let _ = (surface_id, max_bytes);
+        anyhow::bail!("surface readback unavailable")
+    }
+    /// Resize the surface's PTY or terminal viewport.
+    fn resize(&self, surface_id: &str, rows: u16, cols: u16) -> Result<()>;
+}
+
+/// Explicitly degraded Ghostty adapter until a native control transport is proven.
+#[derive(Clone, Debug, Default)]
+pub struct GhosttySurfaceAdapter {
+    pub native_rpc: bool,
+    pub apple_events: bool,
+}
+
+impl SurfaceAdapter for GhosttySurfaceAdapter {
+    fn capabilities(&self, _surface: &SurfaceRecord) -> Result<SurfaceCapabilities> {
+        Ok(SurfaceCapabilities {
+            read: self.native_rpc,
+            write: self.native_rpc || self.apple_events,
+            resize: self.native_rpc || self.apple_events,
+            layout: self.native_rpc || self.apple_events,
+            durable_pty: false,
+        })
+    }
+
+    fn discover(&self) -> Result<Vec<SurfaceRecord>> {
+        if !self.native_rpc && !self.apple_events {
+            anyhow::bail!("Ghostty surface discovery unavailable: native transport not configured")
+        }
+        Ok(Vec::new())
+    }
+}
+
+/// Managed PTY adapter used for ShareCLI-owned zmx sessions.
+#[derive(Clone, Debug)]
+pub struct ZmxSurfaceAdapter {
+    pub available: bool,
+    pub surfaces: Arc<Vec<SurfaceRecord>>,
+}
+
+impl SurfaceAdapter for ZmxSurfaceAdapter {
+    fn capabilities(&self, _surface: &SurfaceRecord) -> Result<SurfaceCapabilities> {
+        Ok(SurfaceCapabilities {
+            read: self.available,
+            write: self.available,
+            resize: self.available,
+            layout: false,
+            durable_pty: self.available,
+        })
+    }
+
+    fn discover(&self) -> Result<Vec<SurfaceRecord>> {
+        Ok((*self.surfaces).clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn surface() -> SurfaceRecord {
+        SurfaceRecord {
+            id: "ghostty:1".into(),
+            terminal: "ghostty".into(),
+            title: None,
+            cwd: PathBuf::from("/tmp"),
+            process: None,
+        }
+    }
+
+    #[test]
+    fn ghostty_without_native_transport_is_explicitly_degraded() {
+        let adapter = GhosttySurfaceAdapter::default();
+        assert!(adapter.discover().is_err());
+        assert!(!adapter.capabilities(&surface()).unwrap().read);
+    }
+
+    #[test]
+    fn zmx_advertises_durable_pty_only_when_available() {
+        let adapter = ZmxSurfaceAdapter { available: true, surfaces: Arc::new(vec![surface()]) };
+        assert!(adapter.capabilities(&surface()).unwrap().durable_pty);
+    }
+}

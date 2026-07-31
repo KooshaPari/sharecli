@@ -21,7 +21,7 @@ use fuser::{BackgroundSession, Config, MountOption};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::platform::{InterceptFs, SharedInterceptFs};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-use crate::{select_backend, FuseBackend};
+use crate::FuseBackend;
 use crate::InterceptFsOptions;
 
 /// Default [`fuser`] mount [`Config`] for sharecli-fuse sessions.
@@ -68,14 +68,8 @@ pub fn smoke_fuser_config_for_backend(backend: Option<FuseBackend>) -> Config {
     {
         let mut config = Config::default();
         config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
-        match backend.unwrap_or_else(select_backend) {
-            FuseBackend::Kernel => {}
-            FuseBackend::Fskit => {
-                config
-                    .mount_options
-                    .push(MountOption::CUSTOM("backend=fskit".to_string()));
-            }
-            FuseBackend::Unavailable => {}
+        if matches!(backend, Some(FuseBackend::Fskit)) {
+            config.mount_options.push(MountOption::CUSTOM("backend=fskit".to_string()));
         }
         return config;
     }

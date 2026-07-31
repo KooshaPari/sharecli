@@ -6,7 +6,7 @@ use crate::error::SharecliError;
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
-use sharecli_session::{SessionService, SessionStore};
+use sharecli_session::{RecoveryExecutor, SessionObservation, SessionService, SessionStore};
 use sharecli_thermal_tui as thermal_tui;
 
 mod apfs_uuid;
@@ -480,6 +480,36 @@ enum SessionCmd {
         #[arg(long)]
         db: Option<std::path::PathBuf>,
     },
+    /// Append one JSON observation to the durable ledger
+    Observe {
+        /// JSON file containing a SessionObservation
+        input: std::path::PathBuf,
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+    /// List append-only observations, optionally for one terminal surface
+    Observations {
+        #[arg(long)]
+        surface_id: Option<String>,
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+    /// Compact the observation WAL while retaining the newest record per surface
+    Compact {
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+    /// Recover verified sessions; defaults to a dry run
+    Recover {
+        /// Launch exact/corroborated recipes instead of printing a dry run
+        #[arg(long)]
+        execute: bool,
+        /// Maximum number of concurrent launches
+        #[arg(long, default_value_t = 4)]
+        max_parallel: usize,
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -936,6 +966,10 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         SessionCmd::List { db } => (db.clone(), None),
         SessionCmd::Inspect { id, db } => (db.clone(), Some(id.as_str())),
         SessionCmd::RecoveryPlan { db } => (db.clone(), None),
+        SessionCmd::Observe { db, .. } => (db.clone(), None),
+        SessionCmd::Observations { db, .. } => (db.clone(), None),
+        SessionCmd::Compact { db } => (db.clone(), None),
+        SessionCmd::Recover { db, .. } => (db.clone(), None),
     };
     let path = db.unwrap_or_else(|| {
         dirs::data_local_dir()
@@ -943,13 +977,38 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
             .join("sharecli")
             .join("sessions.sqlite")
     });
-    let service = SessionService::new(SessionStore::open(path)?);
+    let store = SessionStore::open(path)?;
+    if let SessionCmd::Observe { input, .. } = cmd {
+        let observation: SessionObservation =
+            serde_json::from_str(&std::fs::read_to_string(input)?)?;
+        let sequence = store.append_observation(&observation)?;
+        println!(
+            "{}",
+            serde_json::json!({"sequence": sequence, "surface_id": observation.surface.id})
+        );
+        return Ok(());
+    }
+    let service = SessionService::new(store);
     let value = match cmd {
         SessionCmd::List { .. } => serde_json::to_value(service.list()?)?,
         SessionCmd::Inspect { .. } => {
             serde_json::to_value(service.inspect(operation.expect("id"))?)?
         }
         SessionCmd::RecoveryPlan { .. } => serde_json::to_value(service.recovery_plan()?)?,
+        SessionCmd::Observations { surface_id, .. } => {
+            serde_json::to_value(service.observations(surface_id.as_deref())?)?
+        }
+        SessionCmd::Compact { .. } => serde_json::json!({
+            "removed": service.compact_observations()?
+        }),
+        SessionCmd::Recover { execute, max_parallel, .. } => {
+            let sessions = service.recovery_plan()?;
+            let executor = RecoveryExecutor::new(*max_parallel);
+            let results =
+                if *execute { executor.execute(&sessions) } else { executor.dry_run(&sessions) };
+            serde_json::to_value(results)?
+        }
+        SessionCmd::Observe { .. } => unreachable!("observe handled before service dispatch"),
     };
     println!("{}", serde_json::to_string_pretty(&value)?);
     Ok(())

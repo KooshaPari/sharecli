@@ -108,3 +108,61 @@ async fn fr003_ipc_handler_config_set_missing_key_and_kill_bad_pid() {
         handler.dispatch(r#"{"id":14,"method":"process.kill","params":{"pid":"nope"}}"#).await;
     assert!(bad_pid.error.is_some());
 }
+
+#[tokio::test]
+async fn fr003_ipc_handler_session_recovery_methods_are_dry_run_safe() {
+    let handler = Handler::new().await.expect("handler init");
+    let list = handler.dispatch(r#"{"id":15,"method":"session.list","params":{}}"#).await;
+    assert!(list.error.is_none(), "session.list error: {:?}", list.error);
+    assert!(list.result.is_array());
+
+    let plan = handler.dispatch(r#"{"id":16,"method":"recovery.plan","params":{}}"#).await;
+    assert!(plan.error.is_none(), "recovery.plan error: {:?}", plan.error);
+    assert!(plan.result.is_array());
+
+    let execute = handler
+        .dispatch(r#"{"id":17,"method":"recovery.execute","params":{"execute":false}}"#)
+        .await;
+    assert!(execute.error.is_none(), "recovery.execute error: {:?}", execute.error);
+    assert!(execute.result.is_array());
+
+    let observe = handler
+        .dispatch(
+            &serde_json::json!({
+                "id": 18,
+                "method": "session.observe",
+                "params": {
+                    "observed_at": "2026-07-31T08:00:00Z",
+                    "surface": {
+                        "id": "test:ipc",
+                        "terminal": "ghostty",
+                        "title": null,
+                        "cwd": "/tmp",
+                        "process": null
+                    },
+                    "session": null,
+                    "capabilities": {
+                        "read": false,
+                        "write": false,
+                        "resize": false,
+                        "layout": false,
+                        "durable_pty": false
+                    },
+                    "kind": "Updated"
+                }
+            })
+            .to_string(),
+        )
+        .await;
+    assert!(observe.error.is_none(), "session.observe error: {:?}", observe.error);
+
+    let observations = handler
+        .dispatch(r#"{"id":19,"method":"session.observations","params":{"surface_id":"test:ipc"}}"#)
+        .await;
+    assert!(observations.error.is_none(), "session.observations error: {:?}", observations.error);
+    assert!(observations.result.as_array().is_some_and(|rows| !rows.is_empty()));
+
+    let compact = handler.dispatch(r#"{"id":20,"method":"session.compact","params":{}}"#).await;
+    assert!(compact.error.is_none(), "session.compact error: {:?}", compact.error);
+    assert!(compact.result.get("removed").is_some());
+}

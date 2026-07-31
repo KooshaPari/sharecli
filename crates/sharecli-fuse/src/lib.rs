@@ -47,6 +47,7 @@ mod write_serialize_meters;
 pub use agent_cow::{AgentCowStore, AgentPending};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
 pub use backend::{select_backend, FuseBackend};
+pub use backend::{select_backend_with, FuseCapabilities};
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use cow_session::CowMountHandle;
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
@@ -990,15 +991,11 @@ mod platform {
             };
 
             match select_backend() {
-                FuseBackend::Kernel => match attempt(Some(FuseBackend::Kernel)) {
-                    Ok(()) => Ok(()),
-                    Err(_) => {
-                        let _ = crate::mount_smoke::force_unmount(mountpoint);
-                        attempt(Some(FuseBackend::Fskit))
-                    }
-                },
+                FuseBackend::Kernel => attempt(Some(FuseBackend::Kernel)),
                 FuseBackend::Fskit => attempt(Some(FuseBackend::Fskit)),
-                FuseBackend::Unavailable => attempt(None),
+                FuseBackend::Unavailable => {
+                    anyhow::bail!("FUSE unavailable; continuing without filesystem interception")
+                }
             }?;
             Ok(())
         }

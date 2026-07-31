@@ -27,6 +27,7 @@ use sharecli_fleet::{
     count_host_agents, gate_status_snapshot, global_coalesce_meters, global_slot_queue_meters,
     CoalesceMeters, GateStatusSnapshot, SlotQueueMeters,
 };
+use sharecli_session::{RecoveryExecutor, SessionObservation, SessionStore};
 use tokio::sync::RwLock;
 
 // ---------------------------------------------------------------------------
@@ -311,13 +312,19 @@ fn shared_runtime() -> &'static SharedRuntime {
 pub struct Handler {
     pool: Arc<ProcessPool>,
     config: Arc<RwLock<Config>>,
+    sessions: Arc<SessionStore>,
 }
 
 impl Handler {
     pub async fn new() -> Result<Self> {
         let pool = Arc::new(ProcessPool::new());
         let config = Arc::new(RwLock::new(Config::load().unwrap_or_default()));
-        Ok(Self { pool, config })
+        let path = dirs::data_local_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
+            .join("sharecli")
+            .join("sessions.sqlite");
+        let sessions = Arc::new(SessionStore::open(path)?);
+        Ok(Self { pool, config, sessions })
     }
 
     async fn capture_pool_snapshot(
@@ -387,6 +394,47 @@ impl Handler {
 
     async fn handle(&self, req: &Request) -> Result<Value> {
         match req.method.as_str() {
+            "session.list" => Ok(serde_json::to_value(self.sessions.list()?)?),
+
+            "session.inspect" => {
+                let id = req
+                    .params
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| anyhow::anyhow!("session.inspect: missing id"))?;
+                Ok(serde_json::to_value(self.sessions.get(id)?)?)
+            }
+
+            "session.observe" => {
+                let observation: SessionObservation = serde_json::from_value(
+                    req.params.get("observation").cloned().unwrap_or_else(|| req.params.clone()),
+                )?;
+                let sequence = self.sessions.append_observation(&observation)?;
+                Ok(serde_json::json!({"sequence": sequence, "surface_id": observation.surface.id}))
+            }
+
+            "session.observations" => {
+                let surface_id = req.params.get("surface_id").and_then(Value::as_str);
+                Ok(serde_json::to_value(self.sessions.observations(surface_id)?)?)
+            }
+
+            "session.compact" => {
+                Ok(serde_json::json!({"removed": self.sessions.compact_observations()?}))
+            }
+
+            "recovery.plan" => Ok(serde_json::to_value(self.sessions.list()?)?),
+
+            "recovery.execute" => {
+                let execute = req.params.get("execute").and_then(Value::as_bool).unwrap_or(false);
+                let max_parallel =
+                    req.params.get("max_parallel").and_then(Value::as_u64).unwrap_or(4) as usize;
+                let sessions = self.sessions.list()?;
+                let executor = RecoveryExecutor::new(max_parallel);
+                let results =
+                    if execute { executor.execute(&sessions) } else { executor.dry_run(&sessions) };
+                Ok(serde_json::to_value(results)?)
+            }
+
             "process.list" => {
                 self.pool.refresh().await;
                 let procs: Vec<ProcessSummary> =
