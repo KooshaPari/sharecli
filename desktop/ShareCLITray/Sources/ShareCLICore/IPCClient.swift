@@ -122,6 +122,14 @@ public struct ProcessSummary: Identifiable, Decodable, Hashable, Encodable {
         disk_write_bytes = try c.decodeIfPresent(UInt64.self, forKey: .disk_write_bytes)
         fd_count    = try c.decodeIfPresent(UInt32.self, forKey: .fd_count)
     }
+
+    // MARK: - Non-optional shadow fields (for sortable Table columns)
+
+    public var fdCountValue: UInt32 { fd_count ?? 0 }
+    public var ioReadValue: UInt64 { disk_read_bytes ?? 0 }
+    public var ioWriteValue: UInt64 { disk_write_bytes ?? 0 }
+    public var ppidValue: UInt32 { ppid ?? 0 }
+    public var stateValue: String { state }
 }
 
 public struct GateStatusSnapshot: Decodable, Hashable {
