@@ -1788,6 +1788,22 @@ struct SpawnView: View {
                     Text(err).font(.caption).foregroundStyle(.red)
                 }
 
+                if !state.spawnHistory.isEmpty {
+                    GroupBox("Recent spawn history (last \(min(state.spawnHistory.count, SpawnHistoryEntry.displayLimit)))") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(state.spawnHistory.prefix(SpawnHistoryEntry.displayLimit)) { entry in
+                                SpawnHistoryRow(entry: entry)
+                            }
+                            if state.spawnHistory.count > SpawnHistoryEntry.displayLimit {
+                                Text("…and \(state.spawnHistory.count - SpawnHistoryEntry.displayLimit) more persisted entries")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(8)
+                    }
+                }
+
                 Text("Tip: Pool absorbs the new process under the harness/project you tag it with — convenient for testing pool effectiveness metrics (⌘4).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1831,8 +1847,27 @@ struct SpawnView: View {
                let json = String(data: data, encoding: .utf8) {
                 lastArgsJSON = json
             }
+            // Record the attempt in the persistent spawn history (P1-7)
+            state.recordSpawn(
+                binary: binary,
+                argv: argv,
+                project: project.isEmpty ? nil : project,
+                harness: harness.isEmpty ? nil : harness,
+                pid: result.pid,
+                success: result.success,
+                errorMessage: result.error
+            )
         } catch {
             lastError = "\(error)"
+            state.recordSpawn(
+                binary: binary,
+                argv: argv,
+                project: project.isEmpty ? nil : project,
+                harness: harness.isEmpty ? nil : harness,
+                pid: nil,
+                success: false,
+                errorMessage: "\(error)"
+            )
         }
     }
 
@@ -1974,5 +2009,39 @@ struct PresetsView: View {
            let json = String(data: data, encoding: .utf8) {
             presetsJSON = json
         }
+    }
+}
+// MARK: - Spawn History (P1-7)
+
+/// A single spawn attempt surfaced in the Spawn subpage's recent-history list.
+struct SpawnHistoryRow: View {
+    let entry: SpawnHistoryEntry
+    static let timestampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: entry.success ? "checkmark.circle.fill" : "xmark.octagon.fill")
+                .foregroundStyle(entry.success ? Color.green : Color.red)
+                .font(.caption)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(Self.timestampFormatter.string(from: entry.timestamp))
+                        .font(.caption.monospacedDigit())
+                    if entry.success, let pid = entry.pid {
+                        Text("pid \(pid)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    } else if let err = entry.error {
+                        Text(err).font(.caption).foregroundStyle(.red).lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                }
+                Text(entry.argv).font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
     }
 }
