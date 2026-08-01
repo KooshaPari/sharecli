@@ -46,6 +46,36 @@ fn ghostty_control_client_requires_configured_socket() {
 
 #[cfg(unix)]
 #[test]
+fn ghostty_control_client_decodes_surface_inventory_and_capabilities() {
+    use std::io::{BufRead, BufReader, Write};
+    use std::os::unix::net::UnixListener;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let suffix = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let socket = std::env::temp_dir().join(format!("sharecli-ghostty-list-{suffix}.sock"));
+    let listener = UnixListener::bind(&socket).unwrap();
+    let server = std::thread::spawn(move || {
+        for response in [
+            r#"{"id":1,"result":[{"id":"ghostty:1","terminal":"ghostty","title":"agent","cwd":"/tmp","process":null}]}"#,
+            r#"{"id":2,"result":{"read":true,"write":true,"resize":true,"layout":false,"durable_pty":false}}"#,
+        ] {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut line = String::new();
+            BufReader::new(stream.try_clone().unwrap()).read_line(&mut line).unwrap();
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.write_all(b"\n").unwrap();
+        }
+    });
+
+    let client = GhosttyControlClient::new(&socket, None);
+    assert_eq!(client.list_surfaces().unwrap()[0].id, "ghostty:1");
+    assert!(client.surface_capabilities("ghostty:1").unwrap().read);
+    server.join().unwrap();
+    let _ = std::fs::remove_file(socket);
+}
+
+#[cfg(unix)]
+#[test]
 fn ghostty_control_client_round_trips_authenticated_io_request() {
     use std::io::{BufRead, BufReader, Write};
     use std::os::unix::net::UnixListener;

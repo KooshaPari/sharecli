@@ -47,3 +47,26 @@ fn session_layout_save_and_list_accept_explicit_database() {
     assert!(list.status.success(), "layout list stderr: {}", String::from_utf8_lossy(&list.stderr));
     assert!(String::from_utf8_lossy(&list.stdout).contains("daily"));
 }
+
+#[cfg(unix)]
+#[test]
+fn session_watch_once_fails_open_when_native_socket_is_unavailable() {
+    let dir = TempDir::new().expect("tempdir");
+    let db = dir.path().join("sessions.sqlite");
+    let socket = dir.path().join("missing-ghostty.sock");
+    let out = bin()
+        .args([
+            "session",
+            "watch",
+            "--once",
+            "--socket",
+            socket.to_str().expect("utf8 path"),
+            "--db",
+            db.to_str().expect("utf8 path"),
+        ])
+        .output()
+        .expect("spawn session watch");
+
+    assert!(out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("degraded"));
+}

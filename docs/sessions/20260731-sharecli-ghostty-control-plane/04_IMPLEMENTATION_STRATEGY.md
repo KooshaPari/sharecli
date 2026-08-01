@@ -5,8 +5,18 @@
 - Use SQLite WAL plus `BEGIN IMMEDIATE` for serialized append/materialization;
   compact only the observation history, never the materialized session rows.
 - Keep Ghostty transport behind a small Unix JSON-RPC client with an optional
-  bearer-like token. AppleScript may supply identity and input fallback, but
-  it is explicitly degraded and never treated as PTY readback truth.
+  bearer-like token. The server-side dispatcher enforces that token and applies
+  owner-only socket permissions. AppleScript may supply identity and input
+  fallback, but it is explicitly degraded and never treated as PTY readback
+  truth.
+- Use `sharecli-session::SurfaceObservationScanner` for one-pass discovery:
+  per-surface capability failures are isolated, known harness argv/state is
+  resolved conservatively, and unknown processes are recorded without a resume
+  recipe. `sharecli session watch` is the durable CLI loop around that contract.
+- Keep the native Ghostty bridge in `contrib/ghostty-control` as a standalone
+  Swift package. It defines the provider boundary and JSON-RPC dispatcher so a
+  Ghostty fork can bind native split/pane/PTY objects without carrying ShareCLI's
+  Rust workspace into the app.
 - Keep layout persistence in ShareCLI and make the Ghostty adapter responsible
   only for applying a validated snapshot. This permits recovery when Ghostty
   is unavailable and avoids coupling the ledger to an app-specific tree API.

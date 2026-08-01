@@ -51,6 +51,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 pub mod adapter;
+pub mod discovery;
 pub mod layout;
 pub mod ledger;
 pub mod recovery;
@@ -58,6 +59,10 @@ pub mod resolver;
 pub mod rpc;
 
 pub use adapter::{GhosttySurfaceAdapter, SurfaceAdapter, SurfaceIo, ZmxSurfaceAdapter};
+pub use discovery::{
+    scan_and_record, DiscoveryFailure, DiscoveryReport, DiscoveryResult, MapStateProvider,
+    NoStateProvider, SessionStateProvider, SurfaceObservationScanner,
+};
 pub use layout::{LayoutAxis, LayoutNode, LayoutRestoreItem, LayoutRestoreReport, LayoutSnapshot};
 pub use ledger::{ObservationKind, SessionObservation, SurfaceCapabilities};
 pub use recovery::{validate_recipe, RecoveryExecutor, RecoveryOutcome, RecoveryResult};

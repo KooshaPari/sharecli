@@ -1,6 +1,7 @@
 //! Shell-free zmx and capability-gated Ghostty adapters.
 
 use serde_json::{json, Value};
+use sharecli_session::{SurfaceAdapter, SurfaceCapabilities, SurfaceRecord};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -156,6 +157,16 @@ impl GhosttyControlClient {
         Ok(())
     }
 
+    pub fn list_surfaces(&self) -> anyhow::Result<Vec<SurfaceRecord>> {
+        Ok(serde_json::from_value(self.request("surface.list", json!({}))?)?)
+    }
+
+    pub fn surface_capabilities(&self, surface_id: &str) -> anyhow::Result<SurfaceCapabilities> {
+        Ok(serde_json::from_value(
+            self.request("surface.io.capabilities", json!({"surface_id": surface_id}))?,
+        )?)
+    }
+
     pub fn read_surface(&self, surface_id: &str, max_bytes: usize) -> anyhow::Result<Value> {
         self.request("surface.io.read", json!({"surface_id": surface_id, "max_bytes": max_bytes}))
     }
@@ -166,6 +177,16 @@ impl GhosttyControlClient {
             json!({"surface_id": surface_id, "rows": rows, "cols": cols}),
         )?;
         Ok(())
+    }
+}
+
+impl SurfaceAdapter for GhosttyControlClient {
+    fn capabilities(&self, surface: &SurfaceRecord) -> anyhow::Result<SurfaceCapabilities> {
+        self.surface_capabilities(&surface.id)
+    }
+
+    fn discover(&self) -> anyhow::Result<Vec<SurfaceRecord>> {
+        self.list_surfaces()
     }
 }
 

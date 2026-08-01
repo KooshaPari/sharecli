@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 const JSON_RPC_VERSION: &str = "2.0";
 const MAX_SURFACE_READ_BYTES: usize = 1024 * 1024;
-
 #[derive(Debug, Deserialize)]
 pub struct Request {
     pub id: serde_json::Value,
@@ -20,10 +19,7 @@ pub struct Response {
     pub result: Option<serde_json::Value>,
     pub error: Option<String>,
 }
-
-/// Shell-free operations exposed by the surface control socket.
 pub trait SurfaceControl: Send + Sync {
-    /// Enumerate stable terminal surface identities.
     fn list(&self) -> Result<Vec<SurfaceRecord>> {
         anyhow::bail!("surface discovery unavailable")
     }
@@ -32,7 +28,6 @@ pub trait SurfaceControl: Send + Sync {
     fn resize(&self, surface_id: &str, rows: u16, cols: u16) -> Result<()>;
     fn capabilities(&self, surface_id: &str) -> Result<SurfaceCapabilities>;
 }
-
 #[derive(Debug, Deserialize)]
 struct SurfaceRequest {
     jsonrpc: String,
@@ -40,14 +35,14 @@ struct SurfaceRequest {
     method: String,
     #[serde(default)]
     params: Value,
+    #[serde(default)]
+    token: Option<String>,
 }
-
 #[derive(Debug, Serialize)]
 pub struct RpcError {
     pub code: i32,
     pub message: String,
 }
-
 #[derive(Debug, Serialize)]
 pub struct SurfaceResponse {
     pub jsonrpc: &'static str,
@@ -57,12 +52,10 @@ pub struct SurfaceResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<RpcError>,
 }
-
 #[derive(Deserialize)]
 struct SurfaceIdParams {
     surface_id: String,
 }
-
 #[derive(Deserialize)]
 struct SendParams {
     surface_id: String,
@@ -122,10 +115,6 @@ pub async fn dispatch(service: Arc<SessionService>, line: &str) -> Response {
     }
 }
 
-/// Dispatch one JSON-RPC 2.0 surface request.
-///
-/// Input text is passed directly to [`SurfaceControl::send`]. It is never
-/// interpreted as a command line or evaluated by a shell.
 pub async fn dispatch_surface(control: Arc<dyn SurfaceControl>, line: &str) -> SurfaceResponse {
     let request = match serde_json::from_str::<SurfaceRequest>(line) {
         Ok(request) => request,
@@ -145,6 +134,22 @@ pub async fn dispatch_surface(control: Arc<dyn SurfaceControl>, line: &str) -> S
         }
         Err((code, message)) => surface_error(id, code, message),
     }
+}
+
+pub async fn dispatch_surface_with_token(
+    control: Arc<dyn SurfaceControl>,
+    line: &str,
+    expected_token: Option<&str>,
+) -> SurfaceResponse {
+    if let Some(expected) = expected_token {
+        let Ok(request) = serde_json::from_str::<SurfaceRequest>(line) else {
+            return dispatch_surface(control, line).await;
+        };
+        if request.token.as_deref() != Some(expected) {
+            return surface_error(request.id, -32001, "invalid control token".into());
+        }
+    }
+    dispatch_surface(control, line).await
 }
 
 fn dispatch_surface_method(
@@ -211,13 +216,9 @@ fn control_error(error: impl std::fmt::Display) -> (i32, String) {
     (-32000, error.to_string())
 }
 
+#[rustfmt::skip]
 fn surface_error(id: Value, code: i32, message: String) -> SurfaceResponse {
-    SurfaceResponse {
-        jsonrpc: JSON_RPC_VERSION,
-        id,
-        result: None,
-        error: Some(RpcError { code, message }),
-    }
+    SurfaceResponse { jsonrpc: JSON_RPC_VERSION, id, result: None, error: Some(RpcError { code, message }) }
 }
 
 #[cfg(unix)]
@@ -248,11 +249,19 @@ pub async fn serve_unix(path: &std::path::Path, service: Arc<SessionService>) ->
     }
 }
 
-/// Serve shell-free surface control requests over a newline-delimited Unix socket.
 #[cfg(unix)]
 pub async fn serve_surface_unix(
     path: &std::path::Path,
     control: Arc<dyn SurfaceControl>,
+) -> Result<()> {
+    serve_surface_unix_with_token(path, control, None).await
+}
+
+#[cfg(unix)]
+pub async fn serve_surface_unix_with_token(
+    path: &std::path::Path,
+    control: Arc<dyn SurfaceControl>,
+    expected_token: Option<String>,
 ) -> Result<()> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
@@ -261,14 +270,21 @@ pub async fn serve_surface_unix(
         tokio::fs::create_dir_all(parent).await?;
     }
     let listener = tokio::net::UnixListener::bind(path)?;
+    let mut permissions = std::fs::metadata(path)?.permissions();
+    use std::os::unix::fs::PermissionsExt;
+    permissions.set_mode(0o600);
+    std::fs::set_permissions(path, permissions)?;
     loop {
         let (stream, _) = listener.accept().await?;
         let control = control.clone();
+        let expected_token = expected_token.clone();
         tokio::spawn(async move {
             let (reader, mut writer) = stream.into_split();
             let mut lines = BufReader::new(reader).lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let response = dispatch_surface(control.clone(), &line).await;
+                let response =
+                    dispatch_surface_with_token(control.clone(), &line, expected_token.as_deref())
+                        .await;
                 let Ok(mut payload) = serde_json::to_string(&response) else {
                     break;
                 };

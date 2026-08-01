@@ -8,7 +8,8 @@ use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use sharecli::session::GhosttyControlClient;
 use sharecli_session::{
-    LayoutSnapshot, RecoveryExecutor, SessionObservation, SessionService, SessionStore,
+    LayoutSnapshot, NoStateProvider, RecoveryExecutor, SessionObservation, SessionService,
+    SessionStore, SurfaceObservationScanner,
 };
 use sharecli_thermal_tui as thermal_tui;
 
@@ -536,6 +537,20 @@ enum SessionCmd {
         #[arg(long)]
         db: Option<std::path::PathBuf>,
     },
+    /// Continuously snapshot Ghostty surfaces into the durable ledger
+    Watch {
+        #[arg(long, default_value_t = 30, value_parser = clap::value_parser!(u64).range(1..=3600))]
+        interval_seconds: u64,
+        /// Capture one inventory and exit instead of sleeping
+        #[arg(long)]
+        once: bool,
+        #[arg(long, env = "SHARECLI_GHOSTTY_SOCKET", default_value = "/tmp/sharecli-ghostty.sock")]
+        socket: std::path::PathBuf,
+        #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
+        token: Option<String>,
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -1041,6 +1056,7 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         SessionCmd::LayoutList { db } => (db.clone(), None),
         SessionCmd::LayoutInspect { id, db } => (db.clone(), Some(id.as_str())),
         SessionCmd::LayoutSave { db, .. } => (db.clone(), None),
+        SessionCmd::Watch { db, .. } => (db.clone(), None),
     };
     let path = db.unwrap_or_else(|| {
         dirs::data_local_dir()
@@ -1073,6 +1089,10 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&store.get_layout(id)?)?);
         return Ok(());
     }
+    if let SessionCmd::Watch { interval_seconds, once, socket, token, .. } = cmd {
+        run_session_watch(&store, socket, token.as_deref(), *interval_seconds, *once)?;
+        return Ok(());
+    }
     let service = SessionService::new(store);
     let value = match cmd {
         SessionCmd::List { .. } => serde_json::to_value(service.list()?)?,
@@ -1100,9 +1120,41 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         SessionCmd::LayoutList { .. } | SessionCmd::LayoutInspect { .. } => {
             unreachable!("layout operation handled before service dispatch")
         }
+        SessionCmd::Watch { .. } => unreachable!("watch handled before service dispatch"),
     };
     println!("{}", serde_json::to_string_pretty(&value)?);
     Ok(())
+}
+
+fn run_session_watch(
+    store: &SessionStore,
+    socket: &std::path::Path,
+    token: Option<&str>,
+    interval_seconds: u64,
+    once: bool,
+) -> Result<()> {
+    let client = GhosttyControlClient::new(socket, token.map(str::to_owned));
+    let interval = std::time::Duration::from_secs(interval_seconds.clamp(1, 3600));
+    loop {
+        match observe_ghostty_surfaces(store, &client) {
+            Ok(count) => eprintln!("sharecli session watch: recorded {count} surface(s)"),
+            Err(error) => eprintln!("sharecli session watch: degraded: {error:#}"),
+        }
+        if once {
+            return Ok(());
+        }
+        std::thread::sleep(interval);
+    }
+}
+
+fn observe_ghostty_surfaces(store: &SessionStore, client: &GhosttyControlClient) -> Result<usize> {
+    let observed_at = chrono::Utc::now().to_rfc3339();
+    let state = NoStateProvider;
+    let report = SurfaceObservationScanner::new(client, &state, store).scan(&observed_at)?;
+    for failure in &report.failures {
+        eprintln!("sharecli session watch: {} unavailable: {}", failure.surface_id, failure.error);
+    }
+    Ok(report.recorded)
 }
 
 fn surface_cmd(cmd: &SurfaceCmd) -> Result<()> {

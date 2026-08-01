@@ -4581,6 +4581,8 @@ dependencies = [
  "anyhow",
  "fuser",
  "libc",
+ "serde",
+ "serde_json",
  "serial_test",
  "tempfile",
  "thiserror 2.0.19",
