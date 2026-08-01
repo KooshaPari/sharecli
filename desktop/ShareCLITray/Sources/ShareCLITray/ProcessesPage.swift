@@ -1655,6 +1655,28 @@ struct ResourcesView: View {
     }
 }
 
+// MARK: - File-scoped time helpers (used by ResourcesView + Age column)
+
+private func formatStart(_ ts: UInt64) -> String {
+    guard ts > 0 else { return "—" }
+    let date = Date(timeIntervalSince1970: TimeInterval(ts))
+    let df = DateFormatter()
+    df.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    return df.string(from: date)
+}
+
+private func formatAge(_ ts: UInt64) -> String {
+    guard ts > 0 else { return "—" }
+    let age = Int(Date().timeIntervalSince1970) - Int(ts)
+    if age < 0 { return "0s" }
+    let h = age / 3600
+    let m = (age % 3600) / 60
+    let s = age % 60
+    if h > 0 { return "\(h)h \(m)m" }
+    if m > 0 { return "\(m)m \(s)s" }
+    return "\(s)s"
+}
+
 // MARK: - SpawnView (process.spawn IPC)
 
 struct SpawnView: View {

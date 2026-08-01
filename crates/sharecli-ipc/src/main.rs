@@ -14,14 +14,26 @@ use std::sync::Arc;
 use anyhow::Result;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{error, info};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 
 mod handler;
+mod log_buffer;
 
 pub use handler::Handler;
+use log_buffer::LogBufferLayer;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    // Default filter: RUST_LOG (or "info"). Always funnel events into the
+    // LogBufferLayer so the `log.tail` IPC arm can stream them to the tray.
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(tracing_subscriber::fmt::layer())
+        .with(LogBufferLayer)
+        .init();
 
     // Shared handler (holds ProcessPool + config)
     let handler = Arc::new(Handler::new().await?);
