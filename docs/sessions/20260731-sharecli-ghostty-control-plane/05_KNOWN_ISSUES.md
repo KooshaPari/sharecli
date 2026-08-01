@@ -1,7 +1,10 @@
 # Known Issues and Open Gates
 
 - `GhosttySurfaceAdapter::discover` is intentionally a capability contract;
-  stock Ghostty has no proven external pane enumeration API in this checkout.
+  stock Ghostty's AppleScript dictionary can enumerate terminal identity,
+  cwd, PID, and TTY, but the installed app has no documented external socket
+  for PTY/screen readback. Native layout and readback still require the
+  Ghostty-side integration gate.
 - `SHARECLI_FUSE_FSKIT_APPROVED` is a conservative approval input, not a full
   MFMount entitlement probe. macOS install/approval and mount smoke are still
   required before enabling it by default.

@@ -1,4 +1,4 @@
-use crate::{SessionService, SurfaceCapabilities};
+use crate::{SessionService, SurfaceCapabilities, SurfaceRecord};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,6 +23,10 @@ pub struct Response {
 
 /// Shell-free operations exposed by the surface control socket.
 pub trait SurfaceControl: Send + Sync {
+    /// Enumerate stable terminal surface identities.
+    fn list(&self) -> Result<Vec<SurfaceRecord>> {
+        anyhow::bail!("surface discovery unavailable")
+    }
     fn send(&self, surface_id: &str, bytes: &[u8]) -> Result<()>;
     fn read(&self, surface_id: &str, max_bytes: usize) -> Result<Vec<u8>>;
     fn resize(&self, surface_id: &str, rows: u16, cols: u16) -> Result<()>;
@@ -149,6 +153,10 @@ fn dispatch_surface_method(
     params: Value,
 ) -> std::result::Result<Value, (i32, String)> {
     match method {
+        "surface.list" => {
+            let surfaces = control.list().map_err(control_error)?;
+            serde_json::to_value(surfaces).map_err(control_error)
+        }
         "surface.io.send" => {
             let params: SendParams = decode_params(params)?;
             let bytes = match (params.text, params.bytes) {
@@ -348,6 +356,14 @@ mod tests {
             *control.sent.lock().unwrap(),
             vec![("surface-1".to_string(), b"printf 'not a shell'".to_vec())]
         );
+    }
+
+    #[tokio::test]
+    async fn surface_list_reports_degraded_discovery_without_a_native_adapter() {
+        let control = Arc::new(RecordingControl::default());
+        let response = request(&control, 7, "surface.list", json!({})).await;
+        assert!(response.result.is_none());
+        assert_eq!(response.error.unwrap().code, -32000);
     }
 
     #[tokio::test]

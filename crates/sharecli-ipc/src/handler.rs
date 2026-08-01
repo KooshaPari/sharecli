@@ -27,7 +27,7 @@ use sharecli_fleet::{
     count_host_agents, gate_status_snapshot, global_coalesce_meters, global_slot_queue_meters,
     CoalesceMeters, GateStatusSnapshot, SlotQueueMeters,
 };
-use sharecli_session::{RecoveryExecutor, SessionObservation, SessionStore};
+use sharecli_session::{LayoutSnapshot, RecoveryExecutor, SessionObservation, SessionStore};
 use tokio::sync::RwLock;
 
 // ---------------------------------------------------------------------------
@@ -420,6 +420,26 @@ impl Handler {
 
             "session.compact" => {
                 Ok(serde_json::json!({"removed": self.sessions.compact_observations()?}))
+            }
+
+            "layout.list" => Ok(serde_json::to_value(self.sessions.list_layouts()?)?),
+
+            "layout.inspect" => {
+                let id = req
+                    .params
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| anyhow::anyhow!("layout.inspect: missing id"))?;
+                Ok(serde_json::to_value(self.sessions.get_layout(id)?)?)
+            }
+
+            "layout.save" => {
+                let snapshot: LayoutSnapshot = serde_json::from_value(
+                    req.params.get("snapshot").cloned().unwrap_or_else(|| req.params.clone()),
+                )?;
+                let id = snapshot.id.clone();
+                self.sessions.save_layout(&snapshot)?;
+                Ok(serde_json::json!({"id": id}))
             }
 
             "recovery.plan" => Ok(serde_json::to_value(self.sessions.list()?)?),

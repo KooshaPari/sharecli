@@ -13,8 +13,12 @@ Success criteria for this slice:
 - ambiguous process evidence never becomes an unattended resume recipe;
 - recovery uses argv (never a shell) and bounded non-blocking launches;
 - IPC and CLI expose observation/recovery operations;
+- IPC and CLI expose validated layout persistence and surface I/O operations;
 - Ghostty I/O is capability-gated and authenticated when a control socket exists;
 - FUSE selection is KEXT first, approved FSKit second, then fail-open.
 
-Not completed in this slice: a Ghostty fork/server, native pane enumeration,
-continuous subscriptions, layout restore, and macOS mount dogfood.
+Not completed in this slice: the Ghostty app-side socket implementation,
+continuous subscriptions, and macOS mount/crash dogfood. ShareCLI now exposes
+the native-side contract, including a degraded `surface.list` result when no
+adapter is installed; native pane enumeration and PTY readback still require
+the Ghostty integration gate.

@@ -3,10 +3,13 @@ mod alloc;
 mod plugins;
 
 use crate::error::SharecliError;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
-use sharecli_session::{RecoveryExecutor, SessionObservation, SessionService, SessionStore};
+use sharecli::session::GhosttyControlClient;
+use sharecli_session::{
+    LayoutSnapshot, RecoveryExecutor, SessionObservation, SessionService, SessionStore,
+};
 use sharecli_thermal_tui as thermal_tui;
 
 mod apfs_uuid;
@@ -93,6 +96,11 @@ enum Commands {
     Session {
         #[command(subcommand)]
         cmd: SessionCmd,
+    },
+    /// Send shell-free I/O requests to a ShareCLI-enabled Ghostty surface
+    Surface {
+        #[command(subcommand)]
+        cmd: SurfaceCmd,
     },
     /// List managed processes
     Ps {
@@ -510,6 +518,65 @@ enum SessionCmd {
         #[arg(long)]
         db: Option<std::path::PathBuf>,
     },
+    /// List durable terminal layout snapshots
+    LayoutList {
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+    /// Inspect one durable terminal layout snapshot
+    LayoutInspect {
+        id: String,
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+    /// Persist a validated terminal layout snapshot from JSON
+    LayoutSave {
+        /// JSON file containing a LayoutSnapshot
+        input: std::path::PathBuf,
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum SurfaceCmd {
+    /// Write bytes or UTF-8 text to one terminal surface
+    Send {
+        #[arg(long, env = "SHARECLI_GHOSTTY_SOCKET", default_value = "/tmp/sharecli-ghostty.sock")]
+        socket: std::path::PathBuf,
+        #[arg(long)]
+        surface_id: String,
+        #[arg(long, conflicts_with = "bytes")]
+        text: Option<String>,
+        #[arg(long, conflicts_with = "text")]
+        bytes: Option<String>,
+        #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
+        token: Option<String>,
+    },
+    /// Read a bounded output snapshot from one terminal surface
+    Read {
+        #[arg(long, env = "SHARECLI_GHOSTTY_SOCKET", default_value = "/tmp/sharecli-ghostty.sock")]
+        socket: std::path::PathBuf,
+        #[arg(long)]
+        surface_id: String,
+        #[arg(long, default_value_t = 4096)]
+        max_bytes: usize,
+        #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
+        token: Option<String>,
+    },
+    /// Resize one terminal surface
+    Resize {
+        #[arg(long, env = "SHARECLI_GHOSTTY_SOCKET", default_value = "/tmp/sharecli-ghostty.sock")]
+        socket: std::path::PathBuf,
+        #[arg(long)]
+        surface_id: String,
+        #[arg(long)]
+        rows: u16,
+        #[arg(long)]
+        cols: u16,
+        #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
+        token: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -796,6 +863,7 @@ async fn run() -> Result<()> {
 
     match &cli.command {
         Commands::Session { cmd } => session_cmd(cmd)?,
+        Commands::Surface { cmd } => surface_cmd(cmd)?,
         Commands::Ps { project, harness, all, json, csv, watch } => {
             ps(project.as_deref(), harness.as_deref(), *all, *json, *csv, *watch).await?
         }
@@ -970,6 +1038,9 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         SessionCmd::Observations { db, .. } => (db.clone(), None),
         SessionCmd::Compact { db } => (db.clone(), None),
         SessionCmd::Recover { db, .. } => (db.clone(), None),
+        SessionCmd::LayoutList { db } => (db.clone(), None),
+        SessionCmd::LayoutInspect { id, db } => (db.clone(), Some(id.as_str())),
+        SessionCmd::LayoutSave { db, .. } => (db.clone(), None),
     };
     let path = db.unwrap_or_else(|| {
         dirs::data_local_dir()
@@ -986,6 +1057,20 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
             "{}",
             serde_json::json!({"sequence": sequence, "surface_id": observation.surface.id})
         );
+        return Ok(());
+    }
+    if let SessionCmd::LayoutSave { input, .. } = cmd {
+        let snapshot: LayoutSnapshot = serde_json::from_str(&std::fs::read_to_string(input)?)?;
+        store.save_layout(&snapshot)?;
+        println!("{}", serde_json::json!({"id": snapshot.id}));
+        return Ok(());
+    }
+    if let SessionCmd::LayoutList { .. } = cmd {
+        println!("{}", serde_json::to_string_pretty(&store.list_layouts()?)?);
+        return Ok(());
+    }
+    if let SessionCmd::LayoutInspect { id, .. } = cmd {
+        println!("{}", serde_json::to_string_pretty(&store.get_layout(id)?)?);
         return Ok(());
     }
     let service = SessionService::new(store);
@@ -1009,8 +1094,51 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
             serde_json::to_value(results)?
         }
         SessionCmd::Observe { .. } => unreachable!("observe handled before service dispatch"),
+        SessionCmd::LayoutSave { .. } => {
+            unreachable!("layout save handled before service dispatch")
+        }
+        SessionCmd::LayoutList { .. } | SessionCmd::LayoutInspect { .. } => {
+            unreachable!("layout operation handled before service dispatch")
+        }
     };
     println!("{}", serde_json::to_string_pretty(&value)?);
+    Ok(())
+}
+
+fn surface_cmd(cmd: &SurfaceCmd) -> Result<()> {
+    match cmd {
+        SurfaceCmd::Send { socket, surface_id, text, bytes, token } => {
+            let client = GhosttyControlClient::new(socket, token.clone());
+            if let Some(text) = text {
+                client.send_text(surface_id, text)?;
+            } else if let Some(bytes) = bytes {
+                let bytes = bytes
+                    .split(',')
+                    .map(|value| value.trim().parse::<u8>())
+                    .collect::<std::result::Result<Vec<_>, _>>()
+                    .context("--bytes must be a comma-separated list of u8 values")?;
+                client.request(
+                    "surface.io.send",
+                    serde_json::json!({"surface_id": surface_id, "bytes": bytes}),
+                )?;
+            } else {
+                anyhow::bail!("surface send requires --text or --bytes");
+            }
+            println!("{{\"ok\":true}}");
+        }
+        SurfaceCmd::Read { socket, surface_id, max_bytes, token } => {
+            let client = GhosttyControlClient::new(socket, token.clone());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&client.read_surface(surface_id, *max_bytes)?)?
+            );
+        }
+        SurfaceCmd::Resize { socket, surface_id, rows, cols, token } => {
+            let client = GhosttyControlClient::new(socket, token.clone());
+            client.resize(surface_id, *rows, *cols)?;
+            println!("{{\"ok\":true}}");
+        }
+    }
     Ok(())
 }
 
