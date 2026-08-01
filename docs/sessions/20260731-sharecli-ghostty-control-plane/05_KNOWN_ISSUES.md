@@ -9,10 +9,11 @@
   dispatcher, not a patched Ghostty.app. A fork must implement `SurfaceProvider`
   from Ghostty's live surface tree and PTY/screen model, then launch the
   owner-only Unix listener.
-- The session sidecar is intentionally a read-only consumer in this slice. A
-  launcher or harness wrapper must append `{surface_id,harness,session_id,pid}`
-  before launch to provide exact identity; database/argv heuristics remain
-  non-authoritative and will not be promoted into unattended recovery.
+- The session watcher is intentionally a read-only consumer. A launcher or
+  harness wrapper must call `session register` (or append the same
+  `{surface_id,harness,session_id,pid}` record) before launch to provide exact
+  identity; database/argv heuristics remain non-authoritative and will not be
+  promoted into unattended recovery.
 - `SHARECLI_FUSE_FSKIT_APPROVED` is a conservative approval input, not a full
   MFMount entitlement probe. macOS install/approval and mount smoke are still
   required before enabling it by default.

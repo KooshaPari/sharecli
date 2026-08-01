@@ -31,6 +31,16 @@ when macOS resolves a local data directory; override it with
 {"surface_id":"ghostty-42","harness":"codex","session_id":"thread-abc","pid":12345}
 ```
 
+The built-in registrar writes that record safely and can take the surface id
+from Ghostty's child environment:
+
+```sh
+sharecli session register --harness codex --session-id thread-abc --pid "$child_pid"
+```
+
+Use `--state-sidecar` for a non-default path. A wrapper should register before
+launch and use `exec` when it needs the PID to remain stable.
+
 Each record is keyed by `surface_id` and `harness`; an optional `pid` prevents a
 mapping from being reused after process recycling. The watcher reads the file
 on every pass and treats the newest record for a surface/harness as authoritative.

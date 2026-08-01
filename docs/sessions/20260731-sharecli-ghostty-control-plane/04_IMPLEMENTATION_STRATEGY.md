@@ -15,7 +15,8 @@
   recipe. `sharecli session watch` is the durable CLI loop around that contract.
   Exact launch-time mappings come from the append-only JSONL sidecar selected by
   `--state-sidecar`/`SHARECLI_SESSION_SIDECAR`; the latest record wins, PID
-  mismatches fail closed, and malformed input degrades the pass.
+  mismatches fail closed, and malformed input degrades the pass. `session
+  register` is the owner-only append path for launch wrappers.
 - Keep the native Ghostty bridge in `contrib/ghostty-control` as a standalone
   Swift package. It defines the provider boundary and JSON-RPC dispatcher so a
   Ghostty fork can bind native split/pane/PTY objects without carrying ShareCLI's

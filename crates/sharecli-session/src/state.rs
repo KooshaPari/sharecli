@@ -2,20 +2,51 @@
 
 use crate::{SessionStateProvider, SurfaceRecord};
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 /// One deliberate surface-to-harness mapping written by a launcher or wrapper.
 ///
 /// The surface id is mandatory. A PID, when present, prevents a stale mapping
 /// from being applied after a terminal surface has been recycled.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SidecarRecord {
     pub surface_id: String,
     pub harness: String,
     pub session_id: String,
     #[serde(default)]
     pub pid: Option<u32>,
+}
+
+/// Append one exact launch-time mapping to a sidecar, creating it owner-only.
+pub fn append_record(path: &Path, record: &SidecarRecord) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("create sidecar directory {}", parent.display()))?;
+    }
+    let mut line = serde_json::to_vec(record).context("serialize sidecar record")?;
+    line.push(b'\n');
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).append(true).write(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let mut file =
+        options.open(path).with_context(|| format!("open sidecar {}", path.display()))?;
+    #[cfg(unix)]
+    {
+        let mut permissions = file
+            .metadata()
+            .with_context(|| format!("stat sidecar {}", path.display()))?
+            .permissions();
+        use std::os::unix::fs::PermissionsExt;
+        permissions.set_mode(0o600);
+        file.set_permissions(permissions)
+            .with_context(|| format!("protect sidecar {}", path.display()))?;
+    }
+    file.write_all(&line).with_context(|| format!("append sidecar {}", path.display()))?;
+    file.sync_data().with_context(|| format!("sync sidecar {}", path.display()))?;
+    Ok(())
 }
 
 /// Read-only JSONL provider for exact launch-time session mappings.

@@ -48,6 +48,32 @@ fn session_layout_save_and_list_accept_explicit_database() {
     assert!(String::from_utf8_lossy(&list.stdout).contains("daily"));
 }
 
+#[test]
+fn session_register_accepts_surface_id_and_sidecar_path() {
+    let dir = TempDir::new().expect("tempdir");
+    let sidecar = dir.path().join("session-sidecar.jsonl");
+    let out = bin()
+        .args([
+            "session",
+            "register",
+            "--surface-id",
+            "ghostty:1",
+            "--harness",
+            "codex",
+            "--session-id",
+            "thread-abc",
+            "--pid",
+            "42",
+            "--state-sidecar",
+            sidecar.to_str().expect("utf8 path"),
+        ])
+        .output()
+        .expect("spawn session register");
+    assert!(out.status.success(), "register stderr: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(String::from_utf8_lossy(&out.stdout).contains("thread-abc"));
+    assert!(std::fs::read_to_string(sidecar).unwrap().contains("ghostty:1"));
+}
+
 #[cfg(unix)]
 #[test]
 fn session_watch_once_fails_open_when_native_socket_is_unavailable() {

@@ -68,7 +68,7 @@ pub use layout::{LayoutAxis, LayoutNode, LayoutRestoreItem, LayoutRestoreReport,
 pub use ledger::{ObservationKind, SessionObservation, SurfaceCapabilities};
 pub use recovery::{validate_recipe, RecoveryExecutor, RecoveryOutcome, RecoveryResult};
 pub use resolver::{resolve as resolve_session, EvidenceSource, Resolution};
-pub use state::{SidecarRecord, SidecarStateProvider};
+pub use state::{append_record, SidecarRecord, SidecarStateProvider};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResumeRecipe {

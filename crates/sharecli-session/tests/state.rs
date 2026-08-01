@@ -1,11 +1,15 @@
 use sharecli_session::{
-    ProcessEvidence, SessionStateProvider, SidecarStateProvider, SurfaceRecord,
+    append_record, ProcessEvidence, SessionStateProvider, SidecarRecord, SidecarStateProvider,
+    SurfaceRecord,
 };
 use std::{
     fs,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+static SIDECARE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn surface(id: &str, pid: Option<u32>) -> SurfaceRecord {
     SurfaceRecord {
@@ -25,7 +29,9 @@ fn surface(id: &str, pid: Option<u32>) -> SurfaceRecord {
 
 fn temp_sidecar() -> PathBuf {
     let suffix = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-    std::env::temp_dir().join(format!("sharecli-sidecar-{suffix}.jsonl"))
+    let ordinal = SIDECARE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir()
+        .join(format!("sharecli-sidecar-{}-{suffix}-{ordinal}.jsonl", std::process::id()))
 }
 
 #[test]
@@ -79,5 +85,28 @@ fn malformed_sidecar_fails_closed() {
         .session_id(&surface("pane-1", Some(42)), "codex")
         .unwrap_err();
     assert!(error.to_string().contains("parse sidecar"));
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn append_record_writes_jsonl_that_provider_reads() {
+    let path = temp_sidecar();
+    append_record(
+        &path,
+        &SidecarRecord {
+            surface_id: "pane-1".into(),
+            harness: "codex".into(),
+            session_id: "thread-1".into(),
+            pid: Some(42),
+        },
+    )
+    .unwrap();
+    let provider = SidecarStateProvider::new(&path);
+    assert_eq!(
+        provider.session_id(&surface("pane-1", Some(42)), "codex").unwrap(),
+        Some("thread-1".into())
+    );
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(text.ends_with('\n'));
     let _ = fs::remove_file(path);
 }

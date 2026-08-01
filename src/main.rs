@@ -537,6 +537,20 @@ enum SessionCmd {
         #[arg(long)]
         db: Option<std::path::PathBuf>,
     },
+    /// Append an exact launch-time harness mapping to the session sidecar
+    Register {
+        #[arg(long, env = "GHOSTTY_SURFACE_ID")]
+        surface_id: Option<String>,
+        #[arg(long)]
+        harness: String,
+        #[arg(long)]
+        session_id: String,
+        /// PID of the harness process, when the launcher can provide it
+        #[arg(long)]
+        pid: Option<u32>,
+        #[arg(long, env = "SHARECLI_SESSION_SIDECAR")]
+        state_sidecar: Option<std::path::PathBuf>,
+    },
     /// Continuously snapshot Ghostty surfaces into the durable ledger
     Watch {
         #[arg(long, default_value_t = 30, value_parser = clap::value_parser!(u64).range(1..=3600))]
@@ -1058,6 +1072,7 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         SessionCmd::LayoutList { db } => (db.clone(), None),
         SessionCmd::LayoutInspect { id, db } => (db.clone(), Some(id.as_str())),
         SessionCmd::LayoutSave { db, .. } => (db.clone(), None),
+        SessionCmd::Register { .. } => (None, None),
         SessionCmd::Watch { db, .. } => (db.clone(), None),
     };
     let path = db.unwrap_or_else(|| {
@@ -1089,6 +1104,31 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
     }
     if let SessionCmd::LayoutInspect { id, .. } = cmd {
         println!("{}", serde_json::to_string_pretty(&store.get_layout(id)?)?);
+        return Ok(());
+    }
+    if let SessionCmd::Register { surface_id, harness, session_id, pid, state_sidecar } = cmd {
+        let surface_id = surface_id
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| anyhow::anyhow!("--surface-id or GHOSTTY_SURFACE_ID is required"))?;
+        if harness.trim().is_empty() {
+            anyhow::bail!("--harness must not be empty");
+        }
+        if session_id.trim().is_empty() {
+            anyhow::bail!("--session-id must not be empty");
+        }
+        let path = state_sidecar
+            .as_deref()
+            .map(std::path::Path::to_path_buf)
+            .unwrap_or_else(default_state_sidecar);
+        let record = sharecli_session::SidecarRecord {
+            surface_id: surface_id.to_owned(),
+            harness: harness.clone(),
+            session_id: session_id.clone(),
+            pid: *pid,
+        };
+        sharecli_session::append_record(&path, &record)?;
+        println!("{}", serde_json::to_string(&record)?);
         return Ok(());
     }
     if let SessionCmd::Watch { interval_seconds, once, socket, token, state_sidecar, .. } = cmd {
@@ -1129,6 +1169,7 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         SessionCmd::LayoutList { .. } | SessionCmd::LayoutInspect { .. } => {
             unreachable!("layout operation handled before service dispatch")
         }
+        SessionCmd::Register { .. } => unreachable!("register handled before service dispatch"),
         SessionCmd::Watch { .. } => unreachable!("watch handled before service dispatch"),
     };
     println!("{}", serde_json::to_string_pretty(&value)?);
