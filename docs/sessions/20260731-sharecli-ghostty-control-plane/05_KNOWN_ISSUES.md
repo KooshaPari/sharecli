@@ -6,9 +6,9 @@
   for PTY/screen readback. Native layout and readback still require the
   Ghostty-side integration gate.
 - `contrib/ghostty-control` is the native binding contract and tested
-  dispatcher, not a patched Ghostty.app. A fork must implement `SurfaceProvider`
-  from Ghostty's live surface tree and PTY/screen model, then launch the
-  owner-only Unix listener.
+  dispatcher/listener, not a patched Ghostty.app. A fork must implement
+  `SurfaceProvider` from Ghostty's live surface tree and PTY/screen model, then
+  start the listener from the app lifecycle.
 - The session watcher is intentionally a read-only consumer. A launcher or
   harness wrapper must call `session register` (or append the same
   `{surface_id,harness,session_id,pid}` record) before launch to provide exact

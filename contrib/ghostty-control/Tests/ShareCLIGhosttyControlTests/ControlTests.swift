@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import Testing
 @testable import ShareCLIGhosttyControl
 
@@ -57,4 +58,43 @@ private struct FakeProvider: SurfaceProvider {
         let error = try #require(response["error"] as? [String: Any])
         #expect(error["code"] as? Int == -32602)
     }
+}
+
+@Test func unixServerRoundTripsOneRequestLine() throws {
+    let path = "/tmp/sharecli-control-\(UUID().uuidString).sock"
+    let server = UnixControlServer(path: path, dispatcher: ControlDispatcher(provider: FakeProvider()))
+    try server.start()
+    defer { server.stop() }
+
+    let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+    #expect(fd >= 0)
+    defer { Darwin.close(fd) }
+    var address = sockaddr_un()
+    address.sun_family = sa_family_t(AF_UNIX)
+    path.withCString { pointer in
+        withUnsafeMutableBytes(of: &address.sun_path) { destination in
+            destination.copyBytes(from: UnsafeRawBufferPointer(start: pointer, count: path.utf8.count + 1))
+        }
+    }
+    let addressLength = socklen_t(MemoryLayout<sockaddr_un>.size)
+    let connected = withUnsafePointer(to: &address) { pointer in
+        pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            Darwin.connect(fd, $0, addressLength)
+        }
+    }
+    #expect(connected == 0)
+
+    let request = Data("{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"surface.list\",\"params\":{}}\n".utf8)
+    request.withUnsafeBytes { buffer in
+        _ = Darwin.send(fd, buffer.baseAddress, buffer.count, 0)
+    }
+    var responseBuffer = [UInt8](repeating: 0, count: 4096)
+    let count = responseBuffer.withUnsafeMutableBytes { buffer in
+        Darwin.recv(fd, buffer.baseAddress, buffer.count, 0)
+    }
+    #expect(count > 0)
+    let responseData = Data(responseBuffer.prefix(max(0, count)))
+    let response = try #require(JSONSerialization.jsonObject(with: responseData) as? [String: Any])
+    let result = try #require(response["result"] as? [[String: Any]])
+    #expect(result[0]["id"] as? String == "ghostty:1")
 }

@@ -18,9 +18,10 @@
   mismatches fail closed, and malformed input degrades the pass. `session
   register` is the owner-only append path for launch wrappers.
 - Keep the native Ghostty bridge in `contrib/ghostty-control` as a standalone
-  Swift package. It defines the provider boundary and JSON-RPC dispatcher so a
-  Ghostty fork can bind native split/pane/PTY objects without carrying ShareCLI's
-  Rust workspace into the app.
+  Swift package. It defines the provider boundary, bounded JSON-RPC dispatcher,
+  and owner-only Unix listener so a Ghostty fork can bind native
+  split/pane/PTY objects without carrying ShareCLI's Rust workspace into the
+  app.
 - Keep layout persistence in ShareCLI and make the Ghostty adapter responsible
   only for applying a validated snapshot. This permits recovery when Ghostty
   is unavailable and avoids coupling the ledger to an app-specific tree API.
