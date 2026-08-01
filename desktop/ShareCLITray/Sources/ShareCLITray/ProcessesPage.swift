@@ -461,17 +461,15 @@ struct AllProcessesView: View {
                 .width(110)
 
                 TableColumn("CPU %", value: \.cpu_percent) { p in
-                    HStack(spacing: 4) {
-                        Text(String(format: "%.1f%%", p.cpu_percent))
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(cpuColor(p.cpu_percent))
-                            .frame(width: 56, alignment: .trailing)
-                        cpuBar(p.cpu_percent)
-                    }
+                    Text(String(format: "%.1f%%", p.cpu_percent))
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(cpuColor(p.cpu_percent))
+                        .frame(width: 56, alignment: .trailing)
+                    cpuBar(p.cpu_percent)
                 }
                 .width(140)
 
-                TableColumn("FDs") { p in
+                TableColumn("FDs", value: \.fdCountValue) { p in
                     if let fd = p.fd_count {
                         HStack(spacing: 4) {
                             Text("\(fd)")
@@ -488,7 +486,7 @@ struct AllProcessesView: View {
                 }
                 .width(96)
 
-                TableColumn("I/O") { p in
+                TableColumn("I/O", value: \.ioReadValue) { p in
                     if let r = p.disk_read_bytes, let w = p.disk_write_bytes {
                         VStack(alignment: .trailing, spacing: 1) {
                             HStack(spacing: 4) {
