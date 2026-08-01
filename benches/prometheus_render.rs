@@ -10,7 +10,7 @@ use std::time::Instant;
 use criterion::{criterion_group, criterion_main, Criterion};
 use sharecli::commands::serve::render_prometheus_metrics;
 use sharecli::health_check::HealthStatus;
-use sharecli::runtime::ProcessInfo;
+use sharecli::runtime::{ProcState, ProcessInfo};
 
 fn sample_processes(n: usize) -> Vec<ProcessInfo> {
     (0..n)
@@ -20,8 +20,17 @@ fn sample_processes(n: usize) -> Vec<ProcessInfo> {
             cmd: vec!["echo".into(), format!("{i}")],
             memory_mb: (i as u64 % 64) + 1,
             start_time: 1_700_000_000,
+            cpu_percent: 0.0,
             project: Some("bench".into()),
             harness: Some("cargo".into()),
+            ppid: None,
+            cwd: None,
+            env_count: 0,
+            state: ProcState::default(),
+            disk_read_bytes: None,
+            disk_write_bytes: None,
+            fd_count: None,
+            thread_count: None,
         })
         .collect()
 }
