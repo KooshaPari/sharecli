@@ -140,6 +140,7 @@ enum Commands {
     },
 
     /// Stop managed processes
+    #[command(alias = "quit")]
     Stop {
         /// Process ID to stop
         #[arg(long)]

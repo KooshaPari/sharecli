@@ -992,13 +992,30 @@ mod platform {
             match select_backend() {
                 FuseBackend::Kernel => match attempt(Some(FuseBackend::Kernel)) {
                     Ok(()) => Ok(()),
-                    Err(_) => {
+                    Err(kernel_err) => {
+                        // macFUSE may leave a transient mount registration after a
+                        // failed backend negotiation (reported as EEXIST on retry).
+                        // Only recycle an empty mountpoint; never remove user data.
                         let _ = crate::mount_smoke::force_unmount(mountpoint);
+                        if let Ok(mut entries) = std::fs::read_dir(mountpoint) {
+                            if entries.next().is_none() {
+                                let _ = std::fs::remove_dir(mountpoint);
+                                let _ = std::fs::create_dir(mountpoint);
+                            }
+                        }
                         attempt(Some(FuseBackend::Fskit))
+                            .map_err(|fskit_err| anyhow::anyhow!(
+                                "kernel backend failed: {kernel_err}; FSKit fallback failed: {fskit_err}; {}",
+                                crate::backend::runtime_diagnostics()
+                            ))
                     }
                 },
-                FuseBackend::Fskit => attempt(Some(FuseBackend::Fskit)),
-                FuseBackend::Unavailable => attempt(None),
+                FuseBackend::Fskit => attempt(Some(FuseBackend::Fskit)).map_err(|err| {
+                    anyhow::anyhow!("FSKit backend mount failed at {}: {err}; {}", mountpoint.display(), crate::backend::runtime_diagnostics())
+                }),
+                FuseBackend::Unavailable => attempt(None).map_err(|err| {
+                    anyhow::anyhow!("FUSE backend unavailable; mount failed at {}: {err}; {}", mountpoint.display(), crate::backend::runtime_diagnostics())
+                }),
             }?;
             Ok(())
         }

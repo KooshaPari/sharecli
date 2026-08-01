@@ -1,7 +1,7 @@
-//! Build script: WinFsp delay-load flags (AC-009.25).
 fn main() {
-    #[cfg(windows)]
+    #[cfg(target_os = "macos")]
     {
-        winfsp::build::winfsp_link_delayload();
+        println!("cargo:rustc-link-search=framework=/Library/Filesystems/macfuse.fs/Contents/Frameworks");
+        println!("cargo:rustc-link-lib=framework=MFMount");
     }
 }

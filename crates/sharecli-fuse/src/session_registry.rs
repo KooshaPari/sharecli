@@ -13,6 +13,8 @@ use std::{
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::sync::Arc;
 
+use crate::InterceptFsOptions;
+
 #[cfg(target_os = "linux")]
 use fuser::SessionACL;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -21,8 +23,7 @@ use fuser::{BackgroundSession, Config, MountOption};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::platform::{InterceptFs, SharedInterceptFs};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-use crate::{select_backend, FuseBackend};
-use crate::InterceptFsOptions;
+use crate::FuseBackend;
 
 /// Default [`fuser`] mount [`Config`] for sharecli-fuse sessions.
 ///
@@ -66,17 +67,12 @@ pub fn smoke_fuser_config_for_backend(backend: Option<FuseBackend>) -> Config {
 
     #[cfg(target_os = "macos")]
     {
+        let _ = backend;
         let mut config = Config::default();
         config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
-        match backend.unwrap_or_else(select_backend) {
-            FuseBackend::Kernel => {}
-            FuseBackend::Fskit => {
-                config
-                    .mount_options
-                    .push(MountOption::CUSTOM("backend=fskit".to_string()));
-            }
-            FuseBackend::Unavailable => {}
-        }
+        // macFUSE's mount helper has no backend= option. Backend negotiation is
+        // owned by the helper/MFMount API; passing an unknown custom option
+        // causes opaque EAGAIN/EEXIST failures.
         return config;
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
@@ -601,7 +597,8 @@ impl MountContext for std::io::Result<()> {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[cfg(test)]
 mod default_mount_options_tests {
-    use super::default_fuser_config;
+    use super::{default_fuser_config, smoke_fuser_config_for_backend};
+    use crate::FuseBackend;
     use fuser::{MountOption, SessionACL};
 
     #[test]
@@ -640,5 +637,14 @@ mod default_mount_options_tests {
             "macOS MUST NOT use AutoUnmount (allow_other / kext friction)"
         );
         assert_eq!(config.acl, SessionACL::Owner, "macOS MUST keep Owner ACL");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_smoke_config_avoids_unsupported_backend_options() {
+        let kernel = smoke_fuser_config_for_backend(Some(FuseBackend::Kernel));
+        assert!(!kernel.mount_options.iter().any(|option| matches!(option, MountOption::CUSTOM(_))));
+        let fskit = smoke_fuser_config_for_backend(Some(FuseBackend::Fskit));
+        assert!(!fskit.mount_options.iter().any(|option| matches!(option, MountOption::CUSTOM(_))));
     }
 }

@@ -31,6 +31,7 @@
 
 pub mod cache_key;
 pub mod handler;
+pub mod log_buffer;
 pub mod nocache;
 pub mod queue;
 pub mod semantic;

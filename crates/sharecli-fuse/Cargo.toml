@@ -4,10 +4,16 @@ version = "0.1.0"
 edition = "2021"
 description = "FUSE IO-interception layer for the sharecli OS process/IO/syscall hypervisor"
 license = "MIT"
+build = "build.rs"
 
 [[bin]]
 name = "fuse-mount-smoke"
 path = "src/bin/fuse-mount-smoke.rs"
+required-features = []
+
+[[bin]]
+name = "mfmount-probe"
+path = "src/bin/mfmount-probe.rs"
 required-features = []
 
 [dependencies]

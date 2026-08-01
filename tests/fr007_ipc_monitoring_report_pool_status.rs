@@ -67,6 +67,7 @@ async fn fr007_ipc_monitoring_report_pool_status_live() {
 /// FR-007 / AC-007.72 — serialized MonitoringReportSnapshot preserves operator key order.
 #[test]
 fn fr007_ipc_monitoring_report_snapshot_pool_status_order() {
+    use sharecli::runtime::ProcState;
     use sharecli::monitoring::HostResourceWatchJson;
     use sharecli_fleet::GateStatusSnapshot;
     use sharecli_ipc::handler::{
@@ -99,6 +100,15 @@ fn fr007_ipc_monitoring_report_snapshot_pool_status_order() {
             project: Some("demo".into()),
             harness: None,
             start_time: 0,
+            cpu_percent: 0.0,
+            ppid: None,
+            cwd: None,
+            env_count: 0,
+            state: ProcState::default(),
+            disk_read_bytes: None,
+            disk_write_bytes: None,
+            fd_count: None,
+            log_location: None,
         }],
         gate: gate.clone(),
         host_watch: host_watch.clone(),

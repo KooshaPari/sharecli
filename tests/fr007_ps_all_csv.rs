@@ -156,7 +156,14 @@ fn fr007_ps_all_csv_body_shape() {
         harness: Some("claude".into()),
         cmd: vec![],
         start_time: 0,
+        cpu_percent: 0.0,
         fd_count: None,
+        ppid: None,
+        cwd: None,
+        env_count: 0,
+        state: sharecli::runtime::ProcState::default(),
+        disk_read_bytes: None,
+        disk_write_bytes: None,
         thread_count: None,
     }];
     let agents = vec![AgentProcRow {
