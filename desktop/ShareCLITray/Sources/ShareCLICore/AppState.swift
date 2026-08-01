@@ -230,14 +230,6 @@ public final class AppState: ObservableObject {
 
     private var pollTask: Task<Void, Never>?
 
-    /// Persistent spawn history (P1-7 of the Processes-page queue). Bounded
-    /// to `spawnHistoryCap` entries; oldest evicted on overflow. Hydrated
-    /// from `~/Library/Application Support/sharecli/spawn-history.json` on
-    /// init; persisted on every `recordSpawn(...)` so the log survives app
-    /// restarts.
-    @Published public var spawnHistory: [SpawnHistoryEntry] = []
-    public static let spawnHistoryCap: Int = 50
-
     public init() {
         spawnHistory = Self.loadSpawnHistory()
     }
