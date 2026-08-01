@@ -1,15 +1,17 @@
 # =============================================================================
-# ci gate — reproduces the branch-protection required contexts
+# ci gate - reproduces the branch-protection required contexts
 # =============================================================================
 # Branch protection on main requires check contexts `ci / lint` and `ci / test`.
 # The legacy `CI` workflow (name: CI) does not define `lint`/`test` jobs, so
 # those contexts can never resolve and no PR can satisfy the gate.
 #
-# This workflow is intentionally fail-tolerant (matching the repo posture in
-# ci.yml): steps run the real commands but a failure emits a `::warning::` and
-# does not hard-fail the job. The real quality gates remain the `CI` workflow
-# jobs, Coverage, and the security scans. This file only restores resolvable
-# required contexts so the merge queue can flow again.
+# This workflow makes the required contexts resolvable AND honest:
+#   - `cargo fmt --check` and `cargo check --all-targets` are hard gates
+#     (both are green on main today).
+#   - clippy / nextest are reported as informational `::warning::` steps until
+#     the pre-existing main debt (FR-007 clippy warnings, dashboard/jwt test
+#     failures) is resolved - they are named `* (informational)` so the status
+#     rollup makes their non-gating nature explicit.
 # =============================================================================
 
 name: ci
@@ -34,24 +36,24 @@ jobs:
     name: lint
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
       - name: Format (rustfmt)
-        run: cargo fmt --all -- --check || echo "::warning::cargo fmt check failed (informational)"
-      - name: Lint (clippy)
-        run: cargo clippy --workspace --all-targets -- -D warnings 2>/dev/null || echo "::warning::cargo clippy failed (informational)"
+        run: cargo fmt --all -- --check
+      - name: Lint (clippy, informational)
+        run: cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee clippy.log; if grep -q '^error' clippy.log; then echo "::warning::cargo clippy reported errors (informational, tracked in FR-007 debt)"; fi
 
   test:
     name: test
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
       - name: Build all targets
-        run: cargo check --workspace --all-targets || echo "::warning::cargo check failed (informational)"
-      - name: Unit tests (nextest)
-        run: cargo nextest run --workspace 2>/dev/null || cargo test --workspace --lib || echo "::warning::unit tests failed (informational)"
+        run: cargo check --workspace --all-targets
+      - name: Unit tests (nextest, informational)
+        run: |
+          cargo nextest run --workspace 2>&1 | tee nextest.log || true
+          if grep -qiE 'FAIL|error\[|panicked' nextest.log; then echo "::warning::cargo nextest reported failures (informational, tracked in FR-007 debt)"; fi
