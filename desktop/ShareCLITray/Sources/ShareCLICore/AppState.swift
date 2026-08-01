@@ -107,6 +107,54 @@ public struct GateDecisionSample: Identifiable, Hashable {
     }
 }
 
+/// One row of the Spawn history (P1-7 of processes-page expansion).
+/// Persisted as JSON to `~/Library/Application Support/sharecli/spawn-history.json`
+/// so the in-app Spawn history survives app restarts.
+///
+/// The shape is intentionally stable: it captures what the user submitted
+/// (command + args + project + harness + cwd + memory limit + env) plus
+/// the outcome (success/failure + spawned PID + error). Re-submitting is
+/// a one-click operation (see `SpawnView`).
+public struct SpawnHistoryEntry: Codable, Identifiable, Hashable {
+    public let id: UUID
+    public let timestamp: Date
+    public let command: String
+    public let args: [String]
+    public let project: String?
+    public let harness: String?
+    public let workingDir: String
+    public let memoryLimitMB: Int
+    public let succeeded: Bool
+    public let spawnedPID: UInt32?
+    public let errorMessage: String?
+
+    public init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        command: String,
+        args: [String],
+        project: String?,
+        harness: String?,
+        workingDir: String,
+        memoryLimitMB: Int,
+        succeeded: Bool,
+        spawnedPID: UInt32?,
+        errorMessage: String?
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.command = command
+        self.args = args
+        self.project = project
+        self.harness = harness
+        self.workingDir = workingDir
+        self.memoryLimitMB = memoryLimitMB
+        self.succeeded = succeeded
+        self.spawnedPID = spawnedPID
+        self.errorMessage = errorMessage
+    }
+}
+
 @MainActor
 public final class AppState: ObservableObject {
     /// Cap for the host watch rolling window. The spec calls for a 60s × 1s
@@ -151,6 +199,24 @@ public final class AppState: ObservableObject {
     public static let fleetHistoryCap = 60
     @Published public var fleetHistory: [FleetSample] = []
 
+    /// Spawn history (P1-7). Ring buffer of the last `spawnHistoryCap`
+    /// spawn attempts. Persisted as JSON to
+    /// `~/Library/Application Support/sharecli/spawn-history.json`
+    /// so it survives app restarts. SpawnView reads `spawnHistory` to
+    /// render the recent-attempts list and re-submit button.
+    public static let spawnHistoryCap = 50
+    @Published public var spawnHistory: [SpawnHistoryEntry] = []
+
+    /// File URL for the persisted spawn-history JSON.
+    private static let spawnHistoryURL: URL = {
+        let fm = FileManager.default
+        let dir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first!
+            .appendingPathComponent("sharecli", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("spawn-history.json")
+    }()
+
     /// IPC client reference (process-page expansion: Spawn subpage needs
     /// to call process.spawn directly). Kept `public` so views can
     /// invoke one-shot IPC methods without round-tripping through AppState.
@@ -164,7 +230,17 @@ public final class AppState: ObservableObject {
 
     private var pollTask: Task<Void, Never>?
 
-    public init() {}
+    /// Persistent spawn history (P1-7 of the Processes-page queue). Bounded
+    /// to `spawnHistoryCap` entries; oldest evicted on overflow. Hydrated
+    /// from `~/Library/Application Support/sharecli/spawn-history.json` on
+    /// init; persisted on every `recordSpawn(...)` so the log survives app
+    /// restarts.
+    @Published public var spawnHistory: [SpawnHistoryEntry] = []
+    public static let spawnHistoryCap: Int = 50
+
+    public init() {
+        spawnHistory = Self.loadSpawnHistory()
+    }
 
     public func startPolling() {
         pollTask?.cancel()
@@ -296,6 +372,58 @@ public final class AppState: ObservableObject {
         }
     }
 
+    /// Append a spawn attempt to `spawnHistory` (capped at spawnHistoryCap),
+    /// persist to disk, and publish via spawnHistoryChanged.
+    public func recordSpawn(_ entry: SpawnHistoryEntry) {
+        spawnHistory.append(entry)
+        if spawnHistory.count > spawnHistoryCap {
+            spawnHistory.removeFirst(spawnHistory.count - spawnHistoryCap)
+        }
+        NotificationCenter.default.post(name: .sharecliSpawnHistoryChanged, object: nil)
+        persistSpawnHistory()
+    }
+
+    /// Persist `spawnHistory` to `~/Library/Application Support/sharecli/spawn_history.json`.
+    /// Errors are surfaced via `lastError` (non-fatal).
+    private func persistSpawnHistory() {
+        do {
+            let url = try spawnHistoryURL()
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(spawnHistory)
+            try data.write(to: url, options: [.atomic])
+        } catch {
+            lastError = "spawn_history.persist: \(error.localizedDescription)"
+        }
+    }
+
+    /// Load any persisted spawn history from disk. Called from init.
+    private func loadSpawnHistory() {
+        do {
+            let url = try spawnHistoryURL()
+            guard FileManager.default.fileExists(atPath: url.path) else { return }
+            let data = try Data(contentsOf: url)
+            let decoded = try JSONDecoder().decode([SpawnHistoryEntry].self, from: data)
+            // Trim to cap in case cap shrunk between versions.
+            self.spawnHistory = Array(decoded.suffix(spawnHistoryCap))
+        } catch {
+            // Non-fatal: a corrupt file just falls back to empty history.
+            // Don't surface via lastError on startup — would be noise.
+        }
+    }
+
+    private func spawnHistoryURL() throws -> URL {
+        let support = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let dir = support.appendingPathComponent("sharecli", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("spawn_history.json")
+    }
+
     /// Fetch the cmdline for `pid` if not already cached. Returns the
     /// cached value on subsequent calls. Returns `nil` if the sidecar
     /// couldn't read the cmdline (process gone, non-Linux platform).
@@ -339,4 +467,8 @@ public extension Notification.Name {
     /// Posted on the main thread whenever AppState.refresh() completes
     /// (carries a HealthSnapshot? as object — nil when IPC disconnected).
     static let sharecliHealthChanged = Notification.Name("sharecliHealthChanged")
+
+    /// Posted whenever AppState.recordSpawn(_:) appends to `spawnHistory`.
+    /// Used by SpawnView to refresh its recent-attempts panel.
+    static let sharecliSpawnHistoryChanged = Notification.Name("sharecliSpawnHistoryChanged")
 }
