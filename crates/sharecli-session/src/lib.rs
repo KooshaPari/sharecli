@@ -57,6 +57,7 @@ pub mod ledger;
 pub mod recovery;
 pub mod resolver;
 pub mod rpc;
+pub mod state;
 
 pub use adapter::{GhosttySurfaceAdapter, SurfaceAdapter, SurfaceIo, ZmxSurfaceAdapter};
 pub use discovery::{
@@ -67,6 +68,7 @@ pub use layout::{LayoutAxis, LayoutNode, LayoutRestoreItem, LayoutRestoreReport,
 pub use ledger::{ObservationKind, SessionObservation, SurfaceCapabilities};
 pub use recovery::{validate_recipe, RecoveryExecutor, RecoveryOutcome, RecoveryResult};
 pub use resolver::{resolve as resolve_session, EvidenceSource, Resolution};
+pub use state::{SidecarRecord, SidecarStateProvider};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResumeRecipe {

@@ -22,6 +22,22 @@ sharecli session recover --execute   # explicit launch
 sharecli session watch --once        # one native Ghostty inventory pass
 ```
 
+For unattended, exact harness identity, give the watcher a launch-time JSONL
+sidecar. The default is `$HOME/Library/Application Support/sharecli/session-sidecar.jsonl`
+when macOS resolves a local data directory; override it with
+`--state-sidecar` or `SHARECLI_SESSION_SIDECAR`:
+
+```jsonl
+{"surface_id":"ghostty-42","harness":"codex","session_id":"thread-abc","pid":12345}
+```
+
+Each record is keyed by `surface_id` and `harness`; an optional `pid` prevents a
+mapping from being reused after process recycling. The watcher reads the file
+on every pass and treats the newest record for a surface/harness as authoritative.
+A malformed sidecar degrades that pass rather than inventing a resume id. The
+sidecar is deliberately read-only here: a launcher/wrapper that knows the exact
+session id should append the record before starting the harness.
+
 The plist targets the current Cargo install at `/Users/kooshapari/.cargo/bin/sharecli`;
 edit `ProgramArguments` for another installation path. Ghostty remains the stable
 daily terminal. zmx provides durable PTYs. The fork-friendly native contract is

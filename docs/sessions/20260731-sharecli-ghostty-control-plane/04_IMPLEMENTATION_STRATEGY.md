@@ -13,6 +13,9 @@
   per-surface capability failures are isolated, known harness argv/state is
   resolved conservatively, and unknown processes are recorded without a resume
   recipe. `sharecli session watch` is the durable CLI loop around that contract.
+  Exact launch-time mappings come from the append-only JSONL sidecar selected by
+  `--state-sidecar`/`SHARECLI_SESSION_SIDECAR`; the latest record wins, PID
+  mismatches fail closed, and malformed input degrades the pass.
 - Keep the native Ghostty bridge in `contrib/ghostty-control` as a standalone
   Swift package. It defines the provider boundary and JSON-RPC dispatcher so a
   Ghostty fork can bind native split/pane/PTY objects without carrying ShareCLI's

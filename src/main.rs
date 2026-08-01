@@ -8,8 +8,8 @@ use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use sharecli::session::GhosttyControlClient;
 use sharecli_session::{
-    LayoutSnapshot, NoStateProvider, RecoveryExecutor, SessionObservation, SessionService,
-    SessionStore, SurfaceObservationScanner,
+    LayoutSnapshot, RecoveryExecutor, SessionObservation, SessionService, SessionStore,
+    SidecarStateProvider, SurfaceObservationScanner,
 };
 use sharecli_thermal_tui as thermal_tui;
 
@@ -548,6 +548,8 @@ enum SessionCmd {
         socket: std::path::PathBuf,
         #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
         token: Option<String>,
+        #[arg(long, env = "SHARECLI_SESSION_SIDECAR")]
+        state_sidecar: Option<std::path::PathBuf>,
         #[arg(long)]
         db: Option<std::path::PathBuf>,
     },
@@ -1089,8 +1091,15 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&store.get_layout(id)?)?);
         return Ok(());
     }
-    if let SessionCmd::Watch { interval_seconds, once, socket, token, .. } = cmd {
-        run_session_watch(&store, socket, token.as_deref(), *interval_seconds, *once)?;
+    if let SessionCmd::Watch { interval_seconds, once, socket, token, state_sidecar, .. } = cmd {
+        run_session_watch(
+            &store,
+            socket,
+            token.as_deref(),
+            state_sidecar.as_deref(),
+            *interval_seconds,
+            *once,
+        )?;
         return Ok(());
     }
     let service = SessionService::new(store);
@@ -1130,13 +1139,17 @@ fn run_session_watch(
     store: &SessionStore,
     socket: &std::path::Path,
     token: Option<&str>,
+    state_sidecar: Option<&std::path::Path>,
     interval_seconds: u64,
     once: bool,
 ) -> Result<()> {
     let client = GhosttyControlClient::new(socket, token.map(str::to_owned));
+    let sidecar = SidecarStateProvider::new(
+        state_sidecar.map(std::path::Path::to_path_buf).unwrap_or_else(default_state_sidecar),
+    );
     let interval = std::time::Duration::from_secs(interval_seconds.clamp(1, 3600));
     loop {
-        match observe_ghostty_surfaces(store, &client) {
+        match observe_ghostty_surfaces(store, &client, &sidecar) {
             Ok(count) => eprintln!("sharecli session watch: recorded {count} surface(s)"),
             Err(error) => eprintln!("sharecli session watch: degraded: {error:#}"),
         }
@@ -1147,14 +1160,23 @@ fn run_session_watch(
     }
 }
 
-fn observe_ghostty_surfaces(store: &SessionStore, client: &GhosttyControlClient) -> Result<usize> {
+fn observe_ghostty_surfaces(
+    store: &SessionStore,
+    client: &GhosttyControlClient,
+    state: &SidecarStateProvider,
+) -> Result<usize> {
     let observed_at = chrono::Utc::now().to_rfc3339();
-    let state = NoStateProvider;
-    let report = SurfaceObservationScanner::new(client, &state, store).scan(&observed_at)?;
+    let report = SurfaceObservationScanner::new(client, state, store).scan(&observed_at)?;
     for failure in &report.failures {
         eprintln!("sharecli session watch: {} unavailable: {}", failure.surface_id, failure.error);
     }
     Ok(report.recorded)
+}
+
+fn default_state_sidecar() -> std::path::PathBuf {
+    dirs::data_local_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("sharecli/session-sidecar.jsonl")
 }
 
 fn surface_cmd(cmd: &SurfaceCmd) -> Result<()> {

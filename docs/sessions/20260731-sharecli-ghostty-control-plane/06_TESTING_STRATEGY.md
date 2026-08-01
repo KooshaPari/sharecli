@@ -10,6 +10,8 @@ Verified in this worktree:
   including layout save/list/inspect)
 - `cargo test -p sharecli --locked --test session_cli` (layout save/list plus
   missing-native-socket watch fail-open check)
+- `cargo test -p sharecli-session --offline -- --nocapture` also covers exact
+  sidecar mappings, PID recycling fail-closed behavior, and malformed JSONL.
 - `swift test` in `contrib/ghostty-control` (native dispatcher contract)
 - `cargo run -p sharecli-fuse --bin fuse-runtime-probe` (read-only host evidence)
 - `cargo fmt --all -- --check`
