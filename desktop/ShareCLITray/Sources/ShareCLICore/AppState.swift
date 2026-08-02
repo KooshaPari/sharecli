@@ -205,7 +205,24 @@ public final class AppState: ObservableObject {
     /// so it survives app restarts. SpawnView reads `spawnHistory` to
     /// render the recent-attempts list and re-submit button.
     public static let spawnHistoryCap = 50
+    /// Persistent JSON log of recent spawn attempts (cap 50).
+    /// Populated by `recordSpawn(_:)`, loaded on init.
     @Published public var spawnHistory: [SpawnHistoryEntry] = []
+
+    /// Last observed set of fleet processes keyed by PID — used by the
+    /// fleet-diff capture in `refresh()` to compute added/removed rows
+    /// for the Diff subpage (P1-8 of dashboard expansion plan).
+    /// Not published (subscribers only care about the diff result).
+    private var previousProcesses: [UInt32: ProcessSummary] = [:]
+
+    /// Most recent fleet diff (added / removed / changed). Posted via
+    /// `sharecliFleetChanged` after every successful refresh.
+    @Published public var fleetChange: FleetChange = FleetChange()
+
+    /// Rolling history of fleet changes (cap 60). Used by DiffView for
+    /// "what changed in the last 60s" timeline.
+    @Published public var fleetChangeHistory: [FleetChange] = []
+    public static let fleetChangeHistoryCap = 60
 
     /// File URL for the persisted spawn-history JSON.
     private static let spawnHistoryURL: URL = {
@@ -463,4 +480,33 @@ public extension Notification.Name {
     /// Posted whenever AppState.recordSpawn(_:) appends to `spawnHistory`.
     /// Used by SpawnView to refresh its recent-attempts panel.
     static let sharecliSpawnHistoryChanged = Notification.Name("sharecliSpawnHistoryChanged")
+
+    /// Posted whenever AppState captures a new FleetChange (processes
+    /// added/removed since the previous refresh). Carries a FleetChange
+    /// as the notification object.
+    static let sharecliFleetChanged = Notification.Name("sharecliFleetChanged")
+}
+
+/// Describes the delta between two consecutive fleet snapshots. Computed by
+/// `AppState.refresh()` after every monitoring refresh and surfaced via
+/// the Processes → Diff subpage. All fields default to empty so partial
+/// changes (e.g. only additions) are easy to express.
+public struct FleetChange: Equatable, Hashable {
+    public let timestamp: Date
+    public let added: [ProcessSummary]
+    public let removed: [ProcessSummary]
+    public let stayed: Int   // count of processes present in both snapshots
+
+    public init(timestamp: Date = Date(),
+                added: [ProcessSummary] = [],
+                removed: [ProcessSummary] = [],
+                stayed: Int = 0) {
+        self.timestamp = timestamp
+        self.added = added
+        self.removed = removed
+        self.stayed = stayed
+    }
+
+    public var isEmpty: Bool { added.isEmpty && removed.isEmpty }
+    public var totalChanged: Int { added.count + removed.count }
 }

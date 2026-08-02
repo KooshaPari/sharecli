@@ -1789,13 +1789,13 @@ struct SpawnView: View {
                 }
 
                 if !state.spawnHistory.isEmpty {
-                    GroupBox("Recent spawn history (last \(min(state.spawnHistory.count, SpawnHistoryEntry.displayLimit)))") {
+                    GroupBox("Recent spawn history (last \(min(state.spawnHistory.count, 10)))") {
                         VStack(alignment: .leading, spacing: 6) {
-                            ForEach(state.spawnHistory.prefix(SpawnHistoryEntry.displayLimit)) { entry in
+                            ForEach(state.spawnHistory.prefix(10)) { entry in
                                 SpawnHistoryRow(entry: entry)
                             }
-                            if state.spawnHistory.count > SpawnHistoryEntry.displayLimit {
-                                Text("…and \(state.spawnHistory.count - SpawnHistoryEntry.displayLimit) more persisted entries")
+                            if state.spawnHistory.count > 10 {
+                                Text("…and \(state.spawnHistory.count - 10) more persisted entries")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
@@ -1848,26 +1848,32 @@ struct SpawnView: View {
                 lastArgsJSON = json
             }
             // Record the attempt in the persistent spawn history (P1-7)
-            state.recordSpawn(
-                binary: binary,
-                argv: argv,
+            let entry = SpawnHistoryEntry(
+                command: binary.isEmpty ? "(empty)" : binary,
+                args: argv,
                 project: project.isEmpty ? nil : project,
                 harness: harness.isEmpty ? nil : harness,
-                pid: result.pid,
-                success: result.success,
+                workingDir: workingDirectory,
+                memoryLimitMB: Int(memoryMB),
+                succeeded: result.success,
+                spawnedPID: result.pid,
                 errorMessage: result.error
             )
+            state.recordSpawn(entry)
         } catch {
             lastError = "\(error)"
-            state.recordSpawn(
-                binary: binary,
-                argv: argv,
+            let entry = SpawnHistoryEntry(
+                command: binary.isEmpty ? "(empty)" : binary,
+                args: argv,
                 project: project.isEmpty ? nil : project,
                 harness: harness.isEmpty ? nil : harness,
-                pid: nil,
-                success: false,
+                workingDir: workingDirectory,
+                memoryLimitMB: Int(memoryMB),
+                succeeded: false,
+                spawnedPID: nil,
                 errorMessage: "\(error)"
             )
+            state.recordSpawn(entry)
         }
     }
 
@@ -2022,23 +2028,27 @@ struct SpawnHistoryRow: View {
         return f
     }()
 
+    private var renderedArgv: String {
+        ([entry.command] + entry.args).joined(separator: " ")
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: entry.success ? "checkmark.circle.fill" : "xmark.octagon.fill")
-                .foregroundStyle(entry.success ? Color.green : Color.red)
+            Image(systemName: entry.succeeded ? "checkmark.circle.fill" : "xmark.octagon.fill")
+                .foregroundStyle(entry.succeeded ? Color.green : Color.red)
                 .font(.caption)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(Self.timestampFormatter.string(from: entry.timestamp))
                         .font(.caption.monospacedDigit())
-                    if entry.success, let pid = entry.pid {
+                    if entry.succeeded, let pid = entry.spawnedPID {
                         Text("pid \(pid)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                    } else if let err = entry.error {
+                    } else if let err = entry.errorMessage {
                         Text(err).font(.caption).foregroundStyle(.red).lineLimit(2)
                     }
                     Spacer(minLength: 0)
                 }
-                Text(entry.argv).font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+                Text(renderedArgv).font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }
             Spacer(minLength: 0)
         }
