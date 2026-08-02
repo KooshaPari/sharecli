@@ -42,3 +42,7 @@ target-ac00791/
 target-fuse-smoke/
 target-ac00792/
 bench/
+
+# Swift / Xcode build artifacts
+.build/
+**/.build/
