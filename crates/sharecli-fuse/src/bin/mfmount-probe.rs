@@ -49,10 +49,7 @@ mod macos {
         }
         let result = unsafe { MFMount(channel, mountpoint_c.as_ptr(), options.as_ptr(), true) };
         let errno = io::Error::last_os_error();
-        eprintln!(
-            "mfmount-probe: result={result:?} ({}), errno={errno}",
-            result_code(result)
-        );
+        eprintln!("mfmount-probe: result={result:?} ({}), errno={errno}", result_code(result));
         unsafe {
             let _ = MFChannelClose(channel);
             MFRelease(channel);
@@ -70,7 +67,9 @@ mod macos {
             MountResult::UnsupportedOs => "unsupported-os",
             MountResult::HelperToolsInstallationFailed => "helper-tools-installation-failed",
             MountResult::FileSystemExtensionNotFound => "filesystem-extension-not-found",
-            MountResult::FileSystemExtensionRequiresApproval => "filesystem-extension-requires-approval",
+            MountResult::FileSystemExtensionRequiresApproval => {
+                "filesystem-extension-requires-approval"
+            }
             MountResult::UnexpectedFailure => "unexpected-failure",
         }
     }

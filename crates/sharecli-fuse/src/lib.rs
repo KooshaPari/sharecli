@@ -1011,10 +1011,18 @@ mod platform {
                     }
                 },
                 FuseBackend::Fskit => attempt(Some(FuseBackend::Fskit)).map_err(|err| {
-                    anyhow::anyhow!("FSKit backend mount failed at {}: {err}; {}", mountpoint.display(), crate::backend::runtime_diagnostics())
+                    anyhow::anyhow!(
+                        "FSKit backend mount failed at {}: {err}; {}",
+                        mountpoint.display(),
+                        crate::backend::runtime_diagnostics()
+                    )
                 }),
                 FuseBackend::Unavailable => attempt(None).map_err(|err| {
-                    anyhow::anyhow!("FUSE backend unavailable; mount failed at {}: {err}; {}", mountpoint.display(), crate::backend::runtime_diagnostics())
+                    anyhow::anyhow!(
+                        "FUSE backend unavailable; mount failed at {}: {err}; {}",
+                        mountpoint.display(),
+                        crate::backend::runtime_diagnostics()
+                    )
                 }),
             }?;
             Ok(())

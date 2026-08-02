@@ -56,5 +56,8 @@ fn fr004_quit_alias_stops_all() {
     let out = bin().args(["quit", "--all"]).output().expect("spawn quit");
     assert!(out.status.success(), "quit alias MUST dispatch to stop; combined={}", combined(&out));
     let body = combined(&out);
-    assert!(body.contains("All processes stopped."), "quit alias MUST use stop semantics; body={body}");
+    assert!(
+        body.contains("All processes stopped."),
+        "quit alias MUST use stop semantics; body={body}"
+    );
 }

@@ -552,10 +552,8 @@ fn read_pid_cmdline(pid: u32) -> Result<Vec<String>> {
 /// Linux: read `/proc/<pid>/cmdline`, split on NUL, drop trailing empty.
 fn read_cmdline_from_proc_path(path: &std::path::Path) -> Result<Vec<String>> {
     let mut bytes = Vec::new();
-    let mut file = fs::File::open(path)
-        .with_context(|| format!("open {}", path.display()))?;
-    file.read_to_end(&mut bytes)
-        .with_context(|| format!("read {}", path.display()))?;
+    let mut file = fs::File::open(path).with_context(|| format!("open {}", path.display()))?;
+    file.read_to_end(&mut bytes).with_context(|| format!("read {}", path.display()))?;
 
     // `/proc/.../cmdline` ends with a trailing NUL; split_and_drop leaves
     // one empty trailing token, which we discard.

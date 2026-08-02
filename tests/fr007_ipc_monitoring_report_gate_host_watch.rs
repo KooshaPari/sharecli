@@ -67,9 +67,7 @@ async fn fr007_ipc_monitoring_report_gate_host_watch_live() {
 /// FR-007 / AC-007.46 — serialized MonitoringReportSnapshot preserves gate → host_watch key order.
 #[test]
 fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
-    use sharecli::runtime::ProcState;
     use sharecli::monitoring::HostResourceWatchJson;
-    use sharecli::runtime::ProcState;
     use sharecli_fleet::GateStatusSnapshot;
     use sharecli_ipc::handler::{
         MonitoringProcessEntry, MonitoringReportSnapshot, PoolSnapshot, StatusSnapshot,
@@ -105,11 +103,11 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
             ppid: None,
             cwd: None,
             env_count: 0,
-            state: ProcState::default(),
+            state: "Unknown".into(),
             disk_read_bytes: None,
             disk_write_bytes: None,
             fd_count: None,
-            log_location: None,
+            thread_count: None,
         }],
         gate: gate.clone(),
         host_watch: host_watch.clone(),
