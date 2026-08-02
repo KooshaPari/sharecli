@@ -47,8 +47,9 @@ mod write_serialize_meters;
 pub use agent_cow::{AgentCowStore, AgentPending};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
 pub use backend::{
-    select_backend, select_backend_for_mount, select_backend_for_mount_with, select_backend_with,
-    FuseBackend, FuseBackendDiagnostic, FuseBackendSelection, FuseCapabilities,
+    probe_runtime, select_backend, select_backend_for_mount, select_backend_for_mount_with,
+    select_backend_with, FuseBackend, FuseBackendDiagnostic, FuseBackendSelection,
+    FuseCapabilities, FuseRuntimeEvidence,
 };
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use cow_session::CowMountHandle;

@@ -11,11 +11,16 @@ P3 Ghostty control client -----+--> P5 live I/O contract tests
                                 |
                                 +--> P6 native Ghostty server/fork
                                       |
-                                      +--> P7 pane discovery/layout restore
+                                      +--> P6a bounded live I/O subscriptions
                                             |
-                                            +--> P8 macOS dogfood + chaos gate
+                                            +--> P7 pane discovery/layout restore
+                                                  |
+                                                  +--> P8 macOS dogfood + chaos gate
 ```
 
-Completed here: P0-P5's ShareCLI-side contracts, CLI/IPC integrations, and
-tests. P6-P8 remain open because they require a Ghostty-side implementation
-and real macOS permission, mount, crash, and restart validation.
+Completed here: P0-P5's ShareCLI-side contracts, CLI/IPC integrations, tests,
+strict async/actor-safe transport hardening, and P6a's bounded persistent event
+broker/client/listener contract. P6-P8 remain open because they require a
+concrete Ghostty-side provider/lifecycle integration (the upstream lifecycle
+and raw-PTY instrumentation boundary are now documented) and real macOS
+permission, mount, crash, and restart validation.

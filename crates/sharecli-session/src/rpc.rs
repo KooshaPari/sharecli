@@ -1,13 +1,28 @@
-use crate::{SessionService, SurfaceCapabilities, SurfaceRecord};
+#[cfg(test)]
+use crate::SurfaceSubscribeAck;
+use crate::{
+    SessionService, SurfaceCapabilities, SurfaceEventError, SurfaceEventHub, SurfaceRecord,
+    SurfaceSubscribeRequest,
+};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
+#[cfg(unix)]
+#[path = "rpc_transport.rs"]
+mod transport;
+#[cfg(unix)]
+pub use transport::serve_surface_unix_with_token;
+
 const JSON_RPC_VERSION: &str = "2.0";
 const MAX_SURFACE_SEND_BYTES: usize = 64 * 1024;
 const MAX_SURFACE_LINE_BYTES: usize = 1024 * 1024;
 const MAX_SURFACE_READ_BYTES: usize = 1024 * 1024;
+pub use crate::events::{
+    SurfaceEventKind, SurfaceEventNotification, SurfaceEventParams,
+    SurfaceSubscriptionCapabilities, MAX_EVENT_CHUNK_BYTES, MAX_EVENT_QUEUE_CAPACITY,
+};
 #[derive(Debug, Deserialize)]
 pub struct Request {
     pub id: serde_json::Value,
@@ -33,7 +48,7 @@ pub trait SurfaceControl: Send + Sync {
 #[derive(Debug, Deserialize)]
 struct SurfaceRequest {
     jsonrpc: String,
-    id: Value,
+    id: Option<Value>,
     method: String,
     #[serde(default)]
     token: Option<String>,
@@ -116,6 +131,23 @@ pub async fn dispatch(service: Arc<SessionService>, line: &str) -> Response {
 }
 
 pub async fn dispatch_surface(control: Arc<dyn SurfaceControl>, line: &str) -> SurfaceResponse {
+    dispatch_surface_internal(control, line, None).await
+}
+
+/// Dispatch a surface request while exposing the bounded live-event broker.
+pub async fn dispatch_surface_with_events(
+    control: Arc<dyn SurfaceControl>,
+    events: Arc<SurfaceEventHub>,
+    line: &str,
+) -> SurfaceResponse {
+    dispatch_surface_internal(control, line, Some(events)).await
+}
+
+async fn dispatch_surface_internal(
+    control: Arc<dyn SurfaceControl>,
+    line: &str,
+    events: Option<Arc<SurfaceEventHub>>,
+) -> SurfaceResponse {
     let raw = match serde_json::from_str::<Value>(line) {
         Ok(raw) => raw,
         Err(error) => return surface_error(Value::Null, -32700, format!("parse error: {error}")),
@@ -135,11 +167,20 @@ pub async fn dispatch_surface(control: Arc<dyn SurfaceControl>, line: &str) -> S
         }
     };
     if request.jsonrpc != JSON_RPC_VERSION {
-        return surface_error(request.id, -32600, "jsonrpc must be \"2.0\"".to_string());
+        return surface_error(
+            request.id.unwrap_or(Value::Null),
+            -32600,
+            "jsonrpc must be \"2.0\"".to_string(),
+        );
     }
 
-    let id = request.id;
-    let outcome = dispatch_surface_method(control.as_ref(), &request.method, params);
+    let id = request.id.unwrap_or(Value::Null);
+    let outcome = dispatch_surface_method_with_events(
+        control.as_ref(),
+        &request.method,
+        params,
+        events.as_deref(),
+    );
     match outcome {
         Ok(result) => {
             SurfaceResponse { jsonrpc: JSON_RPC_VERSION, id, result: Some(result), error: None }
@@ -158,16 +199,42 @@ pub async fn dispatch_surface_with_token(
             return dispatch_surface(control, line).await;
         };
         if request.token.as_deref() != Some(expected) {
-            return surface_error(request.id, -32001, "invalid control token".into());
+            return surface_error(
+                request.id.unwrap_or(Value::Null),
+                -32001,
+                "invalid control token".into(),
+            );
         }
     }
     dispatch_surface(control, line).await
 }
 
-fn dispatch_surface_method(
+pub async fn dispatch_surface_with_token_and_events(
+    control: Arc<dyn SurfaceControl>,
+    events: Arc<SurfaceEventHub>,
+    line: &str,
+    expected_token: Option<&str>,
+) -> SurfaceResponse {
+    if let Some(expected) = expected_token {
+        let Ok(request) = serde_json::from_str::<SurfaceRequest>(line) else {
+            return dispatch_surface_with_events(control, events, line).await;
+        };
+        if request.token.as_deref() != Some(expected) {
+            return surface_error(
+                request.id.unwrap_or(Value::Null),
+                -32001,
+                "invalid control token".into(),
+            );
+        }
+    }
+    dispatch_surface_with_events(control, events, line).await
+}
+
+fn dispatch_surface_method_with_events(
     control: &dyn SurfaceControl,
     method: &str,
     params: Value,
+    events: Option<&SurfaceEventHub>,
 ) -> std::result::Result<Value, (i32, String)> {
     match method {
         "surface.list" => {
@@ -230,8 +297,32 @@ fn dispatch_surface_method(
             let capabilities = control.capabilities(&params.surface_id).map_err(control_error)?;
             serde_json::to_value(capabilities).map_err(control_error)
         }
+        "surface.io.subscribe" => {
+            let Some(events) = events else {
+                return Err((-32000, "live surface events unavailable".to_string()));
+            };
+            let request: SurfaceSubscribeRequest = decode_params(params)?;
+            let ack = events.subscribe(request).map_err(event_error)?;
+            serde_json::to_value(ack).map_err(control_error)
+        }
+        "surface.io.unsubscribe" => {
+            let Some(events) = events else {
+                return Err((-32000, "live surface events unavailable".to_string()));
+            };
+            #[derive(Deserialize)]
+            struct UnsubscribeParams {
+                subscription_id: u64,
+            }
+            let request: UnsubscribeParams = decode_params(params)?;
+            let unsubscribed = events.unsubscribe(request.subscription_id).map_err(event_error)?;
+            Ok(serde_json::json!({"unsubscribed": unsubscribed}))
+        }
         _ => Err((-32601, format!("unknown method: {method}"))),
     }
+}
+
+fn event_error(error: SurfaceEventError) -> (i32, String) {
+    (-32602, error.to_string())
 }
 
 fn decode_params<T: for<'de> Deserialize<'de>>(
@@ -285,13 +376,17 @@ pub async fn serve_surface_unix(
     serve_surface_unix_with_token(path, control, None).await
 }
 
+/// Serve request/response RPC plus bounded server-originated events on one persistent socket.
+/// The polling tick only drains already-published broker items; it never touches the provider.
 #[cfg(unix)]
-pub async fn serve_surface_unix_with_token(
+pub async fn serve_surface_unix_with_events(
     path: &std::path::Path,
     control: Arc<dyn SurfaceControl>,
+    events: Arc<SurfaceEventHub>,
     expected_token: Option<String>,
 ) -> Result<()> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::time::{self, Duration};
 
     let _ = std::fs::remove_file(path);
     if let Some(parent) = path.parent() {
@@ -305,309 +400,84 @@ pub async fn serve_surface_unix_with_token(
     loop {
         let (stream, _) = listener.accept().await?;
         let control = control.clone();
+        let events = events.clone();
         let expected_token = expected_token.clone();
         tokio::spawn(async move {
-            let (reader, mut writer) = stream.into_split();
-            let mut input = reader;
-            let mut buffer = Vec::new();
+            let (mut reader, mut writer) = stream.into_split();
+            let mut input = Vec::new();
             let mut chunk = [0_u8; 16 * 1024];
-            while let Ok(count) = input.read(&mut chunk).await {
-                if count == 0 {
-                    break;
-                }
-                buffer.extend_from_slice(&chunk[..count]);
-                if buffer.len() > MAX_SURFACE_LINE_BYTES {
-                    break;
-                }
-                while let Some(newline) = buffer.iter().position(|byte| *byte == b'\n') {
-                    let Ok(line) = std::str::from_utf8(&buffer[..newline]) else {
-                        return;
-                    };
-                    let response = dispatch_surface_with_token(
-                        control.clone(),
-                        &line,
-                        expected_token.as_deref(),
-                    )
-                    .await;
-                    buffer.drain(..=newline);
-                    let Ok(mut payload) = serde_json::to_string(&response) else {
-                        return;
-                    };
-                    payload.push('\n');
-                    if writer.write_all(payload.as_bytes()).await.is_err() {
-                        return;
+            let mut subscriptions = Vec::new();
+            let mut tick = time::interval(Duration::from_millis(25));
+            loop {
+                tokio::select! {
+                    result = reader.read(&mut chunk) => {
+                        let Ok(count) = result else { return };
+                        if count == 0 { return; }
+                        input.extend_from_slice(&chunk[..count]);
+                        if input.len() > MAX_SURFACE_LINE_BYTES { return; }
+                        while let Some(newline) = input.iter().position(|byte| *byte == b'\n') {
+                            let Ok(line) = std::str::from_utf8(&input[..newline]) else { return; };
+                            let request_value = serde_json::from_str::<Value>(line).ok();
+                            let should_reply = serde_json::from_str::<Value>(line)
+                                .ok()
+                                .and_then(|request| request.as_object().map(|object| object.contains_key("id")))
+                                .unwrap_or(false);
+                            let response = dispatch_surface_with_token_and_events(
+                                control.clone(),
+                                events.clone(),
+                                line,
+                                expected_token.as_deref(),
+                            ).await;
+                            input.drain(..=newline);
+                            if let Some(id) = response.result.as_ref()
+                                .and_then(|result| result.get("subscription_id"))
+                                .and_then(Value::as_u64)
+                            {
+                                subscriptions.push(id);
+                            }
+                            if request_value.as_ref().and_then(Value::as_object)
+                                .and_then(|request| request.get("method"))
+                                .and_then(Value::as_str) == Some("surface.io.unsubscribe")
+                            {
+                                if let Some(id) = request_value.as_ref()
+                                    .and_then(|request| request.get("params"))
+                                    .and_then(|params| params.get("subscription_id"))
+                                    .and_then(Value::as_u64)
+                                {
+                                    subscriptions.retain(|subscription_id| *subscription_id != id);
+                                }
+                            }
+                            if should_reply {
+                                let mut payload = match serde_json::to_vec(&response) {
+                                    Ok(payload) => payload,
+                                    Err(_) => return,
+                                };
+                                payload.push(b'\n');
+                                if writer.write_all(&payload).await.is_err() { return; }
+                            }
+                        }
+                    }
+                    _ = tick.tick() => {
+                        for subscription_id in subscriptions.iter().copied() {
+                            let queued = match events.drain(subscription_id, 32) {
+                                Ok(events) => events,
+                                Err(_) => continue,
+                            };
+                            for event in queued {
+                                let mut payload = match serde_json::to_vec(&event) {
+                                    Ok(payload) => payload,
+                                    Err(_) => return,
+                                };
+                                payload.push(b'\n');
+                                if writer.write_all(&payload).await.is_err() { return; }
+                            }
+                        }
                     }
                 }
             }
         });
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::SurfaceCapabilities;
-    use serde_json::json;
-    use std::sync::Mutex;
-
-    #[derive(Default)]
-    struct RecordingControl {
-        sent: Mutex<Vec<(String, Vec<u8>)>>,
-        resized: Mutex<Vec<(String, u16, u16)>>,
-    }
-
-    impl SurfaceControl for RecordingControl {
-        fn send(&self, surface_id: &str, bytes: &[u8]) -> Result<()> {
-            self.sent.lock().unwrap().push((surface_id.to_string(), bytes.to_vec()));
-            Ok(())
-        }
-
-        fn read(&self, surface_id: &str, max_bytes: usize) -> Result<Vec<u8>> {
-            assert_eq!(surface_id, "surface-1");
-            Ok(b"terminal output"[..max_bytes.min(15)].to_vec())
-        }
-
-        fn resize(&self, surface_id: &str, rows: u16, cols: u16) -> Result<()> {
-            self.resized.lock().unwrap().push((surface_id.to_string(), rows, cols));
-            Ok(())
-        }
-
-        fn capabilities(&self, surface_id: &str) -> Result<SurfaceCapabilities> {
-            assert_eq!(surface_id, "surface-1");
-            Ok(SurfaceCapabilities {
-                read: true,
-                write: true,
-                resize: true,
-                layout: false,
-                durable_pty: true,
-            })
-        }
-    }
-
-    struct OverrunControl;
-
-    impl SurfaceControl for OverrunControl {
-        fn send(&self, _surface_id: &str, _bytes: &[u8]) -> Result<()> {
-            Ok(())
-        }
-
-        fn read(&self, _surface_id: &str, max_bytes: usize) -> Result<Vec<u8>> {
-            Ok(vec![0; max_bytes + 1])
-        }
-
-        fn resize(&self, _surface_id: &str, _rows: u16, _cols: u16) -> Result<()> {
-            Ok(())
-        }
-
-        fn capabilities(&self, _surface_id: &str) -> Result<SurfaceCapabilities> {
-            Ok(SurfaceCapabilities {
-                read: true,
-                write: true,
-                resize: true,
-                layout: false,
-                durable_pty: false,
-            })
-        }
-    }
-
-    async fn request(
-        control: &Arc<RecordingControl>,
-        id: u64,
-        method: &str,
-        params: Value,
-    ) -> SurfaceResponse {
-        let raw = json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "method": method,
-            "params": params
-        })
-        .to_string();
-        dispatch_surface(control.clone(), &raw).await
-    }
-
-    #[tokio::test]
-    async fn surface_send_passes_text_directly_to_control() {
-        let control = Arc::new(RecordingControl::default());
-        let response = request(
-            &control,
-            1,
-            "surface.io.send",
-            json!({"surface_id": "surface-1", "text": "printf 'not a shell'"}),
-        )
-        .await;
-
-        assert_eq!(response.jsonrpc, "2.0");
-        assert_eq!(response.result, Some(Value::Null));
-        assert!(response.error.is_none());
-        assert_eq!(
-            *control.sent.lock().unwrap(),
-            vec![("surface-1".to_string(), b"printf 'not a shell'".to_vec())]
-        );
-    }
-
-    #[tokio::test]
-    async fn surface_list_reports_degraded_discovery_without_a_native_adapter() {
-        let control = Arc::new(RecordingControl::default());
-        let response = request(&control, 7, "surface.list", json!({})).await;
-        assert!(response.result.is_none());
-        assert_eq!(response.error.unwrap().code, -32000);
-    }
-
-    #[tokio::test]
-    async fn surface_send_accepts_an_explicit_byte_vector() {
-        let control = Arc::new(RecordingControl::default());
-        let response = request(
-            &control,
-            6,
-            "surface.io.send",
-            json!({"surface_id": "surface-1", "bytes": [0, 255, 10]}),
-        )
-        .await;
-
-        assert_eq!(response.result, Some(Value::Null));
-        assert_eq!(
-            *control.sent.lock().unwrap(),
-            vec![("surface-1".to_string(), vec![0, 255, 10])]
-        );
-    }
-
-    #[tokio::test]
-    async fn surface_read_returns_a_typed_byte_vector() {
-        let control = Arc::new(RecordingControl::default());
-        let response = request(
-            &control,
-            2,
-            "surface.io.read",
-            json!({"surface_id": "surface-1", "max_bytes": 8}),
-        )
-        .await;
-
-        assert_eq!(response.result, Some(json!({"bytes": b"terminal".to_vec()})));
-        assert!(response.error.is_none());
-    }
-
-    #[tokio::test]
-    async fn surface_resize_forwards_dimensions_without_a_command_string() {
-        let control = Arc::new(RecordingControl::default());
-        let response = request(
-            &control,
-            3,
-            "surface.io.resize",
-            json!({"surface_id": "surface-1", "rows": 42, "cols": 120}),
-        )
-        .await;
-
-        assert_eq!(response.result, Some(Value::Null));
-        assert_eq!(*control.resized.lock().unwrap(), vec![("surface-1".to_string(), 42, 120)]);
-    }
-
-    #[tokio::test]
-    async fn surface_capabilities_are_returned_from_the_control_contract() {
-        let control = Arc::new(RecordingControl::default());
-        let response =
-            request(&control, 4, "surface.io.capabilities", json!({"surface_id": "surface-1"}))
-                .await;
-
-        assert_eq!(
-            response.result,
-            Some(json!({
-                "read": true,
-                "write": true,
-                "resize": true,
-                "layout": false,
-                "durable_pty": true
-            }))
-        );
-    }
-
-    #[tokio::test]
-    async fn invalid_surface_params_return_json_rpc_invalid_params() {
-        let control = Arc::new(RecordingControl::default());
-        let response =
-            request(&control, 5, "surface.io.resize", json!({"surface_id": "surface-1"})).await;
-
-        assert!(response.result.is_none());
-        assert_eq!(response.error.unwrap().code, -32602);
-    }
-
-    #[tokio::test]
-    async fn non_object_surface_params_return_json_rpc_invalid_params() {
-        let control = Arc::new(RecordingControl::default());
-        let response = request(&control, 8, "surface.list", json!(["not-an-object"])).await;
-
-        assert!(response.result.is_none());
-        assert_eq!(response.error.unwrap().code, -32602);
-    }
-
-    #[tokio::test]
-    async fn surface_send_rejects_oversized_payloads() {
-        let control = Arc::new(RecordingControl::default());
-        let response = request(
-            &control,
-            10,
-            "surface.io.send",
-            json!({
-                "surface_id": "surface-1",
-                "text": "x".repeat(MAX_SURFACE_SEND_BYTES + 1),
-            }),
-        )
-        .await;
-
-        assert!(response.result.is_none());
-        assert_eq!(response.error.unwrap().code, -32602);
-    }
-
-    #[tokio::test]
-    async fn surface_read_rejects_provider_overruns() {
-        let raw = json!({
-            "jsonrpc": "2.0",
-            "id": 11,
-            "method": "surface.io.read",
-            "params": {"surface_id": "surface-1", "max_bytes": 8}
-        })
-        .to_string();
-        let response = dispatch_surface(Arc::new(OverrunControl), &raw).await;
-
-        assert!(response.result.is_none());
-        assert_eq!(response.error.unwrap().code, -32000);
-    }
-
-    #[cfg(unix)]
-    #[tokio::test]
-    async fn unix_server_round_trips_surface_json_rpc() {
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-
-        let socket =
-            std::path::PathBuf::from(format!("/tmp/sharecli-sc-{}.sock", std::process::id()));
-        let control = Arc::new(RecordingControl::default());
-        let server_path = socket.clone();
-        let server_control = control.clone();
-        let server =
-            tokio::spawn(async move { serve_surface_unix(&server_path, server_control).await });
-
-        let mut stream = loop {
-            match tokio::net::UnixStream::connect(&socket).await {
-                Ok(stream) => break stream,
-                Err(_error) if !server.is_finished() => tokio::task::yield_now().await,
-                Err(error) => panic!("surface server failed before accepting connections: {error}"),
-            }
-        };
-        stream
-            .write_all(
-                br#"{"jsonrpc":"2.0","id":9,"method":"surface.io.read","params":{"surface_id":"surface-1","max_bytes":8}}
-"#,
-            )
-            .await
-            .unwrap();
-        let mut response = String::new();
-        BufReader::new(stream).read_line(&mut response).await.unwrap();
-
-        assert_eq!(
-            serde_json::from_str::<Value>(&response).unwrap(),
-            json!({"jsonrpc":"2.0","id":9,"result":{"bytes":b"terminal".to_vec()}})
-        );
-        server.abort();
-        let _ = std::fs::remove_file(socket);
-    }
-}
+#[path = "rpc_tests.rs"]
+mod tests;

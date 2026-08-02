@@ -52,6 +52,7 @@ use std::sync::Mutex;
 
 pub mod adapter;
 pub mod discovery;
+pub mod events;
 pub mod layout;
 pub mod ledger;
 pub mod recovery;
@@ -63,6 +64,11 @@ pub use adapter::{GhosttySurfaceAdapter, SurfaceAdapter, SurfaceIo, ZmxSurfaceAd
 pub use discovery::{
     scan_and_record, DiscoveryFailure, DiscoveryReport, DiscoveryResult, MapStateProvider,
     NoStateProvider, SessionStateProvider, SurfaceObservationScanner,
+};
+pub use events::{
+    SurfaceEventError, SurfaceEventHub, SurfaceEventKind, SurfaceEventNotification,
+    SurfaceEventParams, SurfaceSubscribeAck, SurfaceSubscribeRequest,
+    SurfaceSubscriptionCapabilities, MAX_EVENT_CHUNK_BYTES, MAX_EVENT_QUEUE_CAPACITY,
 };
 pub use layout::{LayoutAxis, LayoutNode, LayoutRestoreItem, LayoutRestoreReport, LayoutSnapshot};
 pub use ledger::{ObservationKind, SessionObservation, SurfaceCapabilities};

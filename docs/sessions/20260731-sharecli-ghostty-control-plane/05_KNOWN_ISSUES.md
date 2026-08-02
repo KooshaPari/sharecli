@@ -1,18 +1,22 @@
 # Known Issues and Open Gates
 
 - `GhosttySurfaceAdapter::discover` is intentionally a capability contract;
-  stock Ghostty's AppleScript dictionary can enumerate terminal identity,
-  cwd, PID, and TTY, but the installed app has no documented external socket
-  for PTY/screen readback. Native layout and readback still require the
-  Ghostty-side integration gate.
+  stock Ghostty's AppleScript dictionary can enumerate terminal identity and
+  cwd, but not PID/TTY and not PTY/screen readback. Native process evidence,
+  layout, and readback still require the Ghostty-side integration gate.
 - `contrib/ghostty-control` is the native binding contract and tested
   dispatcher/listener, not a patched Ghostty.app. A fork must implement
   `SurfaceProvider` from Ghostty's live surface tree and PTY/screen model, then
   start the listener from the app lifecycle. The protocol is asynchronous and
   actor-safe, but the concrete provider and lifecycle wiring are still open.
-- The current socket is request/response NDJSON only. Server-originated output
-  subscriptions need a per-connection serialized writer, bounded queue, and
-  cancellation protocol; they are intentionally a separate next gate.
+- The ShareCLI socket now has a bounded subscription protocol and serialized
+  event writer. It still needs a concrete Ghostty provider to publish PTY
+  output; without that app-side binding, `surface watch` reports an unavailable
+  capability rather than inventing output.
+- Upstream Ghostty exposes foreground PID/TTY and bounded screen-text/export
+  actions, but no public raw-PTY subscription callback. The fork must add
+  termio/app instrumentation for realtime output and publish lifecycle events;
+  this is an app-side change, not something the transport can infer safely.
 - The session watcher is intentionally a read-only consumer. A launcher or
   harness wrapper must call `session register` (or append the same
   `{surface_id,harness,session_id,pid}` record) before launch to provide exact

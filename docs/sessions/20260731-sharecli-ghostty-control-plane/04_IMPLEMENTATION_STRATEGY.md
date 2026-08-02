@@ -26,9 +26,15 @@
   operation hops back only for the short native surface operation.
 - Keep the wire contract strict and bounded: omitted `params` means `{}`, an
   explicit non-object is `-32602`, sends are capped at 64 KiB, reads at 1 MiB,
-  and provider read overruns fail closed. Event subscriptions require a
-  separate multiplexed writer design and are not smuggled into request/response
-  dispatch.
+  and provider read overruns fail closed. Live subscriptions use a separate
+  bounded broker: one monotonically sequenced event envelope, numeric
+  connection-local subscription id, per-subscriber queue, and explicit
+  dropped/resync markers. The Rust event listener and Swift listener serialize
+  all writers so a slow client cannot block a PTY or MainActor operation.
+- Expose the persistent path as `sharecli surface watch`; keep one-shot
+  request/response commands available for snapshots and health checks. A
+  missing native event provider is a typed capability failure, never a shell
+  fallback.
 - Keep layout persistence in ShareCLI and make the Ghostty adapter responsible
   only for applying a validated snapshot. This permits recovery when Ghostty
   is unavailable and avoids coupling the ledger to an app-specific tree API.

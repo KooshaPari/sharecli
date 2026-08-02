@@ -3,14 +3,38 @@
 ## Ghostty
 
 - The installed Ghostty 1.3.1 binary exposes no documented external control
-  socket. The upstream macOS scripting dictionary does expose window/tab/
-  terminal identity, working directory, PID, TTY, split/focus/close, and input
-  actions. AppleScript is therefore a useful degraded discovery/control path,
-  but it is TCC-gated and does not provide a supported PTY/screen readback
-  stream: https://ghostty.org/docs/features/applescript
+  socket. Its bundled `Ghostty.sdef` exposes terminal `id`, `name`, and
+  `working directory`, plus split/focus/close and input actions; it does **not**
+  expose `pid` or `tty`. AppleScript is therefore a useful degraded
+  discovery/control path, but it is TCC-gated and does not provide a supported
+  PTY/screen readback stream: https://ghostty.org/docs/features/applescript
 - Upstream discussion favors narrowly scoped platform IPC and calls out the
   security implications of screen readback:
   https://github.com/ghostty-org/ghostty/discussions/2353
+- Ghostty's current architecture keeps the macOS app in Swift/AppKit/SwiftUI
+  over libghostty; the standalone libghostty API is still not a stable app
+  integration boundary: https://ghostty.org/docs/about. The upstream PID/TTY
+  issue confirms that the AppleScript object graph omits process evidence even
+  though it exists internally: https://github.com/ghostty-org/ghostty/issues/11592.
+  The provider must therefore bind inside the Ghostty app lifecycle/fork.
+- Upstream source confirms the safe native binding points. `Ghostty.Surface`
+  exposes `foregroundPID` and `ttyName` through `ghostty_surface_foreground_pid`
+  and `ghostty_surface_tty_name`; `SurfaceView` owns a process-lifetime UUID,
+  its `surfaceModel`, and the underlying `ghostty_surface_t`. The C header also
+  exposes bounded screen/selection text reads and an `export_terminal_io`
+  action callback, but no public raw-PTY read/subscribe callback. The provider
+  can therefore implement snapshots and process evidence directly, while
+  realtime PTY output still requires fork-local instrumentation at the termio
+  or app action boundary:
+  https://github.com/ghostty-org/ghostty/blob/main/macos/Sources/Ghostty/Ghostty.Surface.swift
+  https://github.com/ghostty-org/ghostty/blob/main/macos/Sources/Ghostty/Surface%20View/SurfaceView_AppKit.swift
+  https://github.com/ghostty-org/ghostty/blob/main/include/ghostty.h
+- The upstream lifecycle is explicit: `Ghostty.App` creates and frees the one
+  `ghostty_app_t`; each `SurfaceView` creates and frees its `ghostty_surface_t`.
+  A fork provider must start its listener only after the app is ready, resolve
+  surfaces through weak `SurfaceView`/UUID records, and stop the listener before
+  app/surface teardown. The ShareCLI package intentionally does not retain C
+  pointers or invent an app lifecycle outside that boundary.
 - ShareCLI consequently keeps a transport-neutral Unix JSON-RPC client and
   capability-gates readback. A Ghostty-side socket/fork is still required for
   AppleScriptless live PTY I/O and atomic layout operations.
@@ -22,9 +46,30 @@
 - ShareCLI's selector is deterministic: loaded KEXT -> approved FSKit -> no
   interception. The last state is functional fail-open, not a mount failure
   that blocks session recovery.
+- The read-only `sharecli fuse probe` confirms this host currently has the
+  MFMount framework but no loaded macFUSE KEXT and no explicit FSKit approval;
+  it selects `non-fuse` without prompting, loading, or mounting. Backend
+  distinctions follow macFUSE's documented KEXT/FSKit split:
+  https://github.com/macfuse/macfuse/wiki/FUSE-Backends.
 
 ## Harness evidence
 
 Resume recipes are generated from adapter state first, persisted state second,
 and exact argv patterns third. Heuristic/ambiguous evidence is retained for
 inspection but is never auto-launched.
+
+## Realtime transport contract
+
+- JSON-RPC 2.0 is transport agnostic, permits omitted `params`, and requires
+  named parameters to be structured Objects. A request without `id` is a
+  notification and MUST NOT receive a response; ShareCLI therefore keeps
+  request/response dispatch separate from server-originated event delivery:
+  https://www.jsonrpc.org/specification
+- The native socket uses a bounded NDJSON request path today. The planned
+  event path uses a persistent connection with a serialized writer, per-
+  subscription bounded queue, monotonic sequence, and explicit resync/drop
+  markers; it must never block Ghostty's PTY or MainActor.
+- Socket pathname mode `0600` is defense in depth, not the complete macOS
+  authorization boundary. The native listener additionally checks the peer
+  effective UID with `getpeereid(3)` before scheduling a connection:
+  https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/getpeereid.3.html

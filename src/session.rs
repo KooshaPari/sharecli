@@ -1,8 +1,14 @@
 //! Shell-free zmx and capability-gated Ghostty adapters.
 
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sharecli_session::{SurfaceAdapter, SurfaceCapabilities, SurfaceRecord};
+use sharecli_session::{
+    SurfaceAdapter, SurfaceCapabilities, SurfaceEventKind, SurfaceRecord, MAX_EVENT_CHUNK_BYTES,
+    MAX_EVENT_QUEUE_CAPACITY,
+};
 use std::io::{BufRead, BufReader, Write};
+#[cfg(unix)]
+use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -114,6 +120,80 @@ pub struct GhosttyControlClient {
     token: Option<String>,
 }
 
+/// One server-originated event from a persistent surface subscription.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub struct SurfaceEventEnvelope {
+    pub subscription_id: u64,
+    pub surface_id: String,
+    pub seq: u64,
+    pub kind: SurfaceEventKind,
+    pub timestamp: Option<String>,
+    #[serde(default)]
+    pub event_bytes_base64: Option<String>,
+    #[serde(default)]
+    pub dropped: Option<u64>,
+    #[serde(default)]
+    pub resync_required: Option<bool>,
+}
+
+/// Blocking reader/writer for a bounded live surface subscription.
+#[cfg(unix)]
+pub struct SurfaceSubscription {
+    subscription_id: u64,
+    token: Option<String>,
+    writer: UnixStream,
+    reader: BufReader<UnixStream>,
+}
+
+#[cfg(unix)]
+impl SurfaceSubscription {
+    pub fn id(&self) -> u64 {
+        self.subscription_id
+    }
+
+    pub fn next_event(&mut self) -> anyhow::Result<SurfaceEventEnvelope> {
+        loop {
+            let mut line = String::new();
+            let count = self.reader.read_line(&mut line)?;
+            if count == 0 {
+                anyhow::bail!("Ghostty live surface subscription closed")
+            }
+            let value: Value = serde_json::from_str(&line)?;
+            if value.get("method").and_then(Value::as_str) != Some("surface.io.event") {
+                if let Some(error) = value.get("error") {
+                    anyhow::bail!("Ghostty live event RPC failed: {error}");
+                }
+                continue;
+            }
+            return Ok(serde_json::from_value(value["params"].clone())?);
+        }
+    }
+
+    pub fn unsubscribe(mut self) -> anyhow::Result<()> {
+        let id = REQUEST_ID.fetch_add(1, Ordering::Relaxed);
+        let request = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": "surface.io.unsubscribe",
+            "params": {"subscription_id": self.subscription_id},
+        });
+        let mut request = request;
+        if let Some(token) = &self.token {
+            request["token"] = Value::String(token.clone());
+        }
+        serde_json::to_writer(&mut self.writer, &request)?;
+        self.writer.write_all(b"\n")?;
+        self.writer.flush()?;
+        let mut line = String::new();
+        self.reader.read_line(&mut line)?;
+        let value: Value = serde_json::from_str(&line)?;
+        if let Some(error) = value.get("error") {
+            anyhow::bail!("Ghostty unsubscribe failed: {error}");
+        }
+        Ok(())
+    }
+}
+
 static REQUEST_ID: AtomicU64 = AtomicU64::new(1);
 
 impl GhosttyControlClient {
@@ -177,6 +257,62 @@ impl GhosttyControlClient {
             json!({"surface_id": surface_id, "rows": rows, "cols": cols}),
         )?;
         Ok(())
+    }
+
+    #[cfg(unix)]
+    pub fn subscribe_surface(
+        &self,
+        surface_id: Option<&str>,
+        from_seq: Option<u64>,
+        max_chunk_bytes: usize,
+        queue_capacity: usize,
+    ) -> anyhow::Result<SurfaceSubscription> {
+        if !(1..=MAX_EVENT_CHUNK_BYTES).contains(&max_chunk_bytes) {
+            anyhow::bail!("max_chunk_bytes must be between 1 and {MAX_EVENT_CHUNK_BYTES}");
+        }
+        if !(1..=MAX_EVENT_QUEUE_CAPACITY).contains(&queue_capacity) {
+            anyhow::bail!("queue_capacity must be between 1 and {MAX_EVENT_QUEUE_CAPACITY}");
+        }
+        let stream = UnixStream::connect(&self.socket)?;
+        let mut writer = stream.try_clone()?;
+        let mut reader = BufReader::new(stream);
+        let id = REQUEST_ID.fetch_add(1, Ordering::Relaxed);
+        let mut params = json!({
+            "max_chunk_bytes": max_chunk_bytes,
+            "queue_capacity": queue_capacity,
+        });
+        if let Some(surface_id) = surface_id {
+            params["surface_id"] = Value::String(surface_id.to_owned());
+        }
+        if let Some(from_seq) = from_seq {
+            params["from_seq"] = Value::Number(from_seq.into());
+        }
+        let mut request = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": "surface.io.subscribe",
+            "params": params,
+        });
+        if let Some(token) = &self.token {
+            request["token"] = Value::String(token.clone());
+        }
+        serde_json::to_writer(&mut writer, &request)?;
+        writer.write_all(b"\n")?;
+        writer.flush()?;
+        let mut line = String::new();
+        reader.read_line(&mut line)?;
+        let response: Value = serde_json::from_str(&line)?;
+        if let Some(error) = response.get("error") {
+            anyhow::bail!("Ghostty subscribe failed: {error}");
+        }
+        let ack: sharecli_session::SurfaceSubscribeAck =
+            serde_json::from_value(response.get("result").cloned().unwrap_or(Value::Null))?;
+        Ok(SurfaceSubscription {
+            subscription_id: ack.subscription_id,
+            token: self.token.clone(),
+            writer,
+            reader,
+        })
     }
 }
 

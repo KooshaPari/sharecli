@@ -94,7 +94,12 @@ public final class UnixControlServer: @unchecked Sendable {
     }
 
     private func serveConnection(_ fd: Int32) async {
-        defer { Darwin.close(fd) }
+        let writer = SocketWriter(fd: fd)
+        var eventTasks: [Task<Void, Never>] = []
+        defer {
+            eventTasks.forEach { $0.cancel() }
+            writer.close()
+        }
         var buffer = Data()
         var chunk = [UInt8](repeating: 0, count: 16 * 1024)
         while true {
@@ -106,23 +111,46 @@ public final class UnixControlServer: @unchecked Sendable {
                 let line = buffer.prefix(upTo: newline)
                 buffer.removeSubrange(...newline)
                 var response = await dispatcher.dispatch(Data(line))
-                response.append(0x0a)
-                guard sendAll(fd, response) else { return }
+                if !response.isEmpty {
+                    response.append(0x0a)
+                    guard writer.send(response) else { return }
+                }
+                if let subscriptionID = subscriptionID(from: response),
+                   let liveEvents = dispatcher.liveEvents,
+                   let subscription = await liveEvents.subscription(id: subscriptionID) {
+                    let task = Task.detached(priority: .userInitiated) { [writer] in
+                        for await event in subscription {
+                            guard let data = Self.encodeEvent(event) else { return }
+                            var line = data
+                            line.append(0x0a)
+                            guard writer.send(line) else { return }
+                        }
+                    }
+                    eventTasks.append(task)
+                }
             }
         }
     }
 
-    private func sendAll(_ fd: Int32, _ data: Data) -> Bool {
-        data.withUnsafeBytes { rawBuffer in
-            guard let base = rawBuffer.baseAddress else { return true }
-            var sent = 0
-            while sent < data.count {
-                let count = Darwin.send(fd, base.advanced(by: sent), data.count - sent, 0)
-                if count <= 0 { return false }
-                sent += count
-            }
-            return true
+    private static func encodeEvent(_ event: LiveIOEvent) -> Data? {
+        guard let params = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(event)) else {
+            return nil
         }
+        return try? JSONSerialization.data(withJSONObject: [
+            "jsonrpc": "2.0",
+            "method": "surface.io.event",
+            "params": params,
+        ])
+    }
+
+    private func subscriptionID(from response: Data) -> UInt64? {
+        guard let object = try? JSONSerialization.jsonObject(with: response) as? [String: Any],
+              let result = object["result"] as? [String: Any] else { return nil }
+        guard let value = result["subscription_id"] as? NSNumber else { return nil }
+        let type = String(cString: value.objCType)
+        guard ["i", "s", "l", "q", "I", "S", "L", "Q"].contains(type),
+              value.int64Value >= 0 else { return nil }
+        return value.uint64Value
     }
 
     private func removeExistingSocketIfSafe() {
@@ -145,5 +173,42 @@ public final class UnixControlServer: @unchecked Sendable {
 
     private func socketError(_ operation: String) -> ControlError {
         .provider("\(operation): \(String(cString: strerror(errno)))")
+    }
+}
+
+private final class SocketWriter: @unchecked Sendable {
+    private let fd: Int32
+    private let lock = NSLock()
+    private var closed = false
+
+    init(fd: Int32) {
+        self.fd = fd
+    }
+
+    func send(_ data: Data) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !closed else { return false }
+        return data.withUnsafeBytes { rawBuffer in
+            guard let base = rawBuffer.baseAddress else { return true }
+            var sent = 0
+            while sent < data.count {
+                let count = Darwin.send(fd, base.advanced(by: sent), data.count - sent, 0)
+                if count <= 0 { return false }
+                sent += count
+            }
+            return true
+        }
+    }
+
+    func close() {
+        lock.lock()
+        guard !closed else {
+            lock.unlock()
+            return
+        }
+        closed = true
+        Darwin.close(fd)
+        lock.unlock()
     }
 }

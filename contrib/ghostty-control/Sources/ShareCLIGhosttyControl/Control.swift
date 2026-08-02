@@ -80,6 +80,7 @@ public enum ControlError: Error, Equatable, Sendable {
     case unauthorized
     case provider(String)
     case requestTooLarge
+    case liveIO(String)
 }
 
 extension ControlError {
@@ -90,13 +91,14 @@ extension ControlError {
         case .methodNotFound: return -32601
         case .unauthorized: return -32001
         case .provider: return -32000
+        case .liveIO: return -32000
         case .requestTooLarge: return -32600
         }
     }
 
     var message: String {
         switch self {
-        case let .invalidRequest(message), let .invalidParams(message), let .methodNotFound(message), let .provider(message):
+        case let .invalidRequest(message), let .invalidParams(message), let .methodNotFound(message), let .provider(message), let .liveIO(message):
             return message
         case .unauthorized:
             return "invalid control token"
@@ -114,10 +116,16 @@ public struct ControlDispatcher: Sendable {
 
     private let provider: any SurfaceProvider
     private let expectedToken: String?
+    public let liveEvents: LiveIOEventHub?
 
-    public init(provider: any SurfaceProvider, expectedToken: String? = nil) {
+    public init(
+        provider: any SurfaceProvider,
+        expectedToken: String? = nil,
+        liveEvents: LiveIOEventHub? = nil
+    ) {
         self.provider = provider
         self.expectedToken = expectedToken
+        self.liveEvents = liveEvents
     }
 
     /// Dispatch one complete JSON request and return one JSON response line.
@@ -137,6 +145,7 @@ public struct ControlDispatcher: Sendable {
             guard let method = object["method"] as? String, !method.isEmpty else {
                 throw ControlError.invalidRequest("method is required")
             }
+            let isNotification = object["id"] == nil
             let params: [String: Any]
             if let rawParams = object["params"] {
                 guard let objectParams = rawParams as? [String: Any] else {
@@ -147,10 +156,16 @@ public struct ControlDispatcher: Sendable {
                 params = [:]
             }
             let result = try await dispatch(method: method, params: params)
+            if isNotification { return Data() }
             return encode(["jsonrpc": "2.0", "id": id, "result": result])
         } catch let error as ControlError {
+            if !requestHasID(line) { return Data() }
             return encode(["jsonrpc": "2.0", "id": requestID(from: line), "error": ["code": error.code, "message": error.message]])
+        } catch let error as LiveIOError {
+            if !requestHasID(line) { return Data() }
+            return encode(["jsonrpc": "2.0", "id": requestID(from: line), "error": ["code": -32602, "message": String(describing: error)]])
         } catch {
+            if !requestHasID(line) { return Data() }
             return encode(["jsonrpc": "2.0", "id": requestID(from: line), "error": ["code": -32700, "message": "parse error: \(error)"]])
         }
     }
@@ -194,6 +209,32 @@ public struct ControlDispatcher: Sendable {
             return NSNull()
         case "surface.io.capabilities":
             return try jsonObject(await provider.capabilities(surfaceID: stringParam(params, "surface_id")))
+        case "surface.io.subscribe":
+            guard let liveEvents else { throw ControlError.liveIO("live surface events unavailable") }
+            let surfaceID = params["surface_id"] as? String
+            let fromSequence = try optionalUInt64Param(params, "from_seq")
+            let maxChunkBytes = try intParamOrDefault(params, "max_chunk_bytes", default: LiveIOEventHub.maxChunkBytes)
+            let queueCapacity = try intParamOrDefault(params, "queue_capacity", default: 64)
+            let subscription = try await liveEvents.subscribe(
+                surfaceID: surfaceID,
+                fromSequence: fromSequence,
+                maxChunkBytes: maxChunkBytes,
+                queueCapacity: queueCapacity
+            )
+            let nextSequence = await liveEvents.nextSequenceNumber()
+            return [
+                "subscription_id": subscription.id,
+                "next_seq": max(nextSequence, fromSequence ?? 0),
+                "capabilities": [
+                    "max_chunk_bytes": maxChunkBytes,
+                    "queue_capacity": queueCapacity,
+                    "replay": false,
+                ],
+            ]
+        case "surface.io.unsubscribe":
+            guard let liveEvents else { throw ControlError.liveIO("live surface events unavailable") }
+            let subscriptionID = try uint64Param(params, "subscription_id")
+            return ["unsubscribed": await liveEvents.unsubscribe(subscriptionID: subscriptionID)]
         default:
             throw ControlError.methodNotFound(method)
         }
@@ -217,6 +258,22 @@ public struct ControlDispatcher: Sendable {
         let value = try intParam(params, name)
         guard value >= 0 && value <= Int(UInt16.max) else { throw ControlError.invalidParams("params.\(name) is out of range") }
         return UInt16(value)
+    }
+
+    private func uint64Param(_ params: [String: Any], _ name: String) throws -> UInt64 {
+        let value = try intParam(params, name)
+        guard value >= 0 else { throw ControlError.invalidParams("params.\(name) is out of range") }
+        return UInt64(value)
+    }
+
+    private func optionalUInt64Param(_ params: [String: Any], _ name: String) throws -> UInt64? {
+        guard params[name] != nil else { return nil }
+        return try uint64Param(params, name)
+    }
+
+    private func intParamOrDefault(_ params: [String: Any], _ name: String, default value: Int) throws -> Int {
+        guard params[name] != nil else { return value }
+        return try intParam(params, name)
     }
 
     private func bytesToUInt8(_ values: [Any]) throws -> [UInt8] {
@@ -246,5 +303,12 @@ public struct ControlDispatcher: Sendable {
 
     private func requestID(from line: Data) -> Any {
         ((try? JSONSerialization.jsonObject(with: line) as? [String: Any])?["id"]) ?? NSNull()
+    }
+
+    private func requestHasID(_ line: Data) -> Bool {
+        guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else {
+            return false
+        }
+        return object["id"] != nil
     }
 }

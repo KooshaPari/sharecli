@@ -125,6 +125,23 @@ private struct OversizedReadProvider: SurfaceProvider {
     }
 }
 
+@Test func liveSubscriptionDispatchReturnsBoundedAck() async throws {
+    let hub = LiveIOEventHub()
+    let dispatcher = ControlDispatcher(provider: FakeProvider(), liveEvents: hub)
+    let line = Data(#"{"jsonrpc":"2.0","id":11,"method":"surface.io.subscribe","params":{"surface_id":"ghostty:1","max_chunk_bytes":1024,"queue_capacity":4}}"#.utf8)
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
+    let result = try #require(response["result"] as? [String: Any])
+    #expect(result["subscription_id"] as? UInt64 == 1)
+    #expect(result["next_seq"] as? UInt64 == 1)
+    #expect((result["capabilities"] as? [String: Any])?["queue_capacity"] as? Int == 4)
+}
+
+@Test func notificationsProduceNoResponseBytes() async throws {
+    let dispatcher = ControlDispatcher(provider: FakeProvider())
+    let line = Data(#"{"jsonrpc":"2.0","method":"surface.io.send","params":{"surface_id":"ghostty:1","text":"hello"}}"#.utf8)
+    #expect(await dispatcher.dispatch(line).isEmpty)
+}
+
 @Test func unixServerRoundTripsOneRequestLine() async throws {
     let path = "/tmp/sharecli-control-\(UUID().uuidString).sock"
     let server = UnixControlServer(path: path, dispatcher: ControlDispatcher(provider: FakeProvider()))

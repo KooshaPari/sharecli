@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use sharecli_fuse::{
-    default_session_id, global_read_cache_meters, global_write_serialize_meters, read_provenance,
-    AgentsConf, FuseMountOptions, FuseSessionRegistry,
+    default_session_id, global_read_cache_meters, global_write_serialize_meters, probe_runtime,
+    read_provenance, AgentsConf, FuseMountOptions, FuseSessionRegistry,
 };
 
 /// Mount options from CLI flags.
@@ -28,6 +28,37 @@ pub struct FuseMountCliOpts {
     pub agents_conf: Option<PathBuf>,
     /// Foreground mount.
     pub foreground: bool,
+}
+
+/// Report read-only backend evidence without loading, mounting, or prompting.
+pub fn probe(mountpoint: &Path, json: bool) -> Result<()> {
+    let evidence = probe_runtime(mountpoint);
+    if json {
+        let body = serde_json::json!({
+            "platform": evidence.platform,
+            "mountpoint": evidence.mountpoint.display().to_string(),
+            "kernel_loaded": evidence.kernel_loaded,
+            "fskit_framework": evidence.fskit_framework,
+            "fskit_approved": evidence.fskit_approved,
+            "selected_backend": evidence.selection.backend.as_str(),
+            "diagnostic": evidence.selection.diagnostic.map(|diagnostic| diagnostic.message()),
+            "non_fuse_fallback": evidence.non_fuse_fallback,
+        });
+        println!("{}", serde_json::to_string_pretty(&body)?);
+        return Ok(());
+    }
+
+    println!("platform:          {}", evidence.platform);
+    println!("mountpoint:        {}", evidence.mountpoint.display());
+    println!("kext_loaded:       {}", evidence.kernel_loaded);
+    println!("fskit_framework:   {}", evidence.fskit_framework);
+    println!("fskit_approved:    {}", evidence.fskit_approved);
+    println!("selected_backend:  {}", evidence.selection.backend.as_str());
+    if let Some(diagnostic) = evidence.selection.diagnostic {
+        println!("diagnostic:        {}", diagnostic.message());
+    }
+    println!("non_fuse_fallback: {}", evidence.non_fuse_fallback);
+    Ok(())
 }
 
 /// Read FUSE write-provenance xattrs from a backing file path.

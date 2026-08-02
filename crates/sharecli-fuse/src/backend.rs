@@ -1,6 +1,9 @@
 //! Runtime backend negotiation for macFUSE on macOS.
 
-use std::{path::Path, process::Command};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 /// Selected interception backend for ShareCLI's optional filesystem layer.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -11,6 +14,17 @@ pub enum FuseBackend {
     Kernel,
     /// No verified interception backend; callers must continue without FUSE.
     Unavailable,
+}
+
+impl FuseBackend {
+    /// Stable operator/JSON label for the selected backend.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Kernel => "kext",
+            Self::Fskit => "fskit",
+            Self::Unavailable => "non-fuse",
+        }
+    }
 }
 
 /// Host capabilities used to make a deterministic backend decision.
@@ -52,6 +66,48 @@ pub struct FuseBackendSelection {
     pub backend: FuseBackend,
     /// Why `backend` is unavailable, if it is unavailable.
     pub diagnostic: Option<FuseBackendDiagnostic>,
+}
+
+/// Read-only runtime evidence used by the operator probe and diagnostics.
+///
+/// This deliberately records capability evidence without loading a kext,
+/// changing approval state, mounting a volume, or prompting for privilege.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FuseRuntimeEvidence {
+    /// Platform reported by Rust's target constants.
+    pub platform: &'static str,
+    /// Mount point used for backend selection.
+    pub mountpoint: PathBuf,
+    /// Whether `kmutil showloaded` reported a macFUSE KEXT.
+    pub kernel_loaded: bool,
+    /// Whether the macFUSE MFMount framework is installed.
+    pub fskit_framework: bool,
+    /// Whether framework presence and explicit operator approval were both verified.
+    pub fskit_approved: bool,
+    /// Backend selected by the deterministic policy.
+    pub selection: FuseBackendSelection,
+    /// Non-FUSE execution remains available when no backend is verified.
+    pub non_fuse_fallback: bool,
+}
+
+/// Gather read-only runtime evidence and apply KEXT -> FSKit -> non-FUSE policy.
+pub fn probe_runtime(mountpoint: &Path) -> FuseRuntimeEvidence {
+    let kernel_loaded = kernel_backend_loaded();
+    let fskit_framework = fskit_framework_available();
+    let fskit_approved = fskit_framework && fskit_approval_requested();
+    let selection = select_backend_for_mount_with(
+        FuseCapabilities { kernel_loaded, fskit_approved },
+        mountpoint,
+    );
+    FuseRuntimeEvidence {
+        platform: std::env::consts::OS,
+        mountpoint: mountpoint.to_path_buf(),
+        kernel_loaded,
+        fskit_framework,
+        fskit_approved,
+        selection,
+        non_fuse_fallback: true,
+    }
 }
 
 /// Select KEXT first, then approved FSKit, otherwise fail open.
@@ -126,15 +182,26 @@ pub fn select_backend_for_mount(mountpoint: &Path) -> FuseBackendSelection {
 }
 
 fn fskit_backend_approved() -> bool {
+    fskit_framework_available() && fskit_approval_requested()
+}
+
+fn fskit_framework_available() -> bool {
     #[cfg(target_os = "macos")]
     {
-        let mfmount_available =
-            Path::new("/Library/Filesystems/macfuse.fs/Contents/Frameworks/MFMount.framework")
-                .is_dir();
-        let explicitly_approved = std::env::var("SHARECLI_FUSE_FSKIT_APPROVED")
+        Path::new("/Library/Filesystems/macfuse.fs/Contents/Frameworks/MFMount.framework").is_dir()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+}
+
+fn fskit_approval_requested() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        std::env::var("SHARECLI_FUSE_FSKIT_APPROVED")
             .map(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
-            .unwrap_or(false);
-        mfmount_available && explicitly_approved
+            .unwrap_or(false)
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -143,6 +210,11 @@ fn fskit_backend_approved() -> bool {
 }
 
 fn kernel_backend_loaded() -> bool {
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+    #[cfg(target_os = "macos")]
     Command::new("kmutil")
         .args(["showloaded"])
         .output()
@@ -211,5 +283,12 @@ mod tests {
 
         assert_eq!(selection.backend, FuseBackend::Unavailable);
         assert_eq!(selection.diagnostic, Some(FuseBackendDiagnostic::NoVerifiedBackend));
+    }
+
+    #[test]
+    fn runtime_probe_always_advertises_non_fuse_fallback() {
+        let evidence = probe_runtime(Path::new("/tmp/sharecli-fuse-probe"));
+        assert!(evidence.non_fuse_fallback);
+        assert!(!evidence.selection.backend.as_str().is_empty());
     }
 }

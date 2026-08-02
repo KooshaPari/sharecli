@@ -12,6 +12,7 @@ use sharecli_session::{
     SidecarStateProvider, SurfaceObservationScanner,
 };
 use sharecli_thermal_tui as thermal_tui;
+use std::io::Write;
 
 mod apfs_uuid;
 mod audit_log;
@@ -148,7 +149,8 @@ enum Commands {
         args: Vec<String>,
     },
 
-    /// Stop managed processes
+    /// Stop managed processes (also available as `sharecli quit`)
+    #[command(alias = "quit")]
     Stop {
         /// Process ID to stop
         #[arg(long)]
@@ -608,6 +610,24 @@ enum SurfaceCmd {
         #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
         token: Option<String>,
     },
+    /// Follow bounded server-originated output/events from one surface (or all surfaces)
+    Watch {
+        #[arg(long, env = "SHARECLI_GHOSTTY_SOCKET", default_value = "/tmp/sharecli-ghostty.sock")]
+        socket: std::path::PathBuf,
+        #[arg(long)]
+        surface_id: Option<String>,
+        #[arg(long)]
+        from_seq: Option<u64>,
+        #[arg(long, default_value_t = 65536)]
+        max_chunk_bytes: usize,
+        #[arg(long, default_value_t = 64)]
+        queue_capacity: usize,
+        /// Read one event, unsubscribe, and exit.
+        #[arg(long)]
+        once: bool,
+        #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
+        token: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -627,6 +647,14 @@ enum FleetCmd {
 
 #[derive(Subcommand, Debug)]
 enum FuseCmd {
+    /// Report read-only KEXT -> FSKit -> non-FUSE backend evidence
+    Probe {
+        /// Mountpoint used for selection (not created or mounted)
+        mountpoint: std::path::PathBuf,
+        /// Emit JSON instead of operator-readable text
+        #[arg(long)]
+        json: bool,
+    },
     /// Mount intercept layer over a backing directory
     Mount {
         /// Backing filesystem root to mirror
@@ -1000,6 +1028,7 @@ async fn run() -> Result<()> {
             MeshCmd::Reclaim { queue, owner } => mesh_cmd::reclaim(queue, owner)?,
         },
         Commands::Fuse { cmd } => match cmd {
+            FuseCmd::Probe { mountpoint, json } => fuse_cmd::probe(mountpoint, *json)?,
             FuseCmd::Mount {
                 backing,
                 mountpoint,
@@ -1253,6 +1282,32 @@ fn surface_cmd(cmd: &SurfaceCmd) -> Result<()> {
             client.resize(surface_id, *rows, *cols)?;
             println!("{{\"ok\":true}}");
         }
+        SurfaceCmd::Watch {
+            socket,
+            surface_id,
+            from_seq,
+            max_chunk_bytes,
+            queue_capacity,
+            once,
+            token,
+        } => {
+            let client = GhosttyControlClient::new(socket, token.clone());
+            let mut subscription = client.subscribe_surface(
+                surface_id.as_deref(),
+                *from_seq,
+                *max_chunk_bytes,
+                *queue_capacity,
+            )?;
+            loop {
+                let event = subscription.next_event()?;
+                println!("{}", serde_json::to_string(&event)?);
+                std::io::stdout().flush().ok();
+                if *once {
+                    subscription.unsubscribe()?;
+                    break;
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -1307,6 +1362,7 @@ fn cli_list(as_json: bool) -> Result<()> {
     ];
 
     let fuse_modules: &[(&str, &str)] = &[
+        ("probe", "Read-only KEXT -> FSKit -> non-FUSE backend evidence"),
         ("mount", "Mount intercept over backing (`fuse mount <backing> <mountpoint> [--cow]`)"),
         ("unmount", "Unmount registered intercept (`fuse unmount <mountpoint>`)"),
         ("status", "FUSE read-cache + write-serialize meters"),
