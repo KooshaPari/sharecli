@@ -65,12 +65,11 @@ pub(crate) fn runtime_diagnostics() -> String {
                 }
             })
             .unwrap_or_else(|error| format!("kext=unavailable ({error})"));
-        let version = std::fs::read_to_string(
-            "/Library/Filesystems/macfuse.fs/Contents/version.plist",
-        )
-        .ok()
-        .and_then(|contents| parse_bundle_version(&contents))
-        .unwrap_or_else(|| "unknown".to_string());
+        let version =
+            std::fs::read_to_string("/Library/Filesystems/macfuse.fs/Contents/version.plist")
+                .ok()
+                .and_then(|contents| parse_bundle_version(&contents))
+                .unwrap_or_else(|| "unknown".to_string());
         let fskit = Command::new("launchctl")
             .arg("list")
             .output()

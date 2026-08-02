@@ -643,7 +643,10 @@ mod default_mount_options_tests {
     #[test]
     fn macos_smoke_config_avoids_unsupported_backend_options() {
         let kernel = smoke_fuser_config_for_backend(Some(FuseBackend::Kernel));
-        assert!(!kernel.mount_options.iter().any(|option| matches!(option, MountOption::CUSTOM(_))));
+        assert!(!kernel
+            .mount_options
+            .iter()
+            .any(|option| matches!(option, MountOption::CUSTOM(_))));
         let fskit = smoke_fuser_config_for_backend(Some(FuseBackend::Fskit));
         assert!(!fskit.mount_options.iter().any(|option| matches!(option, MountOption::CUSTOM(_))));
     }
