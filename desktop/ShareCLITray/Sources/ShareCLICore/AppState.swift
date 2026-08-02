@@ -231,7 +231,7 @@ public final class AppState: ObservableObject {
     private var pollTask: Task<Void, Never>?
 
     public init() {
-        spawnHistory = Self.loadSpawnHistory()
+        self.loadSpawnHistory()
     }
 
     public func startPolling() {
@@ -368,8 +368,8 @@ public final class AppState: ObservableObject {
     /// persist to disk, and publish via spawnHistoryChanged.
     public func recordSpawn(_ entry: SpawnHistoryEntry) {
         spawnHistory.append(entry)
-        if spawnHistory.count > spawnHistoryCap {
-            spawnHistory.removeFirst(spawnHistory.count - spawnHistoryCap)
+        if spawnHistory.count > Self.spawnHistoryCap {
+            spawnHistory.removeFirst(spawnHistory.count - Self.spawnHistoryCap)
         }
         NotificationCenter.default.post(name: .sharecliSpawnHistoryChanged, object: nil)
         persistSpawnHistory()
@@ -397,7 +397,7 @@ public final class AppState: ObservableObject {
             let data = try Data(contentsOf: url)
             let decoded = try JSONDecoder().decode([SpawnHistoryEntry].self, from: data)
             // Trim to cap in case cap shrunk between versions.
-            self.spawnHistory = Array(decoded.suffix(spawnHistoryCap))
+            self.spawnHistory = Array(decoded.suffix(Self.spawnHistoryCap))
         } catch {
             // Non-fatal: a corrupt file just falls back to empty history.
             // Don't surface via lastError on startup — would be noise.
