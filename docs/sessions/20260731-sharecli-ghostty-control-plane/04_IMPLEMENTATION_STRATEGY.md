@@ -21,7 +21,14 @@
   Swift package. It defines the provider boundary, bounded JSON-RPC dispatcher,
   and owner-only Unix listener so a Ghostty fork can bind native
   split/pane/PTY objects without carrying ShareCLI's Rust workspace into the
-  app.
+  app. The provider boundary is asynchronous and can be implemented by a
+  `@MainActor` adapter; socket work stays off the app actor while each typed
+  operation hops back only for the short native surface operation.
+- Keep the wire contract strict and bounded: omitted `params` means `{}`, an
+  explicit non-object is `-32602`, sends are capped at 64 KiB, reads at 1 MiB,
+  and provider read overruns fail closed. Event subscriptions require a
+  separate multiplexed writer design and are not smuggled into request/response
+  dispatch.
 - Keep layout persistence in ShareCLI and make the Ghostty adapter responsible
   only for applying a validated snapshot. This permits recovery when Ghostty
   is unavailable and avoids coupling the ledger to an app-specific tree API.

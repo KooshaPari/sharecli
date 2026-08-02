@@ -8,7 +8,11 @@
 - `contrib/ghostty-control` is the native binding contract and tested
   dispatcher/listener, not a patched Ghostty.app. A fork must implement
   `SurfaceProvider` from Ghostty's live surface tree and PTY/screen model, then
-  start the listener from the app lifecycle.
+  start the listener from the app lifecycle. The protocol is asynchronous and
+  actor-safe, but the concrete provider and lifecycle wiring are still open.
+- The current socket is request/response NDJSON only. Server-originated output
+  subscriptions need a per-connection serialized writer, bounded queue, and
+  cancellation protocol; they are intentionally a separate next gate.
 - The session watcher is intentionally a read-only consumer. A launcher or
   harness wrapper must call `session register` (or append the same
   `{surface_id,harness,session_id,pid}` record) before launch to provide exact

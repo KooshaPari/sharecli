@@ -5,6 +5,8 @@ use serde_json::Value;
 use std::sync::Arc;
 
 const JSON_RPC_VERSION: &str = "2.0";
+const MAX_SURFACE_SEND_BYTES: usize = 64 * 1024;
+const MAX_SURFACE_LINE_BYTES: usize = 1024 * 1024;
 const MAX_SURFACE_READ_BYTES: usize = 1024 * 1024;
 #[derive(Debug, Deserialize)]
 pub struct Request {
@@ -33,8 +35,6 @@ struct SurfaceRequest {
     jsonrpc: String,
     id: Value,
     method: String,
-    #[serde(default)]
-    params: Value,
     #[serde(default)]
     token: Option<String>,
 }
@@ -116,10 +116,22 @@ pub async fn dispatch(service: Arc<SessionService>, line: &str) -> Response {
 }
 
 pub async fn dispatch_surface(control: Arc<dyn SurfaceControl>, line: &str) -> SurfaceResponse {
-    let request = match serde_json::from_str::<SurfaceRequest>(line) {
+    let raw = match serde_json::from_str::<Value>(line) {
+        Ok(raw) => raw,
+        Err(error) => return surface_error(Value::Null, -32700, format!("parse error: {error}")),
+    };
+    let params = match raw.get("params") {
+        None => Value::Object(serde_json::Map::new()),
+        Some(value) if value.is_object() => value.clone(),
+        Some(_) => {
+            let id = raw.get("id").cloned().unwrap_or(Value::Null);
+            return surface_error(id, -32602, "params must be a JSON object".to_string());
+        }
+    };
+    let request = match serde_json::from_value::<SurfaceRequest>(raw) {
         Ok(request) => request,
         Err(error) => {
-            return surface_error(Value::Null, -32700, format!("parse error: {error}"));
+            return surface_error(Value::Null, -32600, format!("invalid request: {error}"))
         }
     };
     if request.jsonrpc != JSON_RPC_VERSION {
@@ -127,7 +139,7 @@ pub async fn dispatch_surface(control: Arc<dyn SurfaceControl>, line: &str) -> S
     }
 
     let id = request.id;
-    let outcome = dispatch_surface_method(control.as_ref(), &request.method, request.params);
+    let outcome = dispatch_surface_method(control.as_ref(), &request.method, params);
     match outcome {
         Ok(result) => {
             SurfaceResponse { jsonrpc: JSON_RPC_VERSION, id, result: Some(result), error: None }
@@ -174,6 +186,12 @@ fn dispatch_surface_method(
                     ))
                 }
             };
+            if bytes.len() > MAX_SURFACE_SEND_BYTES {
+                return Err((
+                    -32602,
+                    format!("payload must not exceed {MAX_SURFACE_SEND_BYTES} bytes"),
+                ));
+            }
             control.send(&params.surface_id, &bytes).map_err(control_error)?;
             Ok(Value::Null)
         }
@@ -187,6 +205,16 @@ fn dispatch_surface_method(
             }
             let bytes =
                 control.read(&params.surface_id, params.max_bytes).map_err(control_error)?;
+            if bytes.len() > params.max_bytes {
+                return Err((
+                    -32000,
+                    format!(
+                        "surface provider returned {} bytes for a {} byte read",
+                        bytes.len(),
+                        params.max_bytes
+                    ),
+                ));
+            }
             serde_json::to_value(ReadResult { bytes }).map_err(control_error)
         }
         "surface.io.resize" => {
@@ -263,7 +291,7 @@ pub async fn serve_surface_unix_with_token(
     control: Arc<dyn SurfaceControl>,
     expected_token: Option<String>,
 ) -> Result<()> {
-    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let _ = std::fs::remove_file(path);
     if let Some(parent) = path.parent() {
@@ -280,17 +308,35 @@ pub async fn serve_surface_unix_with_token(
         let expected_token = expected_token.clone();
         tokio::spawn(async move {
             let (reader, mut writer) = stream.into_split();
-            let mut lines = BufReader::new(reader).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                let response =
-                    dispatch_surface_with_token(control.clone(), &line, expected_token.as_deref())
-                        .await;
-                let Ok(mut payload) = serde_json::to_string(&response) else {
+            let mut input = reader;
+            let mut buffer = Vec::new();
+            let mut chunk = [0_u8; 16 * 1024];
+            while let Ok(count) = input.read(&mut chunk).await {
+                if count == 0 {
                     break;
-                };
-                payload.push('\n');
-                if writer.write_all(payload.as_bytes()).await.is_err() {
+                }
+                buffer.extend_from_slice(&chunk[..count]);
+                if buffer.len() > MAX_SURFACE_LINE_BYTES {
                     break;
+                }
+                while let Some(newline) = buffer.iter().position(|byte| *byte == b'\n') {
+                    let Ok(line) = std::str::from_utf8(&buffer[..newline]) else {
+                        return;
+                    };
+                    let response = dispatch_surface_with_token(
+                        control.clone(),
+                        &line,
+                        expected_token.as_deref(),
+                    )
+                    .await;
+                    buffer.drain(..=newline);
+                    let Ok(mut payload) = serde_json::to_string(&response) else {
+                        return;
+                    };
+                    payload.push('\n');
+                    if writer.write_all(payload.as_bytes()).await.is_err() {
+                        return;
+                    }
                 }
             }
         });
@@ -334,6 +380,32 @@ mod tests {
                 resize: true,
                 layout: false,
                 durable_pty: true,
+            })
+        }
+    }
+
+    struct OverrunControl;
+
+    impl SurfaceControl for OverrunControl {
+        fn send(&self, _surface_id: &str, _bytes: &[u8]) -> Result<()> {
+            Ok(())
+        }
+
+        fn read(&self, _surface_id: &str, max_bytes: usize) -> Result<Vec<u8>> {
+            Ok(vec![0; max_bytes + 1])
+        }
+
+        fn resize(&self, _surface_id: &str, _rows: u16, _cols: u16) -> Result<()> {
+            Ok(())
+        }
+
+        fn capabilities(&self, _surface_id: &str) -> Result<SurfaceCapabilities> {
+            Ok(SurfaceCapabilities {
+                read: true,
+                write: true,
+                resize: true,
+                layout: false,
+                durable_pty: false,
             })
         }
     }
@@ -457,6 +529,48 @@ mod tests {
 
         assert!(response.result.is_none());
         assert_eq!(response.error.unwrap().code, -32602);
+    }
+
+    #[tokio::test]
+    async fn non_object_surface_params_return_json_rpc_invalid_params() {
+        let control = Arc::new(RecordingControl::default());
+        let response = request(&control, 8, "surface.list", json!(["not-an-object"])).await;
+
+        assert!(response.result.is_none());
+        assert_eq!(response.error.unwrap().code, -32602);
+    }
+
+    #[tokio::test]
+    async fn surface_send_rejects_oversized_payloads() {
+        let control = Arc::new(RecordingControl::default());
+        let response = request(
+            &control,
+            10,
+            "surface.io.send",
+            json!({
+                "surface_id": "surface-1",
+                "text": "x".repeat(MAX_SURFACE_SEND_BYTES + 1),
+            }),
+        )
+        .await;
+
+        assert!(response.result.is_none());
+        assert_eq!(response.error.unwrap().code, -32602);
+    }
+
+    #[tokio::test]
+    async fn surface_read_rejects_provider_overruns() {
+        let raw = json!({
+            "jsonrpc": "2.0",
+            "id": 11,
+            "method": "surface.io.read",
+            "params": {"surface_id": "surface-1", "max_bytes": 8}
+        })
+        .to_string();
+        let response = dispatch_surface(Arc::new(OverrunControl), &raw).await;
+
+        assert!(response.result.is_none());
+        assert_eq!(response.error.unwrap().code, -32000);
     }
 
     #[cfg(unix)]

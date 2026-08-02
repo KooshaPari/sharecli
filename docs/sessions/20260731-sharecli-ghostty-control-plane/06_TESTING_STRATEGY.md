@@ -13,8 +13,9 @@ Verified in this worktree:
 - `cargo test -p sharecli-session --offline -- --nocapture` also covers exact
   sidecar mappings, PID recycling fail-closed behavior, malformed JSONL, and
   append serialization; `session_cli` covers the registrar command.
-- `swift test` in `contrib/ghostty-control` (dispatcher plus Unix listener
-  round-trip)
+- `swift test --package-path contrib/ghostty-control` (10 tests: dispatcher,
+  strict input/size validation, token enforcement, MainActor provider crossing,
+  and Unix listener round-trip)
 - `cargo run -p sharecli-fuse --bin fuse-runtime-probe` (read-only host evidence)
 - `cargo fmt --all -- --check`
 - `git diff --check`

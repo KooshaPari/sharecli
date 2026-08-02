@@ -66,11 +66,11 @@ public struct SurfaceCapabilities: Codable, Equatable, Sendable {
 /// The provider owns all app/PTY references. The dispatcher only validates
 /// requests and transports typed values; it never executes shell text.
 public protocol SurfaceProvider: Sendable {
-    func listSurfaces() throws -> [SurfaceRecord]
-    func send(surfaceID: String, bytes: [UInt8]) throws
-    func read(surfaceID: String, maxBytes: Int) throws -> [UInt8]
-    func resize(surfaceID: String, rows: UInt16, cols: UInt16) throws
-    func capabilities(surfaceID: String) throws -> SurfaceCapabilities
+    func listSurfaces() async throws -> [SurfaceRecord]
+    func send(surfaceID: String, bytes: [UInt8]) async throws
+    func read(surfaceID: String, maxBytes: Int) async throws -> [UInt8]
+    func resize(surfaceID: String, rows: UInt16, cols: UInt16) async throws
+    func capabilities(surfaceID: String) async throws -> SurfaceCapabilities
 }
 
 public enum ControlError: Error, Equatable, Sendable {
@@ -109,6 +109,7 @@ extension ControlError {
 /// Newline-delimited JSON-RPC dispatcher used by a native Ghostty socket.
 public struct ControlDispatcher: Sendable {
     public static let maxRequestBytes = 1024 * 1024
+    public static let maxSendBytes = 64 * 1024
     public static let maxReadBytes = 1024 * 1024
 
     private let provider: any SurfaceProvider
@@ -120,7 +121,7 @@ public struct ControlDispatcher: Sendable {
     }
 
     /// Dispatch one complete JSON request and return one JSON response line.
-    public func dispatch(_ line: Data) -> Data {
+    public func dispatch(_ line: Data) async -> Data {
         do {
             guard line.count <= Self.maxRequestBytes else { throw ControlError.requestTooLarge }
             guard let object = try JSONSerialization.jsonObject(with: line) as? [String: Any] else {
@@ -136,8 +137,16 @@ public struct ControlDispatcher: Sendable {
             guard let method = object["method"] as? String, !method.isEmpty else {
                 throw ControlError.invalidRequest("method is required")
             }
-            let params = object["params"] as? [String: Any] ?? [:]
-            let result = try dispatch(method: method, params: params)
+            let params: [String: Any]
+            if let rawParams = object["params"] {
+                guard let objectParams = rawParams as? [String: Any] else {
+                    throw ControlError.invalidParams("params must be a JSON object")
+                }
+                params = objectParams
+            } else {
+                params = [:]
+            }
+            let result = try await dispatch(method: method, params: params)
             return encode(["jsonrpc": "2.0", "id": id, "result": result])
         } catch let error as ControlError {
             return encode(["jsonrpc": "2.0", "id": requestID(from: line), "error": ["code": error.code, "message": error.message]])
@@ -146,10 +155,10 @@ public struct ControlDispatcher: Sendable {
         }
     }
 
-    private func dispatch(method: String, params: [String: Any]) throws -> Any {
+    private func dispatch(method: String, params: [String: Any]) async throws -> Any {
         switch method {
         case "surface.list":
-            return try jsonObject(provider.listSurfaces())
+            return try jsonObject(await provider.listSurfaces())
         case "surface.io.send":
             let surfaceID = try stringParam(params, "surface_id")
             let text = params["text"] as? String
@@ -158,7 +167,10 @@ public struct ControlDispatcher: Sendable {
                 throw ControlError.invalidParams("exactly one of params.text or params.bytes is required")
             }
             let payload = try text.map { Array($0.utf8) } ?? bytesToUInt8(bytes!)
-            try provider.send(surfaceID: surfaceID, bytes: payload)
+            guard payload.count <= Self.maxSendBytes else {
+                throw ControlError.invalidParams("payload must not exceed 65536 bytes")
+            }
+            try await provider.send(surfaceID: surfaceID, bytes: payload)
             return NSNull()
         case "surface.io.read":
             let surfaceID = try stringParam(params, "surface_id")
@@ -166,7 +178,11 @@ public struct ControlDispatcher: Sendable {
             guard maxBytes >= 0 && maxBytes <= Self.maxReadBytes else {
                 throw ControlError.invalidParams("max_bytes must be between 0 and 1048576")
             }
-            return ["bytes": try provider.read(surfaceID: surfaceID, maxBytes: maxBytes)]
+            let bytes = try await provider.read(surfaceID: surfaceID, maxBytes: maxBytes)
+            guard bytes.count <= maxBytes else {
+                throw ControlError.provider("surface provider returned more bytes than requested")
+            }
+            return ["bytes": bytes]
         case "surface.io.resize":
             let surfaceID = try stringParam(params, "surface_id")
             let rows = try uint16Param(params, "rows")
@@ -174,10 +190,10 @@ public struct ControlDispatcher: Sendable {
             guard rows > 0 && cols > 0 else {
                 throw ControlError.invalidParams("rows and cols must be greater than zero")
             }
-            try provider.resize(surfaceID: surfaceID, rows: rows, cols: cols)
+            try await provider.resize(surfaceID: surfaceID, rows: rows, cols: cols)
             return NSNull()
         case "surface.io.capabilities":
-            return try jsonObject(provider.capabilities(surfaceID: stringParam(params, "surface_id")))
+            return try jsonObject(await provider.capabilities(surfaceID: stringParam(params, "surface_id")))
         default:
             throw ControlError.methodNotFound(method)
         }

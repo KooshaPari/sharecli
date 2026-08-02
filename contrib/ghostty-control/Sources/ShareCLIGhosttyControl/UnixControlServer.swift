@@ -76,13 +76,24 @@ public final class UnixControlServer: @unchecked Sendable {
                 if errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR { return }
                 return
             }
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.serveConnection(fd)
+            guard peerBelongsToCurrentUser(fd) else {
+                Darwin.close(fd)
+                continue
+            }
+            Task.detached(priority: .userInitiated) { [weak self] in
+                await self?.serveConnection(fd)
             }
         }
     }
 
-    private func serveConnection(_ fd: Int32) {
+    private func peerBelongsToCurrentUser(_ fd: Int32) -> Bool {
+        var peerUID: uid_t = 0
+        var peerGID: gid_t = 0
+        guard getpeereid(fd, &peerUID, &peerGID) == 0 else { return false }
+        return peerUID == geteuid()
+    }
+
+    private func serveConnection(_ fd: Int32) async {
         defer { Darwin.close(fd) }
         var buffer = Data()
         var chunk = [UInt8](repeating: 0, count: 16 * 1024)
@@ -94,7 +105,7 @@ public final class UnixControlServer: @unchecked Sendable {
             while let newline = buffer.firstIndex(of: 0x0a) {
                 let line = buffer.prefix(upTo: newline)
                 buffer.removeSubrange(...newline)
-                var response = dispatcher.dispatch(Data(line))
+                var response = await dispatcher.dispatch(Data(line))
                 response.append(0x0a)
                 guard sendAll(fd, response) else { return }
             }

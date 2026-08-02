@@ -11,8 +11,14 @@ itself.
 The Ghostty app/fork must provide a concrete `SurfaceProvider` backed by its
 surface and PTY objects, then start `UnixControlServer` with that provider. The
 provider must expose stable surface IDs, process evidence, live
-read/write/resize operations, and capability reporting. Keep all app and PTY
-references on that side of the boundary.
+read/write/resize operations, and capability reporting. Provider methods are
+`async` so a `@MainActor` implementation can safely access Ghostty's live
+surface tree without semaphore or synchronous cross-actor calls. Keep all app
+and PTY references on that side of the boundary.
+
+Requests are bounded: the NDJSON request and read response are capped at 1 MiB,
+and one `surface.io.send` payload is capped at 64 KiB. The provider result is
+also checked against the requested read size before it is serialized.
 
 The listener is expected to be local-only and owner-readable/writable
 (filesystem mode `0600`). When a control token is configured, pass it to

@@ -4,63 +4,128 @@ import Testing
 @testable import ShareCLIGhosttyControl
 
 private struct FakeProvider: SurfaceProvider {
-    func listSurfaces() throws -> [SurfaceRecord] {
+    func listSurfaces() async throws -> [SurfaceRecord] {
         [SurfaceRecord(id: "ghostty:1", title: "agent", cwd: "/tmp", process: nil)]
     }
 
-    func send(surfaceID: String, bytes: [UInt8]) throws {}
-    func read(surfaceID: String, maxBytes: Int) throws -> [UInt8] { Array("ok".utf8.prefix(maxBytes)) }
-    func resize(surfaceID: String, rows: UInt16, cols: UInt16) throws {}
-    func capabilities(surfaceID: String) throws -> SurfaceCapabilities {
+    func send(surfaceID: String, bytes: [UInt8]) async throws {}
+    func read(surfaceID: String, maxBytes: Int) async throws -> [UInt8] { Array("ok".utf8.prefix(maxBytes)) }
+    func resize(surfaceID: String, rows: UInt16, cols: UInt16) async throws {}
+    func capabilities(surfaceID: String) async throws -> SurfaceCapabilities {
         SurfaceCapabilities(read: true, write: true, resize: true, layout: false, durablePty: false)
     }
 }
 
-@Test func listUsesRustCompatibleSnakeCase() throws {
+@MainActor
+private final class MainActorProvider: SurfaceProvider {
+    func listSurfaces() async throws -> [SurfaceRecord] {
+        [SurfaceRecord(id: "ghostty:main", title: "main", cwd: "/tmp", process: nil)]
+    }
+
+    func send(surfaceID: String, bytes: [UInt8]) async throws {}
+    func read(surfaceID: String, maxBytes: Int) async throws -> [UInt8] { [] }
+    func resize(surfaceID: String, rows: UInt16, cols: UInt16) async throws {}
+    func capabilities(surfaceID: String) async throws -> SurfaceCapabilities {
+        SurfaceCapabilities(read: true, write: true, resize: true, layout: true, durablePty: true)
+    }
+}
+
+private struct OversizedReadProvider: SurfaceProvider {
+    func listSurfaces() async throws -> [SurfaceRecord] { [] }
+    func send(surfaceID: String, bytes: [UInt8]) async throws {}
+    func read(surfaceID: String, maxBytes: Int) async throws -> [UInt8] {
+        [UInt8](repeating: 0, count: maxBytes + 1)
+    }
+    func resize(surfaceID: String, rows: UInt16, cols: UInt16) async throws {}
+    func capabilities(surfaceID: String) async throws -> SurfaceCapabilities {
+        SurfaceCapabilities(read: true, write: true, resize: true, layout: false, durablePty: false)
+    }
+}
+
+@Test func listUsesRustCompatibleSnakeCase() async throws {
     let dispatcher = ControlDispatcher(provider: FakeProvider())
     let line = Data(#"{"jsonrpc":"2.0","id":1,"method":"surface.list","params":{}}"#.utf8)
-    let response = try #require(JSONSerialization.jsonObject(with: dispatcher.dispatch(line)) as? [String: Any])
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
     let result = try #require(response["result"] as? [[String: Any]])
     #expect(result[0]["id"] as? String == "ghostty:1")
 }
 
-@Test func tokenIsRequiredBeforeProviderAccess() throws {
+@Test func tokenIsRequiredBeforeProviderAccess() async throws {
     let dispatcher = ControlDispatcher(provider: FakeProvider(), expectedToken: "secret")
     let line = Data(#"{"jsonrpc":"2.0","id":2,"method":"surface.list","params":{}}"#.utf8)
-    let response = try #require(JSONSerialization.jsonObject(with: dispatcher.dispatch(line)) as? [String: Any])
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
     let error = try #require(response["error"] as? [String: Any])
     #expect(error["code"] as? Int == -32001)
 }
 
-@Test func sendRequiresExactlyOnePayload() throws {
+@Test func mainActorProviderCanServeThroughDispatcher() async throws {
+    let dispatcher = ControlDispatcher(provider: MainActorProvider())
+    let line = Data(#"{"jsonrpc":"2.0","id":6,"method":"surface.list","params":{}}"#.utf8)
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
+    let result = try #require(response["result"] as? [[String: Any]])
+    #expect(result[0]["id"] as? String == "ghostty:main")
+}
+
+@Test func nonObjectParamsAreRejected() async throws {
     let dispatcher = ControlDispatcher(provider: FakeProvider())
-    let line = Data(#"{"jsonrpc":"2.0","id":3,"method":"surface.io.send","params":{"surface_id":"ghostty:1"}}"#.utf8)
-    let response = try #require(JSONSerialization.jsonObject(with: dispatcher.dispatch(line)) as? [String: Any])
+    let line = Data(#"{"jsonrpc":"2.0","id":7,"method":"surface.list","params":[]}"#.utf8)
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
     let error = try #require(response["error"] as? [String: Any])
     #expect(error["code"] as? Int == -32602)
 }
 
-@Test func integerInputsRejectBooleansAndFloats() throws {
+@Test func sendRejectsOversizedPayload() async throws {
+    let dispatcher = ControlDispatcher(provider: FakeProvider())
+    let text = String(repeating: "x", count: ControlDispatcher.maxSendBytes + 1)
+    let object: [String: Any] = [
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "surface.io.send",
+        "params": ["surface_id": "ghostty:1", "text": text],
+    ]
+    let line = try JSONSerialization.data(withJSONObject: object)
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
+    let error = try #require(response["error"] as? [String: Any])
+    #expect(error["code"] as? Int == -32602)
+}
+
+@Test func oversizedProviderReadIsRejected() async throws {
+    let dispatcher = ControlDispatcher(provider: OversizedReadProvider())
+    let line = Data(#"{"jsonrpc":"2.0","id":10,"method":"surface.io.read","params":{"surface_id":"ghostty:1","max_bytes":8}}"#.utf8)
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
+    let error = try #require(response["error"] as? [String: Any])
+    #expect(error["code"] as? Int == -32000)
+}
+
+@Test func sendRequiresExactlyOnePayload() async throws {
+    let dispatcher = ControlDispatcher(provider: FakeProvider())
+    let line = Data(#"{"jsonrpc":"2.0","id":3,"method":"surface.io.send","params":{"surface_id":"ghostty:1"}}"#.utf8)
+    let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
+    let error = try #require(response["error"] as? [String: Any])
+    #expect(error["code"] as? Int == -32602)
+}
+
+@Test func integerInputsRejectBooleansAndFloats() async throws {
     let dispatcher = ControlDispatcher(provider: FakeProvider())
     for literal in ["true", "1.5"] {
         let line = Data("{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"surface.io.read\",\"params\":{\"surface_id\":\"ghostty:1\",\"max_bytes\":\(literal)}}".utf8)
-        let response = try #require(JSONSerialization.jsonObject(with: dispatcher.dispatch(line)) as? [String: Any])
+        let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
         let error = try #require(response["error"] as? [String: Any])
         #expect(error["code"] as? Int == -32602)
     }
 }
 
-@Test func byteInputsRejectBooleansAndFloats() throws {
+@Test func byteInputsRejectBooleansAndFloats() async throws {
     let dispatcher = ControlDispatcher(provider: FakeProvider())
     for literal in ["true", "1.5"] {
         let line = Data("{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"surface.io.send\",\"params\":{\"surface_id\":\"ghostty:1\",\"bytes\":[\(literal)]}}".utf8)
-        let response = try #require(JSONSerialization.jsonObject(with: dispatcher.dispatch(line)) as? [String: Any])
+        let response = try #require(JSONSerialization.jsonObject(with: await dispatcher.dispatch(line)) as? [String: Any])
         let error = try #require(response["error"] as? [String: Any])
         #expect(error["code"] as? Int == -32602)
     }
 }
 
-@Test func unixServerRoundTripsOneRequestLine() throws {
+@Test func unixServerRoundTripsOneRequestLine() async throws {
     let path = "/tmp/sharecli-control-\(UUID().uuidString).sock"
     let server = UnixControlServer(path: path, dispatcher: ControlDispatcher(provider: FakeProvider()))
     try server.start()
