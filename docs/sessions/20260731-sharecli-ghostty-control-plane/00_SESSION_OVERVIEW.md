@@ -14,6 +14,9 @@ Success criteria for this slice:
 - recovery uses argv (never a shell) and bounded non-blocking launches;
 - IPC and CLI expose observation/recovery operations;
 - IPC and CLI expose validated layout persistence and surface I/O operations;
+- `sharecli surface layout-snapshot` and `layout-restore` provide an explicit
+  file-backed topology handoff; snapshot writes are atomic and restore stays
+  dry-run/validation-first unless a native provider applies it;
 - Ghostty I/O is capability-gated and authenticated when a control socket exists;
 - FUSE selection is KEXT first, approved FSKit second, then fail-open.
 

@@ -628,6 +628,25 @@ enum SurfaceCmd {
         #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
         token: Option<String>,
     },
+    /// Capture the native Ghostty pane topology as a validated LayoutSnapshot
+    LayoutSnapshot {
+        #[arg(long, env = "SHARECLI_GHOSTTY_SOCKET", default_value = "/tmp/sharecli-ghostty.sock")]
+        socket: std::path::PathBuf,
+        /// Write the snapshot to this path instead of stdout
+        #[arg(long, short = 'o')]
+        output: Option<std::path::PathBuf>,
+        #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
+        token: Option<String>,
+    },
+    /// Apply a validated LayoutSnapshot through the native Ghostty provider
+    LayoutRestore {
+        /// JSON file containing a LayoutSnapshot
+        input: std::path::PathBuf,
+        #[arg(long, env = "SHARECLI_GHOSTTY_SOCKET", default_value = "/tmp/sharecli-ghostty.sock")]
+        socket: std::path::PathBuf,
+        #[arg(long, env = "SHARECLI_GHOSTTY_TOKEN")]
+        token: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -1308,7 +1327,39 @@ fn surface_cmd(cmd: &SurfaceCmd) -> Result<()> {
                 }
             }
         }
+        SurfaceCmd::LayoutSnapshot { socket, output, token } => {
+            let client = GhosttyControlClient::new(socket, token.clone());
+            let snapshot = client.snapshot_layout()?;
+            let encoded = serde_json::to_string_pretty(&snapshot)?;
+            if let Some(output) = output {
+                write_json_file(output, &encoded)?;
+                println!(
+                    "{{\"ok\":true,\"path\":{}}}",
+                    serde_json::to_string(&output.display().to_string())?
+                );
+            } else {
+                println!("{encoded}");
+            }
+        }
+        SurfaceCmd::LayoutRestore { input, socket, token } => {
+            let snapshot: LayoutSnapshot = serde_json::from_str(&std::fs::read_to_string(input)?)?;
+            let client = GhosttyControlClient::new(socket, token.clone());
+            let report = client.restore_layout(&snapshot)?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        }
     }
+    Ok(())
+}
+
+/// Write a JSON artifact without exposing a shell or partially replacing an
+/// existing snapshot. The rename is atomic on the same filesystem.
+fn write_json_file(path: &std::path::Path, contents: &str) -> Result<()> {
+    let parent = path.parent().unwrap_or_else(|| std::path::Path::new("."));
+    std::fs::create_dir_all(parent)?;
+    let tmp = path.with_extension(format!("sharecli-tmp-{}", std::process::id()));
+    std::fs::write(&tmp, format!("{contents}\n"))?;
+    std::fs::rename(&tmp, path)
+        .with_context(|| format!("atomically replace layout snapshot at {}", path.display()))?;
     Ok(())
 }
 

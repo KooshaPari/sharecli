@@ -43,3 +43,27 @@ lines, and all response/event writes on one Unix connection are serialized.
 
 The timestamp field is an optional RFC3339 string so Rust, Swift, and future
 Ghostty-native providers share one wire representation.
+
+## Layout CLI handoff
+
+The root CLI exposes the native layout contract explicitly:
+
+```text
+sharecli surface layout-snapshot [--output PATH]
+sharecli surface layout-restore <INPUT>
+```
+
+`layout-snapshot` requests `surface.layout.snapshot`, validates the returned
+`LayoutSnapshot`, and prints it as pretty JSON. With `--output`, it writes a
+newline-terminated artifact through an atomic same-filesystem rename; an
+existing artifact is never truncated in place. `layout-restore` reads and
+validates the input before opening the Ghostty socket, then requests
+`surface.layout.restore` and prints the provider's per-surface
+`LayoutRestoreReport`.
+
+Both commands are safe by default: they do not shell out, mutate a ledger, or
+create/kill terminal panes. A missing native provider is an explicit degraded
+error. Restore is therefore a validation-first handoff; only a Ghostty-native
+provider with the layout capability may apply the topology. The normal recovery
+path remains dry-run until an operator explicitly chooses the provider-side
+apply operation.

@@ -1,8 +1,8 @@
 #[cfg(test)]
 use crate::SurfaceSubscribeAck;
 use crate::{
-    SessionService, SurfaceCapabilities, SurfaceEventError, SurfaceEventHub, SurfaceRecord,
-    SurfaceSubscribeRequest,
+    LayoutRestoreReport, LayoutSnapshot, SessionService, SurfaceCapabilities, SurfaceEventError,
+    SurfaceEventHub, SurfaceRecord, SurfaceSubscribeRequest,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -44,6 +44,25 @@ pub trait SurfaceControl: Send + Sync {
     fn read(&self, surface_id: &str, max_bytes: usize) -> Result<Vec<u8>>;
     fn resize(&self, surface_id: &str, rows: u16, cols: u16) -> Result<()>;
     fn capabilities(&self, surface_id: &str) -> Result<SurfaceCapabilities>;
+
+    /// Capture the provider's current pane topology.
+    ///
+    /// The default is deliberately unavailable: a provider must opt into the
+    /// layout contract rather than allowing an empty tree to masquerade as a
+    /// successful snapshot.
+    fn snapshot_layout(&self) -> Result<LayoutSnapshot> {
+        anyhow::bail!("surface layout snapshot unavailable")
+    }
+
+    /// Apply a validated pane topology and return per-surface outcomes.
+    ///
+    /// Providers must implement this against their live surface tree. The
+    /// ShareCLI transport validates the snapshot before crossing the boundary
+    /// and never shells out to a terminal application.
+    fn restore_layout(&self, snapshot: &LayoutSnapshot) -> Result<LayoutRestoreReport> {
+        snapshot.validate()?;
+        anyhow::bail!("surface layout restore unavailable")
+    }
 }
 #[derive(Debug, Deserialize)]
 struct SurfaceRequest {
@@ -296,6 +315,23 @@ fn dispatch_surface_method_with_events(
             let params: SurfaceIdParams = decode_params(params)?;
             let capabilities = control.capabilities(&params.surface_id).map_err(control_error)?;
             serde_json::to_value(capabilities).map_err(control_error)
+        }
+        "surface.layout.snapshot" => {
+            if !params.as_object().is_some_and(|object| object.is_empty()) {
+                return Err((-32602, "surface.layout.snapshot takes no params".to_string()));
+            }
+            serde_json::to_value(control.snapshot_layout().map_err(control_error)?)
+                .map_err(control_error)
+        }
+        "surface.layout.restore" => {
+            #[derive(Deserialize)]
+            struct RestoreParams {
+                snapshot: LayoutSnapshot,
+            }
+            let request: RestoreParams = decode_params(params)?;
+            request.snapshot.validate().map_err(control_error)?;
+            serde_json::to_value(control.restore_layout(&request.snapshot).map_err(control_error)?)
+                .map_err(control_error)
         }
         "surface.io.subscribe" => {
             let Some(events) = events else {

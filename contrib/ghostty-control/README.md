@@ -16,6 +16,16 @@ read/write/resize operations, and capability reporting. Provider methods are
 surface tree without semaphore or synchronous cross-actor calls. Keep all app
 and PTY references on that side of the boundary.
 
+For a fork integration, `SurfaceProviderRegistry` is the default adapter: the
+fork registers one `SurfaceBinding` per live `SurfaceView`, then unregisters it
+before the view/PTY is destroyed. The registry is actor-isolated, sorts
+`surface.list` deterministically, and reports a provider error when a surface
+vanishes during a request. `ControlLifecycle` is the app-side owner: start it
+after Ghostty app readiness, and stop it before surface teardown. If the app
+needs a health endpoint before readiness, `startUnavailable()` keeps the socket
+alive with an empty surface list and all I/O capabilities false; it never
+pretends that a terminal is controllable.
+
 Requests are bounded: the NDJSON request and read response are capped at 1 MiB,
 and one `surface.io.send` payload is capped at 64 KiB. The provider result is
 also checked against the requested read size before it is serialized.
@@ -59,6 +69,23 @@ The listener is expected to be local-only and owner-readable/writable
 the matching top-level `token`. ShareCLI should treat missing sockets,
 unsupported capabilities, and provider errors as explicit degraded states,
 never as permission to execute an untrusted command.
+
+Minimal app-side shape:
+
+```swift
+@MainActor
+let lifecycle = ControlLifecycle(
+    socketPath: shareCLISocketPath,
+    expectedToken: controlToken,
+    liveEvents: liveEventHub
+)
+
+// Ghostty app-ready callback:
+lifecycle.start(provider: surfaceRegistry)
+
+// Before SurfaceView/PTY teardown:
+lifecycle.stop()
+```
 
 ## Build and test
 

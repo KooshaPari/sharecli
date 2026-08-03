@@ -21,6 +21,11 @@ Verified in this worktree:
   and bounded LiveIO sequence/overflow/subscription behavior)
 - `cargo test --test session --offline` (the live client path includes event
   decoding/unsubscribe and rejects invalid subscription limits before connect)
+- `sharecli surface layout-snapshot [--output PATH]` and
+  `sharecli surface layout-restore <INPUT>` must be covered with CLI tests for
+  atomic output, malformed/duplicate snapshot rejection before socket connect,
+  and explicit missing-provider degradation; neither command may shell out or
+  mutate panes without a native provider.
 - `cargo run -p sharecli-fuse --bin fuse-runtime-probe` (read-only host evidence)
 - `cargo fmt --all -- --check`
 - `git diff --check`

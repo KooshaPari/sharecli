@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sharecli_session::{
-    SurfaceAdapter, SurfaceCapabilities, SurfaceEventKind, SurfaceRecord, MAX_EVENT_CHUNK_BYTES,
-    MAX_EVENT_QUEUE_CAPACITY,
+    LayoutRestoreReport, LayoutSnapshot, SurfaceAdapter, SurfaceCapabilities, SurfaceEventKind,
+    SurfaceRecord, MAX_EVENT_CHUNK_BYTES, MAX_EVENT_QUEUE_CAPACITY,
 };
 use std::io::{BufRead, BufReader, Write};
 #[cfg(unix)]
@@ -259,6 +259,24 @@ impl GhosttyControlClient {
         Ok(())
     }
 
+    /// Request a validated topology snapshot from the native Ghostty provider.
+    pub fn snapshot_layout(&self) -> anyhow::Result<LayoutSnapshot> {
+        serde_json::from_value(self.request("surface.layout.snapshot", json!({}))?)
+            .map_err(Into::into)
+    }
+
+    /// Apply a durable topology through the native Ghostty provider.
+    ///
+    /// Validation happens before the request is sent, so malformed or
+    /// duplicate surface trees never reach the app-side provider.
+    pub fn restore_layout(&self, snapshot: &LayoutSnapshot) -> anyhow::Result<LayoutRestoreReport> {
+        snapshot.validate()?;
+        serde_json::from_value(
+            self.request("surface.layout.restore", json!({"snapshot": snapshot}))?,
+        )
+        .map_err(Into::into)
+    }
+
     #[cfg(unix)]
     pub fn subscribe_surface(
         &self,
@@ -323,6 +341,14 @@ impl SurfaceAdapter for GhosttyControlClient {
 
     fn discover(&self) -> anyhow::Result<Vec<SurfaceRecord>> {
         self.list_surfaces()
+    }
+
+    fn snapshot_layout(&self) -> anyhow::Result<LayoutSnapshot> {
+        self.snapshot_layout()
+    }
+
+    fn restore_layout(&self, snapshot: &LayoutSnapshot) -> anyhow::Result<LayoutRestoreReport> {
+        self.restore_layout(snapshot)
     }
 }
 
