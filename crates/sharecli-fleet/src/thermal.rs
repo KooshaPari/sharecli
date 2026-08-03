@@ -80,10 +80,9 @@ impl ThermalGovernor {
             }
             Err(e) => return Err(e.into()),
         };
-        let millidegrees: u64 = contents
-            .trim()
-            .parse()
-            .map_err(|e| anyhow::anyhow!("invalid thermal_zone0 temp {:?}: {e}", contents.trim()))?;
+        let millidegrees: u64 = contents.trim().parse().map_err(|e| {
+            anyhow::anyhow!("invalid thermal_zone0 temp {:?}: {e}", contents.trim())
+        })?;
         Ok(match millidegrees {
             t if t < 70_000 => ThermalLevel::Green,
             t if t < 85_000 => ThermalLevel::Yellow,
