@@ -71,11 +71,19 @@ impl ThermalGovernor {
     #[cfg(target_os = "linux")]
     fn poll_impl(&self) -> anyhow::Result<ThermalLevel> {
         // CI containers / VMs frequently lack a thermal zone; fall back to Green
-        // rather than propagating the missing-file error up the capture chain.
-        let Ok(contents) = std::fs::read_to_string("/sys/class/thermal/thermal_zone0/temp") else {
-            return Ok(ThermalLevel::Green);
+        // only for the missing-file case and surface real read failures.
+        let contents = match std::fs::read_to_string("/sys/class/thermal/thermal_zone0/temp") {
+            Ok(c) => c,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                tracing::warn!(error = %e, "thermal_zone0 temp missing; assuming nominal");
+                return Ok(ThermalLevel::Green);
+            }
+            Err(e) => return Err(e.into()),
         };
-        let millidegrees: u64 = contents.trim().parse().unwrap_or_default();
+        let millidegrees: u64 = contents
+            .trim()
+            .parse()
+            .map_err(|e| anyhow::anyhow!("invalid thermal_zone0 temp {:?}: {e}", contents.trim()))?;
         Ok(match millidegrees {
             t if t < 70_000 => ThermalLevel::Green,
             t if t < 85_000 => ThermalLevel::Yellow,
