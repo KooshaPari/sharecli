@@ -80,7 +80,9 @@ impl ThermalGovernor {
             }
             Err(e) => return Err(e.into()),
         };
-        let millidegrees: u64 = contents.trim().parse().map_err(|e| {
+        // The kernel exposes thermal_zone temp as signed millidegrees Celsius
+        // (negative below 0C), so parse as i64.
+        let millidegrees: i64 = contents.trim().parse().map_err(|e| {
             anyhow::anyhow!("invalid thermal_zone0 temp {:?}: {e}", contents.trim())
         })?;
         Ok(match millidegrees {
