@@ -96,12 +96,8 @@ impl LogBuffer {
         let cap = max.min(CAPACITY);
         let inner = self.inner.lock().expect("log buffer poisoned");
         let last_id = inner.last_id;
-        let mut out: Vec<LogEntry> = inner
-            .entries
-            .iter()
-            .filter(|e| e.id > since_id)
-            .cloned()
-            .collect();
+        let mut out: Vec<LogEntry> =
+            inner.entries.iter().filter(|e| e.id > since_id).cloned().collect();
         if out.len() > cap {
             out.truncate(cap);
         }
@@ -192,11 +188,7 @@ where
         let subsystem = subsystem_for(event.metadata().module_path().unwrap_or("core"));
         let mut visitor = MsgVisitor { msg: String::new() };
         event.record(&mut visitor);
-        let msg = if visitor.msg.is_empty() {
-            String::new()
-        } else {
-            visitor.msg
-        };
+        let msg = if visitor.msg.is_empty() { String::new() } else { visitor.msg };
         global().push(level, subsystem, msg);
     }
 }
