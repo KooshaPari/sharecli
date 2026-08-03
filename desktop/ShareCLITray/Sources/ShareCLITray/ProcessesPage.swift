@@ -643,6 +643,21 @@ struct AllProcessesView: View {
                 Label("Export CSV", systemImage: "tablecells")
             }
 
+            // P2-11: export only the rows currently selected in the Table
+            Button {
+                exportSelectedJSON()
+            } label: {
+                Label("Export selected JSON (\(selection.count))", systemImage: "square.and.arrow.down.on.square")
+            }
+            .disabled(selection.isEmpty)
+
+            Button {
+                exportSelectedCSV()
+            } label: {
+                Label("Export selected CSV (\(selection.count))", systemImage: "tablecells.badge.ellipsis")
+            }
+            .disabled(selection.isEmpty)
+
             if !bulkStatus.isEmpty {
                 Text(bulkStatus)
                     .font(.caption)
@@ -701,6 +716,24 @@ struct AllProcessesView: View {
         }
         let body = lines.joined(separator: "\n") + "\n"
         try? body.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    private func exportSelectedJSON() {
+        let sel = selectedRows()
+        if sel.isEmpty { return }
+        exportJSON(filtered: sel)
+    }
+
+    private func exportSelectedCSV() {
+        let sel = selectedRows()
+        if sel.isEmpty { return }
+        exportCSV(filtered: sel)
+    }
+
+    private func selectedRows() -> [ProcessSummary] {
+        // `selection` is Set<ProcessSummary.ID> (UInt32 pid); map back to rows.
+        let pidSet = selection
+        return filtered.filter { pidSet.contains($0.pid) }
     }
 
     private func csvEscape(_ s: String) -> String {
