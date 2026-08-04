@@ -245,6 +245,14 @@ public final class AppState: ObservableObject {
     /// PID disappears from the agents list (then we evict).
     @Published public var cmdlineCache: [UInt32: ProcessCmdline] = [:]
 
+    /// When true, the polling loop is suspended. The user can pause
+    /// background refreshes (useful when they're investigating a
+    /// specific process and don't want data drifting under them). The
+    /// dashboard's Pause/Resume button + the right-click NSMenu both
+    /// toggle this. Resume re-runs `startPolling()` so a fresh poll
+    /// cycle begins immediately.
+    @Published public var isPaused: Bool = false
+
     private var pollTask: Task<Void, Never>?
 
     public init() {
@@ -252,6 +260,7 @@ public final class AppState: ObservableObject {
     }
 
     public func startPolling() {
+        guard !isPaused else { return }
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -264,6 +273,24 @@ public final class AppState: ObservableObject {
     public func stopPolling() {
         pollTask?.cancel()
         pollTask = nil
+    }
+
+    /// Pause background polling. Idempotent. Safe to call when not
+    /// started. Distinct from `stopPolling()` which tears down the
+    /// task entirely; `pausePolling()` leaves the task alive so
+    /// `resumePolling()` is a no-op-free transition.
+    public func pausePolling() {
+        isPaused = true
+        pollTask?.cancel()
+        pollTask = nil
+    }
+
+    /// Resume polling. If already running, no-op. If `isPaused`, flips
+    /// back to false and starts a fresh poll cycle (so the UI sees
+    /// immediate data, not a 1s-delay until the next tick).
+    public func resumePolling() {
+        isPaused = false
+        startPolling()
     }
 
     public func refresh() async {
