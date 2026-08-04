@@ -52,9 +52,8 @@ fn dashboard_sr_table_and_skip_link() {
         "skip link must target main content"
     );
     // L81.4: every <img> must carry an alt attribute (bare imgs without alt are banned).
-    let imgs = html.split("<img").skip(1);
     assert!(
-        imgs.all(|frag| frag.contains("alt=")),
+        html.split("<img").skip(1).all(|frag| frag.contains("alt=")),
         "dashboard must not ship <img> without an alt attribute"
     );
 }
