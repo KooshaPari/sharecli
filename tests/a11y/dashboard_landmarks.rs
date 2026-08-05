@@ -51,9 +51,17 @@ fn dashboard_sr_table_and_skip_link() {
         html.contains("href=\"#main-content\"") && html.contains("Skip to process table"),
         "skip link must target main content"
     );
+    // L81.4: every <img> opening tag must carry a standalone alt attribute
+    // (bare imgs without alt are banned; data-alt= does not satisfy the rule).
+    let every_img_has_alt = html.split("<img").skip(1).filter_map(|frag| frag.split('>').next()).all(
+        |tag| {
+            tag.split_whitespace()
+                .any(|attr| attr == "alt" || attr.starts_with("alt="))
+        },
+    );
     assert!(
-        !html.contains("<img "),
-        "dashboard must not ship bare <img> without alt (none expected)"
+        every_img_has_alt,
+        "dashboard must not ship <img> without an alt attribute"
     );
 }
 

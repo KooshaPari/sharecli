@@ -23,6 +23,10 @@ export default defineConfig({
     /TEST_COVERAGE_MATRIX/,
     /FUNCTIONAL_REQUIREMENTS/,
     /repro-check/,
+    /\/brew-bottle/,
+    /\/recovery\//,
+    /\/Containerfile/,
+    /\/assets\/brand\//,
   ],
   themeConfig: {
     nav: [
