@@ -97,7 +97,6 @@ jobs:
   container:
     name: Container Scan
     runs-on: ubuntu-24.04
-    if: ${{ hashFiles('Dockerfile') != '' }}
     permissions:
       contents: read
       security-events: write
@@ -106,9 +105,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Build image
+        if: ${{ hashFiles('Dockerfile') != '' }}
         run: docker build -t ${{ github.event.repository.name }}:scan .
 
       - name: Run Trivy vulnerability scanner
+        if: ${{ hashFiles('Dockerfile') != '' }}
         uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8
         with:
           image-ref: '${{ github.event.repository.name }}:scan'
@@ -116,7 +117,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results
+        if: ${{ hashFiles('Dockerfile') != '' }}
         uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38
-        if: always()
         with:
           sarif_file: 'trivy-results.sarif'
