@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var dashboardWindow: NSWindow?
 
     @MainActor private let state = AppState()
+    @MainActor private lazy var contextMenu = TrayMenuController.build(for: state, openDashboard: { [weak self] in self?.openDashboard() })
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide from Dock — pure tray app
@@ -38,6 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupStatusItem()
         setupPopover()
+        // Right-click → NSMenu (left-click keeps the popover)
+        TrayMenuController.installContextMenu(for: statusItem, on: statusItem.button!, menu: contextMenu)
     }
 
     // MARK: - Status item
