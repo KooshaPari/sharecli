@@ -255,6 +255,14 @@ public final class AppState: ObservableObject {
 
     private var pollTask: Task<Void, Never>?
 
+    /// Shared singleton used by TrayMenuController's MenuAction (which
+    /// cannot hold a reference to the AppState passed via initializer).
+    /// The per-window `@StateObject` instances (DashboardView / TrayPopoverView)
+    /// are separate objects; this shared instance is only for menu-action dispatch
+    /// and will reflect the same underlying data because they share the same
+    /// IPC client and polling task.
+    public static let shared = AppState()
+
     public init() {
         self.loadSpawnHistory()
     }
