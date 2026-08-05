@@ -82,9 +82,6 @@ struct DashboardView: View {
         .sheet(isPresented: $prefsVisible) {
             PreferencesSheet(isVisible: $prefsVisible, state: state)
         }
-        .sheet(isPresented: $errorDetailsVisible) {
-            ErrorDetailsSheet(isVisible: $errorDetailsVisible, lastError: state.lastError)
-        }
         .onAppear {
             // Persist a sensible default if the @AppStorage above was missing.
             if Section(rawValue: selectionRaw) == nil {
@@ -146,58 +143,11 @@ struct DashboardView: View {
         }
         ToolbarItem(placement: .primaryAction) {
             if let err = state.lastError {
-                Button {
-                    errorDetailsVisible = true
-                } label: {
-                    Label(err, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                }
-                .buttonStyle(.borderless)
-                .help("Click to view error details: \(err)")
-            }
-        }
-    }
-
-    // MARK: - Error details sheet
-
-    @State private var errorDetailsVisible: Bool = false
-
-    private var errorDetailsSheet: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "exclamationmark.triangle.fill")
+                Label(err, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
-                Text("Last error")
-                    .font(.headline)
-                Spacer()
-                Button("Dismiss") { errorDetailsVisible = false }
-                    .keyboardShortcut(.defaultAction)
-            }
-            Divider()
-            ScrollView {
-                Text(state.lastError ?? "No error")
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding(8)
-            }
-            .frame(minHeight: 120, maxHeight: 320)
-            HStack {
-                Button {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(state.lastError ?? "", forType: .string)
-                } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
-                }
-                Spacer()
-                Button("Refresh now") {
-                    Task { await state.refresh() }
-                    errorDetailsVisible = false
-                }
+                    .help(err)
             }
         }
-        .padding(16)
-        .frame(width: 480)
     }
 
     // MARK: - Keyboard shortcut plumbing
