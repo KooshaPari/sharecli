@@ -225,6 +225,20 @@ struct TrayPopoverView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+            .help("Refresh now")
+
+            Button {
+                Task {
+                    if state.isPaused { await state.resumePolling() }
+                    else { await state.pausePolling() }
+                }
+            } label: {
+                Image(systemName: state.isPaused ? "play.fill" : "pause.fill")
+                    .foregroundStyle(state.isPaused ? .green : .orange)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help(state.isPaused ? "Resume polling" : "Pause polling")
 
             Button("Kill All") {
                 Task { await state.killAll() }
@@ -232,6 +246,16 @@ struct TrayPopoverView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .foregroundStyle(.red)
+
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Image(systemName: "power")
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Quit ShareCLITray")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

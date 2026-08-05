@@ -130,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         win.title = "ShareCLI Dashboard"
-        win.center()
+        TrayWindowPositioner.place(window: win, below: btn)
         win.contentView = NSHostingView(rootView: DashboardView(state: state))
         win.isReleasedWhenClosed = false
         win.makeKeyAndOrderFront(nil)
