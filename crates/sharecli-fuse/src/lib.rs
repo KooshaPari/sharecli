@@ -984,9 +984,8 @@ mod platform {
             use crate::{select_backend, FuseBackend};
 
             let attempt = |backend: Option<FuseBackend>| {
-                let fs = InterceptFs::with_session(backing, session_id);
-                let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
-                fuser::mount(fs, mountpoint, &config)
+let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
+                fuser::mount(InterceptFs::with_session(backing, session_id), mountpoint, &config)
             };
 
             match select_backend() {

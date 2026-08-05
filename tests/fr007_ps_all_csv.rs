@@ -145,6 +145,7 @@ fn fr007_ps_csv_requires_all() {
 #[test]
 fn fr007_ps_all_csv_body_shape() {
     use sharecli::runtime::ProcessInfo;
+    use sharecli::runtime::ProcState;
     use sharecli_fleet::HostProcSource;
 
     let proc_source = HostProcSource;
@@ -157,6 +158,12 @@ fn fr007_ps_all_csv_body_shape() {
         cmd: vec![],
         start_time: 0,
         cpu_percent: 0.0,
+        ppid: None,
+        cwd: None,
+        env_count: 0,
+        state: sharecli::runtime::ProcState::default(),
+        disk_read_bytes: None,
+        disk_write_bytes: None,
         fd_count: None,
         ppid: None,
         cwd: None,
