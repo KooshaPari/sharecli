@@ -9,6 +9,7 @@ name: OpenSSF Scorecard
 
 on:
   branch_protection_rule:
+    types: [created, edited, deleted]
   schedule:
     - cron: '25 4 * * 1'  # Weekly Monday 4:25 UTC
   push:
@@ -20,8 +21,6 @@ jobs:
   analysis:
     name: Scorecard analysis
     runs-on: ubuntu-latest
-    security:
-      permissions: read-all
 
     steps:
       - name: Checkout
