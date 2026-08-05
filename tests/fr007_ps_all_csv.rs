@@ -161,7 +161,11 @@ fn fr007_ps_all_csv_body_shape() {
         ppid: None,
         cwd: None,
         env_count: 0,
+<<<<<<< Updated upstream
         state: sharecli::runtime::ProcState::default(),
+=======
+        state: ProcState::default(),
+>>>>>>> Stashed changes
         disk_read_bytes: None,
         disk_write_bytes: None,
         fd_count: None,
