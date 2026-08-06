@@ -16,9 +16,8 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
-use windows::Win32::Storage::FileSystem::FILE_ACCESS_RIGHTS;
 use winfsp::filesystem::{FileInfo, FileSecurity, FileSystemContext, OpenFileInfo};
-use winfsp::host::{FileSystemHost, VolumeParams};
+use winfsp::host::{FileSystemHost, FineGuard, VolumeParams};
 use winfsp::{winfsp_init, FspError, U16CStr};
 
 use crate::cow_session::CowMountHandle;
@@ -169,7 +168,7 @@ fn run_host(
         .flush_and_purge_on_cleanup(true)
         .named_streams(true); // ADS for provenance
 
-    let mut host = FileSystemHost::new(params, ctx)
+    let mut host: FileSystemHost<PassthroughCtx, FineGuard> = FileSystemHost::new(params, ctx)
         .map_err(|e| anyhow::anyhow!("FileSystemHost::new: {e}"))?;
     host.mount(mountpoint)
         .map_err(|e| anyhow::anyhow!("WinFsp mount {}: {e}", mountpoint.display()))?;
@@ -207,7 +206,7 @@ impl PassthroughCtx {
     }
 
     fn fill_info(path: &Path, info: &mut OpenFileInfo) -> Result<(), FspError> {
-        let meta = fs::metadata(path).map_err(|_| FspError::from(0xC000000F))?; // NO_SUCH_FILE
+        let meta = fs::metadata(path).map_err(|_| FspError::NTSTATUS(0xC000000Fu32 as i32))?; // NO_SUCH_FILE
         let size = meta.len();
         // Minimal FileInfo population via OpenFileInfo helpers when available.
         // winfsp OpenFileInfo embeds FileInfo — set via as_mut_ptr patterns in examples;
@@ -228,7 +227,7 @@ impl FileSystemContext for PassthroughCtx {
     ) -> Result<FileSecurity, FspError> {
         let path = self.resolve(file_name);
         if !path.exists() {
-            return Err(FspError::from(0xC0000034)); // OBJECT_NAME_NOT_FOUND
+            return Err(FspError::NTSTATUS(0xC0000034u32 as i32)); // OBJECT_NAME_NOT_FOUND
         }
         Ok(FileSecurity {
             reparse: false,
@@ -245,11 +244,11 @@ impl FileSystemContext for PassthroughCtx {
         &self,
         file_name: &U16CStr,
         _create_options: u32,
-        _granted_access: FILE_ACCESS_RIGHTS,
+        _granted_access: u32,
         file_info: &mut OpenFileInfo,
     ) -> Result<Self::FileContext, FspError> {
         let path = self.resolve(file_name);
-        let meta = fs::metadata(&path).map_err(|_| FspError::from(0xC0000034))?;
+        let meta = fs::metadata(&path).map_err(|_| FspError::NTSTATUS(0xC0000034u32 as i32))?;
         let is_dir = meta.is_dir();
         let file = if is_dir {
             None
@@ -259,7 +258,7 @@ impl FileSystemContext for PassthroughCtx {
                     .read(true)
                     .write(true)
                     .open(&path)
-                    .map_err(|_| FspError::from(0xC0000001))?,
+                    .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?,
             )
         };
         Self::fill_info(&path, file_info)?;
@@ -285,7 +284,7 @@ impl FileSystemContext for PassthroughCtx {
         &self,
         file_name: &U16CStr,
         _create_options: u32,
-        _granted_access: FILE_ACCESS_RIGHTS,
+        _granted_access: u32,
         _file_attributes: u32,
         _security_descriptor: Option<&[std::ffi::c_void]>,
         _allocation_size: u64,
@@ -298,7 +297,7 @@ impl FileSystemContext for PassthroughCtx {
         // WinFsp passes directory bit in create_options; treat existing as file create.
         let is_dir = false;
         if is_dir {
-            fs::create_dir_all(&path).map_err(|_| FspError::from(0xC0000001))?;
+            fs::create_dir_all(&path).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
             Self::fill_info(&path, file_info)?;
             return Ok(FileCtx {
                 path,
@@ -316,8 +315,9 @@ impl FileSystemContext for PassthroughCtx {
             .truncate(true)
             .read(true)
             .open(&path)
-            .map_err(|_| FspError::from(0xC0000001))?;
-        annotate_write(&path, &self.session_id).map_err(|_| FspError::from(0xC0000001))?;
+            .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
+        annotate_write(&path, &self.session_id)
+            .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
         record_passthrough_write();
         Self::fill_info(&path, file_info)?;
         Ok(FileCtx {
@@ -334,10 +334,11 @@ impl FileSystemContext for PassthroughCtx {
         buffer: &mut [u8],
         offset: u64,
     ) -> Result<u32, FspError> {
-        let mut guard = context.file.lock().map_err(|_| FspError::from(0xC0000001))?;
-        let file = guard.as_mut().ok_or(FspError::from(0xC0000001))?;
-        file.seek(SeekFrom::Start(offset)).map_err(|_| FspError::from(0xC0000001))?;
-        let n = file.read(buffer).map_err(|_| FspError::from(0xC0000001))?;
+        let mut guard =
+            context.file.lock().map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
+        let file = guard.as_mut().ok_or(FspError::NTSTATUS(0xC0000001u32 as i32))?;
+        file.seek(SeekFrom::Start(offset)).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
+        let n = file.read(buffer).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
         Ok(n as u32)
     }
 
@@ -350,23 +351,26 @@ impl FileSystemContext for PassthroughCtx {
         _constrained_io: bool,
         _file_info: &mut FileInfo,
     ) -> Result<u32, FspError> {
-        let mut guard = context.file.lock().map_err(|_| FspError::from(0xC0000001))?;
-        let file = guard.as_mut().ok_or(FspError::from(0xC0000001))?;
+        let mut guard =
+            context.file.lock().map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
+        let file = guard.as_mut().ok_or(FspError::NTSTATUS(0xC0000001u32 as i32))?;
         if write_to_eof {
-            file.seek(SeekFrom::End(0)).map_err(|_| FspError::from(0xC0000001))?;
+            file.seek(SeekFrom::End(0)).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
         } else {
-            file.seek(SeekFrom::Start(offset)).map_err(|_| FspError::from(0xC0000001))?;
+            file.seek(SeekFrom::Start(offset))
+                .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
         }
-        file.write_all(buffer).map_err(|_| FspError::from(0xC0000001))?;
+        file.write_all(buffer).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
         let path = context.path.clone();
         let session = self.session_id.clone();
         let n = buffer.len() as u32;
         self.cow
             .with_locked_path(None, &path, || {
-                annotate_write(&path, &session).map_err(|_| FspError::from(0xC0000001))?;
+                annotate_write(&path, &session)
+                    .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
                 Ok::<(), FspError>(())
             })
-            .map_err(|_| FspError::from(0xC0000001))??;
+            .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))??;
         record_passthrough_write();
         Ok(n)
     }
@@ -382,11 +386,11 @@ impl FileSystemContext for PassthroughCtx {
         let dst = self.resolve(new_file_name);
         if dst.exists() {
             if !replace_if_exists {
-                return Err(FspError::from(0xC0000035)); // OBJECT_NAME_COLLISION
+                return Err(FspError::NTSTATUS(0xC0000035u32 as i32)); // OBJECT_NAME_COLLISION
             }
             let _ = fs::remove_file(&dst);
         }
-        fs::rename(&src, &dst).map_err(|_| FspError::from(0xC0000001))?;
+        fs::rename(&src, &dst).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
         Ok(())
     }
 

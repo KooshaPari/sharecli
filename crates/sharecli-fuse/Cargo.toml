@@ -33,7 +33,8 @@ xattr = "1.6"
 # wraps: winfsp 0.13 (SnowflakePowered/winfsp-rs)
 [target.'cfg(windows)'.dependencies]
 winfsp = { version = "0.13", features = ["full", "windows-61"] }
-xattr = "1.6"
+# NOTE: xattr is Unix-only (its unsupported.rs fallback references std::os::unix),
+# so Windows provenance uses NTFS alternate data streams instead (see provenance.rs).
 windows = { version = "0.62", features = ["Win32_Storage_FileSystem"] }
 
 [target.'cfg(windows)'.build-dependencies]
