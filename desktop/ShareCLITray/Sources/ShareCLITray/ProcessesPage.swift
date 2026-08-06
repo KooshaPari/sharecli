@@ -1504,6 +1504,7 @@ struct ResourcesView: View {
                 if let p = selected {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 14) {
+                            ResourcesExtrasSection(process: p, state: state)
                             header(for: p)
                             Divider()
                             identitySection(for: p)
