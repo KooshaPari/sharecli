@@ -984,18 +984,13 @@ mod platform {
             use crate::{select_backend, FuseBackend};
 
             let attempt = |backend: Option<FuseBackend>| {
-<<<<<<< Updated upstream
 let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
-=======
-                let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
->>>>>>> Stashed changes
                 fuser::mount(InterceptFs::with_session(backing, session_id), mountpoint, &config)
             };
 
             match select_backend() {
                 FuseBackend::Kernel => match attempt(Some(FuseBackend::Kernel)) {
                     Ok(()) => Ok(()),
-<<<<<<< Updated upstream
                     Err(kernel_err) => {
                         // macFUSE may leave a transient mount registration after a
                         // failed backend negotiation (reported as EEXIST on retry).
@@ -1030,14 +1025,6 @@ let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
                 }),
             }?;
             Ok(())
-=======
-                    Err(_) => attempt(Some(FuseBackend::Fskit)),
-                },
-                FuseBackend::Fskit => attempt(Some(FuseBackend::Fskit)),
-                FuseBackend::Unavailable => attempt(None),
-            }?;
-            return Ok(());
->>>>>>> Stashed changes
         }
 
         #[cfg(not(target_os = "macos"))]

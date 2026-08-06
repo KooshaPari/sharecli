@@ -1,15 +1,3 @@
-// MARK: - Right-click / Popover Coordination
-extension TrayMenuController {
-
-    /// One-call setup: builds the menu, installs the event monitor, and
-    /// attaches the menu to the status item.
-    @MainActor static func installContextMenu(for statusItem: NSStatusItem) {
-        let menu = MenuAction.shared.buildMenu(
-            openDashboard: { NotificationCenter.default.post(name: .sharecliOpenDashboardRequested, object: nil) }
-        )
-        install(statusItem: statusItem, menu: menu)
-        installRightClickMonitor()
-    }.swift
 //  ShareCLITray
 //
 //  Owns the right-click NSMenu (Open Dashboard / Refresh / Pause-Resume /
