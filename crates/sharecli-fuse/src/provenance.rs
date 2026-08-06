@@ -1,22 +1,32 @@
 //! Write provenance via extended attributes (`user.sharecli.*`).
 //!
 //! Every InterceptFs write / CoW commit records `(session-id, timestamp)` on the
-//! backing file without altering file contents. Uses the `xattr` crate (wraps
-//! platform `setxattr` / `getxattr` on Unix; on Windows, NTFS alternate data
-//! streams / EA via the same crate — AC-009.25). Failures are loud: never
+//! backing file without altering file contents. Failures are loud: never
 //! silently skip provenance when a write succeeds.
+//!
+//! Platform backends:
+//! - **Unix** — `xattr` crate (`setxattr` / `getxattr`).
+//! - **Windows** — NTFS alternate data streams (ADS) via `std::fs`; the WinFsp
+//!   adapter enables `named_streams(true)` (AC-009.25).
 //!
 //! Attribute names:
 //! - [`ATTR_SESSION`] — opaque session id (UTF-8)
 //! - [`ATTR_WRITTEN_AT`] — Unix epoch seconds as decimal ASCII
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Extended-attribute name for the writer session id.
 pub const ATTR_SESSION: &str = "user.sharecli.session";
 /// Extended-attribute name for the write timestamp (Unix seconds, decimal).
 pub const ATTR_WRITTEN_AT: &str = "user.sharecli.written_at";
+
+/// NTFS alternate-data-stream name for the session id (Windows backend).
+#[cfg(windows)]
+const ADS_SESSION: &str = "sharecli_session";
+/// NTFS alternate-data-stream name for the write timestamp (Windows backend).
+#[cfg(windows)]
+const ADS_WRITTEN_AT: &str = "sharecli_written_at";
 
 /// Provenance annotation read back from a backing path.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,7 +47,7 @@ pub fn now_unix_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-/// Annotate `path` with session + timestamp xattrs (loud fail on IO/xattr errors).
+/// Annotate `path` with session + timestamp attrs (loud fail on IO errors).
 pub fn annotate_write(path: &Path, session_id: &str) -> std::io::Result<()> {
     annotate_write_at(path, session_id, now_unix_secs())
 }
@@ -54,15 +64,14 @@ pub fn annotate_write_at(
             "sharecli-fuse provenance: session_id must not be empty",
         ));
     }
-    xattr::set(path, ATTR_SESSION, session_id.as_bytes()).map_err(map_xattr_err)?;
-    xattr::set(path, ATTR_WRITTEN_AT, written_at_unix.to_string().as_bytes())
-        .map_err(map_xattr_err)?;
+    set_attr(path, ATTR_SESSION, session_id.as_bytes())?;
+    set_attr(path, ATTR_WRITTEN_AT, written_at_unix.to_string().as_bytes())?;
     Ok(())
 }
 
-/// Read provenance xattrs from `path`. Returns `Ok(None)` when either attr is missing.
+/// Read provenance attrs from `path`. Returns `Ok(None)` when either attr is missing.
 pub fn read_provenance(path: &Path) -> std::io::Result<Option<WriteProvenance>> {
-    let session = match xattr::get(path, ATTR_SESSION).map_err(map_xattr_err)? {
+    let session = match get_attr(path, ATTR_SESSION)? {
         Some(bytes) => String::from_utf8(bytes).map_err(|e| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -71,7 +80,7 @@ pub fn read_provenance(path: &Path) -> std::io::Result<Option<WriteProvenance>> 
         })?,
         None => return Ok(None),
     };
-    let written_raw = match xattr::get(path, ATTR_WRITTEN_AT).map_err(map_xattr_err)? {
+    let written_raw = match get_attr(path, ATTR_WRITTEN_AT)? {
         Some(bytes) => String::from_utf8(bytes).map_err(|e| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -89,8 +98,57 @@ pub fn read_provenance(path: &Path) -> std::io::Result<Option<WriteProvenance>> 
     Ok(Some(WriteProvenance { session_id: session, written_at_unix }))
 }
 
-fn map_xattr_err(err: std::io::Error) -> std::io::Error {
-    std::io::Error::new(err.kind(), format!("sharecli-fuse provenance xattr: {err}"))
+/// Unix backend: store via `xattr` (wraps `setxattr` / `getxattr`).
+#[cfg(unix)]
+fn set_attr(path: &Path, name: &str, value: &[u8]) -> std::io::Result<()> {
+    xattr::set(path, name, value).map_err(map_attr_err)
+}
+
+#[cfg(unix)]
+fn get_attr(path: &Path, name: &str) -> std::io::Result<Option<Vec<u8>>> {
+    xattr::get(path, name).map_err(map_attr_err)
+}
+
+/// Windows backend: store via NTFS alternate data streams (ADS).
+#[cfg(windows)]
+fn ads_path(path: &Path, stream: &str) -> PathBuf {
+    let mut os = path.as_os_str().to_os_string();
+    os.push(":");
+    os.push(stream);
+    PathBuf::from(os)
+}
+
+#[cfg(windows)]
+fn set_attr(path: &Path, name: &str, value: &[u8]) -> std::io::Result<()> {
+    let stream = match name {
+        ATTR_SESSION => ADS_SESSION,
+        ATTR_WRITTEN_AT => ADS_WRITTEN_AT,
+        _ => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("sharecli-fuse provenance: unsupported attr {name:?} on Windows"),
+            ))
+        }
+    };
+    std::fs::write(ads_path(path, stream), value)
+}
+
+#[cfg(windows)]
+fn get_attr(path: &Path, name: &str) -> std::io::Result<Option<Vec<u8>>> {
+    let stream = match name {
+        ATTR_SESSION => ADS_SESSION,
+        ATTR_WRITTEN_AT => ADS_WRITTEN_AT,
+        _ => return Ok(None),
+    };
+    match std::fs::read(ads_path(path, stream)) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
+fn map_attr_err(err: std::io::Error) -> std::io::Error {
+    std::io::Error::new(err.kind(), format!("sharecli-fuse provenance attr: {err}"))
 }
 
 #[cfg(test)]
