@@ -24,6 +24,18 @@ use crate::cow_session::CowMountHandle;
 use crate::provenance::{annotate_write, default_session_id};
 use crate::write_serialize_meters::record_passthrough_write;
 
+/// Best-effort NTSTATUS mapping for I/O failures (AC-009.25).
+fn io_err_to_ntstatus(err: &std::io::Error) -> i32 {
+    use std::io::ErrorKind;
+    match err.kind() {
+        ErrorKind::NotFound => 0xC000_0034u32 as i32, // OBJECT_NAME_NOT_FOUND
+        ErrorKind::PermissionDenied => 0xC000_0022u32 as i32, // ACCESS_DENIED
+        ErrorKind::AlreadyExists => 0xC000_0035u32 as i32, // OBJECT_NAME_COLLISION
+        ErrorKind::InvalidInput | ErrorKind::InvalidData => 0xC000_000Du32 as i32, // INVALID_PARAMETER
+        _ => 0xC000_0001u32 as i32, // STATUS_UNSUCCESSFUL
+    }
+}
+
 /// True when a WinFsp runtime DLL is present under Program Files.
 pub fn winfsp_installed() -> bool {
     const CANDIDATES: &[&str] = &[
@@ -248,7 +260,7 @@ impl FileSystemContext for PassthroughCtx {
         file_info: &mut OpenFileInfo,
     ) -> Result<Self::FileContext, FspError> {
         let path = self.resolve(file_name);
-        let meta = fs::metadata(&path).map_err(|_| FspError::NTSTATUS(0xC0000034u32 as i32))?;
+        let meta = fs::metadata(&path).map_err(|e| FspError::NTSTATUS(io_err_to_ntstatus(&e)))?;
         let is_dir = meta.is_dir();
         let file = if is_dir {
             None
@@ -258,7 +270,7 @@ impl FileSystemContext for PassthroughCtx {
                     .read(true)
                     .write(true)
                     .open(&path)
-                    .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?,
+                    .map_err(|e| FspError::NTSTATUS(io_err_to_ntstatus(&e)))?,
             )
         };
         Self::fill_info(&path, file_info)?;
@@ -351,26 +363,31 @@ impl FileSystemContext for PassthroughCtx {
         _constrained_io: bool,
         _file_info: &mut FileInfo,
     ) -> Result<u32, FspError> {
-        let mut guard =
-            context.file.lock().map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
-        let file = guard.as_mut().ok_or(FspError::NTSTATUS(0xC0000001u32 as i32))?;
-        if write_to_eof {
-            file.seek(SeekFrom::End(0)).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
-        } else {
-            file.seek(SeekFrom::Start(offset))
-                .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
-        }
-        file.write_all(buffer).map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
         let path = context.path.clone();
         let session = self.session_id.clone();
         let n = buffer.len() as u32;
-        self.cow
+        // Perform seek + write + provenance annotation under the per-path CoW lock
+        // so a concurrent commit/discard cannot race the mutation.
+        let done: Result<(), FspError> = self
+            .cow
             .with_locked_path(None, &path, || {
+                let mut guard =
+                    context.file.lock().map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
+                let file = guard.as_mut().ok_or(FspError::NTSTATUS(0xC0000001u32 as i32))?;
+                if write_to_eof {
+                    file.seek(SeekFrom::End(0))
+                        .map_err(|e| FspError::NTSTATUS(io_err_to_ntstatus(&e)))?;
+                } else {
+                    file.seek(SeekFrom::Start(offset))
+                        .map_err(|e| FspError::NTSTATUS(io_err_to_ntstatus(&e)))?;
+                }
+                file.write_all(buffer).map_err(|e| FspError::NTSTATUS(io_err_to_ntstatus(&e)))?;
                 annotate_write(&path, &session)
                     .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
                 Ok::<(), FspError>(())
             })
-            .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))??;
+            .map_err(|_| FspError::NTSTATUS(0xC0000001u32 as i32))?;
+        done?;
         record_passthrough_write();
         Ok(n)
     }
