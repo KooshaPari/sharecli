@@ -7,6 +7,12 @@ let package = Package(
     products: [
         .executable(name: "ShareCLITray", targets: ["ShareCLITray"]),
     ],
+    // P4-16: Sparkle auto-update. Pinned to 2.x range; minor updates
+    // are safe (semver). Sparkle is used to publish signed release
+    // builds via appcast.xml; the tray checks on launch + weekly.
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
+    ],
     targets: [
         // Thin C wrapper target so Swift can import the Rust FFI header.
         // The header + modulemap live inside Sources/CShareCLIFFI/ so the
@@ -26,7 +32,11 @@ let package = Package(
         // directory up at sharecli/assets/.
         .executableTarget(
             name: "ShareCLITray",
-            dependencies: ["ShareCLICore", "CShareCLIFFI"],
+            dependencies: [
+                "ShareCLICore",
+                "CShareCLIFFI",
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/ShareCLITray"
             // Link libsharecli_ffi via desktop/build.sh -Xlinker flags.
         ),
