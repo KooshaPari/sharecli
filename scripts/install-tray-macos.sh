@@ -97,6 +97,17 @@ cp "$FFI_DYLIB" "$APP_PATH/Contents/Frameworks/"
 cp "$IPC_BIN" "$APP_PATH/Contents/Resources/bin/sharecli-ipc"
 chmod +x "$APP_PATH/Contents/MacOS/ShareCLITray" "$APP_PATH/Contents/Resources/bin/sharecli-ipc"
 
+# P4-16: Bundle Sparkle.framework so the auto-updater can resolve at
+# runtime. SwiftPM emits it under .build/<bin-dir>/ExecutableModules/.
+# Skip silently if absent (Sparkle dep may have been removed in a
+# future iteration — the script must stay resilient).
+SPARKLE_FW="$BIN_DIR/ExecutableModules/Sparkle.framework"
+if [[ -d "$SPARKLE_FW" ]]; then
+    rm -rf "$APP_PATH/Contents/Frameworks/Sparkle.framework"
+    cp -R "$SPARKLE_FW" "$APP_PATH/Contents/Frameworks/"
+    chmod -R +w "$APP_PATH/Contents/Frameworks/Sparkle.framework"
+fi
+
 install_name_tool -change "@rpath/libsharecli_ffi.dylib" "@executable_path/../Frameworks/libsharecli_ffi.dylib" \
   "$APP_PATH/Contents/MacOS/ShareCLITray" 2>/dev/null || true
 
