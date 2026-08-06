@@ -19,6 +19,7 @@ struct DashboardView: View {
     @State private var paletteVisible: Bool = false
     @State private var helpVisible: Bool = false
     @State private var prefsVisible: Bool = false
+    @State private var updaterVisible: Bool = false
 
     private var selection: Binding<Section> {
         Binding(
@@ -148,6 +149,7 @@ struct DashboardView: View {
                     .help(err)
             }
         }
+        ToolbarItem(placement: .primaryAction) { Button { updaterVisible.toggle() } label: { Label("Updates", systemImage: "sparkles") }.help("Check for updates (Sparkle)").popover(isPresented: $updaterVisible, arrowEdge: .bottom) { UpdaterView(feedURL: URL(string: "https://sharecli.example/appcast.xml")!, publicEdKey: nil).frame(width: 360) } }
     }
 
     // MARK: - Keyboard shortcut plumbing
