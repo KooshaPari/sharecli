@@ -114,7 +114,8 @@ struct ProcessesPage: View {
     // MARK: - Tree subpage
 
     private var treeSubpage: some View {
-        TreeView(state: state)
+        // P2-9: route to Canvas-based DAG renderer (was TreeView).
+        ProcessesTreeCanvasView(state: state, onSelect: { _ in })
     }
 
     // MARK: - Trends subpage
