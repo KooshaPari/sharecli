@@ -121,7 +121,11 @@ struct ProcessesPage: View {
     // MARK: - Trends subpage
 
     private var trendsSubpage: some View {
-        TrendsView(state: state)
+        // Q8: layer FlameChartView (CPU + Memory + Process count +
+        // Network + Load panels) above the existing TrendsView's
+        // TrendChartCards via safeAreaInset. Single-line wire; both
+        // views coexist.
+        TrendsView(state: state).safeAreaInset(edge: .top) { FlameChartView(state: state) }
     }
 
     // MARK: - Resources subpage
