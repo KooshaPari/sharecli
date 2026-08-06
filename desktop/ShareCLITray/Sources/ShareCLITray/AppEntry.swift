@@ -19,6 +19,7 @@ struct ShareCLITrayApp {
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
@@ -129,7 +130,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         win.title = "ShareCLI Dashboard"
-        TrayWindowPositioner.place(window: win, below: btn)
+        if let btn = statusItem.button {
+            TrayWindowPositioner.place(window: win, below: btn)
+        } else {
+            win.center()
+        }
         win.contentView = NSHostingView(rootView: DashboardView(state: state))
         win.isReleasedWhenClosed = false
         win.makeKeyAndOrderFront(nil)

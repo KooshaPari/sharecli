@@ -32,7 +32,7 @@ enum TrayMenuController {
             keyEquivalent: "d"
         )
         openDashboard.target = MenuAction.shared
-        openDashboard.image = NSImage(systemSymbolName: "rectangle.stack.fill")
+        openDashboard.image = NSImage(systemSymbolName: "rectangle.stack.fill", accessibilityDescription: nil)
         menu.addItem(openDashboard)
 
         let refresh = NSMenuItem(
@@ -41,7 +41,7 @@ enum TrayMenuController {
             keyEquivalent: "r"
         )
         refresh.target = MenuAction.shared
-        refresh.image = NSImage(systemSymbolName: "arrow.clockwise")
+        refresh.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: nil)
         menu.addItem(refresh)
 
         menu.addItem(.separator())
@@ -52,7 +52,7 @@ enum TrayMenuController {
             keyEquivalent: ""
         )
         pause.target = MenuAction.shared
-        pause.image = NSImage(systemSymbolName: state.isPaused ? "play.fill" : "pause.fill")
+        pause.image = NSImage(systemSymbolName: state.isPaused ? "play.fill" : "pause.fill", accessibilityDescription: nil)
         menu.addItem(pause)
 
         let killAll = NSMenuItem(
@@ -61,7 +61,7 @@ enum TrayMenuController {
             keyEquivalent: ""
         )
         killAll.target = MenuAction.shared
-        killAll.image = NSImage(systemSymbolName: "xmark.bin")
+        killAll.image = NSImage(systemSymbolName: "xmark.bin", accessibilityDescription: nil)
         menu.addItem(killAll)
 
         menu.addItem(.separator())
@@ -72,7 +72,7 @@ enum TrayMenuController {
             keyEquivalent: "q"
         )
         quit.target = MenuAction.shared
-        quit.image = NSImage(systemSymbolName: "power")
+        quit.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
         menu.addItem(quit)
 
         // macOS quirk: when `statusItem.menu` is set, AppKit opens the menu
