@@ -1013,85 +1013,9 @@ struct TrendStats: Hashable {
     let current: Double
 }
 
-/// Compact "pool healthy / degraded / unhealthy" status pill.
-/// Rendered inside TrendChartCard headers and on the poolHealthStrip.
-/// Color is derived from `FleetSample.poolHealthy` (latest sample).
-/// - true → green (healthy)
-/// - false → yellow (degraded — pool exists but reported unhealthy)
-/// - nil → tertiary (waiting for first sample)
-struct HealthPill: View {
-    let healthy: Bool?
-    var compact: Bool = false
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: iconName)
-                .font(.system(size: compact ? 9 : 10, weight: .semibold))
-            if !compact {
-                Text(label)
-                    .font(.system(size: 10, weight: .semibold))
-                    .lineLimit(1)
-            }
-        }
-        .padding(.horizontal, compact ? 5 : 7)
-        .padding(.vertical, compact ? 2 : 3)
-        .foregroundStyle(foreground)
-        .background(background)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule().strokeBorder(stroke, lineWidth: 0.5)
-        )
-        .help(tooltip)
-    }
-
-    private var label: String {
-        switch healthy {
-        case .some(true): return "healthy"
-        case .some(false): return "degraded"
-        case .none: return "unhealthy"
-        }
-    }
-
-    private var iconName: String {
-        switch healthy {
-        case .some(true): return "checkmark.circle.fill"
-        case .some(false): return "exclamationmark.triangle.fill"
-        case .none: return "xmark.octagon.fill"
-        }
-    }
-
-    private var foreground: Color {
-        switch healthy {
-        case .some(true): return .green
-        case .some(false): return .yellow
-        case .none: return .red
-        }
-    }
-
-    private var background: Color {
-        foreground.opacity(0.15)
-    }
-
-    private var stroke: Color {
-        foreground.opacity(0.5)
-    }
-
-    private var tooltip: String {
-        switch healthy {
-        case .some(true): return "Pool reports healthy"
-        case .some(false): return "Pool reports degraded — check the Pool page"
-        case .none: return "No fleet sample yet — pool health unknown"
-        }
-    }
-}
-
-/// Shared RelativeDateTimeFormatter for "Updated 5s ago" footers.
-/// Configured once for `.abbreviated` style ("5s ago", "2 min. ago").
-private let relativeTimestampFormatter: RelativeDateTimeFormatter = {
-    let f = RelativeDateTimeFormatter()
-    f.unitsStyle = .abbreviated
-    return f
-}()
+// HealthPill and relativeTimestampFormatter were extracted to
+// `HealthPill.swift` so ResourcesView and other panels can reuse
+// them without duplicating the same SwiftUI body / formatter.
 
 /// Single trend chart card. Renders a Path-based polyline with a gradient
 /// fill below it, axis labels, and min/avg/max summary stats.
@@ -1406,6 +1330,21 @@ struct ResourcesView: View {
             Spacer()
             if let proj = p.project { Badge(text: proj, color: .blue) }
             if let h = p.harness { Badge(text: h, color: .purple) }
+            // Pool health pill + "Updated Xs ago" footer reuse the shared
+            // HealthPill + relativeTimestampFormatter from HealthPill.swift.
+            VStack(alignment: .trailing, spacing: 2) {
+                HealthPill(healthy: state.fleetHistory.last?.poolHealthy, compact: true)
+                if let ts = state.fleetHistory.last?.timestamp {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                        Text("Updated \(relativeTimestampFormatter.localizedString(for: ts, relativeTo: Date()))")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 
