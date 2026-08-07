@@ -1240,37 +1240,46 @@ struct ResourcesView: View {
     }
 
     var body: some View {
-        HSplitView {
-            // Left: process picker
-            VStack(spacing: 0) {
-                HStack {
-                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    Text("\(sorted.count) processes")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.quaternary.opacity(0.5))
-                List(sorted, selection: $selection) { p in
+        VStack(spacing: 12) {
+            // Top banner: composite fleet health so operators can correlate
+            // per-process resource use against overall fleet health at a
+            // glance while inspecting individual PIDs.
+            CompositeHealthCard(
+                fleet: state.fleetHistory.last,
+                host: state.hostWatchHistory.last
+            )
+
+            HSplitView {
+                // Left: process picker
+                VStack(spacing: 0) {
                     HStack {
-                        Text("\(p.pid)")
-                            .font(.system(.caption, design: .monospaced))
-                            .frame(width: 56, alignment: .leading)
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        Text("\(sorted.count) processes")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text(p.name)
-                            .font(.system(.caption, design: .monospaced))
-                            .lineLimit(1)
                         Spacer()
-                        Text("\(p.memory_mb) MB")
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundStyle(.secondary)
                     }
-                    .tag(p.pid as UInt32?)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.quaternary.opacity(0.5))
+                    List(sorted, selection: $selection) { p in
+                        HStack {
+                            Text("\(p.pid)")
+                                .font(.system(.caption, design: .monospaced))
+                                .frame(width: 56, alignment: .leading)
+                                .foregroundStyle(.secondary)
+                            Text(p.name)
+                                .font(.system(.caption, design: .monospaced))
+                                .lineLimit(1)
+                            Spacer()
+                            Text("\(p.memory_mb) MB")
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                        .tag(p.pid as UInt32?)
+                    }
+                    .frame(minWidth: 280)
                 }
-                .frame(minWidth: 280)
-            }
 
             // Right: details for the selected process
             Group {
@@ -1313,6 +1322,7 @@ struct ResourcesView: View {
         .onChange(of: selection) { _, new in
             selectedPidRaw = new.map(String.init) ?? ""
         }
+        }
     }
 
     private func header(for p: ProcessSummary) -> some View {
@@ -1330,10 +1340,20 @@ struct ResourcesView: View {
             Spacer()
             if let proj = p.project { Badge(text: proj, color: .blue) }
             if let h = p.harness { Badge(text: h, color: .purple) }
-            // Pool health pill + "Updated Xs ago" footer reuse the shared
-            // HealthPill + relativeTimestampFormatter from HealthPill.swift.
-            VStack(alignment: .trailing, spacing: 2) {
-                HealthPill(healthy: state.fleetHistory.last?.poolHealthy, compact: true)
+            // Pool health pill + composite-health score card side-by-side
+            // so operators see both the binary pool flag and the 0–100
+            // score from the T-95 composite metric while inspecting a
+            // process. The shared "Updated Xs ago" footer reuses
+            // `relativeTimestampFormatter` from HealthPill.swift.
+            VStack(alignment: .trailing, spacing: 4) {
+                HStack(spacing: 6) {
+                    HealthPill(healthy: state.fleetHistory.last?.poolHealthy, compact: true)
+                    MiniCompositeHealthCard(
+                        fleet: state.fleetHistory.last,
+                        host: state.hostWatchHistory.last
+                    )
+                    .frame(width: 200)
+                }
                 if let ts = state.fleetHistory.last?.timestamp {
                     HStack(spacing: 4) {
                         Image(systemName: "clock")

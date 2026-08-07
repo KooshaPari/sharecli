@@ -112,6 +112,14 @@ struct DashboardView: View {
             }
             .help(sectionSummary(sec))
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            MiniCompositeHealthCard(
+                fleet: state.fleetHistory.last,
+                host: state.hostWatchHistory.last
+            )
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+        }
     }
 
     @ViewBuilder
