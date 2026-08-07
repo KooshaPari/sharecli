@@ -139,6 +139,7 @@ mod tests {
 
     /// FR-009 / AC-009.4 — first read misses; second identical mtime hits.
     #[test]
+    #[serial_test::serial]
     fn read_cache_miss_then_hit() {
         let mut tmp = NamedTempFile::new().expect("tmp");
         write!(tmp, "hello-coalesce").expect("write");
@@ -161,6 +162,7 @@ mod tests {
 
     /// FR-009 / AC-009.4 — invalidate forces a subsequent miss.
     #[test]
+    #[serial_test::serial]
     fn read_cache_invalidate_forces_miss() {
         let mut tmp = NamedTempFile::new().expect("tmp");
         write!(tmp, "v1").expect("write");
