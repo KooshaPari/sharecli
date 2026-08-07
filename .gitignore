@@ -35,6 +35,7 @@ Thumbs.db
 windows/ShareCLITray/bin/
 windows/ShareCLITray/obj/
 worktrees/
+sharecli-wtrees/
 target-ac-007-87/
 target-ac00789/
 target-ac00790/
@@ -42,6 +43,10 @@ target-ac00791/
 target-fuse-smoke/
 target-ac00792/
 bench/
+
+# cargo-mutants generated artifacts (T-86 follow-up)
+mutants.out/
+mutants-hard*.json
 
 # Swift / Xcode build artifacts
 .build/

@@ -3,6 +3,11 @@ name: Mutation Testing
 # C07 L65 — cargo-mutants hard gate (T-640 / FR-003).
 # Promotion: docs/ops/mutants-hard-gate.md phase 4.
 # Aggregated into CI Success via .github/workflows/ci.yml `mutants` job.
+#
+# T-86 follow-up (2026-08-07): matrix-extended to cover sharecli-fuse
+# alongside sharecli-thermal-tui. Each crate has its own per-crate
+# mutants.toml at crates/<crate>/mutants.toml (or workspace-level for
+# thermal-tui at .cargo/mutants.toml).
 
 on:
   schedule:
@@ -15,6 +20,8 @@ on:
     branches: [main]
     paths:
       - "crates/sharecli-thermal-tui/**"
+      - "crates/sharecli-fuse/**"
+      - "crates/sharecli-fuse/mutants.toml"
       - "mutants.toml"
       - ".cargo/mutants.toml"
       - "docs/ops/mutants-threshold.md"
@@ -27,29 +34,40 @@ permissions:
 
 jobs:
   mutants:
-    name: cargo-mutants (required)
+    name: cargo-mutants (${{ matrix.crate }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - crate: sharecli-thermal-tui
+            config: .cargo/mutants.toml
+            json_out: mutants-hard-thermal-tui.json
+          - crate: sharecli-fuse
+            config: crates/sharecli-fuse/mutants.toml
+            json_out: mutants-hard-fuse.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
-          shared-key: mutants
+          shared-key: mutants-${{ matrix.crate }}
       - name: Install cargo-mutants
         run: cargo install --locked cargo-mutants
       - name: Run cargo mutants (examine set; fail-on-survivors)
         run: |
           set -euo pipefail
           cargo mutants --timeout 60 --jobs 2 \
-            -p sharecli-thermal-tui \
-            --json-outfile mutants-hard.json \
+            -p ${{ matrix.crate }} \
+            --config ${{ matrix.config }} \
+            --json-outfile ${{ matrix.json_out }} \
             -- --locked
           # cargo-mutants exits non-zero if survivors remain — that fails this job.
       - name: Upload mutants JSON
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: mutants-hard-${{ github.sha }}
-          path: mutants-hard.json
+          name: mutants-hard-${{ matrix.crate }}-${{ github.sha }}
+          path: ${{ matrix.json_out }}
           if-no-files-found: ignore
           retention-days: 14
