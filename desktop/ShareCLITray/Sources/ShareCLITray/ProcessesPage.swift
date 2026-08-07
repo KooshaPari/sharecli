@@ -854,8 +854,8 @@ struct TrendsView: View {
             if samples.count < 2 {
                 EmptyStateView(
                     icon: "chart.xyaxis.line",
-                    title: "Building history…",
-                    subtitle: "Fleet samples are captured on every refresh. After 2 samples (~5s) the trend chart renders.",
+                    title: "Waiting for first sample…",
+                    subtitle: "Fleet telemetry populates this view as monitoring.report snapshots arrive (typically every ~5s).",
                     variant: .quiet
                 )
             } else {
@@ -868,7 +868,9 @@ struct TrendsView: View {
                             timestamps: samples.map { $0.timestamp },
                             unit: "MB",
                             color: .orange,
-                            stats: stats(\.totalMemoryMB)
+                            stats: stats(\.totalMemoryMB),
+                            poolHealthy: samples.last?.poolHealthy,
+                            lastUpdated: samples.last?.timestamp
                         )
                         TrendChartCard(
                             title: "Used memory",
@@ -877,7 +879,9 @@ struct TrendsView: View {
                             timestamps: samples.map { $0.timestamp },
                             unit: "MB",
                             color: .red,
-                            stats: stats(\.usedMemoryMB)
+                            stats: stats(\.usedMemoryMB),
+                            poolHealthy: samples.last?.poolHealthy,
+                            lastUpdated: samples.last?.timestamp
                         )
                         TrendChartCard(
                             title: "Avg CPU %",
@@ -886,7 +890,9 @@ struct TrendsView: View {
                             timestamps: samples.map { $0.timestamp },
                             unit: "%",
                             color: .blue,
-                            stats: stats(\.cpuAvgPercent)
+                            stats: stats(\.cpuAvgPercent),
+                            poolHealthy: samples.last?.poolHealthy,
+                            lastUpdated: samples.last?.timestamp
                         )
                         TrendChartCard(
                             title: "Process count",
@@ -895,7 +901,9 @@ struct TrendsView: View {
                             timestamps: samples.map { $0.timestamp },
                             unit: "procs",
                             color: .green,
-                            stats: stats(\.totalProcesses)
+                            stats: stats(\.totalProcesses),
+                            poolHealthy: samples.last?.poolHealthy,
+                            lastUpdated: samples.last?.timestamp
                         )
                         poolHealthStrip
                     }
@@ -967,16 +975,30 @@ struct TrendsView: View {
     private var poolHealthStrip: some View {
         let healthy = samples.filter { $0.poolHealthy }.count
         let pct = samples.isEmpty ? 0 : Double(healthy) / Double(samples.count)
+        let latest = samples.last
         return HStack(spacing: 12) {
             Image(systemName: pct > 0.95 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.title2)
                 .foregroundStyle(pct > 0.95 ? .green : .orange)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Pool health").font(.headline)
+                HStack(spacing: 6) {
+                    Text("Pool health").font(.headline)
+                    HealthPill(healthy: latest?.poolHealthy, compact: true)
+                }
                 Text("\(healthy) / \(samples.count) samples were pool-healthy (\(Int(pct * 100))%)")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
+            if let latest {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                    Text("Updated \(relativeTimestampFormatter.localizedString(for: latest.timestamp, relativeTo: Date()))")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .padding(12)
         .background(.quaternary)
@@ -991,6 +1013,86 @@ struct TrendStats: Hashable {
     let current: Double
 }
 
+/// Compact "pool healthy / degraded / unhealthy" status pill.
+/// Rendered inside TrendChartCard headers and on the poolHealthStrip.
+/// Color is derived from `FleetSample.poolHealthy` (latest sample).
+/// - true → green (healthy)
+/// - false → yellow (degraded — pool exists but reported unhealthy)
+/// - nil → tertiary (waiting for first sample)
+struct HealthPill: View {
+    let healthy: Bool?
+    var compact: Bool = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: iconName)
+                .font(.system(size: compact ? 9 : 10, weight: .semibold))
+            if !compact {
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, compact ? 5 : 7)
+        .padding(.vertical, compact ? 2 : 3)
+        .foregroundStyle(foreground)
+        .background(background)
+        .clipShape(Capsule())
+        .overlay(
+            Capsule().strokeBorder(stroke, lineWidth: 0.5)
+        )
+        .help(tooltip)
+    }
+
+    private var label: String {
+        switch healthy {
+        case .some(true): return "healthy"
+        case .some(false): return "degraded"
+        case .none: return "unhealthy"
+        }
+    }
+
+    private var iconName: String {
+        switch healthy {
+        case .some(true): return "checkmark.circle.fill"
+        case .some(false): return "exclamationmark.triangle.fill"
+        case .none: return "xmark.octagon.fill"
+        }
+    }
+
+    private var foreground: Color {
+        switch healthy {
+        case .some(true): return .green
+        case .some(false): return .yellow
+        case .none: return .red
+        }
+    }
+
+    private var background: Color {
+        foreground.opacity(0.15)
+    }
+
+    private var stroke: Color {
+        foreground.opacity(0.5)
+    }
+
+    private var tooltip: String {
+        switch healthy {
+        case .some(true): return "Pool reports healthy"
+        case .some(false): return "Pool reports degraded — check the Pool page"
+        case .none: return "No fleet sample yet — pool health unknown"
+        }
+    }
+}
+
+/// Shared RelativeDateTimeFormatter for "Updated 5s ago" footers.
+/// Configured once for `.abbreviated` style ("5s ago", "2 min. ago").
+private let relativeTimestampFormatter: RelativeDateTimeFormatter = {
+    let f = RelativeDateTimeFormatter()
+    f.unitsStyle = .abbreviated
+    return f
+}()
+
 /// Single trend chart card. Renders a Path-based polyline with a gradient
 /// fill below it, axis labels, and min/avg/max summary stats.
 struct TrendChartCard: View {
@@ -1001,6 +1103,12 @@ struct TrendChartCard: View {
     let unit: String
     let color: Color
     let stats: TrendStats
+    /// Latest `FleetSample.poolHealthy` value. Drives the header pill
+    /// color and a subtle border tint. Nil means no data yet.
+    let poolHealthy: Bool?
+    /// Timestamp of the latest sample; rendered as a "Updated Xs ago"
+    /// footer using `RelativeDateTimeFormatter` (abbreviated style).
+    let lastUpdated: Date?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1010,6 +1118,7 @@ struct TrendChartCard: View {
                     Text(subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
+                HealthPill(healthy: poolHealthy, compact: false)
                 stat("min", stats.min)
                 stat("avg", stats.avg)
                 stat("max", stats.max)
@@ -1019,10 +1128,52 @@ struct TrendChartCard: View {
                 .frame(height: 90)
                 .background(.quaternary.opacity(0.3))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+            footer
         }
         .padding(12)
-        .background(.quaternary)
+        .background(cardBackground)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(borderTint, lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// "Updated 5s ago" footer. Hidden when no timestamp is supplied
+    /// (e.g. caller has not yet wired a sample).
+    @ViewBuilder
+    private var footer: some View {
+        if let lastUpdated {
+            HStack {
+                Spacer()
+                Image(systemName: "clock")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+                Text("Updated \(relativeTimestampFormatter.localizedString(for: lastUpdated, relativeTo: Date()))")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    /// Tint the card background very subtly with the health color so
+    /// the entire tile reads as healthy / degraded / unhealthy at a
+    /// glance. Falls back to neutral `.quaternary` when no sample exists.
+    private var cardBackground: AnyShapeStyle {
+        guard let poolHealthy else { return AnyShapeStyle(HierarchicalShapeStyle.quaternary) }
+        switch poolHealthy {
+        case true: return AnyShapeStyle(Color.green.opacity(0.06))
+        case false: return AnyShapeStyle(Color.yellow.opacity(0.08))
+        }
+    }
+
+    private var borderTint: Color {
+        guard let poolHealthy else { return .clear }
+        switch poolHealthy {
+        case true: return Color.green.opacity(0.35)
+        case false: return Color.yellow.opacity(0.45)
+        }
     }
 
     private func stat(_ label: String, _ v: Double) -> some View {
