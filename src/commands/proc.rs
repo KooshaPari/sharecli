@@ -193,7 +193,7 @@ pub fn build_agent_cmdline_map(
         .collect()
 }
 
-/// Sort key for `sharecli proc` inventory rows (AC-006.19).
+/// Sort key for `sharecli proc` inventory rows (AC-006.19, AC-006.41).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ProcSort {
     /// Ascending PID (lowest first).
@@ -205,6 +205,12 @@ pub enum ProcSort {
     Fd,
     /// Ascending process state letter; missing state sorts last; PID tie-break.
     State,
+    /// Descending CPU usage in percent (one-shot approximation); missing sorts last.
+    Cpu,
+    /// Ascending process age in seconds (oldest first); missing sorts last.
+    Age,
+    /// Ascending COMM name (alphabetical); PID tie-break ascending.
+    Name,
 }
 
 /// Parse `--limit N` for proc inventory (AC-006.21).
@@ -256,8 +262,98 @@ impl std::str::FromStr for ProcSort {
             "rss" => Ok(Self::Rss),
             "fd" => Ok(Self::Fd),
             "state" => Ok(Self::State),
-            other => bail!("unknown sort key '{other}'; expected 'rss', 'fd', 'pid', or 'state'"),
+            "cpu" => Ok(Self::Cpu),
+            "age" => Ok(Self::Age),
+            "name" => Ok(Self::Name),
+            other => bail!(
+                "unknown sort key '{other}'; expected 'rss', 'fd', 'pid', 'state', 'cpu', 'age', or 'name'"
+            ),
         }
+    }
+}
+
+/// Read `/proc/{pid}/stat` and return `(utime + stime, starttime)` in clock ticks.
+/// Returns `None` when the process is gone or `/proc` is unavailable.
+#[cfg(target_os = "linux")]
+fn read_pid_stat_linux(pid: u32) -> Option<(u64, u64)> {
+    let text = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    // /proc/{pid}/stat layout: `pid (comm) state ppid pgrp session tty_nr tpgid flags
+    //   minflt cminflt majflt cmajflt utime stime cutime cstime priority nice num_threads
+    //   itrealvalue starttime ...`. The COMM field can contain spaces, so we MUST split
+    //   on the last `)` before tokenizing the trailing fields.
+    let rparen = text.rfind(')')?;
+    let rest = &text[rparen + 1..];
+    let fields: Vec<&str> = rest.split_whitespace().collect();
+    // After ')', the field indices (0-based here) are: 0=state 1=ppid 2=pgrp 3=session
+    // 4=tty_nr 5=tpgid 6=flags 7=minflt 8=cminflt 9=majflt 10=cmajflt 11=utime 12=stime
+    // 13=cutime 14=cstime ... 19=starttime.
+    if fields.len() < 20 {
+        return None;
+    }
+    let utime: u64 = fields[11].parse().ok()?;
+    let stime: u64 = fields[12].parse().ok()?;
+    let starttime: u64 = fields[19].parse().ok()?;
+    Some((utime + stime, starttime))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn read_pid_stat_linux(_pid: u32) -> Option<(u64, u64)> {
+    None
+}
+
+/// Read host uptime in seconds from `/proc/uptime` (first field).
+#[cfg(target_os = "linux")]
+fn read_uptime_secs() -> Option<f64> {
+    let text = std::fs::read_to_string("/proc/uptime").ok()?;
+    text.split_whitespace().next()?.parse().ok()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn read_uptime_secs() -> Option<f64> {
+    None
+}
+
+/// `clock ticks per second` for `/proc/stat` and `/proc/{pid}/stat`. Linux default is 100.
+#[cfg(target_os = "linux")]
+const CLK_TCK: u64 = 100;
+
+#[cfg(not(target_os = "linux"))]
+const CLK_TCK: u64 = 100;
+
+/// Sample one-shot CPU usage percent for a PID using `/proc/{pid}/stat` + `/proc/uptime`.
+/// Returns `0.0` when the data is unavailable (non-Linux or process gone).
+fn sample_pid_cpu_percent(pid: u32) -> f64 {
+    let Some((cpu_ticks, starttime)) = read_pid_stat_linux(pid) else {
+        return 0.0;
+    };
+    let Some(uptime_secs) = read_uptime_secs() else {
+        return 0.0;
+    };
+    let tck = CLK_TCK as f64;
+    let starttime_secs = starttime as f64 / tck;
+    let elapsed = uptime_secs - starttime_secs;
+    if elapsed <= 0.0 {
+        return 0.0;
+    }
+    let cpu_secs = cpu_ticks as f64 / tck;
+    (cpu_secs / elapsed) * 100.0
+}
+
+/// Sample one-shot process age in seconds for a PID. Returns `u64::MAX` when data is
+/// unavailable (non-Linux or process gone) so missing rows sort last under `Age`.
+fn sample_pid_age_secs(pid: u32) -> u64 {
+    let Some((_, starttime)) = read_pid_stat_linux(pid) else {
+        return u64::MAX;
+    };
+    let Some(uptime_secs) = read_uptime_secs() else {
+        return u64::MAX;
+    };
+    let starttime_secs = starttime as f64 / CLK_TCK as f64;
+    let age = uptime_secs - starttime_secs;
+    if age < 0.0 {
+        0
+    } else {
+        age as u64
     }
 }
 
@@ -266,7 +362,7 @@ fn state_sort_letter(state_by_pid: &HashMap<u32, char>, pid: u32) -> char {
     state_by_pid.get(&pid).copied().unwrap_or(char::MAX)
 }
 
-/// Order watched agent rows for text/JSON inventory (`--sort`, AC-006.19, AC-006.36).
+/// Order watched agent rows for text/JSON inventory (`--sort`, AC-006.19, AC-006.36, AC-006.41).
 pub fn sort_watched_agents(
     watched: &[DetectedAgentWatch],
     sort: ProcSort,
@@ -297,11 +393,35 @@ pub fn sort_watched_agents(
                     .then_with(|| a.agent.pid.cmp(&b.agent.pid))
             });
         }
+        ProcSort::Cpu => {
+            // Descending CPU usage percent; missing data (0.0) sorts last via PID tie-break.
+            rows.sort_by(|a, b| {
+                let cpu_a = sample_pid_cpu_percent(a.agent.pid);
+                let cpu_b = sample_pid_cpu_percent(b.agent.pid);
+                cpu_b
+                    .partial_cmp(&cpu_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.agent.pid.cmp(&b.agent.pid))
+            });
+        }
+        ProcSort::Age => {
+            // Ascending age in seconds (oldest first); u64::MAX (missing data) sorts last.
+            rows.sort_by(|a, b| {
+                let age_a = sample_pid_age_secs(a.agent.pid);
+                let age_b = sample_pid_age_secs(b.agent.pid);
+                age_b.cmp(&age_a).then_with(|| a.agent.pid.cmp(&b.agent.pid))
+            });
+        }
+        ProcSort::Name => {
+            rows.sort_by(|a, b| {
+                a.agent.comm.cmp(&b.agent.comm).then_with(|| a.agent.pid.cmp(&b.agent.pid))
+            });
+        }
     }
     rows
 }
 
-/// Order tree root forests by live RSS/FD/PID/state samples (`--sort`, AC-006.19, AC-006.36).
+/// Order tree root forests by live RSS/FD/PID/state samples (`--sort`, AC-006.19, AC-006.36, AC-006.41).
 pub fn sort_agent_forests(
     forests: &[AgentTreeNode],
     sort: ProcSort,
@@ -332,6 +452,26 @@ pub fn sort_agent_forests(
                     .cmp(&state_sort_letter(state_by_pid, b.pid))
                     .then_with(|| a.pid.cmp(&b.pid))
             });
+        }
+        ProcSort::Cpu => {
+            roots.sort_by(|a, b| {
+                let cpu_a = sample_pid_cpu_percent(a.pid);
+                let cpu_b = sample_pid_cpu_percent(b.pid);
+                cpu_b
+                    .partial_cmp(&cpu_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.pid.cmp(&b.pid))
+            });
+        }
+        ProcSort::Age => {
+            roots.sort_by(|a, b| {
+                let age_a = sample_pid_age_secs(a.pid);
+                let age_b = sample_pid_age_secs(b.pid);
+                age_b.cmp(&age_a).then_with(|| a.pid.cmp(&b.pid))
+            });
+        }
+        ProcSort::Name => {
+            roots.sort_by(|a, b| a.comm.cmp(&b.comm).then_with(|| a.pid.cmp(&b.pid)));
         }
     }
     roots
@@ -1760,5 +1900,123 @@ mod tests {
         assert!(msg.contains("--sort"), "got: {msg}");
         assert!(msg.contains("--limit"), "got: {msg}");
         assert!(msg.contains("AC-007.92"), "got: {msg}");
+    }
+
+    fn fixture_row(pid: u32, family: &'static str, comm: &str, rss: u64) -> DetectedAgentWatch {
+        DetectedAgentWatch {
+            agent: DetectedAgent { pid, family, comm: comm.into() },
+            resource: AgentResourceSample { mem_rss_bytes: rss, fd_count: Some(0) },
+        }
+    }
+
+    fn fixture_inventory() -> Vec<DetectedAgentWatch> {
+        vec![
+            fixture_row(100, "claude", "claude", 50_000_000),
+            fixture_row(50, "claude", "claude", 200_000_000),
+            fixture_row(75, "claude", "claude", 100_000_000),
+            fixture_row(25, "claude", "claude", 75_000_000),
+            fixture_row(150, "claude", "claude", 300_000_000),
+            fixture_row(10, "claude", "claude", 10_000_000),
+        ]
+    }
+
+    #[test]
+    fn sort_rss_desc_then_limit_caps_rows() {
+        // AC-006.41 / AC-006.21: --sort rss --limit 5 returns at most 5 rows, RSS descending.
+        let inventory = fixture_inventory();
+        let sorted = sort_watched_agents(&inventory, ProcSort::Rss, &HashMap::new());
+        let limited = limit_watched_agents(sorted, Some(5));
+        assert!(limited.len() <= 5, "--limit 5 MUST cap at 5 rows; got {}", limited.len());
+        // Confirm strict descending RSS order across the limited slice.
+        let rss_seq: Vec<u64> = limited.iter().map(|r| r.resource.mem_rss_bytes).collect();
+        let mut prev = u64::MAX;
+        for rss in &rss_seq {
+            assert!(*rss <= prev, "RSS MUST be descending; saw {rss} after {prev}");
+            prev = *rss;
+        }
+        // First row MUST be the largest RSS fixture (pid 150 = 300M).
+        assert_eq!(limited[0].agent.pid, 150);
+    }
+
+    #[test]
+    fn sort_pid_asc_then_limit_caps_rows() {
+        // AC-006.19 / AC-006.21: --sort pid --limit 3 returns at most 3 rows, PID ascending.
+        let inventory = fixture_inventory();
+        let sorted = sort_watched_agents(&inventory, ProcSort::Pid, &HashMap::new());
+        let limited = limit_watched_agents(sorted, Some(3));
+        assert!(limited.len() <= 3, "--limit 3 MUST cap at 3 rows; got {}", limited.len());
+        let pid_seq: Vec<u32> = limited.iter().map(|r| r.agent.pid).collect();
+        let mut prev = 0u32;
+        for pid in &pid_seq {
+            assert!(*pid > prev, "PID MUST be ascending; saw {pid} after {prev}");
+            prev = *pid;
+        }
+        assert_eq!(limited[0].agent.pid, 10);
+        assert_eq!(limited[1].agent.pid, 25);
+        assert_eq!(limited[2].agent.pid, 50);
+    }
+
+    #[test]
+    fn sort_name_ascending_alphabetical() {
+        // AC-006.41: --sort name sorts by COMM alphabetical; PID tie-break ascending.
+        let inventory = vec![
+            fixture_row(3, "claude", "zsh", 1),
+            fixture_row(1, "claude", "bash", 1),
+            fixture_row(2, "claude", "alpha", 1),
+        ];
+        let sorted = sort_watched_agents(&inventory, ProcSort::Name, &HashMap::new());
+        let comms: Vec<&str> = sorted.iter().map(|r| r.agent.comm.as_str()).collect();
+        assert_eq!(comms, vec!["alpha", "bash", "zsh"]);
+    }
+
+    #[test]
+    fn sort_name_pid_tie_break_ascending() {
+        // Same COMM, different PID → PID tie-break ascending.
+        let inventory = vec![
+            fixture_row(30, "claude", "claude", 1),
+            fixture_row(10, "claude", "claude", 1),
+            fixture_row(20, "claude", "claude", 1),
+        ];
+        let sorted = sort_watched_agents(&inventory, ProcSort::Name, &HashMap::new());
+        let pids: Vec<u32> = sorted.iter().map(|r| r.agent.pid).collect();
+        assert_eq!(pids, vec![10, 20, 30]);
+    }
+
+    #[test]
+    fn proc_sort_parses_cpu_age_name() {
+        // AC-006.41: --sort accepts cpu, age, name keys alongside the historical set.
+        assert_eq!("cpu".parse::<ProcSort>().unwrap(), ProcSort::Cpu);
+        assert_eq!("age".parse::<ProcSort>().unwrap(), ProcSort::Age);
+        assert_eq!("name".parse::<ProcSort>().unwrap(), ProcSort::Name);
+        assert_eq!("NAME".parse::<ProcSort>().unwrap(), ProcSort::Name);
+    }
+
+    #[test]
+    fn proc_sort_unknown_key_lists_new_options() {
+        // AC-006.41: error message MUST enumerate cpu/age/name as accepted sort keys.
+        let err = "bogus".parse::<ProcSort>().expect_err("unknown sort key MUST fail");
+        let msg = err.to_string();
+        assert!(msg.contains("cpu"), "error MUST list 'cpu'; got: {msg}");
+        assert!(msg.contains("age"), "error MUST list 'age'; got: {msg}");
+        assert!(msg.contains("name"), "error MUST list 'name'; got: {msg}");
+    }
+
+    #[test]
+    fn parse_proc_limit_zero_is_rejected() {
+        // AC-006.21: --limit 0 MUST be rejected as invalid (>= 1).
+        let err = parse_proc_limit(Some(0)).expect_err("--limit 0 MUST fail");
+        assert!(
+            err.to_string().contains(">= 1") || err.to_string().contains("must be"),
+            "error MUST mention minimum; got: {err}"
+        );
+    }
+
+    #[test]
+    fn limit_under_inventory_size_returns_inventory() {
+        // AC-006.21: --limit N larger than inventory returns the full slice, capped order intact.
+        let inventory = fixture_inventory();
+        let sorted = sort_watched_agents(&inventory, ProcSort::Pid, &HashMap::new());
+        let limited = limit_watched_agents(sorted, Some(50));
+        assert_eq!(limited.len(), inventory.len(), "limit MUST NOT pad below inventory size");
     }
 }
