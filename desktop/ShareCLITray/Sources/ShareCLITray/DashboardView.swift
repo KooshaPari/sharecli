@@ -1,20 +1,21 @@
-/// DashboardView.swift — full NSWindow dashboard with 7 sidebar pages.
+/// DashboardView.swift — full NSWindow dashboard with 8 sidebar pages.
 ///
-/// Navigation sidebar (Cmd+1..7 to jump):
-///   1. Processes    → live process table with filter + bulk kill + export (PR 2)
-///   2. Agents       → fleet agent process roster (PR 1)
-///   3. Pool         → runtime pool composition + issues + host watch (PR 3)
-///   4. Effectiveness → cache/slot-queue hit rate counters from sharecli-fleet (PR 4)
-///   5. Config       → spawn_policy + pool + monitoring config editor (PR 7)
-///   6. Health       → Memory / Thermal gate / Host watch + subpages (PR 6)
-///   7. Logs         → live-tailing log viewer with filter + export (PR 8)
+/// Navigation sidebar (Cmd+1..8 to jump):
+///   1. Overview     → aggregated fleet + host + activity dashboard grid (q-dash-2)
+///   2. Processes    → live process table with filter + bulk kill + export (PR 2)
+///   3. Agents       → fleet agent process roster (PR 1)
+///   4. Pool         → runtime pool composition + issues + host watch (PR 3)
+///   5. Effectiveness → cache/slot-queue hit rate counters from sharecli-fleet (PR 4)
+///   6. Config       → spawn_policy + pool + monitoring config editor (PR 7)
+///   7. Health       → Memory / Thermal gate / Host watch + subpages (PR 6)
+///   8. Logs         → live-tailing log viewer with filter + export (PR 8)
 
 import SwiftUI
 import ShareCLICore
 
 struct DashboardView: View {
     @ObservedObject var state: AppState
-    @AppStorage("dashboard.sidebar.selection") private var selectionRaw: String = Section.processes.rawValue
+    @AppStorage("dashboard.sidebar.selection") private var selectionRaw: String = Section.overview.rawValue
     @AppStorage("dashboard.sidebar.columnWidth") private var sidebarColumnWidth: Double = 168
     @State private var paletteVisible: Bool = false
     @State private var helpVisible: Bool = false
@@ -23,12 +24,13 @@ struct DashboardView: View {
 
     private var selection: Binding<Section> {
         Binding(
-            get: { Section(rawValue: selectionRaw) ?? .processes },
+            get: { Section(rawValue: selectionRaw) ?? .overview },
             set: { selectionRaw = $0.rawValue }
         )
     }
 
     enum Section: String, CaseIterable, Identifiable {
+        case overview = "Overview"
         case processes = "Processes"
         case agents = "Agents"
         case pool = "Pool"
@@ -39,6 +41,7 @@ struct DashboardView: View {
         var id: String { rawValue }
         var icon: String {
             switch self {
+            case .overview: return "rectangle.grid.2x2"
             case .processes: return "cpu"
             case .agents: return "person.2.fill"
             case .pool: return "rectangle.stack.fill"
@@ -86,7 +89,7 @@ struct DashboardView: View {
         .onAppear {
             // Persist a sensible default if the @AppStorage above was missing.
             if Section(rawValue: selectionRaw) == nil {
-                selectionRaw = Section.processes.rawValue
+                selectionRaw = Section.overview.rawValue
             }
         }
     }
@@ -113,7 +116,8 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var detail: some View {
-        switch Section(rawValue: selectionRaw) ?? .processes {
+        switch Section(rawValue: selectionRaw) ?? .overview {
+        case .overview: DashboardOverview(state: state)
         case .processes: ProcessesPage(state: state)
         case .agents: AgentsPage(state: state)
         case .pool: PoolPage(state: state)
@@ -155,7 +159,7 @@ struct DashboardView: View {
     // MARK: - Keyboard shortcut plumbing
 
     private func attachShortcutMonitor(window: NSWindow?) -> Void {
-        // Use a local event monitor so Cmd+1..7 work even when focus is on
+        // Use a local event monitor so Cmd+1..8 work even when focus is on
         // a SwiftUI subview (SwiftUI's .keyboardShortcut(_, modifiers:)
         // attaches to a specific button; we want it for the whole window).
         let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -228,13 +232,14 @@ struct DashboardView: View {
 
     private func sectionSummary(_ sec: Section) -> String {
         switch sec {
-        case .processes: return "All live processes — bulk kill, JSON/CSV export, by-project/by-harness grouping. ⌘1"
-        case .agents: return "Spawned fleet agents (claude / forge / node / bun / etc). ⌘2"
-        case .pool: return "Runtime pool composition + gate decisions + host watch sparklines. ⌘3"
-        case .effectiveness: return "Hypervisor coalesce cache + slot-queue counters. ⌘4"
-        case .config: return "Spawn policy / pool / monitoring config editor with live apply. ⌘5"
-        case .health: return "Memory / Thermal gate / Host resource watch with subpages. ⌘6"
-        case .logs: return "Live tail of ~/.sharecli/logs/sharecli.log with filter + export. ⌘7"
+        case .overview: return "Aggregated fleet + host + activity dashboard grid. ⌘1"
+        case .processes: return "All live processes — bulk kill, JSON/CSV export, by-project/by-harness grouping. ⌘2"
+        case .agents: return "Spawned fleet agents (claude / forge / node / bun / etc). ⌘3"
+        case .pool: return "Runtime pool composition + gate decisions + host watch sparklines. ⌘4"
+        case .effectiveness: return "Hypervisor coalesce cache + slot-queue counters. ⌘5"
+        case .config: return "Spawn policy / pool / monitoring config editor with live apply. ⌘6"
+        case .health: return "Memory / Thermal gate / Host resource watch with subpages. ⌘7"
+        case .logs: return "Live tail of ~/.sharecli/logs/sharecli.log with filter + export. ⌘8"
         }
     }
 }

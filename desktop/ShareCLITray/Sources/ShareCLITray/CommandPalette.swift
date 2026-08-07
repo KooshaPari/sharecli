@@ -54,7 +54,7 @@ struct CommandPalette: View {
             .init(id: "act-json", title: "Export processes (JSON)", subtitle: "Save the current filtered set to JSON", icon: "square.and.arrow.down", kind: .action(.exportProcessesJSON)),
             .init(id: "act-csv", title: "Export processes (CSV)", subtitle: "Save the current filtered set to CSV", icon: "tablecells", kind: .action(.exportProcessesCSV)),
             .init(id: "act-clearfilter", title: "Clear all filters", subtitle: "Reset text + family + min-RSS", icon: "line.3.horizontal.decrease.circle", kind: .action(.clearFilter)),
-            .init(id: "act-help", title: "Show keyboard shortcuts", subtitle: "Reference: ⌘1..7 / ⌘R / ⌘K / ⌘W / ⌘/", icon: "keyboard", kind: .action(.showHelp)),
+            .init(id: "act-help", title: "Show keyboard shortcuts", subtitle: "Reference: ⌘1..8 / ⌘R / ⌘K / ⌘W / ⌘/", icon: "keyboard", kind: .action(.showHelp)),
             .init(id: "act-log", title: "Reveal log file in Finder", subtitle: state.statusSnapshot?.live_log_path?.path ?? "—", icon: "magnifyingglass.circle", kind: .action(.openLogFile)),
             .init(id: "act-prefs", title: "Open preferences", subtitle: "Refresh interval · log buffer cap · IPC endpoint", icon: "gearshape", kind: .action(.openPreferences)),
         ]
@@ -63,6 +63,7 @@ struct CommandPalette: View {
 
     private func sectionSubtitle(_ sec: DashboardView.Section) -> String {
         switch sec {
+        case .overview: return "Aggregated fleet + host + activity grid"
         case .processes: return "All live processes with bulk actions"
         case .agents: return "Spawned fleet agents"
         case .pool: return "Runtime pool composition + gate"
