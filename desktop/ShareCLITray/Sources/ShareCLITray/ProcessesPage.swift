@@ -1330,6 +1330,21 @@ struct ResourcesView: View {
             Spacer()
             if let proj = p.project { Badge(text: proj, color: .blue) }
             if let h = p.harness { Badge(text: h, color: .purple) }
+            // Pool health pill + "Updated Xs ago" footer reuse the shared
+            // HealthPill + relativeTimestampFormatter from HealthPill.swift.
+            VStack(alignment: .trailing, spacing: 2) {
+                HealthPill(healthy: state.fleetHistory.last?.poolHealthy, compact: true)
+                if let ts = state.fleetHistory.last?.timestamp {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                        Text("Updated \(relativeTimestampFormatter.localizedString(for: ts, relativeTo: Date()))")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 
