@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@82df476e759c1448517fac6bfb3677685cdcd78a
+        uses: trufflesecurity/trufflehog@74bb454e0dd362b59e403418ace122d762298a23
         with:
           extra_args: --only-verified
 
@@ -110,7 +110,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         if: ${{ hashFiles('Dockerfile') != '' }}
-        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8
+        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956
         with:
           image-ref: '${{ github.event.repository.name }}:scan'
           format: 'sarif'
