@@ -29,6 +29,7 @@ struct DashboardOverview: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 overviewHeader
+                compositeHealthSection
                 fleetSection
                 systemsSection
                 activitySection
@@ -36,6 +37,19 @@ struct DashboardOverview: View {
             .padding(16)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    // MARK: - Composite health section (T-95)
+
+    /// Single-tile composite health score combining pool + CPU + memory +
+    /// load into a 0–100 number plus a four-band classification. Reads
+    /// from `state.fleetHistory` and `state.hostWatchHistory`; shows the
+    /// cold-start placeholder until the first fleet sample lands.
+    private var compositeHealthSection: some View {
+        CompositeHealthCard(
+            fleet: state.fleetHistory.last,
+            host: state.hostWatchHistory.last
+        )
     }
 
     // MARK: - Overview header
