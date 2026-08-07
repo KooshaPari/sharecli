@@ -144,6 +144,36 @@ if [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
     fi
 fi
 
+# Check 4: Reject merge/rebase conflict markers in shared hot files
+# The Airlock Bot auto-commit daemon (user `airlock@phenoforge.local`)
+# has repeatedly re-introduced `<<<<<<< Updated upstream` markers into
+# `crates/sharecli-fuse/src/lib.rs` (around lines 985-1037). Block any
+# commit that would re-apply them so the bad WIP never reaches history.
+echo "🔒 Scanning staged changes for merge/rebase markers in protected files..."
+
+PROTECTED_FILES=(
+    "crates/sharecli-fuse/src/lib.rs"
+)
+
+for protected in "${PROTECTED_FILES[@]}"; do
+    case " $STAGED_FILES " in
+        *" $protected "*)
+            # Get the staged (post-image) content from the index
+            staged_blob=$(git show ":$protected" 2>/dev/null || true)
+            if [ -n "$staged_blob" ]; then
+                if echo "$staged_blob" | grep -nE '^<<<<<<< |^=======$|^>>>>>>> ' >/dev/null 2>&1; then
+                    echo -e "${RED}❌ Merge/rebase conflict markers detected in: $protected${NC}"
+                    echo "   The Airlock Bot daemon has been re-introducing these markers."
+                    echo "   Restore the file from the last clean commit and retry."
+                    echo "   Example: git checkout HEAD -- $protected"
+                    echo "   Or use the Q1 fix pattern: see commit 54277b0."
+                    ERRORS=$((ERRORS + 1))
+                fi
+            fi
+            ;;
+    esac
+done
+
 # Summary
 if [ $ERRORS -eq 0 ]; then
     echo -e "${GREEN}✅ Pre-commit checks passed!${NC}"

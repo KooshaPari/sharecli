@@ -166,3 +166,36 @@ build on Windows. `spawn-core-sys` skips Zig when
 `CARGO_CFG_TARGET_OS=windows` and uses a Rust stub (working semaphore;
 `zig_spawn`/`zig_waitpid` → `Unsupported`). See
 `crates/spawn-core-sys/README.md` and `build.rs`.
+
+## Known external daemons (daemon-shield)
+
+An external auto-commit daemon — **Airlock Bot**
+(`airlock@phenoforge.local`) — periodically stages and commits working-tree
+deltas with the message prefix `wip: auto-commit daemon <ISO timestamp>`. The
+daemon is not a git hook configured by this repo (no `core.hooksPath` set, no
+local script under `.git/hooks/`); it runs out-of-band. It has repeatedly
+re-introduced rebase/merge conflict markers into
+`crates/sharecli-fuse/src/lib.rs` (around lines 985–1037) — see prior fix
+`54277b0 fix(fuse): resolve rebase markers in lib.rs (Q1)`.
+
+### Suppression
+
+The repo-local hook at `.githooks/pre-commit` checks staged blobs of the
+protected hot file (`crates/sharecli-fuse/src/lib.rs`) for `<<<<<<<`,
+`=======`, and `>>>>>>>` conflict-marker lines and rejects the commit if any
+are found. The hook is dormant by default (no `core.hooksPath` is set); enable
+it per clone with:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+This is repo-local and reversible. Do not modify or disable the daemon from
+this repo — its behavior is owned by the airlock lane. To clear an
+already-dirty `lib.rs`:
+
+```bash
+git checkout HEAD -- crates/sharecli-fuse/src/lib.rs
+# verify clean
+git grep -nE '^<<<<<<< |^=======$|^>>>>>>> ' -- crates/sharecli-fuse/src/lib.rs
+```
