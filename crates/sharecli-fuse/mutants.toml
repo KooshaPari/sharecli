@@ -1,0 +1,14 @@
+# cargo-mutants configuration for sharecli-fuse (T-86)
+#
+# Scope: run mutation testing on the src/ tree of the sharecli-fuse crate.
+# Skip tests/ glue by excluding it from mutation generation; it is still
+# compiled and run as part of the test suite, which is what we want.
+#
+# Note: cargo-mutants >= 25 no longer accepts `timeout` / `jobs` keys in
+# config (they were renamed to CLI flags). The intended settings are:
+#   * per-test timeout ~120s (use `--timeout 120` on the CLI)
+#   * parallelism 4 (use `--jobserver-tasks 4` on the CLI)
+# When this file is loaded via `--config`, those CLI flags should accompany
+# the cargo-mutants invocation in CI/local.
+
+exclude_globs = ["tests/*"]
