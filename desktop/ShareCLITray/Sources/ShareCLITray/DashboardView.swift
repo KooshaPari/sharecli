@@ -21,6 +21,8 @@ struct DashboardView: View {
     @State private var helpVisible: Bool = false
     @State private var prefsVisible: Bool = false
     @State private var updaterVisible: Bool = false
+    @AppStorage(UpdateChannel.storageKey) private var channelRaw: String = UpdateChannel.default.rawValue
+    private var channel: UpdateChannel { UpdateChannel(rawValue: channelRaw) ?? .default }
 
     private var selection: Binding<Section> {
         Binding(
@@ -160,6 +162,27 @@ struct DashboardView: View {
                     .foregroundStyle(.red)
                     .help(err)
             }
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                ForEach(UpdateChannel.allCases) { option in
+                    Button {
+                        channelRaw = option.rawValue
+                    } label: {
+                        if channelRaw == option.rawValue {
+                            Label(option.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(option.displayName)
+                        }
+                    }
+                }
+                Divider()
+                Button("Check for updates…") { updaterVisible = true }
+            } label: {
+                Label("Channel: \(channel.displayName)", systemImage: "sparkles")
+                    .foregroundStyle(channel.badgeColor)
+            }
+            .help("Sparkle release channel (current: \(channel.displayName))")
         }
         ToolbarItem(placement: .primaryAction) { Button { updaterVisible.toggle() } label: { Label("Updates", systemImage: "sparkles") }.help("Check for updates (Sparkle)").popover(isPresented: $updaterVisible, arrowEdge: .bottom) { UpdaterView(feedURL: URL(string: "https://sharecli.example/appcast.xml")!, publicEdKey: nil).frame(width: 360) } }
     }
