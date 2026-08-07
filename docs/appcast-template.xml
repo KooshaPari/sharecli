@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sparkle appcast template — sharecli ShareCLITray.app (stable channel)
+
+  Feed URL conventions:
+    https://sharecli.example/appcast-stable.xml  ->  stable
+    https://sharecli.example/appcast-beta.xml     ->  beta
+    https://sharecli.example/appcast-alpha.xml    ->  alpha
+
+  Production feed hosts replace "sharecli.example" with the real origin.
+  Sparkle resolves the feed from Info.plist (SUFeedURL) and from
+  FeedURLDelegate.feedURLString(for:) for per-channel switches.
+
+  This template documents the canonical shape of a single appcast entry.
+  generate_appcast (Sparkle's command-line tool) emits this format
+  automatically when given an archives directory; the placeholder
+  values below show the field types and where they belong.
+
+  Signature notes:
+    - sparkle:edSignature values are base64 Ed25519 signatures of the
+      referenced archive's bytes, computed with the publisher's
+      private EdDSA key (see scripts/build-appcast.sh).
+    - The trailing sparkle-signatures block carries the appcast
+      signature; re-signing is required after any manual edit
+      (generate_appcast does this automatically).
+-->
+<rss version="2.0"
+     xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>sharecli ShareCLITray Changelog</title>
+    <description>Most recent changes for the sharecli tray app.</description>
+    <language>en</language>
+
+    <item>
+      <title>Version 0.3.1</title>
+      <!-- CFBundleVersion-equivalent integer used for ordering. -->
+      <sparkle:version>31</sparkle:version>
+      <!-- CFBundleShortVersionString (semver-ish human label). -->
+      <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
+      <!-- Channel tag — must match the filename suffix
+           (stable / beta / alpha) so FeedURLDelegate filters
+           the feed correctly when the user switches channels. -->
+      <sparkle:channel>stable</sparkle:channel>
+      <!-- Minimum macOS release required by this build. -->
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <!-- Optional human landing page for "Learn More" link. -->
+      <link>https://github.com/KooshaPari/sharecli/releases/tag/v0.3.1</link>
+
+      <description>
+        <![CDATA[
+          <ul>
+            <li>Adopt Sparkle delta updates for smaller tray downloads.</li>
+            <li>Channel picker remembers selection across launches.</li>
+          </ul>
+        ]]>
+      </description>
+      <pubDate>Sat, 02 Aug 2026 12:00:00 +0000</pubDate>
+
+      <!-- Full archive for users on older releases or unable to
+           apply a delta. URL is download-url-prefix + file name. -->
+      <enclosure url="https://sharecli.example/downloads/ShareCLITray-0.3.1.zip"
+                 sparkle:version="31"
+                 sparkle:shortVersionString="0.3.1"
+                 length="4382016"
+                 type="application/octet-stream"
+                 sparkle:edSignature="REPLACE_WITH_BASE64_EDDSA_SIGNATURE_OF_FULL_ARCHIVE" />
+
+      <!-- Delta updates: one <sparkle:delta> per prior release we
+           want to bridge from. Each entry carries the from-version
+           (sparkle:deltaFrom) so Sparkle can pick the right patch.
+           generate_appcast emits up to --maximum-deltas entries. -->
+      <sparkle:deltas>
+        <enclosure url="https://sharecli.example/downloads/ShareCLITray-0.3.1-from-0.3.0.delta"
+                   sparkle:deltaFrom="30"
+                   length="612384"
+                   type="application/octet-stream"
+                   sparkle:edSignature="REPLACE_WITH_BASE64_EDDSA_SIGNATURE_OF_DELTA_PATCH" />
+      </sparkle:deltas>
+    </item>
+
+    <item>
+      <title>Version 0.3.0</title>
+      <sparkle:version>30</sparkle:version>
+      <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+      <sparkle:channel>stable</sparkle:channel>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <link>https://github.com/KooshaPari/sharecli/releases/tag/v0.3.0</link>
+
+      <description>
+        <![CDATA[
+          <ul>
+            <li>Initial stable release of the Sparkle auto-updater.</li>
+          </ul>
+        ]]>
+      </description>
+      <pubDate>Sat, 04 Jul 2026 12:00:00 +0000</pubDate>
+
+      <enclosure url="https://sharecli.example/downloads/ShareCLITray-0.3.0.zip"
+                 sparkle:version="30"
+                 sparkle:shortVersionString="0.3.0"
+                 length="4357120"
+                 type="application/octet-stream"
+                 sparkle:edSignature="REPLACE_WITH_BASE64_EDDSA_SIGNATURE_OF_FULL_ARCHIVE" />
+    </item>
+  </channel>
+</rss>
+<!--
+  The trailing sparkle-signatures block is appended by generate_appcast
+  when re-signing. Manual edits above will invalidate the signature;
+  run scripts/build-appcast.sh to regenerate.
+-->

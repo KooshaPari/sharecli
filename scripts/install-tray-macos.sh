@@ -108,6 +108,21 @@ if [[ -d "$SPARKLE_FW" ]]; then
     chmod -R +w "$APP_PATH/Contents/Frameworks/Sparkle.framework"
 fi
 
+# t-70: Generate a per-channel appcast feed and copy it into the .app's
+# Resources so the bundled Sparkle updater can resolve an offline feed
+# for QA / smoke. Release tagging (CI / release.yml) is responsible
+# for promoting these stubs to signed, delta-aware feeds; this step
+# stays best-effort so a local install never fails on a missing toolchain.
+APPCAST_SCRIPT="$REPO_ROOT/scripts/build-appcast.sh"
+if [[ -x "$APPCAST_SCRIPT" ]]; then
+    echo "==> Generating appcast feeds"
+    if ! SHARECLI_TRAY_APP="$APP_PATH" "$APPCAST_SCRIPT" --install \
+            --prefix "${SHARECLI_DOWNLOAD_PREFIX:-https://sharecli.example/downloads}" \
+            2>/dev/null; then
+        echo "    (skipped: appcast generation failed; continuing install)" >&2
+    fi
+fi
+
 install_name_tool -change "@rpath/libsharecli_ffi.dylib" "@executable_path/../Frameworks/libsharecli_ffi.dylib" \
   "$APP_PATH/Contents/MacOS/ShareCLITray" 2>/dev/null || true
 
