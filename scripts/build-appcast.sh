@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# build-appcast.sh — Generate Sparkle appcast XML for ShareCLITray.app.
+#
+# Complements scripts/install-tray-macos.sh. Produces a per-channel
+# appcast feed (appcast-stable.xml / appcast-beta.xml / appcast-alpha.xml)
+# inside a staged archives directory and copies the chosen channel's
+# feed into the tray's Contents/Resources so the bundled Sparkle
+# updater can resolve it offline (handy for QA / offline smoke).
+#
+# Sparkle's first-party tool `generate_appcast` lives in the Sparkle
+# checkout under desktop/ShareCLITray/.build/checkouts/Sparkle/. It
+# computes binary deltas between consecutive archives in the input
+# directory and emits a signed appcast with <sparkle:deltas> blocks.
+# When the tool is unavailable we emit an unsigned, delta-less appcast
+# as a fallback so downstream packaging scripts can still resolve.
+#
+# Usage:
+#   ./scripts/build-appcast.sh                                  # all channels, stage under dist/appcast
+#   ./scripts/build-appcast.sh --channel stable --install       # generate + copy into /Applications/ShareCLITray.app
+#   ./scripts/build-appcast.sh --archives ./out/archives        # custom archives directory
+#
+# Environment:
+#   SHARECLI_APPCAST_OUT   Output directory (default dist/appcast)
+#   SHARECLI_APPCAST_BIN_DIR  Path to built sharecli-ipc (default target/release)
+#   SHARECLI_DOWNLOAD_PREFIX  Download URL prefix baked into enclosure URLs
+#                           (default https://sharecli.example/downloads)
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROFILE=release
+TARGET="$REPO_ROOT/target/$PROFILE"
+TRAY_PKG="$REPO_ROOT/desktop/ShareCLITray"
+
+CHANNEL=""
+INSTALL=0
+ARCHIVES_DIR=""
+OUT_DIR="${SHARECLI_APPCAST_OUT:-$REPO_ROOT/dist/appcast}"
+DOWNLOAD_PREFIX="${SHARECLI_DOWNLOAD_PREFIX:-https://sharecli.example/downloads}"
+
+usage() {
+  sed -n '2,22p' "$0"
+  exit "${1:-0}"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --channel)   CHANNEL="$2"; shift 2 ;;
+    --install)   INSTALL=1; shift ;;
+    --archives)  ARCHIVES_DIR="$2"; shift 2 ;;
+    --out)       OUT_DIR="$2"; shift 2 ;;
+    --prefix)    DOWNLOAD_PREFIX="$2"; shift 2 ;;
+    -h|--help)   usage 0 ;;
+    *) echo "Unknown arg: $1" >&2; usage 2 ;;
+  esac
+done
+
+# Allow the caller to override the archives dir for ad-hoc runs.
+if [[ -z "$ARCHIVES_DIR" ]]; then
+  ARCHIVES_DIR="$OUT_DIR/archives"
+fi
+
+mkdir -p "$ARCHIVES_DIR" "$OUT_DIR"
+
+# Discover Sparkle's generate_appcast tool. SwiftPM checks the dep out
+# under .build/checkouts/Sparkle; we build it on demand if the binary
+# is missing. Building is optional — if it fails we fall back to the
+# plain XML emitter.
+SPARKLE_DIR="$TRAY_PKG/.build/checkouts/Sparkle"
+GENERATE_APPCAST_BIN="$OUT_DIR/generate_appcast"
+
+if [[ -d "$SPARKLE_DIR" ]]; then
+  echo "==> Building Sparkle generate_appcast tool"
+  if ! (cd "$SPARKLE_DIR" && swift build -c release \
+          --product generate_appcast \
+          --output "$OUT_DIR" 2>/dev/null); then
+    echo "    (skipped: generate_appcast build failed; fallback emitter will be used)"
+    GENERATE_APPCAST_BIN=""
+  else
+    [[ -x "$OUT_DIR/generate_appcast" ]] && GENERATE_APPCAST_BIN="$OUT_DIR/generate_appcast"
+  fi
+else
+  echo "    (no Sparkle checkout at $SPARKLE_DIR; fallback emitter will be used)"
+  GENERATE_APPCAST_BIN=""
+fi
+
+# Read the current version. The repo pins the version in VERSION; we
+# use that for sparkle:version (integer build number) and
+# sparkle:shortVersionString (semver-ish). Both fields must match
+# CFBundleVersion / CFBundleShortVersionString in the .app's Info.plist
+# so Sparkle accepts the update as a valid upgrade.
+VERSION_SHORT="$(tr -d '[:space:]' < "$REPO_ROOT/VERSION" 2>/dev/null || echo "0.0.0")"
+# Build number is the major*10000 + minor*100 + patch triple (mirrors
+# how Sparkle's TestApplication seeds the integer version).
+IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_SHORT"
+MAJOR="${MAJOR:-0}"; MINOR="${MINOR:-0}"; PATCH="${PATCH:-0}"
+VERSION_INT=$((10#$MAJOR * 10000 + 10#$MINOR * 100 + 10#$PATCH))
+
+# Determine which channels to emit. Default to all three so a single
+# invocation produces the whole fan-out; --channel narrows the run.
+CHANNELS=()
+if [[ -n "$CHANNEL" ]]; then
+  CHANNELS=("$CHANNEL")
+else
+  CHANNELS=(stable beta alpha)
+fi
+
+emit_fallback_appcast() {
+  # Plain (unsigned, delta-less) appcast for the requested channel.
+  # Used when generate_appcast is unavailable. The signature values
+  # are intentionally placeholder so a downstream verifier notices
+  # the gap and refuses to consume them.
+  local channel="$1" out="$2" archive_name="$3" archive_size="$4"
+  cat > "$out" <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+     xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>sharecli ShareCLITray Changelog (${channel})</title>
+    <description>Fallback (unsigned) feed — generated by scripts/build-appcast.sh.</description>
+    <language>en</language>
+    <item>
+      <title>Version ${VERSION_SHORT}</title>
+      <sparkle:version>${VERSION_INT}</sparkle:version>
+      <sparkle:shortVersionString>${VERSION_SHORT}</sparkle:shortVersionString>
+      <sparkle:channel>${channel}</sparkle:channel>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <pubDate>$(date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
+      <enclosure url="${DOWNLOAD_PREFIX}/${archive_name}"
+                 sparkle:version="${VERSION_INT}"
+                 sparkle:shortVersionString="${VERSION_SHORT}"
+                 length="${archive_size}"
+                 type="application/octet-stream"
+                 sparkle:edSignature="UNSIGNED_FALLBACK_REQUIRES_GENERATE_APPCAST" />
+    </item>
+  </channel>
+</rss>
+XML
+}
+
+# Locate (or synthesize) a stub archive for the current version. The
+# real release pipeline (release.yml) drops a signed zip into the
+# archives directory; during local dev we emit a deterministic
+# zero-bytes placeholder so generate_appcast has something to point at.
+ARCHIVE_NAME="ShareCLITray-${VERSION_SHORT}.zip"
+STAGE_ARCHIVE="$ARCHIVES_DIR/$ARCHIVE_NAME"
+if [[ ! -f "$STAGE_ARCHIVE" ]]; then
+  printf 'sharecli-appcast-stub-%s\n' "$VERSION_SHORT" > "$STAGE_ARCHIVE"
+fi
+ARCHIVE_SIZE="$(wc -c < "$STAGE_ARCHIVE" | tr -d '[:space:]')"
+
+for channel in "${CHANNELS[@]}"; do
+  DEST="$OUT_DIR/appcast-${channel}.xml"
+  echo "==> Generating appcast for channel: $channel"
+  echo "    Archives dir: $ARCHIVES_DIR"
+  echo "    Output:       $DEST"
+  if [[ -x "$GENERATE_APPCAST_BIN" ]]; then
+    # Real Sparkle path: invoke generate_appcast with --channel so the
+    # emitted feed is tagged for the right audience. The tool will
+    # also produce delta files alongside the archive when previous
+    # versions are present in the archives directory.
+    "$GENERATE_APPCAST_BIN" \
+      --channel "$channel" \
+      --download-url-prefix "$DOWNLOAD_PREFIX" \
+      -o "$DEST" \
+      "$ARCHIVES_DIR" \
+      || {
+        echo "    generate_appcast failed for $channel; emitting fallback feed" >&2
+        emit_fallback_appcast "$channel" "$DEST" "$ARCHIVE_NAME" "$ARCHIVE_SIZE"
+      }
+  else
+    emit_fallback_appcast "$channel" "$DEST" "$ARCHIVE_NAME" "$ARCHIVE_SIZE"
+  fi
+done
+
+# Copy the stable feed into the tray bundle so an offline / system
+# install can resolve the feed from Contents/Resources. We also copy
+# the per-channel feeds; Sparkle's FeedURLDelegate picks the right
+# one when the user toggles channels.
+if [[ "$INSTALL" -eq 1 ]]; then
+  APP_PATH="${SHARECLI_TRAY_APP:-/Applications/ShareCLITray.app}"
+  if [[ ! -d "$APP_PATH" ]]; then
+    echo "==> APP_PATH=$APP_PATH does not exist; skipping install step" >&2
+  else
+    echo "==> Installing appcast feeds into $APP_PATH/Contents/Resources"
+    mkdir -p "$APP_PATH/Contents/Resources"
+    for channel in "${CHANNELS[@]}"; do
+      cp "$OUT_DIR/appcast-${channel}.xml" "$APP_PATH/Contents/Resources/"
+    done
+    # Always keep a plain appcast.xml copy (legacy / dashboard link)
+    # pointing at the stable feed.
+    cp "$OUT_DIR/appcast-stable.xml" "$APP_PATH/Contents/Resources/appcast.xml"
+    echo "    Copied $(printf '%s ' "${CHANNELS[@]}") feed(s)."
+  fi
+fi
+
+echo "==> Done. Feeds under $OUT_DIR"
+ls -1 "$OUT_DIR" | grep -E '^appcast-.*\.xml$' || true
