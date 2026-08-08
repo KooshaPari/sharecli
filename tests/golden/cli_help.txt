@@ -3,10 +3,13 @@ Shared CLI process manager for multi-project agent orchestration
 Usage: sharecli [OPTIONS] <COMMAND>
 
 Commands:
+  session       Inspect durable agent sessions
+  surface       Send shell-free I/O requests to a ShareCLI-enabled Ghostty surface
   ps            List managed processes
   start         Start a harness process
   stop          Stop managed processes
   status        Check process health
+  proc          List host-detected coding agents (proc scan + RSS/FD samples)
   health        Run a runtime health probe
   config        Configuration management
   project       Project management
@@ -21,6 +24,7 @@ Commands:
   report        Print a fleet analytics snapshot (one-shot or live watch mode)
   fleet         Fleet device management
   mesh          Maildir mesh task-queue operator surface (status / reclaim)
+  fuse          FUSE IO intercept operator surface (mount, provenance, CoW)
   cast          Cross-machine text injection into registered terminal panes
   proc-compose  process-compose.yaml integration
   completions   Generate shell completion script
@@ -40,7 +44,7 @@ Options:
 
       --theme <NAME>
           Color theme: `backbone-2` / `bb2` / `dark` (default) or `backbone-2-light` / `light`. Maps to Backbone-2 dark/light families in tokens.css
-          
+
           [default: backbone-2]
 
   -h, --help

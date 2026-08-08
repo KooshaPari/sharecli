@@ -6,4 +6,7 @@ Options:
   -p, --project <PROJECT>  Filter by project name
       --harness <HARNESS>  Filter by harness type (claude, forge, node, bun)
   -a, --all                Show all processes including system ones
+      --json               Emit JSON (requires `--all` for host agent inventory parity; AC-007.43)
+      --csv                Emit CSV (requires `--all` for host agent inventory parity; AC-007.83)
+  -w, --watch <WATCH>      Re-render every N seconds until Ctrl-C (live watch mode; AC-007.49 with --all --json)
   -h, --help               Print help
