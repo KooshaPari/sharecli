@@ -125,6 +125,23 @@ jobs:
         run: |
           RUSTFLAGS="--cfg loom" cargo test -p sharecli-sync --test loom_pool_index
 
+  guardrail:
+    name: Guardrail (nextest)
+    needs: detect
+    if: needs.detect.outputs.has_rust == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-nextest
+        run: |
+          cargo install --locked cargo-nextest 2>&1 || echo "::warning::cargo-nextest install failed (advisory)"
+      - name: cargo nextest run (guardrail)
+        run: |
+          cargo nextest run --locked --all-features --profile ci 2>&1 || echo "::warning::nextest guardrail failures (advisory)"
+
   python:
     name: Python
     needs: detect
