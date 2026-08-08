@@ -177,7 +177,7 @@ jobs:
         if: matrix.os == 'ubuntu-24.04'
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
       - name: Install npm deps (a11y dashboard gate)
         if: matrix.os == 'ubuntu-24.04'
