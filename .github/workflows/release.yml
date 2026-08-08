@@ -173,6 +173,15 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+      - name: Setup Node
+        if: matrix.os == 'ubuntu-24.04'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install npm deps (a11y dashboard gate)
+        if: matrix.os == 'ubuntu-24.04'
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       - name: Test release build (host)
         if: matrix.os == 'ubuntu-24.04'
         run: cargo test --release --locked --all-features
