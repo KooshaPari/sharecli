@@ -92,7 +92,9 @@ fn fr006_thermal_tui_agent_lines_compact_show_state() {
 /// FR-006 / AC-006.9 — headless thermal render includes DetectedAgent panel.
 #[test]
 fn fr006_thermal_tui_render_includes_agent_panel() {
-    let backend = TestBackend::new(120, 34);
+    // 64 rows: the full layout (title/thermal/gate/slots/pool/status/agents/watch/io/footer)
+    // needs ~40 rows; the in-crate render tests use TestBackend::new(120, 64).
+    let backend = TestBackend::new(120, 64);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
         .with_operator_meters(

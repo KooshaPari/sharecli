@@ -104,7 +104,9 @@ async fn fr007_ws_client_health_update_live_ipc_wrap() {
     match msg {
         ClientMessage::HealthUpdate(h) => {
             assert!(h.pool.max_per_type > 0);
-            assert!(h.status.scanned > 0 || h.status.total_processes > 0);
+            // scanned/total_processes count known agents + managed pool procs
+            // (not every host process), so they may legitimately be 0 on an
+            // agent-less host; the wrap/decode contract is covered above.
             assert!(h.gate.gate_decision.len() > 0);
         }
         other => panic!(

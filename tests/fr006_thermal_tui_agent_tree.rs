@@ -93,7 +93,9 @@ fn fr006_thermal_tui_agent_forest_lines_compact_flat() {
 /// FR-006 / AC-006.22 — headless thermal render includes agent process tree.
 #[test]
 fn fr006_thermal_tui_render_includes_agent_tree() {
-    let backend = TestBackend::new(120, 34);
+    // 64 rows: the full layout (title/thermal/gate/slots/pool/status/agents/watch/io/footer)
+    // needs ~40 rows; the in-crate render tests use TestBackend::new(120, 64).
+    let backend = TestBackend::new(120, 64);
     let mut terminal = Terminal::new(backend).expect("terminal");
     let mut app = App::new(4)
         .with_operator_meters(

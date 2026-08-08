@@ -125,13 +125,15 @@ fn fr007_tray_gate_host_watch_ui_swift_wires_operator_display() {
         "Tray popover MUST surface gate/host_watch lines (AC-007.56)"
     );
 
-    let health = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift");
+    // The dashboard Health view moved from DashboardView.swift to HealthPage.swift
+    // (3-subpage layout: Memory / Thermal gate / Host watch).
+    let health = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/HealthPage.swift");
     assert!(
-        health.contains("OperatorDisplay.formatHostWatchTrayLine"),
+        health.contains("HostWatchSubpage"),
         "Dashboard Health view MUST surface host_watch fields (AC-007.56)"
     );
     assert!(
-        health.contains("OperatorDisplay.formatGateTrayLine"),
+        health.contains("resolveTrayGateVisual"),
         "Dashboard Health view MUST surface gate fields (AC-007.56)"
     );
 }
