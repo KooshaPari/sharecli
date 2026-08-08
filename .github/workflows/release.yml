@@ -137,11 +137,24 @@ jobs:
           fi
           if [[ "${ARCHIVE_KIND}" == "zip" ]]; then
             ARCHIVE="sharecli-${TARGET}.zip"
-            (cd "${STAGE}" && zip -r "../${ARCHIVE}" .)
-            if command -v sha256sum >/dev/null 2>&1; then
-              sha256sum "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+            if [[ "${RUNNER_OS:-}" == "Windows" ]]; then
+              # `zip` is not preinstalled on windows-latest GitHub-hosted runners; use
+              # PowerShell `Compress-Archive` + `Get-FileHash` instead, matching the
+              # parity pattern already used by the `tray-windows` job.
+              echo ">> Windows runner: using Compress-Archive (zip is not preinstalled on windows-latest)"
+              SHARECLI_STAGE="${STAGE}" SHARECLI_ARCHIVE="${ARCHIVE}" \
+                powershell.exe -NoProfile -Command \
+                'Compress-Archive -Path "$env:SHARECLI_STAGE/*" -DestinationPath "$env:SHARECLI_ARCHIVE" -Force'
+              SHARECLI_STAGE="${STAGE}" SHARECLI_ARCHIVE="${ARCHIVE}" \
+                powershell.exe -NoProfile -Command \
+                'Get-FileHash -Path "$env:SHARECLI_ARCHIVE" -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path -Leaf $env:SHARECLI_ARCHIVE)" } | Tee-Object -FilePath ($env:SHARECLI_ARCHIVE + ".sha256")'
             else
-              shasum -a 256 "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+              (cd "${STAGE}" && zip -r "../${ARCHIVE}" .)
+              if command -v sha256sum >/dev/null 2>&1; then
+                sha256sum "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+              else
+                shasum -a 256 "${ARCHIVE}" | tee "${ARCHIVE}.sha256"
+              fi
             fi
           else
             ARCHIVE="sharecli-${TARGET}.tar.gz"
