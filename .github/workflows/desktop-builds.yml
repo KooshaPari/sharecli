@@ -107,9 +107,11 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "8.0.x"
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
       - name: Build WinUI tray
         working-directory: windows/ShareCLITray
-        run: dotnet build ShareCLITray.csproj -c Release -p:Platform=x64
+        run: msbuild ShareCLITray.csproj /restore /p:Configuration=Release /p:Platform=x64
       - name: Pack zip
         shell: pwsh
         run: |
