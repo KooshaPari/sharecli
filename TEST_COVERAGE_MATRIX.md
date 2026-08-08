@@ -25,7 +25,7 @@
 | Field | Evidence |
 |-------|----------|
 | Source revision | `28bfb101ecf4523131cd1dfb71950b46189b9e65` (post-#606 fuser/climb-2 re-measure) |
-| Retained snapshot | CI run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303) |
+| Retained snapshot | `audit/coverage-snapshots/8c68bb5.coverage-snapshot.json` (retained in-tree; **81.17%** lines @ `8c68bb5`) - the post-#606 measurement **81.22%** @ `28bfb10` remains the latest CI measurement, but its snapshot is retained only as a CI artifact (run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303)) |
 | Measured line percentage | **81.22%** (40,392 lines; 32,806 covered) |
 | Functions / regions | 84.17% functions · 82.75% regions (same snapshot) |
 | Meets 85% unit gate? | **No** for broad workspace (`meets_lines_target: false`); PR hard gate uses scoped `--lib` ignores in `quality-gate.yml` |
