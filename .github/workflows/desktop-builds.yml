@@ -115,7 +115,7 @@ jobs:
       - name: Pack zip
         shell: pwsh
         run: |
-          $out = Get-ChildItem -Recurse windows/ShareCLITray/bin/Release -Filter ShareCLITray.exe | Select-Object -First 1
+          $out = Get-ChildItem -Recurse windows/ShareCLITray/bin -Filter ShareCLITray.exe | Select-Object -First 1
           if (-not $out) { Write-Error "ShareCLITray.exe not found"; exit 1 }
           New-Item -ItemType Directory -Force pack | Out-Null
           Copy-Item $out.FullName pack/
