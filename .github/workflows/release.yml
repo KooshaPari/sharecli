@@ -257,7 +257,10 @@ jobs:
       - name: Setup .NET 8
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "8.0.x"
+          # Pin 8.0.3xx: XamlCompiler.exe (net472) exits 1 under .NET SDK 8.0.4xx
+          # (WindowsAppSDK MSB3073 on input.json/output.json). See
+          # microsoft/WindowsAppSDK issue "XamlCompiler exited with code 1".
+          dotnet-version: "8.0.303"
       - name: Build WinUI tray
         run: dotnet build windows/ShareCLITray/ShareCLITray.csproj -c Release -p:Platform=x64
       - name: Pack zip

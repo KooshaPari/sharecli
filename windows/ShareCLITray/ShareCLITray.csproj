@@ -16,8 +16,8 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
-    <!-- 1.6.240923002 (1.6.0) crashes XamlCompiler.exe (net472, MSB3073) on
-         .NET 8 SDK; 1.6.250602001 is the current 1.6.x patch with the fix. -->
+    <!-- XamlCompiler.exe crash (MSB3073) is fixed by pinning .NET SDK to 8.0.3xx
+         in the workflows; keep WindowsAppSDK on the current 1.6.x patch. -->
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250602001" />
   </ItemGroup>
 </Project>
