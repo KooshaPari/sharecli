@@ -1,0 +1,75 @@
+# PR Freshness gate — flag orphaned / excessively-stale PR branches.
+
+# Background: main was history-rewritten on 2026-08-02 (new root 5bc01eb),
+# which orphaned ~30 open PR branches. Those heads share no common ancestor
+# with main, so GitHub reported them CONFLICTING/DIRTY and they could never
+# merge, but nothing surfaced them and they piled up silently until a manual
+# sweep cleared the queue. This workflow makes that visible as a check:
+#   - If the PR head shares NO common ancestor with the base (empty
+#     `git merge-base`), the branch is orphaned by a history rewrite and
+#     cannot ever merge -> fail the 'pr-freshness' check and label it.
+#   - If the head is merely far behind base (> N commits) it is advisory only:
+#     a warning annotation, never a failure, so healthy PRs stay green.
+
+# NOTE: enforcement (blocking merges) depends on making 'pr-freshness' a
+# REQUIRED status check in branch-protection repo settings. That is a
+# repository-settings change and cannot be made from a PR; this workflow
+# provides immediate visibility regardless.
+
+name: PR Freshness
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-freshness-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-freshness:
+    name: pr-freshness
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history so `git merge-base` can run against the real refs.
+          fetch-depth: 0
+
+      - name: Fetch base and head refs
+        run: |
+          git fetch --no-tags --quiet origin "${{ github.event.pull_request.base.sha }}"
+          git fetch --no-tags --quiet origin "${{ github.event.pull_request.head.sha }}"
+
+      - name: Check history freshness
+        id: freshness
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # A head is only "excessively behind" (advisory warning) when it is
+          # more than this many commits behind base. Generous to avoid noise.
+          BEHIND_LIMIT: 200
+        run: |
+          set -uo pipefail
+
+          merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
+
+          # Empty merge-base == no shared history == orphaned by a rewrite.
+          if [ -z "$merge_base" ]; then
+            echo "ORPHANED=1" >> "$GITHUB_ENV"
+            echo "::error title=Orphaned PR history::PR head ($HEAD_SHA) shares no common ancestor with base ($BASE_SHA). This branch was likely orphaned by a history rewrite on main and can never merge as-is. Recreate the PR from the current main (or rebase onto a shared ancestor)."
+            gh pr edit "$PR_NUMBER" --add-label "orphaned-history" >/dev/null 2>&1 || true
+            exit 1
+          fi
+
+          behind="$(git rev-list --count "$HEAD_SHA".."$BASE_SHA" 2>/dev/null || echo 0)"
+          echo "BEHIND=$behind" >> "$GITHUB_ENV"
+
+          if [ "$behind" -gt "$BEHIND_LIMIT" ]; then
+            echo "::warning title=PR is $behind commits behind base::Head is $behind commits behind the base branch. Consider rebasing to reduce merge risk."
+          fi
