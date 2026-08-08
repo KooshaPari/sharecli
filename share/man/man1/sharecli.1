@@ -25,6 +25,12 @@ Print help (see a summary with \*(Aq\-h\*(Aq)
 Print version
 .SH SUBCOMMANDS
 .TP
+sharecli\-session(1)
+Inspect durable agent sessions
+.TP
+sharecli\-surface(1)
+Send shell\-free I/O requests to a ShareCLI\-enabled Ghostty surface
+.TP
 sharecli\-ps(1)
 List managed processes
 .TP
@@ -36,6 +42,9 @@ Stop managed processes
 .TP
 sharecli\-status(1)
 Check process health
+.TP
+sharecli\-proc(1)
+List host\-detected coding agents (proc scan + RSS/FD samples)
 .TP
 sharecli\-health(1)
 Run a runtime health probe
@@ -75,6 +84,12 @@ Print a fleet analytics snapshot (one\-shot or live watch mode)
 .TP
 sharecli\-fleet(1)
 Fleet device management
+.TP
+sharecli\-mesh(1)
+Maildir mesh task\-queue operator surface (status / reclaim)
+.TP
+sharecli\-fuse(1)
+FUSE IO intercept operator surface (mount, provenance, CoW)
 .TP
 sharecli\-cast(1)
 Cross\-machine text injection into registered terminal panes
