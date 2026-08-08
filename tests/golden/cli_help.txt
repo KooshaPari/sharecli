@@ -44,7 +44,7 @@ Options:
 
       --theme <NAME>
           Color theme: `backbone-2` / `bb2` / `dark` (default) or `backbone-2-light` / `light`. Maps to Backbone-2 dark/light families in tokens.css
-
+          
           [default: backbone-2]
 
   -h, --help

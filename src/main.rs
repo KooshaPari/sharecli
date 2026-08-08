@@ -68,6 +68,7 @@ use runtime::ProcessPool;
 #[derive(Parser, Debug)]
 #[command(
     name = "sharecli",
+    bin_name = "sharecli",
     about = "Shared CLI process manager for multi-project agent orchestration",
     version = "0.1.0",
     after_long_help = "Accessibility (C09): docs/a11y/README.md — NO_COLOR/TERM=dumb degrade ANSI color; \
