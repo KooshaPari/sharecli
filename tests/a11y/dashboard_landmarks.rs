@@ -53,16 +53,11 @@ fn dashboard_sr_table_and_skip_link() {
     );
     // L81.4: every <img> opening tag must carry a standalone alt attribute
     // (bare imgs without alt are banned; data-alt= does not satisfy the rule).
-    let every_img_has_alt = html.split("<img").skip(1).filter_map(|frag| frag.split('>').next()).all(
-        |tag| {
-            tag.split_whitespace()
-                .any(|attr| attr == "alt" || attr.starts_with("alt="))
-        },
-    );
-    assert!(
-        every_img_has_alt,
-        "dashboard must not ship <img> without an alt attribute"
-    );
+    let every_img_has_alt =
+        html.split("<img").skip(1).filter_map(|frag| frag.split('>').next()).all(|tag| {
+            tag.split_whitespace().any(|attr| attr == "alt" || attr.starts_with("alt="))
+        });
+    assert!(every_img_has_alt, "dashboard must not ship <img> without an alt attribute");
 }
 
 #[test]
