@@ -108,6 +108,20 @@ fn cli_util_help_lists_at_least_one_utility() {
 }
 
 #[test]
+fn cli_fuse_probe_is_read_only_and_reports_fallback_contract() {
+    let out = bin()
+        .args(["fuse", "probe", "/tmp/sharecli-fuse-probe-test", "--json"])
+        .output()
+        .expect("spawn sharecli fuse probe");
+    assert!(out.status.success(), "fuse probe should exit 0; stderr: {}", stderr(&out));
+    let report: serde_json::Value =
+        serde_json::from_slice(&out.stdout).expect("fuse probe should emit valid JSON");
+    assert!(report.get("selected_backend").is_some(), "report must include backend");
+    assert_eq!(report.get("non_fuse_fallback"), Some(&serde_json::Value::Bool(true)));
+    assert!(report.get("mountpoint").is_some(), "report must include mountpoint");
+}
+
+#[test]
 fn cli_ps_runs_and_prints_table_header() {
     // `ps` exits 0 even when no managed processes are alive.
     let out = bin().arg("ps").output().expect("spawn sharecli ps");
