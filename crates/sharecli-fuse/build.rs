@@ -1,9 +1,19 @@
 fn main() {
     #[cfg(target_os = "macos")]
     {
-        println!(
-            "cargo:rustc-link-search=framework=/Library/Filesystems/macfuse.fs/Contents/Frameworks"
+        // fuser is built with `macos-no-mount` for CI (no macFUSE on runners).
+        // Only emit the MFMount framework link when macFUSE is actually
+        // installed, so the crate links without it.
+        let macfuse = std::path::Path::new(
+            "/Library/Filesystems/macfuse.fs/Contents/Frameworks",
         );
-        println!("cargo:rustc-link-lib=framework=MFMount");
+        if macfuse.exists() {
+            println!("cargo:rustc-link-search=framework={}", macfuse.display());
+            println!("cargo:rustc-link-lib=framework=MFMount");
+        } else {
+            println!(
+                "cargo:warning=macFUSE not installed; building without MFMount (macos-no-mount)"
+            );
+        }
     }
 }
