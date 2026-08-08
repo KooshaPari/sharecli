@@ -22,11 +22,21 @@ thiserror = "2"
 tracing = "0.1"
 tempfile = "3"
 
-# Linux / macOS — fuser (libfuse3 / macFUSE)
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+# Linux — fuser (libfuse3 / pure-rust)
+[target.'cfg(target_os = "linux")'.dependencies]
 fuser = "0.18"
 libc = "0.2"
 # wraps: xattr 1.x — portable setxattr/getxattr for write provenance
+xattr = "1.6"
+
+# macOS — fuser with `macos-no-mount`: compiles without macFUSE installed.
+# GitHub-hosted macOS runners cannot install the macFUSE kernel extension, so
+# the release matrix must build without it. The mount API remains present but
+# reports unsupported at runtime; the macOS desktop tray (beta) does not mount
+# FUSE, so this only affects the compile-time path.
+[target.'cfg(target_os = "macos")'.dependencies]
+fuser = { version = "0.18", features = ["macos-no-mount"] }
+libc = "0.2"
 xattr = "1.6"
 
 # Windows — WinFsp (AC-009.25)
