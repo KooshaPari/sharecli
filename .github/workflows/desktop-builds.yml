@@ -7,6 +7,7 @@ on:
       - "crates/sharecli-tray-linux/**"
       - "crates/sharecli-ffi/**"
       - "desktop/**"
+      - "contrib/**"
       - "windows/ShareCLITray/**"
       - "docs/deploy/**"
       - ".github/workflows/desktop-builds.yml"
@@ -75,6 +76,9 @@ jobs:
           swift build -c release \
             -Xlinker -L -Xlinker "${SHARECLI_FFI_LIB_DIR}" \
             -Xlinker -lsharecli_ffi
+      - name: Swift build contrib/ghostty-control
+        working-directory: contrib/ghostty-control
+        run: swift build
       - name: Pack artifact
         run: |
           set -euo pipefail

@@ -108,3 +108,107 @@ async fn fr003_ipc_handler_config_set_missing_key_and_kill_bad_pid() {
         handler.dispatch(r#"{"id":14,"method":"process.kill","params":{"pid":"nope"}}"#).await;
     assert!(bad_pid.error.is_some());
 }
+
+#[tokio::test]
+async fn fr003_ipc_handler_session_recovery_methods_are_dry_run_safe() {
+    let handler = Handler::new().await.expect("handler init");
+    let list = handler.dispatch(r#"{"id":15,"method":"session.list","params":{}}"#).await;
+    assert!(list.error.is_none(), "session.list error: {:?}", list.error);
+    assert!(list.result.is_array());
+
+    let plan = handler.dispatch(r#"{"id":16,"method":"recovery.plan","params":{}}"#).await;
+    assert!(plan.error.is_none(), "recovery.plan error: {:?}", plan.error);
+    assert!(plan.result.is_array());
+
+    let execute = handler
+        .dispatch(r#"{"id":17,"method":"recovery.execute","params":{"execute":false}}"#)
+        .await;
+    assert!(execute.error.is_none(), "recovery.execute error: {:?}", execute.error);
+    assert!(execute.result.is_array());
+
+    let observe = handler
+        .dispatch(
+            &serde_json::json!({
+                "id": 18,
+                "method": "session.observe",
+                "params": {
+                    "observed_at": "2026-07-31T08:00:00Z",
+                    "surface": {
+                        "id": "test:ipc",
+                        "terminal": "ghostty",
+                        "title": null,
+                        "cwd": "/tmp",
+                        "process": null
+                    },
+                    "session": null,
+                    "capabilities": {
+                        "read": false,
+                        "write": false,
+                        "resize": false,
+                        "layout": false,
+                        "durable_pty": false
+                    },
+                    "kind": "Updated"
+                }
+            })
+            .to_string(),
+        )
+        .await;
+    assert!(observe.error.is_none(), "session.observe error: {:?}", observe.error);
+
+    let observations = handler
+        .dispatch(r#"{"id":19,"method":"session.observations","params":{"surface_id":"test:ipc"}}"#)
+        .await;
+    assert!(observations.error.is_none(), "session.observations error: {:?}", observations.error);
+    assert!(observations.result.as_array().is_some_and(|rows| !rows.is_empty()));
+
+    let compact = handler.dispatch(r#"{"id":20,"method":"session.compact","params":{}}"#).await;
+    assert!(compact.error.is_none(), "session.compact error: {:?}", compact.error);
+    assert!(compact.result.get("removed").is_some());
+}
+
+#[tokio::test]
+async fn fr003_ipc_handler_persists_and_lists_validated_layouts() {
+    let handler = Handler::new().await.expect("handler init");
+    let snapshot = serde_json::json!({
+        "id": "ipc-layout",
+        "terminal": "ghostty",
+        "captured_at": "2026-08-01T00:00:00Z",
+        "root": {
+            "Split": {
+                "axis": "Horizontal",
+                "ratio_millis": 500,
+                "children": [
+                    {"Pane": {"surface_id": "ghostty:1"}},
+                    {"Pane": {"surface_id": "ghostty:2"}}
+                ]
+            }
+        }
+    });
+
+    let save = handler
+        .dispatch(
+            &serde_json::json!({
+                "id": 21,
+                "method": "layout.save",
+                "params": {"snapshot": snapshot}
+            })
+            .to_string(),
+        )
+        .await;
+    assert!(save.error.is_none(), "layout.save error: {:?}", save.error);
+    assert_eq!(save.result["id"], "ipc-layout");
+
+    let list = handler.dispatch(r#"{"id":22,"method":"layout.list","params":{}}"#).await;
+    assert!(list.error.is_none(), "layout.list error: {:?}", list.error);
+    assert!(list
+        .result
+        .as_array()
+        .is_some_and(|rows| rows.iter().any(|row| row["id"] == "ipc-layout")));
+
+    let inspect = handler
+        .dispatch(r#"{"id":23,"method":"layout.inspect","params":{"id":"ipc-layout"}}"#)
+        .await;
+    assert!(inspect.error.is_none(), "layout.inspect error: {:?}", inspect.error);
+    assert_eq!(inspect.result["id"], "ipc-layout");
+}

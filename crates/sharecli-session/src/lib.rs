@@ -45,12 +45,36 @@ mod tests {
 }
 
 use anyhow::{Context, Result};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+pub mod adapter;
+pub mod discovery;
+pub mod events;
+pub mod layout;
+pub mod ledger;
+pub mod recovery;
+pub mod resolver;
 pub mod rpc;
+pub mod state;
+
+pub use adapter::{GhosttySurfaceAdapter, SurfaceAdapter, SurfaceIo, ZmxSurfaceAdapter};
+pub use discovery::{
+    scan_and_record, DiscoveryFailure, DiscoveryReport, DiscoveryResult, MapStateProvider,
+    NoStateProvider, SessionStateProvider, SurfaceObservationScanner,
+};
+pub use events::{
+    SurfaceEventError, SurfaceEventHub, SurfaceEventKind, SurfaceEventNotification,
+    SurfaceEventParams, SurfaceSubscribeAck, SurfaceSubscribeRequest,
+    SurfaceSubscriptionCapabilities, MAX_EVENT_CHUNK_BYTES, MAX_EVENT_QUEUE_CAPACITY,
+};
+pub use layout::{LayoutAxis, LayoutNode, LayoutRestoreItem, LayoutRestoreReport, LayoutSnapshot};
+pub use ledger::{ObservationKind, SessionObservation, SurfaceCapabilities};
+pub use recovery::{validate_recipe, RecoveryExecutor, RecoveryOutcome, RecoveryResult};
+pub use resolver::{resolve as resolve_session, EvidenceSource, Resolution};
+pub use state::{append_record, SidecarRecord, SidecarStateProvider};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResumeRecipe {
@@ -103,6 +127,15 @@ pub struct AgentSession {
     pub resume: ResumeRecipe,
     pub confidence: ResolutionConfidence,
     pub state: SessionState,
+}
+
+impl AgentSession {
+    /// Whether this record has enough evidence for unattended recovery.
+    pub fn auto_resumable(&self) -> bool {
+        matches!(self.confidence, ResolutionConfidence::Exact | ResolutionConfidence::Corroborated)
+            && !self.resume.session_id.is_empty()
+            && !self.resume.argv.is_empty()
+    }
 }
 
 impl AgentSession {
@@ -178,6 +211,12 @@ pub struct SessionStore {
 
 impl SessionStore {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+        if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("create session database directory {}", parent.display())
+            })?;
+        }
         let conn = Connection::open(path).context("open session database")?;
         Self::init(conn)
     }
@@ -186,12 +225,27 @@ impl SessionStore {
     }
     fn init(conn: Connection) -> Result<Self> {
         conn.pragma_update(None, "journal_mode", "WAL")?;
-        conn.execute_batch("CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, harness TEXT NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, resume_json TEXT NOT NULL, confidence TEXT NOT NULL, state TEXT NOT NULL);")?;
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, harness TEXT NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, resume_json TEXT NOT NULL, confidence TEXT NOT NULL, state TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS session_observations (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                observed_at TEXT NOT NULL,
+                surface_id TEXT NOT NULL,
+                surface_json TEXT NOT NULL,
+                session_json TEXT,
+                capabilities_json TEXT NOT NULL,
+                kind TEXT NOT NULL
+             );
+             CREATE INDEX IF NOT EXISTS session_observations_surface_seq
+                ON session_observations(surface_id, seq);
+             CREATE INDEX IF NOT EXISTS session_observations_time
+                ON session_observations(observed_at);",
+        )?;
         Ok(Self { conn: Mutex::new(conn) })
     }
     pub fn upsert(&self, session: &AgentSession) -> Result<()> {
-        self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?.execute("INSERT INTO sessions (id,harness,session_id,cwd,resume_json,confidence,state) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET harness=excluded.harness, session_id=excluded.session_id, cwd=excluded.cwd, resume_json=excluded.resume_json, confidence=excluded.confidence, state=excluded.state", params![session.id, session.harness, session.session_id, session.cwd.to_string_lossy(), serde_json::to_string(&session.resume)?, serde_json::to_string(&session.confidence)?, serde_json::to_string(&session.state)?])?;
-        Ok(())
+        let conn = self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?;
+        Self::upsert_locked(&conn, session)
     }
     pub fn list(&self) -> Result<Vec<AgentSession>> {
         let conn = self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?;
@@ -206,6 +260,61 @@ impl SessionStore {
             conn.prepare("SELECT id,harness,session_id,cwd,resume_json,confidence,state FROM sessions WHERE id=?1")?;
         let mut rows = stmt.query([id])?;
         rows.next()?.map(Self::row).transpose().map_err(Into::into)
+    }
+
+    /// Append an observation and atomically refresh the materialized session row.
+    pub fn append_observation(&self, observation: &SessionObservation) -> Result<i64> {
+        let mut conn = self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?;
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        tx.execute(
+            "INSERT INTO session_observations
+             (observed_at, surface_id, surface_json, session_json, capabilities_json, kind)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                observation.observed_at,
+                observation.surface.id,
+                serde_json::to_string(&observation.surface)?,
+                observation.session.as_ref().map(serde_json::to_string).transpose()?,
+                serde_json::to_string(&observation.capabilities)?,
+                serde_json::to_string(&observation.kind)?,
+            ],
+        )?;
+        let seq = tx.last_insert_rowid();
+        if let Some(session) = &observation.session {
+            Self::upsert_locked(&tx, session)?;
+        }
+        tx.commit()?;
+        Ok(seq)
+    }
+
+    /// Read observations in append order, optionally limited to one surface.
+    pub fn observations(&self, surface_id: Option<&str>) -> Result<Vec<SessionObservation>> {
+        let conn = self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?;
+        let mut stmt = if surface_id.is_some() {
+            conn.prepare("SELECT seq, observed_at, surface_json, session_json, capabilities_json, kind FROM session_observations WHERE surface_id=?1 ORDER BY seq")?
+        } else {
+            conn.prepare("SELECT seq, observed_at, surface_json, session_json, capabilities_json, kind FROM session_observations ORDER BY seq")?
+        };
+        let rows = if let Some(surface_id) = surface_id {
+            stmt.query_map([surface_id], Self::observation_row)?
+                .collect::<rusqlite::Result<Vec<_>>>()?
+        } else {
+            stmt.query_map([], Self::observation_row)?.collect::<rusqlite::Result<Vec<_>>>()?
+        };
+        Ok(rows)
+    }
+
+    /// Compact history while retaining the latest observation for every surface.
+    pub fn compact_observations(&self) -> Result<usize> {
+        let mut conn = self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?;
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let removed = tx.execute(
+            "DELETE FROM session_observations
+             WHERE seq NOT IN (SELECT MAX(seq) FROM session_observations GROUP BY surface_id)",
+            [],
+        )?;
+        tx.commit()?;
+        Ok(removed)
     }
     fn row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AgentSession> {
         let cwd: String = row.get(3)?;
@@ -240,6 +349,65 @@ impl SessionStore {
             })?,
         })
     }
+
+    fn upsert_locked(conn: &rusqlite::Connection, session: &AgentSession) -> Result<()> {
+        conn.execute(
+            "INSERT INTO sessions (id,harness,session_id,cwd,resume_json,confidence,state)
+             VALUES (?1,?2,?3,?4,?5,?6,?7)
+             ON CONFLICT(id) DO UPDATE SET harness=excluded.harness,
+               session_id=excluded.session_id, cwd=excluded.cwd,
+               resume_json=excluded.resume_json, confidence=excluded.confidence,
+               state=excluded.state",
+            params![
+                session.id,
+                session.harness,
+                session.session_id,
+                session.cwd.to_string_lossy(),
+                serde_json::to_string(&session.resume)?,
+                serde_json::to_string(&session.confidence)?,
+                serde_json::to_string(&session.state)?,
+            ],
+        )?;
+        Ok(())
+    }
+
+    fn observation_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionObservation> {
+        let session_json: Option<String> = row.get(3)?;
+        Ok(SessionObservation {
+            seq: row.get(0)?,
+            observed_at: row.get(1)?,
+            surface: serde_json::from_str(&row.get::<_, String>(2)?).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    2,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })?,
+            session: session_json.map(|value| serde_json::from_str(&value)).transpose().map_err(
+                |e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        3,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                },
+            )?,
+            capabilities: serde_json::from_str(&row.get::<_, String>(4)?).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    4,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })?,
+            kind: serde_json::from_str(&row.get::<_, String>(5)?).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    5,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })?,
+        })
+    }
 }
 
 pub struct SessionService {
@@ -257,5 +425,11 @@ impl SessionService {
     }
     pub fn recovery_plan(&self) -> Result<Vec<AgentSession>> {
         self.store.list()
+    }
+    pub fn observations(&self, surface_id: Option<&str>) -> Result<Vec<SessionObservation>> {
+        self.store.observations(surface_id)
+    }
+    pub fn compact_observations(&self) -> Result<usize> {
+        self.store.compact_observations()
     }
 }

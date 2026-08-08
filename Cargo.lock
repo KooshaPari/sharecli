@@ -4805,6 +4805,8 @@ dependencies = [
  "anyhow",
  "fuser",
  "libc",
+ "serde",
+ "serde_json",
  "serial_test",
  "tempfile",
  "thiserror 2.0.19",
@@ -4830,6 +4832,7 @@ dependencies = [
  "sha2 0.11.0",
  "sharecli",
  "sharecli-fleet",
+ "sharecli-session",
  "tempfile",
  "tokio",
  "tokio-tungstenite 0.30.0",
@@ -4856,6 +4859,7 @@ name = "sharecli-session"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "rusqlite",
  "serde",
  "serde_json",
