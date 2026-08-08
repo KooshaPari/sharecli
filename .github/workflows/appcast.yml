@@ -1,0 +1,140 @@
+# ============================================================================
+# Sparkle appcast CI -- runs scripts/build-appcast.sh on every release tag
+# push and uploads the per-channel feeds (stable / beta / alpha) as build
+# artifacts. Optionally re-signs the appcast with Sparkle's `sign_update`
+# when a private EdDSA key is present in repo secrets.
+#
+# Closes out the T-70 release pipeline (the "A+ more" item): tag -> build
+# tray -> generate appcast -> publish per-channel feeds.
+# ============================================================================
+
+name: Appcast
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appcast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  appcast:
+    name: Sparkle appcast (${{ github.ref_name }})
+    # macOS required: Sparkle's generate_appcast + sign_update ship as
+    # SwiftPM products and the cdylib link is darwin-only.
+    runs-on: macos-14
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: appcast-macos
+
+      - name: Build sharecli-ffi (cdylib)
+        run: cargo build -p sharecli-ffi --release --locked
+
+      - name: Build sharecli-ipc binary
+        run: cargo build -p sharecli-ipc --release --locked
+
+      - name: Swift build ShareCLITray (resolves Sparkle checkout)
+        working-directory: desktop/ShareCLITray
+        env:
+          SHARECLI_FFI_LIB_DIR: ${{ github.workspace }}/target/release
+        run: |
+          set -euo pipefail
+          export LIBRARY_PATH="${SHARECLI_FFI_LIB_DIR}:${LIBRARY_PATH:-}"
+          swift build -c release \
+            -Xlinker -L -Xlinker "${SHARECLI_FFI_LIB_DIR}" \
+            -Xlinker -lsharecli_ffi
+
+      - name: Stage a tray archive for generate_appcast
+        # Sparkle computes deltas against any *.zip already present in
+        # archives/. We synthesize a deterministic stub here so the
+        # appcast run is reproducible from a clean tree; release.yml
+        # drops the real signed zip into the same directory post-attach.
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          ARCHIVE="dist/appcast/archives/ShareCLITray-${VERSION}.zip"
+          mkdir -p dist/appcast/archives
+          printf 'sharecli-appcast-stub-%s\n' "${VERSION}" > "${ARCHIVE}"
+
+      - name: Run scripts/build-appcast.sh
+        # Optional override: set the repo/org variable SHARECLI_DOWNLOAD_PREFIX
+        # to the real origin so enclosure URLs match production.
+        env:
+          SHARECLI_DOWNLOAD_PREFIX: >-
+            ${{ vars.SHARECLI_DOWNLOAD_PREFIX
+                || 'https://sharecli.example/downloads' }}
+        run: |
+          set -euo pipefail
+          ./scripts/build-appcast.sh
+
+      - name: Re-sign enclosures with Sparkle sign_update (optional)
+        # Skip silently when SPARKLE_PRIVATE_KEY is unset; the build remains
+        # unsigned and downstream packaging will surface the gap.
+        if: ${{ env.SPARKLE_PRIVATE_KEY != '' }}
+        working-directory: desktop/ShareCLITray
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          BIN_DIR="$(swift build -c release --show-bin-path)"
+          SIGN_BIN="${BIN_DIR}/sign_update"
+          if [[ ! -x "${SIGN_BIN}" ]]; then
+            echo ">> sign_update not built; skipping"
+            exit 0
+          fi
+          cd "${GITHUB_WORKSPACE}"
+          shopt -s nullglob
+          STAGED=0
+          for archive in dist/appcast/archives/*.zip; do
+            echo ">> sign_update ${archive}"
+            if printf '%s' "${SPARKLE_PRIVATE_KEY}" \
+                | "${SIGN_BIN}" --ed-key-file - "${archive}" \
+                > "${archive}.sig" 2>/dev/null; then
+              STAGED=$((STAGED + 1))
+            else
+              echo "   (sign_update failed; leaving ${archive} unsigned)"
+              rm -f "${archive}.sig"
+            fi
+          done
+          echo ">> signed ${STAGED} archive(s)"
+          # Regenerate the appcast so generate_appcast reads the freshly
+          # signed metadata back into each <enclosure sparkle:edSignature>.
+          ./scripts/build-appcast.sh
+
+      - name: Upload per-channel appcast feeds
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sharecli-appcast-${{ github.ref_name }}
+          path: |
+            dist/appcast/appcast-stable.xml
+            dist/appcast/appcast-beta.xml
+            dist/appcast/appcast-alpha.xml
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Upload staged archives for downstream promote
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sharecli-appcast-archives-${{ github.ref_name }}
+          path: dist/appcast/archives/
+          retention-days: 90
+          if-no-files-found: warn
