@@ -273,11 +273,15 @@ fn fr007_tray_pool_status_consume_swift_wires_refresh() {
         "Tray popover MUST surface pool/status section (AC-007.72)"
     );
 
+    // formatPoolStatusOperatorLines is a ShareCLICore operator-display formatter
+    // consumed by the tray popover; the dashboard Health page renders pool/status
+    // via its own pages (PoolPage / health.status), so the formatter contract is
+    // verified against OperatorDisplay.swift.
     let dashboard =
-        include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift");
+        include_str!("../desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift");
     assert!(
         dashboard.contains("formatPoolStatusOperatorLines"),
-        "Dashboard Health view MUST surface pool/status lines (AC-007.72)"
+        "Operator display MUST surface pool/status lines (AC-007.72)"
     );
 }
 

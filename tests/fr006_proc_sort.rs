@@ -143,7 +143,7 @@ fn fr006_proc_help_documents_sort_state() {
 #[test]
 fn fr006_proc_sort_invalid_exits_nonzero() {
     let out =
-        bin().args(["proc", "--sort", "name"]).output().expect("spawn sharecli proc --sort name");
+        bin().args(["proc", "--sort", "bogus"]).output().expect("spawn sharecli proc --sort bogus");
     assert!(!out.status.success(), "invalid --sort MUST fail; stdout: {:?}", out.stdout);
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(

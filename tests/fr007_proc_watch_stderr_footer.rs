@@ -6,8 +6,9 @@
 
 use std::io::Read;
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
@@ -40,14 +41,34 @@ fn fr007_proc_watch_ndjson_stderr_gate_before_host_watch() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(2_500));
-    let _ = child.kill();
+    // Drain stderr on a reader thread, then wait until the first watch tick
+    // has emitted the gate + host_watch companions. Fixed sleeps are flaky
+    // under parallel CI load (the first tick can exceed the sleep).
+    let stderr_buf: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    let buf_reader = stderr_buf.clone();
+    let mut err_handle = child.stderr.take().expect("stderr handle");
+    let reader = thread::spawn(move || {
+        let mut s = String::new();
+        let _ = err_handle.read_to_string(&mut s);
+        *buf_reader.lock().expect("stderr lock") = s;
+    });
 
-    let mut stderr = String::new();
-    if let Some(mut err) = child.stderr.take() {
-        let _ = err.read_to_string(&mut stderr);
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        let s = stderr_buf.lock().expect("stderr lock").clone();
+        if s.contains(GATE_MARKER) && s.contains(WATCH_MARKER) {
+            break;
+        }
+        if reader.is_finished() || Instant::now() > deadline {
+            break;
+        }
+        thread::sleep(Duration::from_millis(250));
     }
+
+    let _ = child.kill();
     let _ = child.wait();
+    let _ = reader.join();
+    let stderr = stderr_buf.lock().expect("stderr lock").clone();
 
     assert!(
         stderr.contains(GATE_MARKER),

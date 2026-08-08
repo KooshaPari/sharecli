@@ -192,7 +192,9 @@ fn fr007_tray_thermal_visual_windows_wires_operator_display() {
 /// FR-007 / AC-007.58 — Swift HealthView metric cards + thermal gate detail use gate visual.
 #[test]
 fn fr007_tray_thermal_visual_swift_health_view_wires_gate_visual() {
-    let health = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/DashboardView.swift");
+    // The Health view moved from DashboardView.swift to HealthPage.swift
+    // (ThermalGateSubpage renders the badge chip via gateVisual.badgeLabel).
+    let health = include_str!("../desktop/ShareCLITray/Sources/ShareCLITray/HealthPage.swift");
     assert!(
         health.contains("resolveTrayGateVisual"),
         "HealthView MUST resolve tray gate visual (AC-007.58)"
@@ -202,7 +204,7 @@ fn fr007_tray_thermal_visual_swift_health_view_wires_gate_visual() {
         "HealthView MUST expose gateVisual computed property (AC-007.58)"
     );
     assert!(
-        health.contains("thermalGateBadge"),
+        health.contains("gateVisual.badgeLabel"),
         "HealthView MUST show thermal gate badge chip (AC-007.58)"
     );
     assert!(
