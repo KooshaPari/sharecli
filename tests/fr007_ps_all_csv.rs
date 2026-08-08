@@ -144,8 +144,8 @@ fn fr007_ps_csv_requires_all() {
 /// FR-007 / AC-007.83 — unit render_ps_all_csv_body preserves managed + agent sections.
 #[test]
 fn fr007_ps_all_csv_body_shape() {
-    use sharecli::runtime::ProcessInfo;
     use sharecli::runtime::ProcState;
+    use sharecli::runtime::ProcessInfo;
     use sharecli_fleet::HostProcSource;
 
     let proc_source = HostProcSource;
