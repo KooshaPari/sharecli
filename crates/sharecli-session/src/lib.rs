@@ -50,7 +50,9 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+pub mod ledger;
 pub mod rpc;
+pub use ledger::SessionObservation;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResumeRecipe {
@@ -186,8 +188,23 @@ impl SessionStore {
     }
     fn init(conn: Connection) -> Result<Self> {
         conn.pragma_update(None, "journal_mode", "WAL")?;
-        conn.execute_batch("CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, harness TEXT NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, resume_json TEXT NOT NULL, confidence TEXT NOT NULL, state TEXT NOT NULL);")?;
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, harness TEXT NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, resume_json TEXT NOT NULL, confidence TEXT NOT NULL, state TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS session_observations (
+                 id TEXT PRIMARY KEY,
+                 session_id TEXT NOT NULL,
+                 surface_id TEXT NOT NULL,
+                 observed_at TEXT NOT NULL,
+                 confidence TEXT NOT NULL,
+                 resumable INTEGER NOT NULL,
+                 evidence TEXT NOT NULL
+             );",
+        )?;
         Ok(Self { conn: Mutex::new(conn) })
+    }
+
+    pub(crate) fn connection_guard(&self) -> Result<std::sync::MutexGuard<'_, Connection>> {
+        self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))
     }
     pub fn upsert(&self, session: &AgentSession) -> Result<()> {
         self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?.execute("INSERT INTO sessions (id,harness,session_id,cwd,resume_json,confidence,state) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET harness=excluded.harness, session_id=excluded.session_id, cwd=excluded.cwd, resume_json=excluded.resume_json, confidence=excluded.confidence, state=excluded.state", params![session.id, session.harness, session.session_id, session.cwd.to_string_lossy(), serde_json::to_string(&session.resume)?, serde_json::to_string(&session.confidence)?, serde_json::to_string(&session.state)?])?;
