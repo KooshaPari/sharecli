@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360" role="img" aria-label="Dashboard feed disconnected">
   <!--
-    C10 L101  tier-1 hand-authored disconnect illustration (Backbone-2 tokens).
-    Depicts serve ” dashboard WebSocket feed severed  not abstract decoration.
+    C10 L101 - tier-1 hand-authored disconnect illustration (Backbone-2 tokens).
+    Depicts serve -> dashboard WebSocket feed severed - not abstract decoration.
     Provenance: docs/visual/PROVENANCE.md (tier 1, repo license).
   -->
   <defs>
