@@ -1,23 +1,22 @@
-//! Runtime backend negotiation for macFUSE on macOS.
-
+/// Runtime backend negotiation for macFUSE on macOS.
+///
+/// The backend only matters on macOS: macOS 15+ prefers the File System Kit
+/// backend while older releases rely on the kernel extension. On Linux and
+/// Windows the FUSE layer is platform-native (libfuse3 / WinFsp) and the
+/// backend is always unavailable.
 use std::{
     path::{Path, PathBuf},
     process::Command,
 };
 
-/// Available FUSE backend options on macOS.
-///
-/// Selected at runtime by [`select_backend`]; the chosen variant is what
-/// `InterceptFs::mount` will negotiate with the host kernel.
+/// macOS FUSE backend selected at mount time (macFUSE only).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FuseBackend {
-    /// Apple's first-party FSKit user-space file system framework (macOS 15+).
+    /// File System Kit backend (macOS 15+, preferred when available).
     Fskit,
-    /// The legacy macFUSE kext (`/Library/Filesystems/macfuse.fs`) — used when
-    /// the kext is already loaded because it offers the lowest-latency path.
+    /// Legacy macFUSE kernel-extension backend.
     Kernel,
-    /// No backend is available; mount negotiation will fail with a
-    /// diagnostic from [`runtime_diagnostics`].
+    /// No usable backend detected (or non-macOS platform).
     Unavailable,
 }
 
@@ -231,6 +230,11 @@ fn kernel_backend_loaded() -> bool {
 ///
 /// This is intentionally executed only on an error path by callers. It does not
 /// alter backend selection and avoids shelling out through a user-controlled shell.
+///
+/// Only reachable from `#[cfg(target_os = "macos")]` mount code; on other
+/// platforms the body is a no-op string, so keep the function compiled for the
+/// cross-platform diagnostics path but silence the dead-code lint there.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub(crate) fn runtime_diagnostics() -> String {
     #[cfg(target_os = "macos")]
     {
@@ -270,7 +274,7 @@ pub(crate) fn runtime_diagnostics() -> String {
                 }
             })
             .unwrap_or("unavailable");
-        format!("macFUSE version-entry={version}; {kext}; fskit_agent={fskit}")
+        return format!("macFUSE version-entry={version}; {kext}; fskit_agent={fskit}");
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -278,6 +282,10 @@ pub(crate) fn runtime_diagnostics() -> String {
     }
 }
 
+/// Extract the `CFBundleShortVersionString` value from a macFUSE version plist.
+///
+/// Only called from [`runtime_diagnostics`], which is macOS-only at runtime.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 fn parse_bundle_version(contents: &str) -> Option<String> {
     let mut lines = contents.lines();
     while let Some(line) = lines.next() {

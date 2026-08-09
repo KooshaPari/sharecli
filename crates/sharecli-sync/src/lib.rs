@@ -22,22 +22,27 @@ impl PoolIndex {
 
     /// Insert `pid` when absent. Returns `true` when inserted.
     pub fn insert(&self, pid: u32, name: impl Into<String>) -> bool {
-        self.names.write().unwrap().insert(pid, name.into()).is_none()
+        self.names
+            .write()
+            .expect("pool index write lock poisoned")
+            .insert(pid, name.into())
+            .is_none()
     }
 
     /// Remove `pid` when present. Returns `true` when removed.
     pub fn remove(&self, pid: u32) -> bool {
-        self.names.write().unwrap().remove(&pid).is_some()
+        self.names.write().expect("pool index write lock poisoned").remove(&pid).is_some()
     }
 
     /// Number of tracked pids.
     pub fn count(&self) -> usize {
-        self.names.read().unwrap().len()
+        self.names.read().expect("pool index read lock poisoned").len()
     }
 
     /// Snapshot of tracked pids (sorted for deterministic assertions).
     pub fn pids_sorted(&self) -> Vec<u32> {
-        let mut pids: Vec<u32> = self.names.read().unwrap().keys().copied().collect();
+        let mut pids: Vec<u32> =
+            self.names.read().expect("pool index read lock poisoned").keys().copied().collect();
         pids.sort_unstable();
         pids
     }

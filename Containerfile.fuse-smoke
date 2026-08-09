@@ -15,6 +15,9 @@ RUN apt-get update \
 WORKDIR /src
 # Minimal cargo workspace for fuse crate only
 COPY crates/sharecli-fuse/Cargo.toml crates/sharecli-fuse/Cargo.toml
+# Cargo requires the declared build script to be present even though build.rs
+# only emits macOS-specific link flags (no-op on the Debian builder).
+COPY crates/sharecli-fuse/build.rs crates/sharecli-fuse/build.rs
 COPY crates/sharecli-fuse/src crates/sharecli-fuse/src
 # Synthetic workspace so cargo can resolve the package path
 RUN printf '%s\n' \

@@ -87,7 +87,10 @@ impl From<ProcessStatus> for ProcState {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // some fields are read only by the lib target, not the bin
+// The bin crate only writes most of these fields; they are consumed by the
+// tray dashboard consumers (IPC payloads / JSON snapshots) outside this
+// crate's compile unit, which the dead-code pass cannot see.
+#[allow(dead_code)]
 pub struct ProcessInfo {
     pub pid: u32,
     pub name: String,
@@ -223,7 +226,6 @@ fn count_open_fds(pid: u32) -> Option<u32> {
     None
 }
 
-#[allow(unreachable_code)] // final `None` only reachable on non-linux/macos targets
 fn count_threads(pid: u32) -> Option<u32> {
     #[cfg(target_os = "linux")]
     if let Ok(entries) = std::fs::read_dir(format!("/proc/{pid}/task")) {

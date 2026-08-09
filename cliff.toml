@@ -33,19 +33,17 @@ trim = true
 conventional_commits = true
 
 commit_parsers = [
-  {message = "^feat", group = "Features"},
-  {message = "^fix", group = "Bug Fixes"},
-  {message = "^doc", group = "Documentation"},
-  {message = "^perf", group = "Performance"},
-  {message = "^refactor", group = "Refactoring"},
-  {message = "^test", group = "Testing"},
-  {message = "^chore", skip = true},
-  {message = "^ci", skip = true},
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^doc", group = "Documentation" },
+  { message = "^perf", group = "Performance" },
+  { message = "^refactor", group = "Refactoring" },
+  { message = "^test", group = "Testing" },
+  { message = "^chore", skip = true },
+  { message = "^ci", skip = true },
 ]
 
-commit_filters = [
-  {remove_if_matches = ".*skip.*changelog.*"},
-]
+commit_filters = [{ remove_if_matches = ".*skip.*changelog.*" }]
 
 tag_pattern = "v[0-9].*"
 skip_tags = ""

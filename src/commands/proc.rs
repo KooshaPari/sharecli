@@ -63,7 +63,7 @@ pub fn parse_proc_state(raw: &str) -> Result<char> {
     if trimmed.len() != 1 {
         bail!("invalid --state value '{raw}'; expected single process state letter (R|S|D|Z|T|…)");
     }
-    let ch = trimmed.chars().next().unwrap();
+    let ch = trimmed.chars().next().expect("single-char --state value (length validated above)");
     let normalized = match ch {
         'r' | 'R' => 'R',
         's' | 'S' => 'S',
@@ -89,6 +89,9 @@ pub fn parse_fd_count(raw: &str, flag: &str) -> Result<u64> {
 }
 
 impl ProcFilter {
+    // CLI flag aggregation: every `proc` inventory filter is threaded through as
+    // an individual Option so the dispatch layer stays mechanical. The wide
+    // signature is intentional (mirrors `reject_pid_inventory_combos` / `run`).
     #[allow(clippy::too_many_arguments)]
     pub fn from_cli(
         family: Option<String>,
@@ -1364,6 +1367,8 @@ pub async fn render_once(
 
 /// `sharecli proc` — list host-detected agents with live RSS/FD samples.
 /// Reject inventory-mode flags when `--pid` selects detail mode (AC-007.92).
+// CLI flag aggregation: one Option per inventory filter keeps the dispatch
+// layer mechanical; the wide signature is intentional.
 #[allow(clippy::too_many_arguments)]
 fn reject_pid_inventory_combos(
     tree: bool,
@@ -1425,6 +1430,8 @@ fn reject_pid_inventory_combos(
     )
 }
 
+// CLI entry point: all `proc` flags are threaded through as individual
+// arguments by the shared dispatch layer; the wide signature is intentional.
 #[allow(clippy::too_many_arguments)]
 pub async fn run(
     json: bool,

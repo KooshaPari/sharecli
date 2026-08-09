@@ -54,11 +54,11 @@ impl MetricsRegistry {
         Self { counters: Mutex::new(HashMap::new()), gauges: Mutex::new(HashMap::new()) }
     }
     pub fn counter(&self, name: &str) -> Arc<Counter> {
-        let mut m = self.counters.lock().unwrap();
+        let mut m = self.counters.lock().expect("MetricsRegistry counters mutex poisoned");
         m.entry(name.to_string()).or_insert_with(|| Arc::new(Counter::new())).clone()
     }
     pub fn gauge(&self, name: &str) -> Arc<Gauge> {
-        let mut m = self.gauges.lock().unwrap();
+        let mut m = self.gauges.lock().expect("MetricsRegistry gauges mutex poisoned");
         m.entry(name.to_string()).or_insert_with(|| Arc::new(Gauge::new())).clone()
     }
 }

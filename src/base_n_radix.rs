@@ -47,7 +47,7 @@ pub fn big_encode(value: &[u32], base: u32) -> String {
     }
     // Process limbs high-to-low (big-endian).
     let mut limbs: Vec<u32> = value.to_vec();
-    while !limbs.is_empty() && *limbs.last().unwrap() == 0 {
+    while !limbs.is_empty() && *limbs.last().expect("limbs non-empty (guard checked above)") == 0 {
         limbs.pop();
     }
     let mut out = String::new();
@@ -60,7 +60,9 @@ pub fn big_encode(value: &[u32], base: u32) -> String {
         }
         let c = if carry < 10 { b'0' + carry as u8 } else { b'a' + (carry - 10) as u8 };
         out.push(c as char);
-        while !limbs.is_empty() && *limbs.last().unwrap() == 0 {
+        while !limbs.is_empty()
+            && *limbs.last().expect("limbs non-empty (guard checked above)") == 0
+        {
             limbs.pop();
         }
     }

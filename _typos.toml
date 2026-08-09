@@ -6,12 +6,12 @@ unparseable = "unparseable"
 
 [files]
 extend-exclude = [
-    "*.lock",
-    "target/",
-    "*.pyc",
-    "__pycache__/",
-    "python/src/gen/",
-    "rust/src/gen/",
-    "pheno-cli/go.mod",
-    "templates/static/*.min.js",
+  "*.lock",
+  "target/",
+  "*.pyc",
+  "__pycache__/",
+  "python/src/gen/",
+  "rust/src/gen/",
+  "pheno-cli/go.mod",
+  "templates/static/*.min.js",
 ]

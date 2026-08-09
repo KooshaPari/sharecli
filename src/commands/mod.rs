@@ -20,10 +20,10 @@ use crate::monitoring::HostResourceWatchJson;
 
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
 use crate::progress::StepProgress;
-#[allow(unused_imports)] // ProcState used by tests via `use super::*;`
+#[cfg(test)]
+use crate::runtime::ProcState;
 use crate::runtime::{
-    ProcState, ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources,
-    SharedRuntime,
+    ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
 use sharecli_fleet::global_coalesce_meters;

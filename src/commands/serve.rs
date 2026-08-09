@@ -42,8 +42,9 @@ use crate::health_check::{HealthCheckScheduler, HealthCheckStore};
 use crate::http_red::{render_http_red_metrics, HttpRedMetrics};
 use crate::monitoring::HostResourceWatchJson;
 use crate::notifier::Notifier;
-#[allow(unused_imports)] // ProcState used by tests via `use super::*;`
-use crate::runtime::{ProcState, ProcessPool};
+#[cfg(test)]
+use crate::runtime::ProcState;
+use crate::runtime::ProcessPool;
 use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 use crate::serve_rate_limit::{is_probe_path, ServeRateLimit, ServeRateLimitState};

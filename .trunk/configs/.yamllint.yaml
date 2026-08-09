@@ -1,0 +1,35 @@
+# Yamllint configuration used by Trunk Check (docs: https://yamllint.readthedocs.io/)
+# Relaxations vs yamllint defaults:
+#   - line-length: the repo's workflows/docs carry long URLs and expressions
+#     (GitHub `${{ }}` interpolations, SHA-pinned action refs). Enforced for
+#     `.md`-free YAML would generate noise; disabled repo-wide.
+#   - comments: hash comments (e.g. `# v7.0.1` next to pinned actions) may be
+#     indented freely; only require a space after the hash.
+#   - document-start: workflows start with `name:` and no `---`; not required.
+#   - truthy: `on:` is parsed as a boolean key by some YAML 1.1 parsers.
+#     Allowed explicitly to keep `on:`-based workflow triggers clean.
+
+extends: default
+
+rules:
+  line-length: disable
+  comments:
+    require-starting-space: true
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  document-start: disable
+  truthy:
+    allowed-values:
+      - "true"
+      - "false"
+      - "on"
+      - "off"
+    check-keys: false
+  brackets:
+    max-spaces-inside: 1
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  indentation:
+    spaces: consistent
+    indent-sequences: whatever

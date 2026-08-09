@@ -66,7 +66,12 @@ impl RadixTrie {
                     }
                     if !r_tail.is_empty() {
                         split_node.children.push((r_tail, Box::new(Node::new())));
-                        split_node.children.last_mut().unwrap().1.is_word = true;
+                        split_node
+                            .children
+                            .last_mut()
+                            .expect("split node just pushed a child")
+                            .1
+                            .is_word = true;
                     } else {
                         split_node.is_word = true;
                     }

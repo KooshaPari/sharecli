@@ -167,14 +167,28 @@ pub fn parse(input: &[u8], as_32bit: bool) -> Result<Vec<MapiProp>, String> {
             ));
         }
         let tag = if as_32bit {
-            u64::from_le_bytes(input[pos..pos + 8].try_into().unwrap()) as u32
+            u64::from_le_bytes(
+                input[pos..pos + 8]
+                    .try_into()
+                    .expect("8-byte tag slice in bounds (validated above)"),
+            ) as u32
         } else {
-            u32::from_le_bytes(input[pos..pos + 4].try_into().unwrap())
+            u32::from_le_bytes(
+                input[pos..pos + 4]
+                    .try_into()
+                    .expect("4-byte tag slice in bounds (validated above)"),
+            )
         };
         pos += tag_size;
-        let flags = u16::from_le_bytes(input[pos..pos + 2].try_into().unwrap());
+        let flags = u16::from_le_bytes(
+            input[pos..pos + 2].try_into().expect("2-byte flags slice in bounds (validated above)"),
+        );
         pos += 2;
-        let len = u32::from_le_bytes(input[pos..pos + 4].try_into().unwrap()) as usize;
+        let len = u32::from_le_bytes(
+            input[pos..pos + 4]
+                .try_into()
+                .expect("4-byte length slice in bounds (validated above)"),
+        ) as usize;
         pos += 4;
         if pos + len > input.len() {
             return Err(format!(

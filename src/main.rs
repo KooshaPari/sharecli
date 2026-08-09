@@ -1664,7 +1664,10 @@ async fn prune(idle_seconds: u64, force: bool) -> Result<()> {
     sys.refresh_all();
 
     let processes = pool.list().await;
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system clock before Unix epoch")
+        .as_secs();
 
     let candidates: Vec<_> = processes
         .into_iter()

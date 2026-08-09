@@ -8,29 +8,29 @@
 [licenses]
 version = 2
 allow = [
-    "Apache-2.0",
-    "Apache-2.0 WITH LLVM-exception",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "BSD-3-Clause-Clear",
-    "CC0-1.0",
-    "CC-BY-SA-4.0",
-    "CDDL-1.0",
-    "GPL-3.0-only",
-    # winfsp / winfsp-sys (Windows FUSE bindings, sharecli-fuse) declare the
-    # deprecated SPDX id "GPL-3.0"; cargo-deny >= 0.18.4 matches it pedantically.
-    "GPL-3.0",
-    "ISC",
-    "MIT",
-    "MPL-2.0",
-    "Unicode-3.0",
-    "Unicode-DFS-2016",
-    "Zlib",
-    "0BSD",
-    "BlueOak-1.0.0",
-    "CDLA-Permissive-2.0",
-    "Unlicense",
-    "WTFPL",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSD-3-Clause-Clear",
+  "CC0-1.0",
+  "CC-BY-SA-4.0",
+  "CDDL-1.0",
+  "GPL-3.0-only",
+  # winfsp / winfsp-sys (Windows FUSE bindings, sharecli-fuse) declare the
+  # deprecated SPDX id "GPL-3.0"; cargo-deny >= 0.18.4 matches it pedantically.
+  "GPL-3.0",
+  "ISC",
+  "MIT",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "Zlib",
+  "0BSD",
+  "BlueOak-1.0.0",
+  "CDLA-Permissive-2.0",
+  "Unlicense",
+  "WTFPL",
 ]
 
 [sources]
@@ -41,16 +41,16 @@ allow-git = ["https://github.com/KooshaPari/substrate"]
 
 [advisories]
 ignore = [
-    # No safe upgrade available - rustls-pemfile deprecated, migration requires async-nats update
-    { id = "RUSTSEC-2025-0134", reason = "No safe upgrade available. rustls-pemfile deprecated, migration requires async-nats update." },
-    # No safe upgrade available - gix = "0.71" pinned in Cargo.toml, requires major version bump
-    { id = "RUSTSEC-2025-0140", reason = "No safe upgrade available. gix = 0.71 pinned in Cargo.toml, requires breaking API change." },
-    # No safe upgrade available - async-nats 0.46.0 still uses rustls-webpki 0.102.x
-    { id = "RUSTSEC-2026-0049", reason = "No safe upgrade available. async-nats 0.46.0 still uses vulnerable rustls-webpki." },
-    # Marvin attack advisory covers every released version of rsa (introduced 0.0.0-0, no patch).
-    # sharecli only decodes/verifies JWTs with RSA public keys for local sidecar auth (src/serve_auth.rs);
-    # it never performs network-exposed RSA private-key operations.
-    { id = "RUSTSEC-2023-0071", reason = "No patched rsa release exists (advisory covers all versions); JWT use is local public-key verification only." },
-    # Informational 'unmaintained' advisory for paste - stale Cargo.lock entry, not in the workspace dep graph.
-    { id = "RUSTSEC-2024-0436", reason = "paste is a stale Cargo.lock entry; cargo tree -i paste is empty, nothing to replace." },
+  # No safe upgrade available - rustls-pemfile deprecated, migration requires async-nats update
+  { id = "RUSTSEC-2025-0134", reason = "No safe upgrade available. rustls-pemfile deprecated, migration requires async-nats update." },
+  # No safe upgrade available - gix = "0.71" pinned in Cargo.toml, requires major version bump
+  { id = "RUSTSEC-2025-0140", reason = "No safe upgrade available. gix = 0.71 pinned in Cargo.toml, requires breaking API change." },
+  # No safe upgrade available - async-nats 0.46.0 still uses rustls-webpki 0.102.x
+  { id = "RUSTSEC-2026-0049", reason = "No safe upgrade available. async-nats 0.46.0 still uses vulnerable rustls-webpki." },
+  # Marvin attack advisory covers every released version of rsa (introduced 0.0.0-0, no patch).
+  # sharecli only decodes/verifies JWTs with RSA public keys for local sidecar auth (src/serve_auth.rs);
+  # it never performs network-exposed RSA private-key operations.
+  { id = "RUSTSEC-2023-0071", reason = "No patched rsa release exists (advisory covers all versions); JWT use is local public-key verification only." },
+  # Informational 'unmaintained' advisory for paste - stale Cargo.lock entry, not in the workspace dep graph.
+  { id = "RUSTSEC-2024-0436", reason = "paste is a stale Cargo.lock entry; cargo tree -i paste is empty, nothing to replace." },
 ]

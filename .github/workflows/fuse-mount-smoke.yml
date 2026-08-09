@@ -32,8 +32,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
       - name: Install fuse3
-        run: sudo apt-get update && sudo apt-get install -y fuse3 libfuse3-dev pkg-config
+        run: |
+          sudo apt-get update && sudo apt-get install -y fuse3 libfuse3-dev pkg-config
+          # The mount smoke uses allow_other (multi-surface mounts); fuse3
+          # refuses it unless user_allow_other is set in /etc/fuse.conf.
+          sudo sh -c 'grep -q "^user_allow_other" /etc/fuse.conf || echo "user_allow_other" >> /etc/fuse.conf'
       - name: Privileged mount smoke
         env:
           SHARECLI_FUSE_MOUNT_SMOKE: '1'

@@ -38,7 +38,7 @@ impl<T> RingBuffer<T> {
         let mut v = Vec::with_capacity(self.size);
         for i in 0..self.size {
             let idx = (self.head + i) % self.data.len();
-            v.push(self.data[idx].as_ref().unwrap());
+            v.push(self.data[idx].as_ref().expect("slot occupied within size bounds"));
         }
         v
     }

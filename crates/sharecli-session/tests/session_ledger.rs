@@ -1,13 +1,25 @@
-use sharecli_session::{ResolutionConfidence, SessionObservation, SessionStore};
+use sharecli_session::{
+    AgentSession, ObservationKind, ResolutionConfidence, SessionObservation, SessionStore,
+    SurfaceCapabilities, SurfaceRecord,
+};
+use std::path::PathBuf;
 
 fn observation(id: &str, session_id: &str, confidence: ResolutionConfidence) -> SessionObservation {
+    let surface = SurfaceRecord {
+        id: id.to_string(),
+        terminal: "ghostty".to_string(),
+        title: None,
+        cwd: PathBuf::from("/tmp"),
+        process: None,
+    };
+    let mut session = AgentSession::new("codex", session_id, "/tmp");
+    session.confidence = confidence;
     SessionObservation::new(
-        id,
-        session_id,
-        "surface-1",
         "2026-08-08T00:00:00Z",
-        confidence,
-        "terminal process and harness metadata",
+        surface,
+        Some(session),
+        SurfaceCapabilities::default(),
+        ObservationKind::Updated,
     )
 }
 
@@ -27,10 +39,11 @@ fn observations_survive_store_reopen() {
     }
 
     let reopened = SessionStore::open(&path).unwrap();
-    let rows = reopened.observations("codex:abc").unwrap();
+    let rows = reopened.observations(None).unwrap();
     assert_eq!(rows.len(), 1);
-    assert!(rows[0].resumable);
-    assert_eq!(rows[0].confidence, ResolutionConfidence::Exact);
+    let session = rows[0].session.as_ref().expect("observation carries session");
+    assert!(session.auto_resumable(), "Exact-confidence session must be auto-resumable");
+    assert_eq!(session.confidence, ResolutionConfidence::Exact);
 
     std::fs::remove_file(&path).unwrap();
 }
@@ -46,8 +59,9 @@ fn heuristic_observations_are_persisted_but_not_resumable() {
         ))
         .unwrap();
 
-    let rows = store.observations("codex:ambiguous").unwrap();
+    let rows = store.observations(None).unwrap();
     assert_eq!(rows.len(), 1);
-    assert!(!rows[0].resumable);
-    assert_eq!(rows[0].confidence, ResolutionConfidence::Heuristic);
+    let session = rows[0].session.as_ref().expect("observation carries session");
+    assert!(!session.auto_resumable(), "Heuristic-confidence session must not be auto-resumable");
+    assert_eq!(session.confidence, ResolutionConfidence::Heuristic);
 }

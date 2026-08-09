@@ -1,0 +1,14 @@
+# actionlint configuration
+# https://github.com/rhysd/actionlint/blob/v1.7.12/docs/config.md
+# Note: the repository self-hosts no runners; all workflows run on GitHub-hosted
+# images, so no self-hosted-runner labels are declared here.
+
+paths:
+  # Forward reference: the `detect` job's `outputs:` block references
+  # `steps.detect.outputs.*` before the step with `id: detect` is declared.
+  # This is legal in GitHub Actions (step ids resolve within the whole job) and
+  # the detect job is exercised on every CI run, but actionlint's static
+  # analysis reports it as an undefined property. Ignore that specific message.
+  .github/workflows/ci.yml:
+    ignore:
+      - 'property "detect" is not defined in object type'

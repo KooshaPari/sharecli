@@ -13,7 +13,7 @@ pub fn u32_to_str(n: u32) -> String {
         i += 1;
     }
     buf[..i].reverse();
-    std::str::from_utf8(&buf[..i]).unwrap().to_string()
+    std::str::from_utf8(&buf[..i]).expect("digit buffer is pure ASCII").to_string()
 }
 
 pub fn i32_to_str(n: i32) -> String {
@@ -39,7 +39,7 @@ pub fn u64_to_str(n: u64) -> String {
         i += 1;
     }
     buf[..i].reverse();
-    std::str::from_utf8(&buf[..i]).unwrap().to_string()
+    std::str::from_utf8(&buf[..i]).expect("digit buffer is pure ASCII").to_string()
 }
 #[cfg(test)]
 mod tests {

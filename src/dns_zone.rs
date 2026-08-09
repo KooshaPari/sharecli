@@ -133,8 +133,11 @@ pub fn parse(input: &str) -> Result<Zone, (usize, String)> {
         let name_owned;
         if is_type_token(name_token) {
             // No explicit owner — treat as inherited.
-            name_owned =
-                String::from(if records.is_empty() { "@" } else { &records.last().unwrap().name });
+            name_owned = String::from(if records.is_empty() {
+                "@"
+            } else {
+                &records.last().expect("records non-empty in else branch").name
+            });
             // Don't consume the token; it's the type.
         } else {
             name_owned = name_token.to_string();

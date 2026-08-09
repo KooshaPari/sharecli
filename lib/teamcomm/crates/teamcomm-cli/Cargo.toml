@@ -20,7 +20,13 @@ teamcomm-client = { path = "../teamcomm-client" }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "macros", "time"] }
+tokio = { version = "1", features = [
+  "rt-multi-thread",
+  "net",
+  "io-util",
+  "macros",
+  "time",
+] }
 anyhow = { workspace = true }
 comfy-table = { workspace = true }
 tracing = { workspace = true }
