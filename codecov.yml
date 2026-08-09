@@ -7,9 +7,7 @@ coverage:
         paths:
           - "src/"
           - "sharecli/"
-        
-        - "src/**/*.rs"
-        
+          - "src/**/*.rs"
     patch:
       default:
         target: 80%
@@ -30,8 +28,6 @@ ignore:
   - ".github/"
   - "examples/"
   - "scripts/"
-  
-  
 
 flags:
   unit:

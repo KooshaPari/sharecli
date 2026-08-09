@@ -3,15 +3,8 @@
 # Threshold contract: docs/ops/mutants-threshold.md
 # Schema: cargo-mutants ≥25 (examine_globs + exclude_re; no jobs/timeout keys)
 
-examine_globs = [
-  "crates/sharecli-thermal-tui/src/lib.rs",
-]
+examine_globs = ["crates/sharecli-thermal-tui/src/lib.rs"]
 
-exclude_re = [
-  "render",
-  "event_loop",
-  "replace run ",
-  "count_cargo_builds",
-]
+exclude_re = ["render", "event_loop", "replace run ", "count_cargo_builds"]
 
 test_package = ["sharecli-thermal-tui"]

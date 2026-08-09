@@ -15,7 +15,12 @@ on:
   push:
     branches: [main]
 
-permissions: read-all
+permissions:
+  contents: read
+  # Required by scorecard-action's `publish_results` (Fulcio signing via OIDC);
+  # `read-all` (previous value) blocked the token and failed the run with
+  # "error obtaining token: expired_token" during result signing.
+  id-token: write
 
 jobs:
   analysis:

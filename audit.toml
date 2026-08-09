@@ -3,11 +3,11 @@
 # CI runs `cargo audit` without `--deny warnings` so real vulns still fail.
 [advisories]
 ignore = [
-    # Marvin attack advisory covers every released version of rsa (introduced 0.0.0-0, no patch).
-    # sharecli only decodes/verifies JWTs with RSA public keys for local sidecar auth (src/serve_auth.rs);
-    # it never performs network-exposed RSA private-key operations.
-    "RUSTSEC-2023-0071",
-    # Informational 'unmaintained' advisory for paste - stale Cargo.lock entry, not in the workspace dep graph.
-    "RUSTSEC-2024-0436",
+  # Marvin attack advisory covers every released version of rsa (introduced 0.0.0-0, no patch).
+  # sharecli only decodes/verifies JWTs with RSA public keys for local sidecar auth (src/serve_auth.rs);
+  # it never performs network-exposed RSA private-key operations.
+  "RUSTSEC-2023-0071",
+  # Informational 'unmaintained' advisory for paste - stale Cargo.lock entry, not in the workspace dep graph.
+  "RUSTSEC-2024-0436",
 ]
 yanked = "warn"

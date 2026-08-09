@@ -56,7 +56,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup Zig
@@ -72,8 +72,6 @@ jobs:
         with:
           file: Cargo.lock
 
-      
-
   # Dependency Vulnerability Scanning
   dependencies:
     name: Dependency Audit
@@ -82,7 +80,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -90,8 +88,6 @@ jobs:
         run: |
           cargo install cargo-audit
           cargo audit
-
-      
 
   # Container Scanning (if Dockerfile exists)
   container:

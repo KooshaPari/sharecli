@@ -18,6 +18,10 @@ pub struct Rgb(pub u8, pub u8, pub u8);
 impl Rgb {
     /// Build an `Rgb` from a `#rrggbb` or `rrggbb` hex literal at compile time.
     /// Panics on malformed input — only call with string literals.
+    // The panic is a documented contract for malformed color literals (the
+    // caller passes string literals, so the branch is unreachable in practice);
+    // deliberately kept so misconfiguration fails loudly at startup.
+    #[allow(clippy::panic)]
     pub const fn from_hex(hex: &str) -> Self {
         let bytes = hex.as_bytes();
         // accept '#rrggbb' (7) or 'rrggbb' (6)

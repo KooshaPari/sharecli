@@ -38,7 +38,7 @@ pub fn parse(input: &str) -> Result<Sexp, String> {
     if v.len() > 1 {
         return Err("multiple top-level expressions".into());
     }
-    Ok(v.into_iter().next().unwrap())
+    Ok(v.into_iter().next().expect("exactly one top-level expression (length checked above)"))
 }
 
 pub fn to_string(s: &Sexp) -> String {

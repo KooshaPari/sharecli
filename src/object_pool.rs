@@ -10,7 +10,7 @@ impl<T> ObjectPool<T> {
         Self { items: Arc::new(Mutex::new(VecDeque::new())), capacity }
     }
     pub fn put(&self, item: T) -> bool {
-        let mut g = self.items.lock().unwrap();
+        let mut g = self.items.lock().expect("ObjectPool items mutex poisoned");
         if g.len() >= self.capacity {
             false
         } else {
@@ -19,10 +19,10 @@ impl<T> ObjectPool<T> {
         }
     }
     pub fn take(&self) -> Option<T> {
-        self.items.lock().unwrap().pop_front()
+        self.items.lock().expect("ObjectPool items mutex poisoned").pop_front()
     }
     pub fn available(&self) -> usize {
-        self.items.lock().unwrap().len()
+        self.items.lock().expect("ObjectPool items mutex poisoned").len()
     }
     pub fn capacity(&self) -> usize {
         self.capacity

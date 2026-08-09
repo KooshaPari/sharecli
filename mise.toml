@@ -34,8 +34,7 @@ description = "OSV/GHSA lockfile scan (HIGH/CRITICAL hard parity)"
 run = "bash scripts/ci/osv_scan.sh"
 
 
-[tasks.docs:build]
+["tasks.docs:build"]
 description = "Build documentation"
 
 run = "cargo doc --no-deps --open"
-

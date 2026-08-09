@@ -8,7 +8,7 @@ impl<T: Clone> Stream<T> {
         Self { chunks: vec![Vec::new()], pos: 0, off: 0 }
     }
     pub fn write(&mut self, item: T) {
-        self.chunks.last_mut().unwrap().push(item);
+        self.chunks.last_mut().expect("Stream always has at least one chunk").push(item);
     }
     pub fn next(&mut self) -> Option<T> {
         loop {

@@ -32,7 +32,11 @@ libc = "0.2"
 anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-subscriber = { version = "0.3", features = [
+  "env-filter",
+  "fmt",
+  "json",
+] }
 tracing-appender = "0.2"
 
 # Config
@@ -78,7 +82,11 @@ sha2 = "0.11"
 opentelemetry = { version = "0.32", features = ["trace"] }
 # 0.32.1+ patches RustSec RUSTSEC-2026-* unbounded W3C Baggage allocation.
 opentelemetry_sdk = { version = "0.32.1", features = ["rt-tokio", "trace"] }
-opentelemetry-otlp = { version = "0.32", features = ["http-proto", "reqwest-rustls", "trace"] }
+opentelemetry-otlp = { version = "0.32", features = [
+  "http-proto",
+  "reqwest-rustls",
+  "trace",
+] }
 tracing-opentelemetry = "0.33"
 jsonwebtoken = { version = "11", features = ["use_pem", "rust_crypto"] }
 
@@ -192,20 +200,20 @@ strip = true
 
 [workspace]
 members = [
-    "crates/harness-native",
-    "crates/sharecli-sync",
-    "crates/sharecli-ipc",
-    "crates/sharecli-ffi",
-    "crates/sharecli-tray-linux",
-    "crates/sharecli-tray-windows",
-    "crates/sharecli-fleet",
-    "crates/sharecli-mesh",
-    "crates/spawn-core-sys",
-    "crates/sharecli-fuse",
-    "crates/sharecli-core",
-    "crates/sharecli-thermal-tui",
-    "crates/fuse-smoke-runner",
-    "crates/sharecli-session",
+  "crates/harness-native",
+  "crates/sharecli-sync",
+  "crates/sharecli-ipc",
+  "crates/sharecli-ffi",
+  "crates/sharecli-tray-linux",
+  "crates/sharecli-tray-windows",
+  "crates/sharecli-fleet",
+  "crates/sharecli-mesh",
+  "crates/spawn-core-sys",
+  "crates/sharecli-fuse",
+  "crates/sharecli-core",
+  "crates/sharecli-thermal-tui",
+  "crates/fuse-smoke-runner",
+  "crates/sharecli-session",
 ]
 
 # ---------------------------------------------------------------------------
@@ -218,11 +226,11 @@ members = [
 [workspace.metadata.dist]
 dist = true
 targets = [
-    "aarch64-apple-darwin",
-    "x86_64-apple-darwin",
-    "x86_64-unknown-linux-gnu",
-    "x86_64-pc-windows-msvc",
-    "aarch64-pc-windows-msvc",
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+  "aarch64-pc-windows-msvc",
 ]
 # Apps built by cargo-dist (all Rust workspace binaries we ship).
 # The Swift tray + WinUI 3 tray are added by the workflow.

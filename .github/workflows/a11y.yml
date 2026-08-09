@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - name: Install a11y deps
@@ -57,7 +57,7 @@ jobs:
       - name: Build sharecli
         run: cargo build --locked --release -p sharecli
       - name: Install Playwright Chromium
-        run: npx --yes playwright@1.49.0 install --with-deps chromium
+        run: npx --yes playwright@1.62.1 install --with-deps chromium
       - name: Run keyboard Tab-cycle
         env:
           SHARECLI_VISUAL_FIXTURE: "1"

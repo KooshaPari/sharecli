@@ -212,7 +212,7 @@ fn parse_bracket_class(p: &[u8], start: usize) -> Option<(Vec<u8>, bool, usize)>
     while i < p.len() && p[i] != b']' {
         let c = p[i];
         if c == b'-' && last.is_some() && i + 1 < p.len() && p[i + 1] != b']' {
-            let lo = last.unwrap();
+            let lo = last.expect("last is Some when `last.is_some()` was checked above");
             let hi_b = p[i + 1];
             for b in lo..=hi_b {
                 members.push(b);

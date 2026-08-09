@@ -20,9 +20,10 @@ use crate::monitoring::HostResourceWatchJson;
 
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
 use crate::progress::StepProgress;
+#[cfg(test)]
+use crate::runtime::ProcState;
 use crate::runtime::{
-    ProcState, ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources,
-    SharedRuntime,
+    ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
 };
 use crate::spawn_policy::SpawnPolicy;
 use sharecli_fleet::global_coalesce_meters;
@@ -393,7 +394,7 @@ pub fn render_status_csv_body(
         "runtime_pool,bun,{},{},{}\n",
         pool_status.bun_total, pool_status.bun_idle, pool_status.max_per_type,
     ));
-    let pct = if total_mb > 0 { (used_mb * 100) / total_mb } else { 0 };
+    let pct = (used_mb * 100).checked_div(total_mb).unwrap_or(0);
     out.push_str("\nrecord,used_mb,total_mb,used_pct\n");
     out.push_str(&format!("system_memory,{used_mb},{total_mb},{pct}\n"));
     out
@@ -418,7 +419,7 @@ pub fn render_ps_all_csv_body(
             proc.memory_mb,
             csv_escape_field(proc.project.as_deref().unwrap_or("-")),
             csv_escape_field(proc.harness.as_deref().unwrap_or("-")),
-            csv_escape_field(&agent_label_for_pid(proc_source, proc.pid)),
+            csv_escape_field(agent_label_for_pid(proc_source, proc.pid)),
         ));
     }
     let total_mem: u64 = processes.iter().map(|p| p.memory_mb).sum();
@@ -608,10 +609,8 @@ pub async fn ps(
             "`sharecli ps --csv` requires `--all` for host agent inventory parity (AC-007.83)"
         );
     }
-    if csv {
-        if json {
-            anyhow::bail!("--csv cannot be combined with --json");
-        }
+    if csv && json {
+        anyhow::bail!("--csv cannot be combined with --json");
     }
     if watch.is_some() && json && !all {
         anyhow::bail!(
@@ -948,10 +947,8 @@ async fn render_status_once(verbose: bool, json: bool, csv: bool, ndjson: bool) 
 
 /// Check process status.
 pub async fn status(verbose: bool, json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
-    if csv {
-        if json {
-            anyhow::bail!("--csv cannot be combined with --json");
-        }
+    if csv && json {
+        anyhow::bail!("--csv cannot be combined with --json");
     }
     match watch {
         None => render_status_once(verbose, json, csv, false).await,
@@ -1360,10 +1357,8 @@ async fn render_pool_once(json: bool, csv: bool, ndjson: bool) -> Result<()> {
 
 /// Show pool status
 pub async fn pool_status(json: bool, csv: bool, watch: Option<u64>) -> Result<()> {
-    if csv {
-        if json {
-            anyhow::bail!("--csv cannot be combined with --json");
-        }
+    if csv && json {
+        anyhow::bail!("--csv cannot be combined with --json");
     }
     match watch {
         None => render_pool_once(json, csv, false).await,
@@ -1505,10 +1500,8 @@ pub async fn health(
     csv: bool,
     watch: Option<u64>,
 ) -> Result<()> {
-    if csv {
-        if json {
-            anyhow::bail!("--csv cannot be combined with --json");
-        }
+    if csv && json {
+        anyhow::bail!("--csv cannot be combined with --json");
     }
     match watch {
         None => render_health_once(harness, json, csv, false).await,

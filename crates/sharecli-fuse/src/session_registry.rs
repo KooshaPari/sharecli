@@ -56,30 +56,30 @@ pub fn smoke_fuser_config() -> Config {
 
 /// FUSE config for privileged mount smoke / ephemeral mounts with an explicit backend override.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-pub fn smoke_fuser_config_for_backend(backend: Option<FuseBackend>) -> Config {
+pub fn smoke_fuser_config_for_backend(_backend: Option<FuseBackend>) -> Config {
     #[cfg(target_os = "linux")]
     {
         let mut config = Config::default();
         config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
         config.acl = SessionACL::RootAndOwner;
-        return config;
+        config
     }
 
     #[cfg(target_os = "macos")]
     {
-        let _ = backend;
+        let _ = _backend;
         let mut config = Config::default();
         config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
         // macFUSE's mount helper has no backend= option. Backend negotiation is
         // owned by the helper/MFMount API; passing an unknown custom option
         // causes opaque EAGAIN/EEXIST failures.
-        return config;
+        config
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         let mut config = Config::default();
         config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
-        return config;
+        config
     }
 }
 

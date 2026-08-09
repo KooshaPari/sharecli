@@ -14,6 +14,9 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 static DHAT: dhat::Alloc = dhat::Alloc;
 
 /// Returns the active allocator label for operator diagnostics (`sharecli --version` path).
+/// Exercised by the unit test below; the bin target's dead-code pass cannot
+/// see test-only callers, so allow it outside `cfg(test)` builds.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn active_allocator_label() -> &'static str {
     if cfg!(feature = "dhat-heap") {
         "dhat"

@@ -59,7 +59,7 @@ impl<K: Ord + Clone, V: Clone> SkipList<K, V> {
                 loop {
                     let next = cur.borrow().forward[i].clone();
                     if let Some(n) = next {
-                        if n.borrow().key.as_ref().unwrap() < &key {
+                        if n.borrow().key.as_ref().expect("skip node key is always set") < &key {
                             cur = n;
                             continue;
                         }
@@ -85,7 +85,7 @@ impl<K: Ord + Clone, V: Clone> SkipList<K, V> {
             loop {
                 let next = cur.borrow().forward[i].clone();
                 if let Some(n) = next {
-                    if n.borrow().key.as_ref().unwrap() < key {
+                    if n.borrow().key.as_ref().expect("skip node key is always set") < key {
                         cur = n;
                         continue;
                     }
@@ -95,7 +95,7 @@ impl<K: Ord + Clone, V: Clone> SkipList<K, V> {
         }
         let next = cur.borrow().forward[0].clone();
         if let Some(n) = next {
-            if n.borrow().key.as_ref().unwrap() == key {
+            if n.borrow().key.as_ref().expect("skip node key is always set") == key {
                 return n.borrow().value.clone();
             }
         }

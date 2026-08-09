@@ -184,9 +184,7 @@ pub fn extract(salt: &[u8], ikm: &[u8]) -> [u8; SHA256_OUT] {
 /// length (capped at 255 * HashLen per the spec).
 pub fn expand(prk: &[u8; SHA256_OUT], info: &[u8], length: usize) -> Vec<u8> {
     let max = 255 * SHA256_OUT;
-    if length > max {
-        panic!("HKDF-Expand: requested {} bytes exceeds max {}", length, max);
-    }
+    assert!(length <= max, "HKDF-Expand: requested {} bytes exceeds max {}", length, max);
     let mut okm = Vec::with_capacity(length);
     let mut t = Vec::<u8>::new();
     let mut counter: u8 = 1;

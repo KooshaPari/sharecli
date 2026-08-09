@@ -87,6 +87,10 @@ impl From<ProcessStatus> for ProcState {
 }
 
 #[derive(Debug, Clone)]
+// The bin crate only writes most of these fields; they are consumed by the
+// tray dashboard consumers (IPC payloads / JSON snapshots) outside this
+// crate's compile unit, which the dead-code pass cannot see.
+#[allow(dead_code)]
 pub struct ProcessInfo {
     pub pid: u32,
     pub name: String,

@@ -15,7 +15,9 @@ use sharecli_fleet::GateStatusSnapshot;
 
 use crate::commands::{PoolJson, StatusJson};
 use crate::monitoring::HostResourceWatchJson;
-use crate::runtime::{ProcState, ProcessInfo, ProcessPool};
+#[cfg(test)]
+use crate::runtime::ProcState;
+use crate::runtime::{ProcessInfo, ProcessPool};
 
 // ---------------------------------------------------------------------------
 // Public types

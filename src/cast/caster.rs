@@ -95,7 +95,7 @@ impl ProcessRunner for SystemRunner {
             .stderr(std::process::Stdio::piped())
             .spawn()?;
         use std::io::Write;
-        child.stdin.take().unwrap().write_all(stdin)?;
+        child.stdin.take().expect("spawned child must have piped stdin").write_all(stdin)?;
         child.wait_with_output()
     }
 }
@@ -126,13 +126,15 @@ impl MockProcessRunner {
     pub fn push_ok(&mut self, bin: &str, args: &[&str]) {
         self.commands
             .lock()
-            .unwrap()
+            .expect("MockProcessRunner commands mutex poisoned")
             .push_back((bin.to_string(), args.iter().map(|s| s.to_string()).collect()));
-        self.outputs.lock().unwrap().push_back(Ok(std::process::Output {
-            status: std::process::ExitStatus::default(),
-            stdout: Vec::new(),
-            stderr: Vec::new(),
-        }));
+        self.outputs.lock().expect("MockProcessRunner outputs mutex poisoned").push_back(Ok(
+            std::process::Output {
+                status: std::process::ExitStatus::default(),
+                stdout: Vec::new(),
+                stderr: Vec::new(),
+            },
+        ));
     }
 
     /// Create a runner pre-loaded with commands that all succeed.
@@ -153,10 +155,11 @@ impl MockProcessRunner {
         for (bin, args) in cmds {
             r.commands
                 .lock()
-                .unwrap()
+                .expect("MockProcessRunner commands mutex poisoned")
                 .push_back((bin.to_string(), args.iter().map(|s| s.to_string()).collect()));
         }
-        *r.outputs.lock().unwrap() = std::collections::VecDeque::from(outputs);
+        *r.outputs.lock().expect("MockProcessRunner outputs mutex poisoned") =
+            std::collections::VecDeque::from(outputs);
         r
     }
 }
@@ -166,7 +169,7 @@ impl ProcessRunner for MockProcessRunner {
         let expected = self
             .commands
             .lock()
-            .unwrap()
+            .expect("MockProcessRunner commands mutex poisoned")
             .pop_front()
             .expect("MockProcessRunner: no more commands expected");
         assert_eq!(expected.0, bin, "MockProcessRunner: bin mismatch");
@@ -176,13 +179,17 @@ impl ProcessRunner for MockProcessRunner {
             "MockProcessRunner: args mismatch for bin {}",
             bin
         );
-        self.outputs.lock().unwrap().pop_front().unwrap_or_else(|| {
-            Ok(std::process::Output {
-                status: std::process::ExitStatus::default(),
-                stdout: Vec::new(),
-                stderr: Vec::new(),
+        self.outputs
+            .lock()
+            .expect("MockProcessRunner outputs mutex poisoned")
+            .pop_front()
+            .unwrap_or_else(|| {
+                Ok(std::process::Output {
+                    status: std::process::ExitStatus::default(),
+                    stdout: Vec::new(),
+                    stderr: Vec::new(),
+                })
             })
-        })
     }
 
     fn run_with_stdin(

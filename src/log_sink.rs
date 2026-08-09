@@ -25,7 +25,7 @@ impl LogSink {
         Self { buffer: Arc::new(Mutex::new(VecDeque::new())), capacity }
     }
     pub fn write(&self, level: LogLevel, msg: impl Into<String>) {
-        let mut buf = self.buffer.lock().unwrap();
+        let mut buf = self.buffer.lock().expect("LogSink buffer mutex poisoned");
         if buf.len() >= self.capacity {
             buf.pop_front();
         }
@@ -41,10 +41,10 @@ impl LogSink {
         self.write(LogLevel::Error, msg);
     }
     pub fn drain(&self) -> Vec<LogEntry> {
-        self.buffer.lock().unwrap().drain(..).collect()
+        self.buffer.lock().expect("LogSink buffer mutex poisoned").drain(..).collect()
     }
     pub fn len(&self) -> usize {
-        self.buffer.lock().unwrap().len()
+        self.buffer.lock().expect("LogSink buffer mutex poisoned").len()
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0

@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/teamcomm-protocol",
-    "crates/teamcomm-client",
-    "crates/teamcomm-daemon",
-    "crates/teamcomm-cli",
-    "crates/teamcomm-mcp",
-    "crates/teamcomm-smoke",
+  "crates/teamcomm-protocol",
+  "crates/teamcomm-client",
+  "crates/teamcomm-daemon",
+  "crates/teamcomm-cli",
+  "crates/teamcomm-mcp",
+  "crates/teamcomm-smoke",
 ]
 
 [workspace.package]

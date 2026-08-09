@@ -18,7 +18,7 @@ pub fn median(mut values: Vec<f64>) -> f64 {
     if values.is_empty() {
         return 0.0;
     }
-    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    values.sort_by(|a, b| a.partial_cmp(b).expect("f64 ordering is total for non-NaN inputs"));
     let n = values.len();
     if n % 2 == 1 {
         values[n / 2]

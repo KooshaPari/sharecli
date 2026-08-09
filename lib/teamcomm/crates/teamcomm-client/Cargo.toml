@@ -14,7 +14,12 @@ authors = ["kooshapari"]
 teamcomm-protocol = { path = "../teamcomm-protocol" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "macros"] }
+tokio = { version = "1", features = [
+  "rt-multi-thread",
+  "net",
+  "io-util",
+  "macros",
+] }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 dirs = { workspace = true }

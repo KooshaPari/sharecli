@@ -31,7 +31,7 @@ pub fn parse_ipv4(s: &str) -> Option<[u8; 4]> {
     }
     let mut out = [0u8; 4];
     for (i, p) in s.split('.').enumerate() {
-        out[i] = p.parse().unwrap();
+        out[i] = p.parse().expect("is_ipv4 validated each octet is 0-255");
     }
     Some(out)
 }
