@@ -73,13 +73,13 @@ pub fn smoke_fuser_config_for_backend(backend: Option<FuseBackend>) -> Config {
         // macFUSE's mount helper has no backend= option. Backend negotiation is
         // owned by the helper/MFMount API; passing an unknown custom option
         // causes opaque EAGAIN/EEXIST failures.
-        return config;
+        config
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         let mut config = Config::default();
         config.mount_options = vec![MountOption::FSName("sharecli-fuse-smoke".to_string())];
-        return config;
+        config
     }
 }
 
