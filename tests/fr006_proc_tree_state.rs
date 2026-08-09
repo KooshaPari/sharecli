@@ -215,7 +215,8 @@ fn fr006_proc_tree_state_cli_text_shows_state_on_nodes() {
     // tree nodes (e.g. "[100] S claude"). The output always contains a
     // bracketed gate decision like "[ADMIT]" plus numeric meter values, so
     // the guard must require a digit immediately after a '['.
-    let has_pid_nodes = s.split('[').skip(1).any(|seg| seg.starts_with(|c: char| c.is_ascii_digit()));
+    let has_pid_nodes =
+        s.split('[').skip(1).any(|seg| seg.starts_with(|c: char| c.is_ascii_digit()));
     if has_pid_nodes {
         assert!(
             s.contains("] ")
