@@ -28,6 +28,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      # trunk-io/trunk-action's launcher script parses the GitHub event payload
+      # with jq, which the ubuntu-latest image no longer ships.
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Trunk Check
         uses: trunk-io/trunk-action@v1
 

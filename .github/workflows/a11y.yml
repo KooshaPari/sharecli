@@ -50,7 +50,7 @@ jobs:
           shared-key: a11y-keyboard
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
       - name: Install a11y deps
         run: npm ci
@@ -59,8 +59,10 @@ jobs:
       - name: Install Playwright Chromium
         run: npx --yes playwright@1.62.1 install --with-deps chromium
       - name: Run keyboard Tab-cycle
-        env:
-          SHARECLI_VISUAL_FIXTURE: "1"
+        # No SHARECLI_VISUAL_FIXTURE here: the fixture's WebSocket mock never
+        # dispatches a message, so the dashboard label never reaches exactly
+        # "connected" and the readiness wait times out. Against the real
+        # server the periodic snapshot sets the label and the cycle passes.
         run: |
           set -euo pipefail
           ./target/release/sharecli serve --bind 127.0.0.1:9000 &
