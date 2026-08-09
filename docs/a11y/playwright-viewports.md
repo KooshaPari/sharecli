@@ -40,7 +40,7 @@ block merge.
 |-------|-------|
 | Output dir | `artifacts/playwright/` (override: `SHARECLI_PW_OUT`) |
 | Files | `mobile-375.png`, `tablet-768.png`, `desktop-1280.png` |
-| CI artifact name | `playwright-viewports-${{ github.sha }}` |
+| CI artifact name | <span v-pre>`playwright-viewports-${{ github.sha }}`</span> |
 | Retention | **14 days** (`upload-artifact` in `playwright-soft.yml`) |
 | Serve URL | `SHARECLI_DASH_URL` default `http://127.0.0.1:9000/` |
 | Playwright pin | `playwright@1.49.0` (workflow + local) |
