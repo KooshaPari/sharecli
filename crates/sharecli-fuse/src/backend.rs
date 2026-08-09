@@ -5,10 +5,19 @@ use std::{
     process::Command,
 };
 
+/// Available FUSE backend options on macOS.
+///
+/// Selected at runtime by [`select_backend`]; the chosen variant is what
+/// `InterceptFs::mount` will negotiate with the host kernel.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FuseBackend {
+    /// Apple's first-party FSKit user-space file system framework (macOS 15+).
     Fskit,
+    /// The legacy macFUSE kext (`/Library/Filesystems/macfuse.fs`) — used when
+    /// the kext is already loaded because it offers the lowest-latency path.
     Kernel,
+    /// No backend is available; mount negotiation will fail with a
+    /// diagnostic from [`runtime_diagnostics`].
     Unavailable,
 }
 
@@ -261,7 +270,7 @@ pub(crate) fn runtime_diagnostics() -> String {
                 }
             })
             .unwrap_or("unavailable");
-        return format!("macFUSE version-entry={version}; {kext}; fskit_agent={fskit}");
+        format!("macFUSE version-entry={version}; {kext}; fskit_agent={fskit}")
     }
     #[cfg(not(target_os = "macos"))]
     {
