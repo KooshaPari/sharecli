@@ -13,7 +13,7 @@
 //! - [`ATTR_SESSION`] — opaque session id (UTF-8)
 //! - [`ATTR_WRITTEN_AT`] — Unix epoch seconds as decimal ASCII
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Extended-attribute name for the writer session id.

@@ -89,6 +89,7 @@ pub fn parse_fd_count(raw: &str, flag: &str) -> Result<u64> {
 }
 
 impl ProcFilter {
+    #[allow(clippy::too_many_arguments)]
     pub fn from_cli(
         family: Option<String>,
         exclude_family: Option<String>,
@@ -996,7 +997,7 @@ pub fn render_proc_detail_text(detail: &ProcDetailSnapshot) -> Result<()> {
     println!("PID:       {}", detail.pid);
     let parent = match (&detail.parent_comm, detail.ppid) {
         (Some(comm), ppid) => format!("{ppid} ({comm})"),
-        (None, ppid) if ppid == 0 => "0".into(),
+        (None, 0) => "0".into(),
         (None, ppid) => ppid.to_string(),
     };
     println!("Parent:    {parent}");
@@ -1139,7 +1140,7 @@ pub fn render_agent_inventory_csv(
         out.push_str(&format!(
             "{},{},{},{},{},{},{}",
             row.agent.pid,
-            csv_escape_field(&row.agent.family),
+            csv_escape_field(row.agent.family),
             csv_escape_field(&row.agent.comm),
             state,
             row.resource.mem_rss_bytes,
@@ -1202,7 +1203,7 @@ fn render_tree_node(
     } else {
         "├── ".to_string()
     };
-    let family = node.family.map(|f| format!("{f} ")).unwrap_or_else(String::new);
+    let family = node.family.map(|f| format!("{f} ")).unwrap_or_default();
     let state = state_text_for_pid(state_by_pid, node.pid);
     println!("{prefix}{connector}[{pid}] {state} {family}{comm}", pid = node.pid, comm = node.comm);
     let child_prefix = if prefix.is_empty() {
@@ -1363,6 +1364,7 @@ pub async fn render_once(
 
 /// `sharecli proc` — list host-detected agents with live RSS/FD samples.
 /// Reject inventory-mode flags when `--pid` selects detail mode (AC-007.92).
+#[allow(clippy::too_many_arguments)]
 fn reject_pid_inventory_combos(
     tree: bool,
     family: &Option<String>,
@@ -1423,6 +1425,7 @@ fn reject_pid_inventory_combos(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run(
     json: bool,
     csv: bool,
@@ -1442,10 +1445,8 @@ pub async fn run(
     pid: Option<u32>,
     ppid: Option<u32>,
 ) -> Result<()> {
-    if csv {
-        if json {
-            bail!("--csv cannot be combined with --json");
-        }
+    if csv && json {
+        bail!("--csv cannot be combined with --json");
     }
     if pid.is_some() && ppid.is_some() {
         bail!("--ppid cannot be combined with --pid");

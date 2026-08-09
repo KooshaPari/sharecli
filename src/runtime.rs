@@ -87,6 +87,7 @@ impl From<ProcessStatus> for ProcState {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // some fields are read only by the lib target, not the bin
 pub struct ProcessInfo {
     pub pid: u32,
     pub name: String,
@@ -222,6 +223,7 @@ fn count_open_fds(pid: u32) -> Option<u32> {
     None
 }
 
+#[allow(unreachable_code)] // final `None` only reachable on non-linux/macos targets
 fn count_threads(pid: u32) -> Option<u32> {
     #[cfg(target_os = "linux")]
     if let Ok(entries) = std::fs::read_dir(format!("/proc/{pid}/task")) {
