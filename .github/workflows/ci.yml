@@ -249,6 +249,7 @@ jobs:
         with:
           scan-args: |-
             --lockfile=Cargo.lock
+            --config=osv-scanner.toml
 
   chaos-restart-hard:
     name: chaos restart (required)
