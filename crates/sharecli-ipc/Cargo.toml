@@ -26,6 +26,7 @@ futures-util = "0.3"
 
 # Hypervisor coalesce operator meters (FR-008 / AC-008.11)
 sharecli-fleet = { path = "../sharecli-fleet" }
+sharecli-session = { path = "../sharecli-session" }
 
 # IPC server (bin only)
 sharecli = { path = "../../" }

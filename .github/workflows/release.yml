@@ -173,9 +173,21 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+      - name: Setup Node
+        if: matrix.os == 'ubuntu-24.04'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install npm deps (a11y dashboard gate)
+        if: matrix.os == 'ubuntu-24.04'
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       - name: Test release build (host)
         if: matrix.os == 'ubuntu-24.04'
-        run: cargo test --release --locked --all-features
+        # Default features only: --all-features enables the dhat-heap profiler,
+        # whose process-exit report pollutes stderr and breaks the fr007
+        # stderr-silent contracts (AC-007.44/76/82).
+        run: cargo test --release --locked
 
   tray-linux:
     name: Tray Linux (beta)
@@ -258,12 +270,15 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "8.0.x"
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
       - name: Build WinUI tray
-        run: dotnet build windows/ShareCLITray/ShareCLITray.csproj -c Release -p:Platform=x64
+        working-directory: windows/ShareCLITray
+        run: msbuild ShareCLITray.csproj /restore /p:Configuration=Release /p:Platform=x64
       - name: Pack zip
         shell: pwsh
         run: |
-          $out = Get-ChildItem -Recurse windows/ShareCLITray/bin/Release -Filter ShareCLITray.exe | Select-Object -First 1
+          $out = Get-ChildItem -Recurse windows/ShareCLITray/bin -Filter ShareCLITray.exe | Select-Object -First 1
           if (-not $out) { Write-Error "ShareCLITray.exe not found"; exit 1 }
           New-Item -ItemType Directory -Force pack | Out-Null
           Copy-Item $out.FullName pack/

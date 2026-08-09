@@ -46,7 +46,11 @@ mod write_serialize_meters;
 
 pub use agent_cow::{AgentCowStore, AgentPending};
 pub use agents_conf::{sanitize_agent_id, AgentsConf};
-pub use backend::{select_backend, FuseBackend};
+pub use backend::{
+    probe_runtime, select_backend, select_backend_for_mount, select_backend_for_mount_with,
+    select_backend_with, FuseBackend, FuseBackendDiagnostic, FuseBackendSelection,
+    FuseCapabilities, FuseRuntimeEvidence,
+};
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub use cow_session::CowMountHandle;
 pub use inode_map::{abs_under, join_rel, InodeMap, ROOT_INO};
@@ -984,7 +988,7 @@ mod platform {
             use crate::{select_backend, FuseBackend};
 
             let attempt = |backend: Option<FuseBackend>| {
-let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
+                let config = crate::session_registry::smoke_fuser_config_for_backend(backend);
                 fuser::mount(InterceptFs::with_session(backing, session_id), mountpoint, &config)
             };
 

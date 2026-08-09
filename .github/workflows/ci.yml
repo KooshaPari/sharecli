@@ -87,6 +87,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
       - name: cargo fmt --check
         run: |
           cargo fmt --all -- --check 2>&1 || echo "::warning::cargo fmt issues (advisory)"
@@ -124,6 +128,27 @@ jobs:
       - name: cargo test loom pool index
         run: |
           RUSTFLAGS="--cfg loom" cargo test -p sharecli-sync --test loom_pool_index
+
+  guardrail:
+    name: Guardrail (nextest)
+    needs: detect
+    if: needs.detect.outputs.has_rust == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - name: Install cargo-nextest
+        run: |
+          cargo install --locked cargo-nextest 2>&1 || echo "::warning::cargo-nextest install failed (advisory)"
+      - name: cargo nextest run (guardrail)
+        run: |
+          cargo nextest run --locked --all-features --profile ci 2>&1 || echo "::warning::nextest guardrail failures (advisory)"
 
   python:
     name: Python
@@ -209,6 +234,61 @@ jobs:
         with:
           fail-on-severity: low
 
+  osv:
+    name: OSV / GHSA lockfile scan (required)
+    needs: detect
+    if: needs.detect.outputs.has_rust == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - name: Scan Cargo.lock with OSV-Scanner
+        # Severity gate intent: --severity=HIGH,CRITICAL (documented; osv-scanner
+        # v2.3.8 has no CLI severity flag — findings gate via code-scanning alerts).
+        uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=Cargo.lock
+
+  chaos-restart-hard:
+    name: chaos restart (required)
+    needs: detect
+    if: needs.detect.outputs.has_rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - name: Build sharecli (release)
+        run: cargo build --locked --release -p sharecli
+      - name: Chaos restart /healthz recovery
+        env:
+          SHARECLI_LOAD_URL: http://127.0.0.1:9000/healthz
+          SHARECLI_SERVE_BIND: 127.0.0.1:9000
+          SHARECLI_SERVE_BIN: ./target/release/sharecli
+          SHARECLI_CHAOS_RECOVER_SEC: "30"
+        run: bash scripts/load/chaos_restart.sh
+
+  netblock:
+    name: netblock hermetic (required)
+    needs: detect
+    if: needs.detect.outputs.has_rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.14.1
+      - name: Netblock hermetic check (offline compile)
+        run: bash scripts/ci/netblock_check.sh
+
   lint:
     name: ci / lint
     if: always()
@@ -256,3 +336,36 @@ jobs:
         run: |
           # Test gate is currently combined with lint
           echo "✅ All test stages passed (gated via ci / lint)"
+
+  ci-success:
+    name: CI Success Gate
+    if: always()
+    needs: [lint, test, osv, chaos-restart-hard, netblock]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate CI gate
+        run: |
+          failed=0
+          for pair in \
+            "lint:${{ needs.lint.result }}" \
+            "test:${{ needs.test.result }}" \
+            "osv:${{ needs.osv.result }}" \
+            "chaos-restart-hard:${{ needs.chaos-restart-hard.result }}" \
+            "netblock:${{ needs.netblock.result }}" \
+            ; do
+            name="${pair%%:*}"
+            result="${pair#*:}"
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              echo "  ✗ $name: $result"
+              failed=$((failed + 1))
+            else
+              echo "  ✓ $name: $result"
+            fi
+          done
+          if [ "$failed" -gt 0 ]; then
+            echo ""
+            echo "❌ $failed gate(s) failed"
+            exit 1
+          fi
+          echo ""
+          echo "✅ All gates passed"

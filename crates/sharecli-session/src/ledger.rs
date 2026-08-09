@@ -1,94 +1,124 @@
+//! Durable observation records for terminal surfaces and agent sessions.
+
+use crate::{AgentSession, SurfaceRecord};
 use serde::{Deserialize, Serialize};
 
-use crate::{ResolutionConfidence, SessionStore};
+/// Capabilities advertised by a terminal surface adapter.
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SurfaceCapabilities {
+    pub read: bool,
+    pub write: bool,
+    pub resize: bool,
+    pub layout: bool,
+    pub durable_pty: bool,
+}
 
-/// A durable observation of an agent session discovered from a terminal
-/// surface. Observations are append-only so crash recovery can distinguish
-/// corroborated state from an ambiguous heuristic.
+/// Why an observation was appended.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum ObservationKind {
+    Discovered,
+    Updated,
+    Exited,
+    Recovered,
+}
+
+/// Append-only state observed from a terminal surface.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SessionObservation {
-    pub id: String,
-    pub session_id: String,
-    pub surface_id: String,
+    #[serde(default)]
+    pub seq: i64,
     pub observed_at: String,
-    pub confidence: ResolutionConfidence,
-    pub resumable: bool,
-    pub evidence: String,
+    pub surface: SurfaceRecord,
+    pub session: Option<AgentSession>,
+    pub capabilities: SurfaceCapabilities,
+    pub kind: ObservationKind,
 }
 
 impl SessionObservation {
     pub fn new(
-        id: impl Into<String>,
-        session_id: impl Into<String>,
-        surface_id: impl Into<String>,
         observed_at: impl Into<String>,
-        confidence: ResolutionConfidence,
-        evidence: impl Into<String>,
+        surface: SurfaceRecord,
+        session: Option<AgentSession>,
+        capabilities: SurfaceCapabilities,
+        kind: ObservationKind,
     ) -> Self {
-        let resumable =
-            matches!(confidence, ResolutionConfidence::Exact | ResolutionConfidence::Corroborated);
-        Self {
-            id: id.into(),
-            session_id: session_id.into(),
-            surface_id: surface_id.into(),
-            observed_at: observed_at.into(),
-            confidence,
-            resumable,
-            evidence: evidence.into(),
-        }
+        Self { seq: 0, observed_at: observed_at.into(), surface, session, capabilities, kind }
     }
 }
 
-impl SessionStore {
-    pub fn append_observation(&self, observation: &SessionObservation) -> anyhow::Result<()> {
-        let conn = self.connection()?;
-        conn.execute(
-            "INSERT INTO session_observations
-             (id,session_id,surface_id,observed_at,confidence,resumable,evidence)
-             VALUES (?1,?2,?3,?4,?5,?6,?7)",
-            rusqlite::params![
-                observation.id,
-                observation.session_id,
-                observation.surface_id,
-                observation.observed_at,
-                serde_json::to_string(&observation.confidence)?,
-                observation.resumable,
-                observation.evidence,
-            ],
-        )?;
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AgentSession, ProcessEvidence, ResolutionConfidence, SessionState, SessionStore};
+    use std::{
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn surface(id: &str) -> SurfaceRecord {
+        SurfaceRecord {
+            id: id.to_string(),
+            terminal: "ghostty".to_string(),
+            title: Some(id.to_string()),
+            cwd: PathBuf::from("/tmp/project"),
+            process: Some(ProcessEvidence {
+                pid: Some(42),
+                tty: Some("ttys001".to_string()),
+                cwd: PathBuf::from("/tmp/project"),
+                argv: vec!["codex".to_string()],
+                started_at: Some("1".to_string()),
+            }),
+        }
     }
 
-    pub fn observations(&self, session_id: &str) -> anyhow::Result<Vec<SessionObservation>> {
-        let conn = self.connection()?;
-        let mut statement = conn.prepare(
-            "SELECT id,session_id,surface_id,observed_at,confidence,resumable,evidence
-             FROM session_observations WHERE session_id=?1 ORDER BY observed_at,id",
-        )?;
-        let rows = statement
-            .query_map([session_id], |row| {
-                let confidence: String = row.get(4)?;
-                Ok(SessionObservation {
-                    id: row.get(0)?,
-                    session_id: row.get(1)?,
-                    surface_id: row.get(2)?,
-                    observed_at: row.get(3)?,
-                    confidence: serde_json::from_str(&confidence).map_err(|error| {
-                        rusqlite::Error::FromSqlConversionFailure(
-                            4,
-                            rusqlite::types::Type::Text,
-                            Box::new(error),
-                        )
-                    })?,
-                    resumable: row.get(5)?,
-                    evidence: row.get(6)?,
-                })
-            })?
-            .collect::<rusqlite::Result<Vec<_>>>()?;
-        Ok(rows)
+    #[test]
+    fn observation_survives_store_reopen_and_materializes_session() {
+        let suffix = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let path = std::env::temp_dir().join(format!("sharecli-ledger-{suffix}.sqlite"));
+        let session = AgentSession::codex("session-1", "/tmp/project");
+        let observation = SessionObservation::new(
+            "2026-07-31T00:00:00Z",
+            surface("ghostty:1"),
+            Some(session.clone()),
+            SurfaceCapabilities { read: true, write: true, ..Default::default() },
+            ObservationKind::Discovered,
+        );
+        let store = SessionStore::open(&path).unwrap();
+        let seq = store.append_observation(&observation).unwrap();
+        assert_eq!(seq, 1);
+        drop(store);
+        let reopened = SessionStore::open(&path).unwrap();
+        assert_eq!(reopened.observations(None).unwrap().len(), 1);
+        assert_eq!(reopened.get(&session.id).unwrap(), Some(session));
+        let _ = std::fs::remove_file(path);
     }
 
-    fn connection(&self) -> anyhow::Result<std::sync::MutexGuard<'_, rusqlite::Connection>> {
-        self.connection_guard()
+    #[test]
+    fn heuristic_session_is_not_auto_resumable() {
+        let mut session = AgentSession::codex("session-2", "/tmp/project");
+        session.confidence = ResolutionConfidence::Heuristic;
+        session.state = SessionState::Unknown;
+        assert!(!session.auto_resumable());
+    }
+
+    #[test]
+    fn compaction_keeps_latest_observation_per_surface() {
+        let store = SessionStore::open_memory().unwrap();
+        for (surface_id, timestamp) in [("a", "1"), ("a", "2"), ("b", "3")] {
+            store
+                .append_observation(&SessionObservation::new(
+                    timestamp,
+                    surface(surface_id),
+                    None,
+                    SurfaceCapabilities::default(),
+                    ObservationKind::Updated,
+                ))
+                .unwrap();
+        }
+        assert_eq!(store.compact_observations().unwrap(), 1);
+        let observations = store.observations(None).unwrap();
+        assert_eq!(observations.len(), 2);
+        assert_eq!(observations[0].surface.id, "a");
+        assert_eq!(observations[0].observed_at, "2");
     }
 }

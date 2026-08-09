@@ -15,9 +15,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
-    <!-- 1.6.240923002 (1.6.0) crashes XamlCompiler.exe (net472, MSB3073) on
-         .NET 8 SDK; 1.6.250602001 is the current 1.6.x patch with the fix. -->
+    <!-- WindowsAppSDK 1.6.250602001 is a valid 1.6.x patch bump. The historical
+         XamlCompiler.exe (net472, MSB3073) crash was caused by XAML markup that is
+         invalid for WinUI 3 `Window`: a `Background` attribute and `Width`/`Height`
+         attributes (WinUI 3 `Window` exposes none of those properties), which crashed
+         the net472 XamlCompiler pre-pass with exit code 1 and no diagnostic. The tray
+         process list was also migrated off the UWP-era WinUI 2
+         CommunityToolkit.WinUI.UI.Controls.DataGrid to a native WinUI 3 `ListView`,
+         so that package is no longer referenced. -->
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250602001" />
   </ItemGroup>
 </Project>

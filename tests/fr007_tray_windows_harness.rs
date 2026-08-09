@@ -51,16 +51,18 @@ fn fr007_tray_windows_harness_csharp_mapping_wires() {
     );
 }
 
-/// FR-007 / AC-007.55 — WinUI DataGrid binds Harness column for operator process metadata.
+/// FR-007 / AC-007.55 — WinUI grid binds Harness column for operator process metadata.
 #[test]
 fn fr007_tray_windows_harness_grid_column_wires() {
     let tray_xaml = include_str!("../windows/ShareCLITray/TrayWindow.xaml");
+    // The tray grid is built from TextBlock cells (Grid.Column) rather than a
+    // DataGridTextColumn, so the header/binding appear as Text="{Binding harness}".
     assert!(
-        tray_xaml.contains("Header=\"Harness\""),
+        tray_xaml.contains("Text=\"Harness\""),
         "ProcessGrid MUST include Harness column (AC-007.55)"
     );
     assert!(
-        tray_xaml.contains("Binding=\"{Binding harness}\""),
+        tray_xaml.contains("Text=\"{Binding harness}\""),
         "Harness column MUST bind ProcessInfo.harness (AC-007.55)"
     );
 }

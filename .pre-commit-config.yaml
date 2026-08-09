@@ -78,11 +78,24 @@ repos:
         stages: [commit-msg]
         args: [feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert]
 
-  # ── Secret scanning ──
+  # ── Secret scanning (C04 L31 dual scanners) ──
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.28.1
     hooks:
       - id: gitleaks
+        # Drive gitleaks from the committed gitleaks.toml allowlist/rules (C04 L31).
+        args: ["--config", "gitleaks.toml"]
+
+  # TruffleHog (C04 L31): verified-only filesystem scan via the repo's local
+  # parity script so CI (security.yml) and pre-commit stay in lockstep.
+  - repo: local
+    hooks:
+      - id: secret-scan-trufflehog
+        name: trufflehog secret scan (verified only)
+        entry: bash scripts/ci/secret_scan.sh
+        language: system
+        pass_filenames: false
+        always_run: true
 
   # ── Trunk.io (if installed) ──
   - repo: https://github.com/trunk-io/trunk
