@@ -28,6 +28,7 @@ jobs:
         with:
           scan-args: |-
             --lockfile=Cargo.lock
+            --config=osv-scanner.toml
             --format=sarif
             --output=osv-results.sarif
       - name: Upload SARIF

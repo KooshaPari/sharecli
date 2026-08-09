@@ -1,0 +1,10 @@
+# OSV-Scanner ignore list (google/osv-scanner-action).
+# Applied to every lockfile scan in ci.yml and osv.yml via --config=osv-scanner.toml.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2023-0071"
+reason = "rsa Marvin-attack advisory covers every released version (introduced 0.0.0-0, no patched release). sharecli only decodes/verifies JWTs with RSA public keys for local sidecar auth (src/serve_auth.rs); it never performs network-exposed RSA private-key operations, which the advisory names as the unsafe setting."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+reason = "Informational 'unmaintained' advisory for the paste crate. paste 1.0.15 is a stale Cargo.lock entry: no package in the workspace dependency graph references it (cargo tree -i paste is empty), so there is nothing to replace."
