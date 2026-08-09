@@ -79,9 +79,14 @@ fn fr003_cast_list_empty_state() {
     std::fs::create_dir_all(&config_home).expect("config home");
     let bin = env!("CARGO_BIN_EXE_sharecli");
 
+    // macOS `dirs::config_dir()` resolves to `$HOME/Library/Application Support`,
+    // ignoring XDG_CONFIG_HOME, so a stale entry from a prior run can leak into
+    // the global pane-map and break this test. Pin HOME to the temp dir so the
+    // sharecli binary resolves a fresh, empty config root.
     let output = Command::new(bin)
         .env("XDG_CONFIG_HOME", &config_home)
         .env("APPDATA", &config_home)
+        .env("HOME", tmp.path())
         .args(["cast", "list"])
         .output()
         .expect("run cast list");
