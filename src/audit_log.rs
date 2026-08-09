@@ -168,6 +168,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[serial_test::serial(env)]
     fn emit_if_configured_respects_env_gate() {
         static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
         let _env = ENV_LOCK.lock().unwrap();
@@ -204,6 +205,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(env)]
     fn path_respects_env_override() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("custom.jsonl");
