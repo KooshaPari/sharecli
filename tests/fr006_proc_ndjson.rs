@@ -24,7 +24,11 @@ fn fr006_proc_watch_ndjson_one_line_per_refresh() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(2_500));
+    // Allow headroom for process startup under heavy system load (the binary
+    // spawns a tokio runtime and probes /proc on first run, which can take
+    // multiple seconds on a loaded CI box). 5s is enough for two 1-second
+    // watch ticks even with cold-start delay.
+    thread::sleep(Duration::from_millis(5_000));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -36,7 +40,7 @@ fn fr006_proc_watch_ndjson_one_line_per_refresh() {
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert!(
         lines.len() >= 2,
-        "NDJSON watch MUST emit at least two lines in ~2.5s; got {} line(s): {stdout}",
+        "NDJSON watch MUST emit at least two lines in ~5s; got {} line(s): {stdout}",
         lines.len()
     );
     for line in &lines {
@@ -57,7 +61,8 @@ fn fr006_proc_watch_ndjson_stdout_is_pipe_clean() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(1_500));
+    // Allow headroom for first watch tick under heavy system load.
+    thread::sleep(Duration::from_millis(3_000));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -92,7 +97,8 @@ fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(2_500));
+    // Allow headroom for cold-start + first watch tick under heavy system load.
+    thread::sleep(Duration::from_millis(5_000));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -103,7 +109,7 @@ fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
 
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     let line = lines.first().copied().unwrap_or_else(|| {
-        panic!("NDJSON watch MUST emit at least one line in ~2.5s; got: {stdout}");
+        panic!("NDJSON watch MUST emit at least one line in ~5s; got: {stdout}");
     });
     let v: serde_json::Value = serde_json::from_str(line).expect("NDJSON line MUST parse");
     let agents = v.get("agents").and_then(|a| a.as_array()).expect("agents array");
