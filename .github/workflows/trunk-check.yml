@@ -40,7 +40,13 @@ jobs:
       - name: Run actionlint
         # Official pinned image; avoids curl|tar installs (SonarCloud flags
         # download-and-execute patterns as a security issue on new code).
+        # `-shellcheck=` disables the image's bundled shellcheck: trunk's
+        # actionlint integration runs without shellcheck too (and the repo's
+        # workflows carry pre-existing SC2034/SC2086 advisories that trunk
+        # does not gate on).
         uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -shellcheck=
 
       - name: Install taplo
         run: cargo install taplo-cli --locked --version 0.9.3
