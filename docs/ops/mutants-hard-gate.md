@@ -113,7 +113,7 @@ in `crates/sharecli-fuse/mutants.toml`:
   no-registration path) is exercised by `registry_no_mount_tests`, which
   populates the registry directly; the mount entry points share the pure
   `session_mount_options` helper whose struct-literal `delete field` mutants
-  are caught by a unit test (cargo-mutants ≥27 pushes `delete field` mutants
+  are caught by a unit test (cargo-mutants >= 27 pushes `delete field` mutants
   past `exclude_re`, so keep such literals in testable helpers).
 - **Cross-platform dead code** — `winfsp_mount.rs` (Windows-only) and the
   macFUSE capability probes in `backend.rs` (`fskit_*`, `kernel_backend_loaded`,
