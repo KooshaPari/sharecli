@@ -382,4 +382,27 @@ mod tests {
         assert!(evidence.non_fuse_fallback);
         assert!(!evidence.selection.backend.as_str().is_empty());
     }
+
+    #[test]
+    fn backend_labels_are_stable_operator_strings() {
+        assert_eq!(FuseBackend::Kernel.as_str(), "kext");
+        assert_eq!(FuseBackend::Fskit.as_str(), "fskit");
+        assert_eq!(FuseBackend::Unavailable.as_str(), "non-fuse");
+    }
+
+    #[test]
+    fn diagnostics_are_distinct_and_operator_facing() {
+        let no_backend = FuseBackendDiagnostic::NoVerifiedBackend.message();
+        let volumes = FuseBackendDiagnostic::FskitRequiresVolumes.message();
+        assert!(!no_backend.is_empty());
+        assert!(!volumes.is_empty());
+        assert_ne!(no_backend, volumes);
+    }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn runtime_diagnostics_is_non_empty_off_macos() {
+        // Exact match: String::new() / "xyzzy" mutants both differ.
+        assert_eq!(runtime_diagnostics(), "macFUSE diagnostics unavailable on this platform");
+    }
 }

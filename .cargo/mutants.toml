@@ -5,6 +5,21 @@
 
 examine_globs = ["crates/sharecli-thermal-tui/src/lib.rs"]
 
-exclude_re = ["render", "event_loop", "replace run ", "count_cargo_builds"]
+# "render"/"event_loop"/"replace run "/"count_cargo_builds": terminal-bound or
+# live-process paths that cannot be unit-tested headlessly (see
+# docs/ops/mutants-hard-gate.md triage table: render/event-loop noise).
+# "replace run_with_pool_status": same class as `run` — the terminal lifecycle
+# entry point (raw mode + alternate screen + blocking event loop).
+# "replace < with <= in agent_forest_lines": equivalent mutant — the loop
+# counter `i` is always < forests.len() inside the loop, so `<` and `<=` are
+# semantically identical and no test can distinguish them.
+exclude_re = [
+  "render",
+  "event_loop",
+  "replace run ",
+  "replace run_with_pool_status",
+  "replace < with <= in agent_forest_lines",
+  "count_cargo_builds",
+]
 
 test_package = ["sharecli-thermal-tui"]

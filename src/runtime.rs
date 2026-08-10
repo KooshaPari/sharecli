@@ -233,6 +233,7 @@ fn count_threads(pid: u32) -> Option<u32> {
         if let Ok(entries) = std::fs::read_dir(format!("/proc/{pid}/task")) {
             return Some(entries.filter_map(std::result::Result::ok).count() as u32);
         }
+        None
     }
 
     #[cfg(target_os = "macos")]

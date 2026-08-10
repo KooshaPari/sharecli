@@ -1786,6 +1786,354 @@ mod tests {
         assert_eq!(gate_decision(level), "ADMIT");
     }
 
+    // --- PanelFocus::from_digit (C07 L65 mutant coverage) ---
+    #[test]
+    fn test_panel_focus_from_digit_maps_1_to_5() {
+        assert_eq!(PanelFocus::from_digit('1'), Some(PanelFocus::Gate));
+        assert_eq!(PanelFocus::from_digit('2'), Some(PanelFocus::Pool));
+        assert_eq!(PanelFocus::from_digit('3'), Some(PanelFocus::Status));
+        assert_eq!(PanelFocus::from_digit('4'), Some(PanelFocus::HostWatch));
+        assert_eq!(PanelFocus::from_digit('5'), Some(PanelFocus::Agents));
+    }
+
+    #[test]
+    fn test_panel_focus_from_digit_rejects_others() {
+        assert_eq!(PanelFocus::from_digit('0'), None);
+        assert_eq!(PanelFocus::from_digit('6'), None);
+        assert_eq!(PanelFocus::from_digit('q'), None);
+        assert_eq!(PanelFocus::from_digit('\0'), None);
+    }
+
+    // --- gate_panel_lines hint + color branches (C07 L65) ---
+    #[test]
+    fn test_gate_panel_lines_deny_red_mentions_hypervisor_retry() {
+        // RED + DENY hint branch: "hypervisor will retry up to 5x".
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Red, 1, 0);
+        assert_eq!(snap.gate_decision, "DENY");
+        let lines = gate_panel_lines(&snap, ThermalLevel::Red, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            text.contains("retry up to 5x"),
+            "RED+DENY MUST show the hypervisor-retry hint; got: {text}"
+        );
+    }
+
+    #[test]
+    fn test_gate_panel_lines_deny_green_mentions_back_pressure() {
+        // GREEN + DENY (contention REFUSE) hint branch: back-pressure copy.
+        const RSS_REFUSE: u64 = 32 * 1_073_741_824;
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Green, 1, RSS_REFUSE);
+        assert_eq!(snap.gate_decision, "DENY");
+        let lines = gate_panel_lines(&snap, ThermalLevel::Green, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            text.contains("back-pressure"),
+            "DENY+non-RED MUST show the back-pressure hint; got: {text}"
+        );
+    }
+
+    #[test]
+    fn test_gate_panel_lines_compact_deny_uses_red_span() {
+        // Compact branch picks the color by decision: DENY -> Red span style.
+        const RSS_REFUSE: u64 = 32 * 1_073_741_824;
+        let snap = gate_status_snapshot_with_rss(ThermalLevel::Green, 1, RSS_REFUSE);
+        let lines = gate_panel_lines(&snap, ThermalLevel::Green, true);
+        let line = &lines[0];
+        let decision = line
+            .spans
+            .iter()
+            .find(|span| span.content.contains("[ DENY ]"))
+            .expect("compact gate line MUST render the decision span");
+        assert_eq!(
+            decision.style.fg,
+            Some(Color::Red),
+            "DENY decision span MUST be styled red in compact layout"
+        );
+    }
+
+    // --- host_agent_lines truncation (C07 L65) ---
+    #[test]
+    fn test_host_agent_lines_truncates_beyond_four() {
+        let agents: Vec<DetectedAgent> = (0..5)
+            .map(|i| DetectedAgent { pid: 100 + i, family: "claude", comm: format!("claude-{i}") })
+            .collect();
+        let lines = host_agent_lines(&agents, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("+1 more"), "5 agents MUST show +1 more; got: {text}");
+    }
+
+    #[test]
+    fn test_host_agent_lines_exactly_four_no_truncation() {
+        let agents: Vec<DetectedAgent> = (0..4)
+            .map(|i| DetectedAgent { pid: 100 + i, family: "claude", comm: format!("claude-{i}") })
+            .collect();
+        let lines = host_agent_lines(&agents, false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(!text.contains("more"), "4 agents MUST NOT truncate; got: {text}");
+    }
+
+    // --- mesh_maildir_lines (C07 L65) ---
+    #[test]
+    fn test_mesh_maildir_lines_compact_and_full() {
+        use std::path::PathBuf;
+        let status =
+            MaildirStatus { path: PathBuf::from("/tmp/q"), ready: 3, in_flight: 2, pending: 5 };
+        let compact: String =
+            mesh_maildir_lines(Some(status.clone()), true).iter().map(|l| l.to_string()).collect();
+        assert!(compact.contains("r:3 f:2 p:5"), "compact MUST show depths; got: {compact}");
+
+        let full: String =
+            mesh_maildir_lines(Some(status), false).iter().map(|l| l.to_string()).collect();
+        assert!(full.contains("Mesh ready:     3"), "full MUST show ready; got: {full}");
+        assert!(full.contains("Mesh in-flight: 2"), "full MUST show in-flight; got: {full}");
+        assert!(full.contains("Mesh pending:   5"), "full MUST show pending; got: {full}");
+    }
+
+    #[test]
+    fn test_mesh_maildir_lines_unavailable() {
+        let text: String = mesh_maildir_lines(None, false).iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("unavailable"), "None MUST render unavailable; got: {text}");
+    }
+
+    // --- agent_lines compact overflow + exact cap (C07 L65) ---
+    #[test]
+    fn test_agent_lines_compact_shows_extra_over_two() {
+        let agents: Vec<DetectedAgentWatch> =
+            (0..3).map(|i| agent_watch(100 + i, "claude", "claude", 1_048_576, None)).collect();
+        let lines = agent_lines(&agents, &HashMap::new(), true);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("+1"), "3 agents compact MUST show +1; got: {text}");
+    }
+
+    #[test]
+    fn test_agent_lines_compact_exactly_two_no_extra() {
+        let agents: Vec<DetectedAgentWatch> =
+            (0..2).map(|i| agent_watch(100 + i, "claude", "claude", 1_048_576, None)).collect();
+        let lines = agent_lines(&agents, &HashMap::new(), true);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(!text.contains('+'), "2 agents compact MUST NOT add an extra; got: {text}");
+    }
+
+    #[test]
+    fn test_agent_lines_full_exactly_cap_no_truncation() {
+        // MAX_AGENT_LINES == 4: exact cap MUST NOT render "+N more".
+        let agents: Vec<DetectedAgentWatch> =
+            (0..4).map(|i| agent_watch(100 + i, "claude", "claude", 1_048_576, None)).collect();
+        let lines = agent_lines(&agents, &HashMap::new(), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(!text.contains("more"), "4 agents MUST NOT truncate; got: {text}");
+    }
+
+    // --- tree-line formatters (C07 L65) ---
+    fn tree_node(
+        pid: u32,
+        comm: &str,
+        family: Option<&'static str>,
+        children: Vec<AgentTreeNode>,
+    ) -> AgentTreeNode {
+        AgentTreeNode { pid, ppid: 0, comm: comm.into(), family, children }
+    }
+
+    #[test]
+    fn test_format_tree_node_line_full_annotation() {
+        let node = tree_node(100, "claude", Some("claude"), vec![]);
+        let rss: HashMap<u32, u64> = HashMap::from([(100, 52_428_800)]);
+        let state: HashMap<u32, char> = HashMap::from([(100, 'S')]);
+        // family carries a trailing space and rss a leading one, matching the
+        // existing render (family + rss + comm suffix concatenated).
+        assert_eq!(format_tree_node_line(&node, &rss, &state), "[100] S claude  RSS 50M (claude)");
+    }
+
+    #[test]
+    fn test_format_tree_node_line_sparse_fields() {
+        // No family, no RSS entry, empty comm -> no extra tokens, `-` state.
+        let node = tree_node(200, "", None, vec![]);
+        assert_eq!(format_tree_node_line(&node, &HashMap::new(), &HashMap::new()), "[200] - ");
+    }
+
+    #[test]
+    fn test_format_comm_suffix_empty_vs_present() {
+        assert_eq!(format_comm_suffix(""), "");
+        assert_eq!(format_comm_suffix("claude"), " (claude)");
+    }
+
+    // --- append_agent_tree_lines budget + connectors (C07 L65) ---
+    #[test]
+    fn test_append_agent_tree_lines_zero_budget_noop() {
+        let node = tree_node(100, "claude", Some("claude"), vec![]);
+        let mut lines: Vec<Line<'static>> = Vec::new();
+        let mut budget = 0usize;
+        append_agent_tree_lines(
+            &node,
+            "",
+            true,
+            &HashMap::new(),
+            &HashMap::new(),
+            &mut lines,
+            &mut budget,
+        );
+        assert!(lines.is_empty(), "zero budget MUST append nothing");
+    }
+
+    #[test]
+    fn test_append_agent_tree_lines_budget_exhausts_after_root() {
+        let node = tree_node(
+            100,
+            "claude",
+            Some("claude"),
+            vec![tree_node(101, "sh", None, vec![]), tree_node(102, "bash", None, vec![])],
+        );
+        let mut lines: Vec<Line<'static>> = Vec::new();
+        let mut budget = 1usize;
+        append_agent_tree_lines(
+            &node,
+            "",
+            true,
+            &HashMap::new(),
+            &HashMap::new(),
+            &mut lines,
+            &mut budget,
+        );
+        assert_eq!(lines.len(), 1, "budget 1 MUST stop after the root; got {lines:?}");
+    }
+
+    #[test]
+    fn test_append_agent_tree_lines_last_child_uses_elbow() {
+        let node = tree_node(
+            100,
+            "claude",
+            Some("claude"),
+            vec![tree_node(101, "sh", None, vec![]), tree_node(102, "bash", None, vec![])],
+        );
+        let mut lines: Vec<Line<'static>> = Vec::new();
+        let mut budget = 3usize;
+        append_agent_tree_lines(
+            &node,
+            "",
+            true,
+            &HashMap::new(),
+            &HashMap::new(),
+            &mut lines,
+            &mut budget,
+        );
+        assert_eq!(lines.len(), 3, "root + two children MUST render; got {lines:?}");
+        // Per-line connector assertions: a bare `contains("└── ")` cannot
+        // distinguish an is_last inversion (mutant swaps which child gets the
+        // elbow), so pin the connectors by line position.
+        assert!(
+            lines[1].to_string().contains("├── "),
+            "first child MUST use the tee connector; got: {}",
+            lines[1]
+        );
+        assert!(
+            lines[2].to_string().contains("└── "),
+            "last child MUST use the elbow connector; got: {}",
+            lines[2]
+        );
+    }
+
+    // --- agent_forest_lines budget / root overflow (C07 L65) ---
+    #[test]
+    fn test_agent_forest_lines_reports_extra_roots() {
+        let forests: Vec<AgentTreeNode> =
+            (0..5).map(|i| tree_node(100 + i, "claude", Some("claude"), vec![])).collect();
+        let lines = agent_forest_lines(&forests, &[], &HashMap::new(), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("+1 more roots"), "5 roots MUST report +1 more; got: {text}");
+    }
+
+    #[test]
+    fn test_agent_forest_lines_exact_budget_no_overflow_line() {
+        // MAX_AGENT_TREE_LINES == 4 single-node roots: no "+N more roots".
+        let forests: Vec<AgentTreeNode> =
+            (0..4).map(|i| tree_node(100 + i, "claude", Some("claude"), vec![])).collect();
+        let lines = agent_forest_lines(&forests, &[], &HashMap::new(), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(!text.contains("more roots"), "4 roots MUST NOT report more roots; got: {text}");
+    }
+
+    #[test]
+    fn test_agent_forest_lines_empty_falls_back_to_agent_lines() {
+        let lines = agent_forest_lines(&[], &[], &HashMap::new(), false);
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("No agent processes detected"), "empty MUST fall back; got: {text}");
+    }
+
+    // --- App::poll_operator_meters / apply_pool_status_panels (C07 L65) ---
+    #[test]
+    fn test_poll_operator_meters_clears_pinned_forest_state() {
+        let mut app = App::new(4);
+        app.forest_state_by_pid = Some(HashMap::from([(1, 'S')]));
+        app.poll_operator_meters();
+        assert!(
+            app.forest_state_by_pid.is_none(),
+            "poll MUST clear the pinned forest-state test override"
+        );
+    }
+
+    #[test]
+    fn test_apply_pool_status_panels_updates_both_panels() {
+        let mut app = App::new(4);
+        let pool = PoolOperatorPanel {
+            node_total: 2,
+            node_idle: 1,
+            bun_total: 1,
+            bun_idle: 0,
+            max_per_type: 4,
+            healthy: true,
+        };
+        let status =
+            StatusOperatorPanel { scanned: 50, watched: 1, total_processes: 2, agent_rows: 1 };
+        app.apply_pool_status_panels(Some(pool), Some(status));
+        assert_eq!(app.pool_panel, Some(pool));
+        assert_eq!(app.status_panel, Some(status));
+    }
+
+    // --- App::agent_panel_state_by_pid precedence (C07 L65) ---
+    #[test]
+    fn test_agent_panel_state_by_pid_pinned_wins() {
+        let mut app = App::new(4);
+        let pinned: HashMap<u32, char> = HashMap::from([(42, 'S')]);
+        app.forest_state_by_pid = Some(pinned.clone());
+        assert_eq!(app.agent_panel_state_by_pid(), pinned);
+    }
+
+    /// Forests take precedence over the flat agent list: with a forest
+    /// present, the map is derived from the forest pids, not the flat
+    /// inventory. Linux-gated because the host proc source reads /proc.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_agent_panel_state_by_pid_forests_take_precedence() {
+        let mut app = App::new(4);
+        app.agent_forests = vec![tree_node(999_999, "fake-root", None, vec![])];
+        app.detected_agents = vec![agent_watch(std::process::id(), "claude", "claude", 0, None)];
+        let map = app.agent_panel_state_by_pid();
+        assert!(
+            !map.contains_key(&std::process::id()),
+            "forest path MUST win over the flat agent list"
+        );
+    }
+
+    // --- poll_pool_status_panels (C07 L65) ---
+    #[test]
+    fn test_poll_pool_status_panels_applies_snapshot() {
+        let mut app = App::new(4);
+        let pool = PoolOperatorPanel {
+            node_total: 4,
+            node_idle: 3,
+            bun_total: 2,
+            bun_idle: 1,
+            max_per_type: 8,
+            healthy: false,
+        };
+        let status =
+            StatusOperatorPanel { scanned: 10, watched: 2, total_processes: 3, agent_rows: 2 };
+        let mut poll: Box<PoolStatusPollFn> = Box::new(move || (Some(pool), Some(status)));
+        poll_pool_status_panels(&mut app, Some(poll.as_mut()));
+        assert!(app.pool_panel.is_some(), "poll MUST apply the pool snapshot");
+        assert!(app.status_panel.is_some(), "poll MUST apply the status snapshot");
+    }
+
     // --- proptest (C07 L66) ---
     proptest::proptest! {
         #![proptest_config(proptest::test_runner::Config {
