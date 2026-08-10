@@ -6,11 +6,13 @@
 # =============================================================================
 #
 # NOTE (2026-08): the lane runs the same linters that `.trunk/trunk.yaml`
-# enables (actionlint + taplo + yamllint) via direct installs instead of
-# trunk-io/trunk-action. trunk-action's managed tool bootstrap repeatedly
+# enables (actionlint + taplo + yamllint) via direct, pinned installs instead
+# of trunk-io/trunk-action. trunk-action's managed tool bootstrap repeatedly
 # failed on ubuntu-latest ("Binary not found" / "jq not installed on system!"
-# inside its launcher), while the tools themselves install cleanly. The
-# `.trunk/` config remains the local-developer source of truth (`trunk check`).
+# inside its launcher), while the tools themselves install cleanly. actionlint
+# runs from the official docker image (no download-and-execute in the lane).
+# The `.trunk/` config remains the local-developer source of truth
+# (`trunk check`).
 
 name: Trunk Check
 
@@ -35,11 +37,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Install actionlint
-        run: |
-          curl -sSfL -o /tmp/actionlint.tar.gz \
-            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_x86_64.tar.gz
-          tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint
+      - name: Run actionlint
+        # Official pinned image; avoids curl|tar installs (SonarCloud flags
+        # download-and-execute patterns as a security issue on new code).
+        uses: docker://rhysd/actionlint:1.7.12
 
       - name: Install taplo
         run: cargo install taplo-cli --locked --version 0.9.3
