@@ -218,6 +218,11 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
+        with:
+          # gitleaks-action scans `firstCommit^..head`; with the default
+          # depth-1 fetch the first commit's parent is missing and the scan
+          # fails with "unknown revision" on any multi-commit PR.
+          fetch-depth: 0
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v3
         env:
