@@ -4,6 +4,13 @@
 # Handles: ruff, mypy, clippy, golangci-lint, prettier, eslint, shellcheck, etc.
 # Free for open source; cached for fast runs
 # =============================================================================
+#
+# NOTE (2026-08): the lane runs the same linters that `.trunk/trunk.yaml`
+# enables (actionlint + taplo + yamllint) via direct installs instead of
+# trunk-io/trunk-action. trunk-action's managed tool bootstrap repeatedly
+# failed on ubuntu-latest ("Binary not found" / "jq not installed on system!"
+# inside its launcher), while the tools themselves install cleanly. The
+# `.trunk/` config remains the local-developer source of truth (`trunk check`).
 
 name: Trunk Check
 
@@ -28,16 +35,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      # trunk-io/trunk-action's launcher script parses the GitHub event payload
-      # with jq, which the ubuntu-latest image no longer ships.
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install actionlint
+        run: |
+          curl -sSfL -o /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_x86_64.tar.gz
+          tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint
 
-      - name: Trunk Check
-        uses: trunk-io/trunk-action@v1
+      - name: Install taplo
+        run: cargo install taplo-cli --locked --version 0.9.3
 
-      - name: Trunk Upgrade (on schedule only)
-        if: github.event_name == 'schedule'
-        uses: trunk-io/trunk-action@v1
-        with:
-          trunk-args: --upgrade
+      - name: Install yamllint
+        run: sudo apt-get update && sudo apt-get install -y yamllint
+
+      - name: Run Trunk-equivalent linters
+        run: |
+          set -euo pipefail
+          # actionlint reads .github/actionlint.yaml (ignore rules) by default.
+          actionlint
+          # Same whitespace-only formatting contract as `trunk fmt`.
+          taplo fmt --check
+          # Same relaxed ruleset as `.trunk/trunk.yaml`'s yamllint section.
+          yamllint -c .trunk/configs/.yamllint.yaml .
