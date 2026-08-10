@@ -51,3 +51,4 @@ mutants-hard*.json
 # Swift / Xcode build artifacts
 .build/
 **/.build/
+dhat-heap.json
