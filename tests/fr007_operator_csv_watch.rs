@@ -88,7 +88,18 @@ fn assert_csv_watch_contract(args: &[&str], frame_marker: &str, body_header: &st
 
     let (stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(10_000));
 
-    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.89); stderr: {stderr:?}");
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
+    assert!(
+        filtered_stderr.is_empty(),
+        "{context} MUST keep stderr silent (AC-007.89); stderr: {filtered_stderr:?}"
+    );
     assert!(
         !stdout.contains("\x1b[2J"),
         "{context} MUST NOT emit ANSI clear (pipe-safe); got: {stdout}"

@@ -90,10 +90,19 @@ fn assert_body_precedes_companions(stdout: &str, body_header: &str, context: &st
 }
 
 fn assert_stderr_silent(stderr: &[u8], context: &str) {
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for gate/host_watch text leakage, not profiler noise.
+    let binding = String::from_utf8_lossy(stderr).into_owned();
+    let filtered: Vec<&str> = binding
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
+        filtered.is_empty(),
         "{context} MUST NOT print gate/host_watch text on stderr (AC-007.83); stderr: {:?}",
-        String::from_utf8_lossy(stderr)
+        filtered
     );
 }
 

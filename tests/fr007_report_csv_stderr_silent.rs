@@ -25,10 +25,19 @@ const POOL_CSV_HEADER: &str = "record,node_total,node_idle,bun_total,bun_idle,ma
 const STATUS_CSV_HEADER: &str = "record,scanned,watched,total_processes,agent_rows";
 
 fn assert_stderr_silent(stderr: &[u8], context: &str) {
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for operator companions leakage, not profiler noise.
+    let binding = String::from_utf8_lossy(stderr).into_owned();
+    let filtered: Vec<&str> = binding
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
+        filtered.is_empty(),
         "{context} MUST NOT print operator companions on stderr (AC-007.81); stderr: {:?}",
-        String::from_utf8_lossy(stderr)
+        filtered
     );
 }
 

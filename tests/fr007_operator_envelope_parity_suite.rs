@@ -164,7 +164,18 @@ fn assert_csv_watch_frame_smoke(
             .skip(1)
             .any(|f| f.contains(header.as_str()) && f.contains("[watch]"))
     });
-    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.93); stderr: {stderr:?}");
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the check
+    // is for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
+    assert!(
+        filtered_stderr.is_empty(),
+        "{context} MUST keep stderr silent (AC-007.93); stderr: {filtered_stderr:?}"
+    );
     assert!(
         !stdout.contains("\x1b[2J"),
         "{context} MUST NOT emit ANSI clear (AC-007.93); got: {stdout}"
@@ -203,7 +214,18 @@ fn assert_csv_watch_footer_same_tick(
     let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
         buf.contains(marker.as_str()) && buf.contains(header.as_str()) && buf.contains("[watch]")
     });
-    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.95); stderr: {stderr:?}");
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the check
+    // is for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
+    assert!(
+        filtered_stderr.is_empty(),
+        "{context} MUST keep stderr silent (AC-007.95); stderr: {filtered_stderr:?}"
+    );
     let watch_pos = stdout.find("[watch]").unwrap_or_else(|| {
         panic!("{context} MUST include [watch] footer (AC-007.95); got: {stdout}")
     });
@@ -309,7 +331,18 @@ fn assert_text_watch_footer_same_tick(args: &[&str], body_header: &str, context:
     let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
         buf.contains(header.as_str()) && buf.contains("[watch]")
     });
-    assert!(stderr.is_empty(), "{context} MUST keep stderr silent (AC-007.97); stderr: {stderr:?}");
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the check
+    // is for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
+    assert!(
+        filtered_stderr.is_empty(),
+        "{context} MUST keep stderr silent (AC-007.97); stderr: {filtered_stderr:?}"
+    );
     let watch_pos = stdout.find("[watch]").unwrap_or_else(|| {
         panic!("{context} MUST include [watch] footer (AC-007.97); got: {stdout}")
     });
@@ -321,10 +354,19 @@ fn assert_text_watch_footer_same_tick(args: &[&str], body_header: &str, context:
 }
 
 fn assert_stderr_silent(stderr: &[u8], context: &str) {
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for companion leakage, not profiler noise.
+    let binding = String::from_utf8_lossy(stderr).into_owned();
+    let filtered: Vec<&str> = binding
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
+        filtered.is_empty(),
         "{context} MUST keep stderr silent on success (AC-007.84); stderr: {:?}",
-        String::from_utf8_lossy(stderr)
+        filtered
     );
 }
 

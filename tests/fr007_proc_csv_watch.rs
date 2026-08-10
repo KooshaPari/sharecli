@@ -80,9 +80,17 @@ fn fr007_proc_csv_watch_stderr_silent_and_envelope() {
 
     let (stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(10_000));
 
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
-        "proc --csv --watch MUST keep stderr silent (AC-007.88); stderr: {stderr:?}"
+        filtered_stderr.is_empty(),
+        "proc --csv --watch MUST keep stderr silent (AC-007.88); stderr: {filtered_stderr:?}"
     );
     assert!(
         !stdout.contains("\x1b[2J"),
@@ -120,9 +128,17 @@ fn fr007_proc_tree_csv_watch_stderr_silent_and_envelope() {
 
     let (stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(10_000));
 
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
-        "proc --tree --csv --watch MUST keep stderr silent (AC-007.88); stderr: {stderr:?}"
+        filtered_stderr.is_empty(),
+        "proc --tree --csv --watch MUST keep stderr silent (AC-007.88); stderr: {filtered_stderr:?}"
     );
     let complete_frames: Vec<&str> = stdout
         .split(FRAME_MARKER)
@@ -220,9 +236,17 @@ fn fr007_proc_csv_watch_footer_flushed_same_tick() {
         buf.contains(FRAME_MARKER) && buf.contains(FLAT_CSV_HEADER) && buf.contains("[watch]")
     });
 
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
-        "proc --csv --watch MUST keep stderr silent (AC-007.94); stderr: {stderr:?}"
+        filtered_stderr.is_empty(),
+        "proc --csv --watch MUST keep stderr silent (AC-007.94); stderr: {filtered_stderr:?}"
     );
     assert!(
         stdout.contains("[watch]"),

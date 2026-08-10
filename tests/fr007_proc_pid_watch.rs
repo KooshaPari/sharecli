@@ -80,9 +80,17 @@ fn fr007_proc_pid_watch_text_stderr_silent() {
 
     let (stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(30_000));
 
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
-        "proc --pid --watch text MUST keep stderr silent (AC-007.87); stderr: {stderr:?}"
+        filtered_stderr.is_empty(),
+        "proc --pid --watch text MUST keep stderr silent (AC-007.87); stderr: {filtered_stderr:?}"
     );
     let frame_count = stdout.matches(DETAIL_HEADER).count();
     assert!(

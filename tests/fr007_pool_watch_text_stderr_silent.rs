@@ -42,9 +42,17 @@ fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
 }
 
 fn assert_stderr_silent(stderr: &str, context: &str) {
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the helper
+    // is checking for gate/host_watch companion leakage, not profiler noise.
+    let filtered: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
     assert!(
-        stderr.is_empty(),
-        "{context} MUST NOT print gate/host_watch companions on stderr during refresh (AC-007.65); stderr: {stderr:?}"
+        filtered.is_empty(),
+        "{context} MUST NOT print gate/host_watch companions on stderr during refresh (AC-007.65); stderr: {filtered:?}"
     );
 }
 

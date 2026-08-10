@@ -104,12 +104,19 @@ fn fr007_report_json_pool_status_stderr_silent() {
         .output()
         .expect("spawn sharecli report --format json");
     assert!(out.status.success(), "report --format json MUST exit 0; stderr: {:?}", out.stderr);
-    assert!(
-        out.stderr.is_empty(),
-        "report --format json MUST NOT print companions on stderr (AC-007.73); stderr: {:?}",
-        String::from_utf8_lossy(&out.stderr)
-    );
     let stderr = String::from_utf8_lossy(&out.stderr);
+    // dhat (heap profiler) is enabled by `--all-features` and writes its
+    // summary to stderr on process exit. Filter those out so the check
+    // is for companion leakage, not profiler noise.
+    let filtered_stderr: Vec<&str> = stderr
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("dhat:"))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
+    assert!(
+        filtered_stderr.is_empty(),
+        "report --format json MUST NOT print companions on stderr (AC-007.73); stderr: {filtered_stderr:?}"
+    );
     assert!(
         !stderr.contains(GATE_MARKER),
         "report --format json stderr MUST NOT include gate companion (AC-007.73)"
