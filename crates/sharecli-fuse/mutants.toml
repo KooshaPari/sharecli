@@ -25,7 +25,11 @@
 #     helpers can only be exercised through a live kernel mount; mount-bound.
 #   * FuseSessionRegistry methods + with_context_mount — registry state is
 #     only reachable through a live mount (no registration API exists), so
-#     every method is mount-bound.
+#     every method is mount-bound. The mount entry points share the pure
+#     `session_mount_options` helper, whose struct-literal `delete field`
+#     mutants are caught by a unit test (cargo-mutants >= 27 pushes
+#     `delete field` mutants past exclude_re, so keep such literals in
+#     testable helpers).
 #   * backend.rs macFUSE capability probes (fskit_*, kernel_backend_loaded,
 #     probe_runtime) — cfg'd-out on Linux; the `&&` -> `||` fskit_approved
 #     line is equivalent there (both operands are false).

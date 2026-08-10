@@ -127,6 +127,16 @@ impl FuseMountOptions {
     }
 }
 
+/// Standard options for a session-backed mount: the given session id, write
+/// serialization on (via [`FuseMountOptions::default`]), everything else at
+/// its default.
+///
+/// Shared by the platform mount entry points so the session plumbing is
+/// unit-testable without a live FUSE mount.
+pub(crate) fn session_mount_options(session_id: &str) -> FuseMountOptions {
+    FuseMountOptions { session_id: Some(session_id.to_string()), ..Default::default() }
+}
+
 /// Summary of one registered FUSE mount (operator / `fuse list`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuseMountInfo {
@@ -193,11 +203,7 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let opts = FuseMountOptions {
-            session_id: Some(session_id.to_string()),
-            serialize: true,
-            ..Default::default()
-        };
+        let opts = session_mount_options(session_id);
         self.mount_background_with(mountpoint, backing, &opts)
     }
 
@@ -220,11 +226,7 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let opts = FuseMountOptions {
-            session_id: Some(session_id.to_string()),
-            serialize: true,
-            ..Default::default()
-        };
+        let opts = session_mount_options(session_id);
         self.mount_foreground_with(mountpoint, backing, &opts)
     }
 
@@ -310,8 +312,7 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let opts =
-            FuseMountOptions { session_id: Some(session_id.to_string()), ..Default::default() };
+        let opts = session_mount_options(session_id);
         self.mount_background_with(mountpoint, backing, &opts)
     }
 
@@ -322,8 +323,7 @@ impl FuseSessionRegistry {
         backing: &Path,
         session_id: &str,
     ) -> anyhow::Result<()> {
-        let opts =
-            FuseMountOptions { session_id: Some(session_id.to_string()), ..Default::default() };
+        let opts = session_mount_options(session_id);
         self.mount_foreground_with(mountpoint, backing, &opts)
     }
 
@@ -597,9 +597,20 @@ impl MountContext for std::io::Result<()> {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[cfg(test)]
 mod default_mount_options_tests {
-    use super::{default_fuser_config, smoke_fuser_config_for_backend};
+    use super::{default_fuser_config, session_mount_options, smoke_fuser_config_for_backend};
     use crate::FuseBackend;
     use fuser::{MountOption, SessionACL};
+
+    #[test]
+    fn session_mount_options_pins_session_id() {
+        let opts = session_mount_options("sess-abc");
+        assert_eq!(
+            opts.session_id.as_deref(),
+            Some("sess-abc"),
+            "MUST pin the requested session id"
+        );
+        assert!(opts.serialize, "MUST keep write serialization on (Default)");
+    }
 
     #[test]
     fn default_config_sets_fsname() {

@@ -105,6 +105,11 @@ in `crates/sharecli-fuse/mutants.toml`:
   `FuseSessionRegistry` methods, `with_context_mount`, and `mount_smoke.rs`
   can only be exercised through a live kernel mount; the mutants lane runs on
   `ubuntu-24.04` without `/dev/fuse`. Excluded by `exclude_re` / `exclude_globs`.
+  The session plumbing itself is not excluded: the four platform mount entry
+  points share `session_mount_options`, so the session-id wiring is covered by
+  a plain unit test. (Note: cargo-mutants ≥27 generates `delete field` mutants
+  for struct literals with a `..base` and pushes them past `exclude_re`; keep
+  such literals in testable helpers instead of trying to exclude them.)
 - **Cross-platform dead code** — `winfsp_mount.rs` (Windows-only) and the
   macFUSE capability probes in `backend.rs` (`fskit_*`, `kernel_backend_loaded`,
   `probe_runtime`) compile to no-ops on the Linux lane; excluded.
