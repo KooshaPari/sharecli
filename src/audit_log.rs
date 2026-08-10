@@ -167,9 +167,14 @@ mod tests {
 
     use super::*;
 
+    /// Serializes all audit tests that mutate process-global env vars.
+    /// The tests otherwise race on `SHARECLI_AUDIT_LOG` (e.g. one test
+    /// removes the var while another is mid-emit, so the file is never
+    /// written and `read_to_string` fails with `NotFound`).
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
     #[test]
     fn emit_if_configured_respects_env_gate() {
-        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
         let _env = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gated.jsonl");
@@ -205,9 +210,9 @@ mod tests {
 
     #[test]
     fn path_respects_env_override() {
+        let _env = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("custom.jsonl");
-        let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::set_var("SHARECLI_AUDIT_LOG", &path);
         }
@@ -219,7 +224,6 @@ mod tests {
 
     #[test]
     fn rotates_when_over_max_bytes() {
-        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
         let _env = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("audit.jsonl");

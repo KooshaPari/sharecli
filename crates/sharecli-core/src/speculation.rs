@@ -163,6 +163,12 @@ pub fn spawn_speculation_task(
     cache: CoalesceCache,
     thermal_gate: Arc<dyn crate::ThermalGate>,
 ) {
+    // Best-effort background task. The hypervisor constructor may run outside
+    // a Tokio runtime (sync CLI wiring, unit tests); without a reactor there
+    // is nothing to spawn onto, so skip silently rather than panic.
+    if tokio::runtime::Handle::try_current().is_err() {
+        return;
+    }
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(SPECULATION_INTERVAL).await;

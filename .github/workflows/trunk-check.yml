@@ -4,6 +4,15 @@
 # Handles: ruff, mypy, clippy, golangci-lint, prettier, eslint, shellcheck, etc.
 # Free for open source; cached for fast runs
 # =============================================================================
+#
+# NOTE (2026-08): the lane runs the same linters that `.trunk/trunk.yaml`
+# enables (actionlint + taplo + yamllint) via direct, pinned installs instead
+# of trunk-io/trunk-action. trunk-action's managed tool bootstrap repeatedly
+# failed on ubuntu-latest ("Binary not found" / "jq not installed on system!"
+# inside its launcher), while the tools themselves install cleanly. actionlint
+# runs from the official docker image (no download-and-execute in the lane).
+# The `.trunk/` config remains the local-developer source of truth
+# (`trunk check`).
 
 name: Trunk Check
 
@@ -28,11 +37,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Trunk Check
-        uses: trunk-io/trunk-action@v1
-
-      - name: Trunk Upgrade (on schedule only)
-        if: github.event_name == 'schedule'
-        uses: trunk-io/trunk-action@v1
+      - name: Run actionlint
+        # Official pinned image; avoids curl|tar installs (SonarCloud flags
+        # download-and-execute patterns as a security issue on new code).
+        # `-shellcheck=` disables the image's bundled shellcheck: trunk's
+        # actionlint integration runs without shellcheck too (and the repo's
+        # workflows carry pre-existing SC2034/SC2086 advisories that trunk
+        # does not gate on).
+        uses: docker://rhysd/actionlint:1.7.12
         with:
-          trunk-args: --upgrade
+          args: -shellcheck=
+
+      - name: Install taplo
+        run: cargo install taplo-cli --locked --version 0.9.3
+
+      - name: Install yamllint
+        run: sudo apt-get update && sudo apt-get install -y yamllint
+
+      - name: Run remaining trunk linters
+        run: |
+          set -euo pipefail
+          # actionlint runs in the docker step above (reads
+          # .github/actionlint.yaml for ignore rules).
+          # Same whitespace-only formatting contract as `trunk fmt`.
+          taplo fmt --check
+          # Same relaxed ruleset as `.trunk/trunk.yaml`'s yamllint section.
+          yamllint -c .trunk/configs/.yamllint.yaml .

@@ -11,6 +11,13 @@
 
 extends: default
 
+# Vendored/generated directories are not linted (gitignored locally; never
+# present on CI checkouts, but direct `yamllint .` runs see them).
+ignore: |
+  node_modules/
+  target/
+  .git/
+
 rules:
   line-length: disable
   comments:

@@ -3,13 +3,13 @@
   "surface": "src/dashboard.html",
   "fixture": "empty-pool + operator envelope (fresh sharecli serve / visual WS fixture)",
   "platform": "ubuntu-24.04 + Playwright Chromium",
-  "seed_sha": "91448b2",
-  "seed_date": "2026-07-18",
+  "seed_sha": "a958f78",
+  "seed_date": "2026-08-10",
   "baselines": [
     {
       "name": "mobile",
       "file": "mobile.png",
-      "bytes": 11043,
+      "bytes": 75563,
       "viewport": { "width": 375, "height": 812 },
       "artifact_source": "artifacts/playwright/mobile-375.png",
       "max_pixel_delta_pct": 0.2
@@ -17,7 +17,7 @@
     {
       "name": "tablet",
       "file": "tablet.png",
-      "bytes": 14120,
+      "bytes": 86045,
       "viewport": { "width": 768, "height": 1024 },
       "artifact_source": "artifacts/playwright/tablet-768.png",
       "max_pixel_delta_pct": 0.1
@@ -25,11 +25,11 @@
     {
       "name": "desktop",
       "file": "desktop.png",
-      "bytes": 14227,
+      "bytes": 107391,
       "viewport": { "width": 1280, "height": 800 },
       "artifact_source": "artifacts/playwright/desktop-1280.png",
       "max_pixel_delta_pct": 0.1
     }
   ],
-  "notes": "Committed Ubuntu PNG baselines with byte-size lock. Hard diff: scripts/visual/compare_screenshots.mjs + visual-soft.yml. Capture with SHARECLI_VISUAL_FIXTURE=1; regen with UPDATE_VISUALS=1 only from the ubuntu-24.04 gate."
+  "notes": "Committed Ubuntu PNG baselines with byte-size lock. Hard diff: scripts/visual/compare_screenshots.mjs + visual-soft.yml. Capture with SHARECLI_VISUAL_FIXTURE=1; regen with UPDATE_VISUALS=1 only from the ubuntu-24.04 gate. Regenerated 2026-08-10 from workflow_dispatch run 31346443985 (main a958f78, playwright 1.62.1 chromium v1234): the 2026-07-18 goldens predate the dashboard's taller mobile layout (page grew 431px; tablet/desktop drifted ~2.9%)."
 }
