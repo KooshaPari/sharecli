@@ -671,12 +671,7 @@ mod registry_no_mount_tests {
     ) {
         registry.mounts.lock().expect("fuse registry lock").insert(
             mountpoint,
-            FuseMountEntry {
-                fs,
-                backing,
-                session_id: session_id.to_string(),
-                _session: None,
-            },
+            FuseMountEntry { fs, backing, session_id: session_id.to_string(), _session: None },
         );
     }
 
@@ -734,10 +729,7 @@ mod registry_no_mount_tests {
         let registry = FuseSessionRegistry::default();
         let err =
             registry.resolve_fs(None).err().expect("empty registry MUST error on sole-resolve");
-        assert!(
-            err.to_string().contains("no active FUSE mounts"),
-            "unexpected error: {err}"
-        );
+        assert!(err.to_string().contains("no active FUSE mounts"), "unexpected error: {err}");
         assert!(
             registry.resolve_fs(Some(Path::new("/not/registered/here"))).is_err(),
             "unknown mountpoint MUST error"
@@ -772,10 +764,19 @@ mod registry_no_mount_tests {
         std::fs::create_dir(&mp_b).expect("mnt-b");
 
         let registry = FuseSessionRegistry::default();
-        insert_entry(&registry, mp_a.clone(), fresh_fs(&backing, "sess-a"), backing.clone(), "sess-a");
+        insert_entry(
+            &registry,
+            mp_a.clone(),
+            fresh_fs(&backing, "sess-a"),
+            backing.clone(),
+            "sess-a",
+        );
         insert_entry(&registry, mp_b.clone(), fresh_fs(&backing, "sess-b"), backing, "sess-b");
 
-        assert!(registry.resolve_fs(None).is_err(), "multiple mounts MUST error without mountpoint");
+        assert!(
+            registry.resolve_fs(None).is_err(),
+            "multiple mounts MUST error without mountpoint"
+        );
         assert!(registry.resolve_fs(Some(&mp_a)).is_ok(), "mountpoint MUST disambiguate");
     }
 
@@ -785,9 +786,6 @@ mod registry_no_mount_tests {
     fn unmount_unregistered_errors() {
         let registry = FuseSessionRegistry::default();
         let err = registry.unmount(Path::new("/never/registered")).expect_err("MUST error");
-        assert!(
-            err.to_string().contains("no registered mount"),
-            "unexpected error: {err}"
-        );
+        assert!(err.to_string().contains("no registered mount"), "unexpected error: {err}");
     }
 }
