@@ -227,12 +227,16 @@ fn count_open_fds(pid: u32) -> Option<u32> {
 }
 
 fn count_threads(pid: u32) -> Option<u32> {
+    #[allow(clippy::needless_return)]
     #[cfg(target_os = "linux")]
-    if let Ok(entries) = std::fs::read_dir(format!("/proc/{pid}/task")) {
-        return Some(entries.filter_map(std::result::Result::ok).count() as u32);
+    {
+        if let Ok(entries) = std::fs::read_dir(format!("/proc/{pid}/task")) {
+            return Some(entries.filter_map(std::result::Result::ok).count() as u32);
+        }
     }
 
     #[cfg(target_os = "macos")]
+    #[allow(clippy::needless_return)]
     {
         let output = std::process::Command::new("/bin/ps")
             .args(["-M", "-p", &pid.to_string()])
@@ -245,8 +249,10 @@ fn count_threads(pid: u32) -> Option<u32> {
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    let _ = pid;
-    None
+    {
+        let _ = pid;
+        None
+    }
 }
 
 // ---------------------------------------------------------------------------

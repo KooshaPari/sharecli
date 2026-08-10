@@ -274,7 +274,7 @@ pub(crate) fn runtime_diagnostics() -> String {
                 }
             })
             .unwrap_or("unavailable");
-        return format!("macFUSE version-entry={version}; {kext}; fskit_agent={fskit}");
+        format!("macFUSE version-entry={version}; {kext}; fskit_agent={fskit}")
     }
     #[cfg(not(target_os = "macos"))]
     {
