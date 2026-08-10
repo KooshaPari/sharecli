@@ -23,13 +23,17 @@
 #     are pub(crate), so the callbacks (lookup/getattr/readdir/open/read/write/
 #     create/mknod/unlink/mkdir/rmdir/rename/setattr) and the created-entry
 #     helpers can only be exercised through a live kernel mount; mount-bound.
-#   * FuseSessionRegistry methods + with_context_mount — registry state is
-#     only reachable through a live mount (no registration API exists), so
-#     every method is mount-bound. The mount entry points share the pure
-#     `session_mount_options` helper, whose struct-literal `delete field`
-#     mutants are caught by a unit test (cargo-mutants >= 27 pushes
-#     `delete field` mutants past exclude_re, so keep such literals in
-#     testable helpers).
+#   * FuseSessionRegistry mount entry points (mount_background/_with,
+#     mount_foreground/_with, mount_inner, mount_winfsp, all platform
+#     variants) + with_context_mount — mounting can only be exercised through
+#     a live mount (no /dev/fuse on the lane); the cfg(windows) twins are
+#     unobservable on the Linux-only lane. The no-mount registry surface
+#     (global, normalize_key, list, resolve_fs, unmount's no-registration
+#     path) is NOT excluded: it is covered by registry_no_mount_tests, and
+#     the mount entry points share the pure `session_mount_options` helper
+#     whose struct-literal `delete field` mutants are caught by a unit test
+#     (cargo-mutants >= 27 pushes `delete field` mutants past exclude_re,
+#     so keep such literals in testable helpers).
 #   * backend.rs macFUSE capability probes (fskit_*, kernel_backend_loaded,
 #     probe_runtime) — cfg'd-out on Linux; the `&&` -> `||` fskit_approved
 #     line is equivalent there (both operands are false).
@@ -59,7 +63,16 @@ exclude_re = [
   "mount_with_session",
   "replace mount -> anyhow::Result<\\(\\)> with Ok\\(\\(\\)\\)",
   "install_created_entry",
-  "FuseSessionRegistry::",
+  # FnValue mutants name the function without an "in <fn>" suffix, so the
+  # mount entry points need the "replace " form; their `delete !` twins use
+  # the "in " form.
+  "replace FuseSessionRegistry::mount_",
+  "delete ! in FuseSessionRegistry::mount_",
+  # cfg(windows) / other-platform resolve_fs twins are unobservable on the
+  # Linux-only lane; the Linux variant stays in the examine set (covered by
+  # registry_no_mount_tests).
+  "replace FuseSessionRegistry::resolve_fs -> anyhow::Result<std::sync::Arc<crate::CowMountHandle>>",
+  "replace FuseSessionRegistry::resolve_fs -> anyhow::Result<\\(\\)>",
   "with_context_mount",
   "fskit_framework_available",
   "fskit_approval_requested",

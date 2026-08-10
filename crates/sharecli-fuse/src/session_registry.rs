@@ -472,29 +472,7 @@ impl FuseSessionRegistry {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub fn resolve_fs(&self, mountpoint: Option<&Path>) -> anyhow::Result<Arc<InterceptFs>> {
         let mounts = self.mounts.lock().expect("fuse registry lock");
-        match mountpoint {
-            Some(mp) => {
-                let key = Self::normalize_key(mp);
-                mounts
-                    .get(&key)
-                    .map(|e| Arc::clone(&e.fs))
-                    .ok_or_else(|| anyhow::anyhow!("fuse: no active mount at {}", mp.display()))
-            }
-            None => {
-                if mounts.len() == 1 {
-                    Ok(Arc::clone(&mounts.values().next().expect("one mount").fs))
-                } else if mounts.is_empty() {
-                    anyhow::bail!(
-                        "fuse: no active FUSE mounts registered (run `fuse mount` first)"
-                    );
-                } else {
-                    anyhow::bail!(
-                        "fuse: multiple mounts registered; pass --mountpoint <path> \
-                         (see `fuse list`)"
-                    );
-                }
-            }
-        }
+        Ok(Arc::clone(&resolve_entry(&mounts, mountpoint)?.fs))
     }
 
     #[cfg(windows)]
@@ -503,29 +481,7 @@ impl FuseSessionRegistry {
         mountpoint: Option<&Path>,
     ) -> anyhow::Result<std::sync::Arc<crate::CowMountHandle>> {
         let mounts = self.winfsp_mounts.lock().expect("fuse registry lock");
-        match mountpoint {
-            Some(mp) => {
-                let key = Self::normalize_key(mp);
-                mounts
-                    .get(&key)
-                    .map(|e| std::sync::Arc::clone(&e.handle))
-                    .ok_or_else(|| anyhow::anyhow!("fuse: no active mount at {}", mp.display()))
-            }
-            None => {
-                if mounts.len() == 1 {
-                    Ok(std::sync::Arc::clone(&mounts.values().next().expect("one mount").handle))
-                } else if mounts.is_empty() {
-                    anyhow::bail!(
-                        "fuse: no active FUSE mounts registered (run `fuse mount` first)"
-                    );
-                } else {
-                    anyhow::bail!(
-                        "fuse: multiple mounts registered; pass --mountpoint <path> \
-                         (see `fuse list`)"
-                    );
-                }
-            }
-        }
+        Ok(std::sync::Arc::clone(&resolve_entry(&mounts, mountpoint)?.handle))
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
@@ -577,6 +533,31 @@ impl FuseSessionRegistry {
         {
             Vec::new()
         }
+    }
+}
+
+/// Resolve the registry entry for `mountpoint` (or the sole entry) without a
+/// live mount. Shared by the Unix and WinFsp `resolve_fs` paths so the
+/// no-mount resolution contract has one tested implementation (a mutant in
+/// the entry-point wrappers is caught by the `registry_no_mount_tests`).
+fn resolve_entry<'a, V>(
+    mounts: &'a HashMap<PathBuf, V>,
+    mountpoint: Option<&Path>,
+) -> anyhow::Result<&'a V> {
+    match mountpoint {
+        Some(mp) => {
+            let key = FuseSessionRegistry::normalize_key(mp);
+            mounts
+                .get(&key)
+                .ok_or_else(|| anyhow::anyhow!("fuse: no active mount at {}", mp.display()))
+        }
+        None => match mounts.len() {
+            0 => anyhow::bail!("fuse: no active FUSE mounts registered (run `fuse mount` first)"),
+            1 => Ok(mounts.values().next().expect("one mount")),
+            _ => anyhow::bail!(
+                "fuse: multiple mounts registered; pass --mountpoint <path> (see `fuse list`)"
+            ),
+        },
     }
 }
 
@@ -660,5 +641,153 @@ mod default_mount_options_tests {
             .any(|option| matches!(option, MountOption::CUSTOM(_))));
         let fskit = smoke_fuser_config_for_backend(Some(FuseBackend::Fskit));
         assert!(!fskit.mount_options.iter().any(|option| matches!(option, MountOption::CUSTOM(_))));
+    }
+}
+
+/// No-mount registry surface: `global`, `normalize_key`, `list`, `resolve_fs`,
+/// and `unmount`'s no-registration path are exercised without a live FUSE
+/// mount by populating the registry directly, so their mutants stay in the
+/// examine set (only the `mount_*` entry points are mount-bound and excluded).
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(test)]
+mod registry_no_mount_tests {
+    use super::*;
+    use crate::InterceptFsOptions;
+    use tempfile::TempDir;
+
+    fn fresh_fs(backing: &Path, session_id: &str) -> Arc<InterceptFs> {
+        Arc::new(InterceptFs::with_options(
+            backing,
+            InterceptFsOptions { session_id: session_id.to_string(), ..Default::default() },
+        ))
+    }
+
+    fn insert_entry(
+        registry: &FuseSessionRegistry,
+        mountpoint: PathBuf,
+        fs: Arc<InterceptFs>,
+        backing: PathBuf,
+        session_id: &str,
+    ) {
+        registry.mounts.lock().expect("fuse registry lock").insert(
+            mountpoint,
+            FuseMountEntry {
+                fs,
+                backing,
+                session_id: session_id.to_string(),
+                _session: None,
+            },
+        );
+    }
+
+    fn fresh_backing(dir: &TempDir) -> PathBuf {
+        let backing = dir.path().join("root");
+        std::fs::create_dir(&backing).expect("backing root");
+        backing
+    }
+
+    /// global() must return the same singleton; a mutant leaking a fresh
+    /// default on every call fails this identity check.
+    #[test]
+    fn global_is_singleton() {
+        assert!(std::ptr::eq(FuseSessionRegistry::global(), FuseSessionRegistry::global()));
+    }
+
+    /// normalize_key falls back to the given path when canonicalize fails
+    /// (nonexistent mountpoint) and returns the canonical form when it exists.
+    #[test]
+    fn normalize_key_fallback_and_canonical() {
+        let missing = Path::new("/definitely/not/a/real/mountpoint-xyz");
+        assert_eq!(FuseSessionRegistry::normalize_key(missing), missing);
+
+        let dir = TempDir::new().expect("tempdir");
+        let canonical = dir.path().canonicalize().expect("canonicalize tempdir");
+        assert_eq!(FuseSessionRegistry::normalize_key(dir.path()), canonical);
+    }
+
+    #[test]
+    fn list_empty_when_no_mounts() {
+        let registry = FuseSessionRegistry::default();
+        assert!(registry.list().is_empty(), "no mounts MUST list empty");
+    }
+
+    #[test]
+    fn list_reports_registered_mount() {
+        let dir = TempDir::new().expect("tempdir");
+        let backing = fresh_backing(&dir);
+        let mountpoint = dir.path().join("mnt");
+        std::fs::create_dir(&mountpoint).expect("mountpoint");
+
+        let registry = FuseSessionRegistry::default();
+        let fs = fresh_fs(&backing, "sess-1");
+        insert_entry(&registry, mountpoint.clone(), fs, backing.clone(), "sess-1");
+
+        let listed = registry.list();
+        assert_eq!(listed.len(), 1, "got {listed:?}");
+        assert_eq!(listed[0].mountpoint, mountpoint);
+        assert_eq!(listed[0].backing, backing);
+        assert_eq!(listed[0].session_id, "sess-1");
+    }
+
+    #[test]
+    fn resolve_fs_empty_and_unknown_mountpoint_error() {
+        let registry = FuseSessionRegistry::default();
+        let err =
+            registry.resolve_fs(None).err().expect("empty registry MUST error on sole-resolve");
+        assert!(
+            err.to_string().contains("no active FUSE mounts"),
+            "unexpected error: {err}"
+        );
+        assert!(
+            registry.resolve_fs(Some(Path::new("/not/registered/here"))).is_err(),
+            "unknown mountpoint MUST error"
+        );
+    }
+
+    #[test]
+    fn resolve_fs_sole_and_by_mountpoint() {
+        let dir = TempDir::new().expect("tempdir");
+        let backing = fresh_backing(&dir);
+        let mountpoint = dir.path().join("mnt");
+        std::fs::create_dir(&mountpoint).expect("mountpoint");
+
+        let registry = FuseSessionRegistry::default();
+        let fs = fresh_fs(&backing, "sess-1");
+        insert_entry(&registry, mountpoint.clone(), Arc::clone(&fs), backing, "sess-1");
+
+        let sole = registry.resolve_fs(None).expect("sole mount resolves");
+        assert!(Arc::ptr_eq(&fs, &sole), "sole resolve MUST return the registered fs");
+
+        let by_mp = registry.resolve_fs(Some(&mountpoint)).expect("mountpoint resolves");
+        assert!(Arc::ptr_eq(&fs, &by_mp), "mountpoint resolve MUST return the registered fs");
+    }
+
+    #[test]
+    fn resolve_fs_multiple_requires_mountpoint() {
+        let dir = TempDir::new().expect("tempdir");
+        let backing = fresh_backing(&dir);
+        let mp_a = dir.path().join("mnt-a");
+        let mp_b = dir.path().join("mnt-b");
+        std::fs::create_dir(&mp_a).expect("mnt-a");
+        std::fs::create_dir(&mp_b).expect("mnt-b");
+
+        let registry = FuseSessionRegistry::default();
+        insert_entry(&registry, mp_a.clone(), fresh_fs(&backing, "sess-a"), backing.clone(), "sess-a");
+        insert_entry(&registry, mp_b.clone(), fresh_fs(&backing, "sess-b"), backing, "sess-b");
+
+        assert!(registry.resolve_fs(None).is_err(), "multiple mounts MUST error without mountpoint");
+        assert!(registry.resolve_fs(Some(&mp_a)).is_ok(), "mountpoint MUST disambiguate");
+    }
+
+    /// unmount on an unregistered mountpoint errors before any force-unmount;
+    /// a whole-body Ok(()) mutant fails this.
+    #[test]
+    fn unmount_unregistered_errors() {
+        let registry = FuseSessionRegistry::default();
+        let err = registry.unmount(Path::new("/never/registered")).expect_err("MUST error");
+        assert!(
+            err.to_string().contains("no registered mount"),
+            "unexpected error: {err}"
+        );
     }
 }

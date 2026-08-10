@@ -101,15 +101,20 @@ suite (lib + integration). Triage classes beyond the table above, all recorded
 in `crates/sharecli-fuse/mutants.toml`:
 
 - **Mount-bound** — fuser `Reply*` constructors are `pub(crate)`, so the
-  `Filesystem` callbacks, `install_created_entry*`, `mount*`/`unmount`,
-  `FuseSessionRegistry` methods, `with_context_mount`, and `mount_smoke.rs`
-  can only be exercised through a live kernel mount; the mutants lane runs on
-  `ubuntu-24.04` without `/dev/fuse`. Excluded by `exclude_re` / `exclude_globs`.
-  The session plumbing itself is not excluded: the four platform mount entry
-  points share `session_mount_options`, so the session-id wiring is covered by
-  a plain unit test. (Note: cargo-mutants ≥27 generates `delete field` mutants
-  for struct literals with a `..base` and pushes them past `exclude_re`; keep
-  such literals in testable helpers instead of trying to exclude them.)
+  `Filesystem` callbacks, `install_created_entry*`, the `FuseSessionRegistry`
+  mount entry points (`mount_background/_with`, `mount_foreground/_with`,
+  `mount_inner`, `mount_winfsp`, including their cfg(windows) twins, which are
+  unobservable on the Linux-only lane), `with_context_mount`, and
+  `mount_smoke.rs` can only be exercised through a live kernel mount; the
+  mutants lane runs on `ubuntu-24.04` without `/dev/fuse`. Excluded by
+  `exclude_re` / `exclude_globs`.
+- **Covered by no-mount tests** — the registry surface that needs no live
+  mount (`global`, `normalize_key`, `list`, `resolve_fs`, `unmount`'s
+  no-registration path) is exercised by `registry_no_mount_tests`, which
+  populates the registry directly; the mount entry points share the pure
+  `session_mount_options` helper whose struct-literal `delete field` mutants
+  are caught by a unit test (cargo-mutants ≥27 pushes `delete field` mutants
+  past `exclude_re`, so keep such literals in testable helpers).
 - **Cross-platform dead code** — `winfsp_mount.rs` (Windows-only) and the
   macFUSE capability probes in `backend.rs` (`fskit_*`, `kernel_backend_loaded`,
   `probe_runtime`) compile to no-ops on the Linux lane; excluded.
