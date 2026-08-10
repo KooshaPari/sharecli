@@ -553,10 +553,10 @@ fn resolve_entry<'a, V>(
         }
         None => match mounts.len() {
             0 => anyhow::bail!("fuse: no active FUSE mounts registered (run `fuse mount` first)"),
-            1 => mounts
+            1 => Ok(mounts
                 .values()
                 .next()
-                .ok_or_else(|| anyhow::anyhow!("expected exactly one live mount after resolving entry"))?,
+                .ok_or_else(|| anyhow::anyhow!("fuse: no active FUSE mounts registered"))?),
             _ => anyhow::bail!(
                 "fuse: multiple mounts registered; pass --mountpoint <path> (see `fuse list`)"
             ),
