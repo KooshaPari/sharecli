@@ -94,6 +94,24 @@ When `mutants-hard-*.json` / `mutants-ci-*.json` shows survivors:
 | Render/event-loop noise | Already excluded — do not widen examine set to fix |
 | Timeout flake | Increase local timeout only after profiling; keep CI at 60s |
 
+### sharecli-fuse lane (matrix-extended, T-86)
+
+The fuse lane mutates the whole `src/` tree and runs the full package test
+suite (lib + integration). Triage classes beyond the table above, all recorded
+in `crates/sharecli-fuse/mutants.toml`:
+
+- **Mount-bound** — fuser `Reply*` constructors are `pub(crate)`, so the
+  `Filesystem` callbacks, `install_created_entry*`, `mount*`/`unmount`,
+  `FuseSessionRegistry` methods, `with_context_mount`, and `mount_smoke.rs`
+  can only be exercised through a live kernel mount; the mutants lane runs on
+  `ubuntu-24.04` without `/dev/fuse`. Excluded by `exclude_re` / `exclude_globs`.
+- **Cross-platform dead code** — `winfsp_mount.rs` (Windows-only) and the
+  macFUSE capability probes in `backend.rs` (`fskit_*`, `kernel_backend_loaded`,
+  `probe_runtime`) compile to no-ops on the Linux lane; excluded.
+- **Covered by no-mount tests** — `tests/c02_intercept_fs.rs` exercises the
+  InterceptFs no-mount surface (session/CoW/pending/provenance), caches,
+  meters, inode/path mapping, backend selection, and the EXDEV commit fallback.
+
 ## Commands (local dry-run)
 
 ```bash

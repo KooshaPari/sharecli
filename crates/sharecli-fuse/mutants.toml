@@ -10,5 +10,65 @@
 #   * parallelism 4 (use `--jobserver-tasks 4` on the CLI)
 # When this file is loaded via `--config`, those CLI flags should accompany
 # the cargo-mutants invocation in CI/local.
+#
+# Triage (mirrors the survivor-triage table in docs/ops/mutants-hard-gate.md):
+#   * src/bin/* — CLI probe utilities (fuse-mount-smoke, fuse-runtime-probe,
+#     mfmount-probe) are macOS/daemon glue with no testable surface, the same
+#     terminal-bound class as the thermal-tui `replace run` exclusion.
+#   * src/winfsp_mount.rs — Windows-only (cfg(windows)); on the Linux lane the
+#     mutations compile to no-ops and can never be observed.
+#   * src/mount_smoke.rs — privileged-mount smoke harness; requires a live
+#     kernel mount (CI has no /dev/fuse).
+#   * Filesystem impls + mount/install helpers — fuser's `Reply*` constructors
+#     are pub(crate), so the callbacks (lookup/getattr/readdir/open/read/write/
+#     create/mknod/unlink/mkdir/rmdir/rename/setattr) and the created-entry
+#     helpers can only be exercised through a live kernel mount; mount-bound.
+#   * FuseSessionRegistry methods + with_context_mount — registry state is
+#     only reachable through a live mount (no registration API exists), so
+#     every method is mount-bound.
+#   * backend.rs macFUSE capability probes (fskit_*, kernel_backend_loaded,
+#     probe_runtime) — cfg'd-out on Linux; the `&&` -> `||` fskit_approved
+#     line is equivalent there (both operands are false).
+#   * provenance.rs windows ADS helpers (ads_path / set_attr / get_attr) —
+#     cfg(windows); no-ops on the Linux lane.
+#   * Equivalent mutants: AgentsConf::empty -> Default (derive Default is the
+#     identical pattern set); strip_mount_prefix `<`->`<=` / `==`->`!=` (the
+#     guarded branches are unreachable); global_read_cache_meters (documented
+#     Default stub); commit_pending EXDEV-guard -> true (the copy fallback is
+#     behavior-identical for EXDEV; the widened guard only fires on non-EXDEV
+#     rename errors that the CI lane cannot produce).
+# Everything else (InterceptFs no-mount methods, CowMountHandle, AgentCowStore,
+# AgentsConf, WriteSerialize, caches, meters, inode/path mapping, backend
+# selection, provenance session id) is covered by tests/.
 
-exclude_globs = ["tests/*"]
+# Glob paths are relative to the WORKSPACE root (cargo-mutants
+# `tree_relative_path`), not the crate root.
+exclude_globs = [
+  "crates/sharecli-fuse/src/bin/*",
+  "crates/sharecli-fuse/src/winfsp_mount.rs",
+  "crates/sharecli-fuse/src/mount_smoke.rs",
+]
+
+exclude_re = [
+  "impl Filesystem for SharedInterceptFs",
+  "impl Filesystem for InterceptFs",
+  "mount_with_session",
+  "replace mount -> anyhow::Result<\\(\\)> with Ok\\(\\(\\)\\)",
+  "install_created_entry",
+  "FuseSessionRegistry::",
+  "with_context_mount",
+  "fskit_framework_available",
+  "fskit_approval_requested",
+  "fskit_backend_approved",
+  "kernel_backend_loaded",
+  "in probe_runtime",
+  "ads_path",
+  "set_attr",
+  "get_attr",
+  "replace AgentsConf::empty -> Self with Default::default()",
+  "replace < with <= in strip_mount_prefix",
+  "replace == with != in strip_mount_prefix",
+  "replace > with >= in NegativeDentryCache::is_negative",
+  "global_read_cache_meters",
+  "replace match guard err.raw_os_error\\(\\) == Some\\(libc_exdev\\(\\)\\) with true",
+]
