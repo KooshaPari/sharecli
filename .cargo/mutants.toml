@@ -14,12 +14,12 @@ examine_globs = ["crates/sharecli-thermal-tui/src/lib.rs"]
 # counter `i` is always < forests.len() inside the loop, so `<` and `<=` are
 # semantically identical and no test can distinguish them.
 exclude_re = [
-    "render",
-    "event_loop",
-    "replace run ",
-    "replace run_with_pool_status",
-    "replace < with <= in agent_forest_lines",
-    "count_cargo_builds",
+  "render",
+  "event_loop",
+  "replace run ",
+  "replace run_with_pool_status",
+  "replace < with <= in agent_forest_lines",
+  "count_cargo_builds",
 ]
 
 test_package = ["sharecli-thermal-tui"]

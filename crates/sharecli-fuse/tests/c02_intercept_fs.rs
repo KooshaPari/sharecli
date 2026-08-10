@@ -15,8 +15,8 @@ use std::time::Duration;
 use sharecli_fuse::{
     global_neg_dentry_meters, read_provenance, remap_mount_to_backing, smoke_fuser_config,
     smoke_fuser_config_for_backend, AgentCowStore, AgentsConf, CowMountHandle, FuseMountOptions,
-    InodeMap, InterceptFs, InterceptFsOptions, ReadContentCache, ReadCacheMeters,
-    NegativeDentryCache, WriteSerialize,
+    InodeMap, InterceptFs, InterceptFsOptions, NegativeDentryCache, ReadCacheMeters,
+    ReadContentCache, WriteSerialize,
 };
 use tempfile::TempDir;
 
@@ -34,7 +34,10 @@ fn c02_with_session_plumbs_explicit_id() {
 #[test]
 fn c02_empty_session_id_falls_back_to_default() {
     let dir = TempDir::new().expect("tempdir");
-    let fs = InterceptFs::with_options(dir.path(), InterceptFsOptions { session_id: String::new(), ..Default::default() });
+    let fs = InterceptFs::with_options(
+        dir.path(),
+        InterceptFsOptions { session_id: String::new(), ..Default::default() },
+    );
     assert!(!fs.session_id().is_empty());
     assert_eq!(fs.session_id(), fs.default_agent());
 }
@@ -61,7 +64,10 @@ fn c02_serialize_writes_honors_no_serialize() {
     let dir = TempDir::new().expect("tempdir");
     let serialized = InterceptFs::with_options(dir.path(), Default::default());
     assert!(serialized.serialize_writes(), "default serialize is on");
-    let bare = InterceptFs::with_options(dir.path(), InterceptFsOptions { serialize: false, ..Default::default() });
+    let bare = InterceptFs::with_options(
+        dir.path(),
+        InterceptFsOptions { serialize: false, ..Default::default() },
+    );
     assert!(!bare.serialize_writes(), "--no-serialize must disable locks");
 }
 
@@ -212,7 +218,8 @@ fn c02_create_rel_stamps_session_provenance() {
         fs.exists_rel(Path::new("made.txt")).expect("exists after create"),
         "create must clear the cached miss"
     );
-    let provenance = read_provenance(&backing.join("made.txt")).expect("provenance").expect("stamped");
+    let provenance =
+        read_provenance(&backing.join("made.txt")).expect("provenance").expect("stamped");
     assert_eq!(provenance.session_id, "sess-create");
 }
 
@@ -239,10 +246,7 @@ fn c02_agent_cow_discard_pending_clears_staging() {
 
     cow.stage_bytes(None, &backing, b"staged").expect("stage");
     cow.discard_pending(None, &backing).expect("discard");
-    assert!(
-        cow.pending_for_agent(None).expect("pending").is_empty(),
-        "discard must clear staging"
-    );
+    assert!(cow.pending_for_agent(None).expect("pending").is_empty(), "discard must clear staging");
     let committed = cow.commit_all_for_agent(None).expect("commit all");
     assert!(committed.is_empty(), "nothing may remain pending; got {committed:?}");
     assert_eq!(fs::read(&backing).expect("read"), b"seed");

@@ -1876,12 +1876,8 @@ mod tests {
     #[test]
     fn test_mesh_maildir_lines_compact_and_full() {
         use std::path::PathBuf;
-        let status = MaildirStatus {
-            path: PathBuf::from("/tmp/q"),
-            ready: 3,
-            in_flight: 2,
-            pending: 5,
-        };
+        let status =
+            MaildirStatus { path: PathBuf::from("/tmp/q"), ready: 3, in_flight: 2, pending: 5 };
         let compact: String =
             mesh_maildir_lines(Some(status.clone()), true).iter().map(|l| l.to_string()).collect();
         assert!(compact.contains("r:3 f:2 p:5"), "compact MUST show depths; got: {compact}");
@@ -1945,10 +1941,7 @@ mod tests {
         let state: HashMap<u32, char> = HashMap::from([(100, 'S')]);
         // family carries a trailing space and rss a leading one, matching the
         // existing render (family + rss + comm suffix concatenated).
-        assert_eq!(
-            format_tree_node_line(&node, &rss, &state),
-            "[100] S claude  RSS 50M (claude)"
-        );
+        assert_eq!(format_tree_node_line(&node, &rss, &state), "[100] S claude  RSS 50M (claude)");
     }
 
     #[test]
@@ -1970,7 +1963,15 @@ mod tests {
         let node = tree_node(100, "claude", Some("claude"), vec![]);
         let mut lines: Vec<Line<'static>> = Vec::new();
         let mut budget = 0usize;
-        append_agent_tree_lines(&node, "", true, &HashMap::new(), &HashMap::new(), &mut lines, &mut budget);
+        append_agent_tree_lines(
+            &node,
+            "",
+            true,
+            &HashMap::new(),
+            &HashMap::new(),
+            &mut lines,
+            &mut budget,
+        );
         assert!(lines.is_empty(), "zero budget MUST append nothing");
     }
 
@@ -1984,7 +1985,15 @@ mod tests {
         );
         let mut lines: Vec<Line<'static>> = Vec::new();
         let mut budget = 1usize;
-        append_agent_tree_lines(&node, "", true, &HashMap::new(), &HashMap::new(), &mut lines, &mut budget);
+        append_agent_tree_lines(
+            &node,
+            "",
+            true,
+            &HashMap::new(),
+            &HashMap::new(),
+            &mut lines,
+            &mut budget,
+        );
         assert_eq!(lines.len(), 1, "budget 1 MUST stop after the root; got {lines:?}");
     }
 
@@ -1998,7 +2007,15 @@ mod tests {
         );
         let mut lines: Vec<Line<'static>> = Vec::new();
         let mut budget = 3usize;
-        append_agent_tree_lines(&node, "", true, &HashMap::new(), &HashMap::new(), &mut lines, &mut budget);
+        append_agent_tree_lines(
+            &node,
+            "",
+            true,
+            &HashMap::new(),
+            &HashMap::new(),
+            &mut lines,
+            &mut budget,
+        );
         assert_eq!(lines.len(), 3, "root + two children MUST render; got {lines:?}");
         // Per-line connector assertions: a bare `contains("└── ")` cannot
         // distinguish an is_last inversion (mutant swaps which child gets the
@@ -2111,8 +2128,7 @@ mod tests {
         };
         let status =
             StatusOperatorPanel { scanned: 10, watched: 2, total_processes: 3, agent_rows: 2 };
-        let mut poll: Box<PoolStatusPollFn> =
-            Box::new(move || (Some(pool), Some(status)));
+        let mut poll: Box<PoolStatusPollFn> = Box::new(move || (Some(pool), Some(status)));
         poll_pool_status_panels(&mut app, Some(poll.as_mut()));
         assert!(app.pool_panel.is_some(), "poll MUST apply the pool snapshot");
         assert!(app.status_panel.is_some(), "poll MUST apply the status snapshot");

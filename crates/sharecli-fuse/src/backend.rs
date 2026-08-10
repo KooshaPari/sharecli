@@ -403,9 +403,6 @@ mod tests {
     #[cfg(not(target_os = "macos"))]
     fn runtime_diagnostics_is_non_empty_off_macos() {
         // Exact match: String::new() / "xyzzy" mutants both differ.
-        assert_eq!(
-            runtime_diagnostics(),
-            "macFUSE diagnostics unavailable on this platform"
-        );
+        assert_eq!(runtime_diagnostics(), "macFUSE diagnostics unavailable on this platform");
     }
 }

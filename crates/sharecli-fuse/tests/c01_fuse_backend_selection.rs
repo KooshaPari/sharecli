@@ -39,9 +39,9 @@
 use std::fs;
 #[cfg(target_os = "macos")]
 use std::path::Path;
+use std::sync::Mutex;
 #[cfg(target_os = "macos")]
 use tempfile::TempDir;
-use std::sync::Mutex;
 
 use sharecli_fuse::{select_backend, FuseBackend};
 
