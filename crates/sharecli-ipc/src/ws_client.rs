@@ -44,7 +44,7 @@ pub enum ClientMessage {
     /// A batch snapshot of all monitored processes.
     ProcessSnapshot(Vec<ProcessSummary>),
     /// A point-in-time health reading.
-    HealthUpdate(HealthSnapshot),
+    HealthUpdate(Box<HealthSnapshot>),
     /// A thermal governor event.
     ThermalEvent { level: u8, message: String },
     /// A frame whose JSON shape was not recognised; the raw string is preserved.
@@ -56,7 +56,7 @@ pub enum ClientMessage {
 #[serde(tag = "type", rename_all = "snake_case")]
 enum Envelope {
     ProcessSnapshot { processes: Vec<ProcessSummary> },
-    HealthUpdate { health: HealthSnapshot },
+    HealthUpdate { health: Box<HealthSnapshot> },
     ThermalEvent { level: u8, message: String },
 }
 

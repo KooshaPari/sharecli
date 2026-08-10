@@ -105,6 +105,7 @@ impl LogBuffer {
     }
 
     /// Snapshot the current `last_id` watermark without taking entries.
+    #[allow(dead_code)] // only consumed by bin target's optional diagnostic, not the public lib surface
     pub fn last_id(&self) -> u64 {
         let inner = self.inner.lock().expect("log buffer poisoned");
         inner.last_id

@@ -19,11 +19,15 @@
 //! and the response carries `last_id` so they can resume without re-receiving
 //! the entire history.
 
+#[cfg(target_os = "linux")]
 use std::fs;
+#[cfg(target_os = "linux")]
 use std::io::Read;
 use std::sync::{Arc, OnceLock};
 
-use anyhow::{Context, Result};
+#[cfg(target_os = "linux")]
+use anyhow::Context;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sharecli::commands::proc::{AgentProcRow, AgentProcSnapshot};
@@ -438,7 +442,7 @@ impl Handler {
                 let procs = self.pool.list().await;
                 let (used, total) = self.pool.system_memory_usage().await;
                 let (gate, host_watch) = capture_gate_host_watch()?;
-                let pool = self.capture_pool_snapshot(gate.clone(), host_watch.clone()).await;
+                let pool = self.capture_pool_snapshot(gate.clone(), host_watch).await;
                 let status = self.capture_status_snapshot().await?;
                 let snap = HealthSnapshot {
                     managed_processes: procs.len(),
@@ -485,7 +489,7 @@ impl Handler {
                 let procs = self.pool.list().await;
                 let (used, total) = self.pool.system_memory_usage().await;
                 let (gate, host_watch) = capture_gate_host_watch()?;
-                let pool = self.capture_pool_snapshot(gate.clone(), host_watch.clone()).await;
+                let pool = self.capture_pool_snapshot(gate.clone(), host_watch).await;
                 let status = self.capture_status_snapshot().await?;
                 let snap = MonitoringReportSnapshot {
                     timestamp: std::time::SystemTime::now()
@@ -575,9 +579,9 @@ fn set_nested(val: &mut Value, path: &[&str], new: Value) -> Result<(), String> 
 ///
 /// Field shape:
 ///   * `cmd` — `Vec<String>` of argv tokens, parsed from the platform-native
-///             source (`/proc/<pid>/cmdline` on Linux, `KERN_PROCARGS2` on
-///             macOS). Empty when the pid is gone or unreadable so the Swift
-///             UI can render a graceful "No command line available".
+///     source (`/proc/<pid>/cmdline` on Linux, `KERN_PROCARGS2` on
+///     macOS). Empty when the pid is gone or unreadable so the Swift
+///     UI can render a graceful "No command line available".
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CmdlineResponse {
     pub cmd: Vec<String>,
@@ -618,6 +622,7 @@ fn read_pid_cmdline(pid: u32) -> Result<Vec<String>> {
 }
 
 /// Linux: read `/proc/<pid>/cmdline`, split on NUL, drop trailing empty.
+#[cfg(target_os = "linux")]
 fn read_cmdline_from_proc_path(path: &std::path::Path) -> Result<Vec<String>> {
     let mut bytes = Vec::new();
     let mut file = fs::File::open(path).with_context(|| format!("open {}", path.display()))?;
