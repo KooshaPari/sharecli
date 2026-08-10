@@ -73,8 +73,6 @@ pub use read_cache::{global_read_cache_meters, ReadCacheMeters, ReadContentCache
 pub use session_registry::default_fuser_config;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use session_registry::smoke_fuser_config;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-pub use session_registry::smoke_fuser_config_for_backend;
 pub use session_registry::{FuseMountInfo, FuseMountOptions, FuseSessionRegistry};
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 pub use write_serialize_meters::{
