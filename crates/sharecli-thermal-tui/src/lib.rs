@@ -1874,7 +1874,7 @@ mod tests {
 
     // --- mesh_maildir_lines (C07 L65) ---
     #[test]
-    fn test_mesh_maildir_lines_compact_and_full() {
+    fn test_mesh_maildir_compact_and_full() {
         use std::path::PathBuf;
         let status =
             MaildirStatus { path: PathBuf::from("/tmp/q"), ready: 3, in_flight: 2, pending: 5 };
@@ -1945,14 +1945,14 @@ mod tests {
     }
 
     #[test]
-    fn test_format_tree_node_line_sparse_fields() {
+    fn test_format_tree_node_sparse_fields() {
         // No family, no RSS entry, empty comm -> no extra tokens, `-` state.
         let node = tree_node(200, "", None, vec![]);
         assert_eq!(format_tree_node_line(&node, &HashMap::new(), &HashMap::new()), "[200] - ");
     }
 
     #[test]
-    fn test_format_comm_suffix_empty_vs_present() {
+    fn test_comm_suffix_empty_vs_present() {
         assert_eq!(format_comm_suffix(""), "");
         assert_eq!(format_comm_suffix("claude"), " (claude)");
     }
