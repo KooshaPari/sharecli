@@ -54,11 +54,11 @@ jobs:
       - name: Install yamllint
         run: sudo apt-get update && sudo apt-get install -y yamllint
 
-      - name: Run Trunk-equivalent linters
+      - name: Run remaining trunk linters
         run: |
           set -euo pipefail
-          # actionlint reads .github/actionlint.yaml (ignore rules) by default.
-          actionlint
+          # actionlint runs in the docker step above (reads
+          # .github/actionlint.yaml for ignore rules).
           # Same whitespace-only formatting contract as `trunk fmt`.
           taplo fmt --check
           # Same relaxed ruleset as `.trunk/trunk.yaml`'s yamllint section.
