@@ -1,6 +1,5 @@
 //! Pure admission policy for agent-issued commands.
 
-use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -17,6 +16,8 @@ pub enum PauseCode {
     Thermal,
     /// The configured build-command slot limit has been reached.
     BuildSlot,
+    /// The caller configured no time for this command to execute.
+    DeadlineExceeded,
 }
 
 /// An admitted command or a structured pause instruction.
@@ -44,6 +45,11 @@ impl AgentCallDecision {
         self.resume_condition.as_deref()
     }
 
+    /// An actionable suggestion for a paused command.
+    pub fn suggestion(&self) -> Option<&str> {
+        self.resume_condition()
+    }
+
     /// The bounded execution deadline for this decision.
     pub fn deadline(&self) -> Duration {
         self.deadline
@@ -55,10 +61,9 @@ impl AgentCallDecision {
 pub struct AgentCallPolicy {
     project_root: PathBuf,
     project_limit: usize,
-    admitted_calls: Cell<usize>,
     thermal_headroom: bool,
     build_slots: usize,
-    admitted_builds: Cell<usize>,
+    deadline: Duration,
 }
 
 impl AgentCallPolicy {
@@ -67,10 +72,9 @@ impl AgentCallPolicy {
         Self {
             project_root,
             project_limit: usize::MAX,
-            admitted_calls: Cell::new(0),
             thermal_headroom: true,
             build_slots: usize::MAX,
-            admitted_builds: Cell::new(0),
+            deadline: DEFAULT_DEADLINE,
         }
     }
 
@@ -92,21 +96,34 @@ impl AgentCallPolicy {
         self
     }
 
+    /// Set the execution deadline for admitted commands.
+    pub fn with_deadline(mut self, deadline: Duration) -> Self {
+        self.deadline = deadline;
+        self
+    }
+
     /// Normalize and admit a command, or return a pause decision.
     pub fn admit(&self, command: &str) -> AgentCallDecision {
         let normalized = self.normalize(command);
 
-        if targets_hazardous_root(&normalized) {
+        if self.targets_outside_project_root(&normalized) {
             return self.paused(
                 normalized,
                 PauseCode::HazardousRoot,
                 "use a path inside the project root",
             );
         }
+        if self.deadline.is_zero() {
+            return self.paused(
+                normalized,
+                PauseCode::DeadlineExceeded,
+                "set a nonzero execution deadline",
+            );
+        }
         if !self.thermal_headroom {
             return self.paused(normalized, PauseCode::Thermal, "wait for thermal headroom");
         }
-        if self.admitted_calls.get() >= self.project_limit {
+        if self.project_limit == 0 {
             return self.paused(
                 normalized,
                 PauseCode::ProjectLimit,
@@ -115,7 +132,7 @@ impl AgentCallPolicy {
         }
 
         let build = is_build_command(&normalized);
-        if build && self.admitted_builds.get() >= self.build_slots {
+        if build && self.build_slots == 0 {
             return self.paused(
                 normalized,
                 PauseCode::BuildSlot,
@@ -123,16 +140,11 @@ impl AgentCallPolicy {
             );
         }
 
-        self.admitted_calls.set(self.admitted_calls.get().saturating_add(1));
-        if build {
-            self.admitted_builds.set(self.admitted_builds.get().saturating_add(1));
-        }
-
         AgentCallDecision {
             command: normalized,
             pause_code: None,
             resume_condition: None,
-            deadline: DEFAULT_DEADLINE,
+            deadline: self.deadline,
         }
     }
 
@@ -168,8 +180,15 @@ impl AgentCallPolicy {
             command,
             pause_code: Some(pause_code),
             resume_condition: Some(resume_condition.to_owned()),
-            deadline: DEFAULT_DEADLINE,
+            deadline: self.deadline,
         }
+    }
+
+    fn targets_outside_project_root(&self, command: &str) -> bool {
+        command
+            .split_whitespace()
+            .filter(|word| !word.starts_with('-'))
+            .any(|word| target_outside_project_root(Path::new(word)))
     }
 }
 
@@ -184,28 +203,6 @@ fn is_build_command(command: &str) -> bool {
     matches!(command.split_whitespace().next(), Some("cargo" | "make" | "just"))
 }
 
-fn targets_hazardous_root(command: &str) -> bool {
-    command.split_whitespace().any(|word| is_hazardous_root(Path::new(word)))
-}
-
-fn is_hazardous_root(path: &Path) -> bool {
-    const ROOTS: &[&str] = &[
-        "/",
-        "/Applications",
-        "/Library",
-        "/System",
-        "/Users",
-        "/bin",
-        "/dev",
-        "/etc",
-        "/opt",
-        "/private",
-        "/proc",
-        "/sys",
-        "/tmp",
-        "/usr",
-        "/var",
-        "/Volumes",
-    ];
-    ROOTS.iter().any(|root| path == Path::new(root))
+fn target_outside_project_root(path: &Path) -> bool {
+    path.is_absolute() || path.components().any(|component| component.as_os_str() == "..")
 }
