@@ -146,10 +146,15 @@ impl AgentCallPolicy {
             return command.to_owned();
         }
 
-        let pattern = words[1..].iter().copied().find(|word| !word.starts_with('-')).unwrap_or("");
+        let mut positional = words[1..].iter().copied().filter(|word| !word.starts_with('-'));
+        let pattern = positional.next().unwrap_or("");
+        let target = match positional.next() {
+            Some(".") | None => self.project_root.as_path(),
+            Some(target) => Path::new(target),
+        };
         format!(
             "rg --hidden --glob '!target' --glob '!node_modules' {pattern} {}",
-            self.project_root.display()
+            target.display()
         )
     }
 
