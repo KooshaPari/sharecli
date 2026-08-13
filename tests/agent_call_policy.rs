@@ -40,6 +40,31 @@ fn pauses_any_absolute_target() {
 }
 
 #[test]
+fn pauses_quoted_absolute_targets() {
+    let decision = policy().admit("rg TODO '/tmp/other project'");
+
+    assert_eq!(decision.pause_code(), Some(PauseCode::HazardousRoot));
+}
+
+#[test]
+fn admits_absolute_regex_patterns_when_the_target_is_inside_the_project() {
+    let decision = policy().admit("grep -R /tmp/needle src");
+
+    assert_eq!(decision.pause_code(), None);
+    assert_eq!(
+        decision.command(),
+        "rg --hidden --glob '!target' --glob '!node_modules' /tmp/needle src"
+    );
+}
+
+#[test]
+fn pauses_commands_with_unmatched_quotes() {
+    let decision = policy().admit("rg TODO 'src");
+
+    assert_eq!(decision.pause_code(), Some(PauseCode::HazardousRoot));
+}
+
+#[test]
 fn pauses_relative_traversal_outside_the_project_root() {
     let decision = policy().admit("grep -R TODO ../other-project");
 

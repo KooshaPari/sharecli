@@ -104,9 +104,19 @@ impl AgentCallPolicy {
 
     /// Normalize and admit a command, or return a pause decision.
     pub fn admit(&self, command: &str) -> AgentCallDecision {
-        let normalized = self.normalize(command);
+        let words = match tokenize(command) {
+            Ok(words) => words,
+            Err(()) => {
+                return self.paused(
+                    command.to_owned(),
+                    PauseCode::HazardousRoot,
+                    "use a well-formed command inside the project root",
+                );
+            }
+        };
+        let normalized = self.normalize(&words, command);
 
-        if self.targets_outside_project_root(&normalized) {
+        if self.targets_outside_project_root(&words) {
             return self.paused(
                 normalized,
                 PauseCode::HazardousRoot,
@@ -131,7 +141,7 @@ impl AgentCallPolicy {
             );
         }
 
-        let build = is_build_command(&normalized);
+        let build = is_build_command(&words);
         if build && self.build_slots == 0 {
             return self.paused(
                 normalized,
@@ -148,20 +158,20 @@ impl AgentCallPolicy {
         }
     }
 
-    fn normalize(&self, command: &str) -> String {
-        let words: Vec<_> = command.split_whitespace().collect();
+    fn normalize(&self, words: &[String], command: &str) -> String {
         let Some(program) = words.first() else {
             return command.to_owned();
         };
 
-        if !matches!(*program, "grep" | "egrep") || !has_recursive_flag(&words[1..]) {
+        if !matches!(program.as_str(), "grep" | "egrep") || !has_recursive_flag(&words[1..]) {
             return command.to_owned();
         }
 
-        let mut positional = words[1..].iter().copied().filter(|word| !word.starts_with('-'));
-        let pattern = positional.next().unwrap_or("");
+        let mut positional = words[1..].iter().filter(|word| !word.starts_with('-'));
+        let pattern = positional.next().map_or("", String::as_str);
         let target = match positional.next() {
-            Some(".") | None => self.project_root.as_path(),
+            Some(target) if target == "." => self.project_root.as_path(),
+            None => self.project_root.as_path(),
             Some(target) => Path::new(target),
         };
         format!(
@@ -184,25 +194,65 @@ impl AgentCallPolicy {
         }
     }
 
-    fn targets_outside_project_root(&self, command: &str) -> bool {
-        command
-            .split_whitespace()
+    fn targets_outside_project_root(&self, words: &[String]) -> bool {
+        words
+            .iter()
+            .skip(1)
             .filter(|word| !word.starts_with('-'))
+            .skip(1)
             .any(|word| target_outside_project_root(Path::new(word)))
     }
 }
 
-fn has_recursive_flag(words: &[&str]) -> bool {
+fn has_recursive_flag(words: &[String]) -> bool {
     words.iter().any(|word| {
-        *word == "--recursive"
+        word == "--recursive"
             || word.starts_with('-') && word[1..].chars().any(|flag| matches!(flag, 'r' | 'R'))
     })
 }
 
-fn is_build_command(command: &str) -> bool {
-    matches!(command.split_whitespace().next(), Some("cargo" | "make" | "just"))
+fn is_build_command(words: &[String]) -> bool {
+    matches!(words.first().map(String::as_str), Some("cargo" | "make" | "just"))
 }
 
 fn target_outside_project_root(path: &Path) -> bool {
     path.is_absolute() || path.components().any(|component| component.as_os_str() == "..")
+}
+
+fn tokenize(command: &str) -> Result<Vec<String>, ()> {
+    let mut words = Vec::new();
+    let mut word = String::new();
+    let mut quote = None;
+    let mut escaped = false;
+
+    for character in command.chars() {
+        if escaped {
+            word.push(character);
+            escaped = false;
+        } else if character == '\\' {
+            escaped = true;
+        } else if let Some(active_quote) = quote {
+            if character == active_quote {
+                quote = None;
+            } else {
+                word.push(character);
+            }
+        } else if matches!(character, '\'' | '\"') {
+            quote = Some(character);
+        } else if character.is_whitespace() {
+            if !word.is_empty() {
+                words.push(std::mem::take(&mut word));
+            }
+        } else {
+            word.push(character);
+        }
+    }
+
+    if escaped || quote.is_some() {
+        return Err(());
+    }
+    if !word.is_empty() {
+        words.push(word);
+    }
+    Ok(words)
 }
