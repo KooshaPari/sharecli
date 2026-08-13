@@ -7,6 +7,7 @@
 //! - Multi-project orchestration
 
 // --- Tier A/B: product + ops (root pub surface) ---
+pub mod agent_call_policy;
 pub mod audit_log;
 pub mod cast;
 pub mod commands;

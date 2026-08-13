@@ -212,24 +212,8 @@
 | AC-007.78   | `tests/fr007_ipc_health_pool_status.rs`; `tests/fr007_ipc_health_status_gate_host_watch.rs`; `tests/fr007_ipc_pool_status_snapshot.rs`; `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`, `PoolSnapshot`, `StatusSnapshot`, `health.status`, `pool.status`, `status.snapshot`, `capture_pool_snapshot`, `capture_status_snapshot`) | IPC health.status embeds pool + status; pool.status nested status only; status.snapshot nested pool only; gate → host_watch → siblings key order; no cross-sibling recursion |
 | AC-007.79   | `tests/fr007_proc_csv_pool_status.rs`; `tests/fr007_proc_csv_stderr_silent.rs`; `tests/fr007_proc_text_csv_gate.rs`; `tests/fr007_proc_text_csv_host_watch.rs`; `src/commands/proc.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` (`PoolOperatorPanel::format_csv_companion`, `StatusOperatorPanel::format_csv_companion`) | proc --csv / --tree --csv gate → host_watch → pool → status companion rows on stdout; stderr silent on success (extends AC-007.33) |
 | AC-007.80   | `tests/fr007_ws_client_health_update_pool_status.rs`; `crates/sharecli-ipc/src/ws_client.rs` (`ClientMessage`, `ClientMessage::from_json`, `HealthUpdate`); `crates/sharecli-ipc/src/handler.rs` (`HealthSnapshot`) | WS `health_update` decodes expanded HealthSnapshot pool + status; IPC health.status wrap roundtrip; legacy missing siblings → Unknown |
-| AC-007.81   | `tests/fr007_report_csv_pool_status.rs`; `tests/fr007_report_csv_stderr_silent.rs`; `src/commands/report.rs` (`ReportFormat::Csv`, `render_report_csv_body`, `append_report_csv_companions`, `render_once` CSV path); `crates/sharecli-fleet/src/operator_pool_status.rs` | report --format csv fleet body → gate → host_watch → pool → status companion rows on stdout; stderr silent on success (parity with proc CSV AC-007.79); `--format csv --watch` per AC-007.90 |
-| AC-007.82   | `tests/fr007_health_pool_status_csv.rs`; `src/commands/mod.rs` (`render_health_csv_body`, `render_pool_csv_body`, `render_status_csv_body`, `append_operator_csv_companions`, `health --csv`, `pool --csv`, `status --csv`); `src/main.rs` (`Health.csv`, `Pool.csv`, `Status.csv`); `crates/sharecli-fleet/src/operator_pool_status.rs` | health/pool/status --csv command body → gate → host_watch → pool → status companion rows on stdout; rejects --json; stderr silent on success (parity with proc/report CSV AC-007.79/81); `--csv --watch` per AC-007.89 |
-| AC-007.83   | `tests/fr007_ps_all_csv.rs`; `src/commands/mod.rs` (`render_ps_all_csv_body`, `append_operator_csv_companions`, `ps --all --csv`); `src/main.rs` (`Ps.csv`); `crates/sharecli-fleet/src/operator_pool_status.rs` | ps --all --csv managed + agent-inventory body → gate → host_watch → pool → status companion rows on stdout; requires --all; rejects --json; stderr silent on success (parity with health/pool/status CSV AC-007.82); `--csv --watch` per AC-007.89 |
-| AC-007.84   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/mod.rs`; `src/commands/report.rs`; `src/commands/proc.rs`; `src/dashboard.html`; `crates/sharecli-ipc/src/handler.rs`; `crates/sharecli-ipc/src/ws_client.rs`; `crates/sharecli-tray-linux/src/operator_display.rs`; `crates/sharecli-tray-windows/src/operator_display.rs`; `crates/sharecli-thermal-tui/src/lib.rs`; `desktop/ShareCLITray/Sources/ShareCLICore/OperatorDisplay.swift`; `windows/ShareCLITray/OperatorDisplay.cs` | Meta regression locks operator envelope matrix: CLI text/JSON/CSV one-shot (proc/report/health/pool/status/ps --all), IPC health.status + monitoring.report, WS health_update decode, dashboard/tray/TUI companion markers; no watch dwell |
-| AC-007.85   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/proc.rs` (`render_once` text/JSON/CSV tree paths); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | Parity suite proc --tree text/JSON/CSV one-shot rows lock gate → host_watch → pool → status envelope (parity with flat proc AC-007.75/77/79) |
-| AC-007.86   | `tests/fr007_operator_envelope_parity_suite.rs`; `src/commands/proc.rs` (`ProcDetailSnapshot`, `render_proc_detail_text`, `render_proc_detail_csv`, `render_pid_detail`); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | Parity suite proc --pid text/JSON/CSV one-shot rows lock gate → host_watch → pool → status envelope via self-PID (parity with flat proc AC-007.75/77/79) |
-| AC-007.87   | `tests/fr007_proc_pid_watch.rs`; `src/commands/proc.rs` (`ProcDetailNdjsonLine`, `render_pid_detail_once`, `run` pid watch loop); `src/commands/mod.rs` (`print_live_pool_status_operator_sections`, `fetch_operator_pool_status_siblings`) | proc --pid --watch text/NDJSON refresh parity with flat proc --watch (AC-007.35/28); `--pid --csv --watch` per AC-007.91 |
-| AC-007.88   | `tests/fr007_proc_csv_watch.rs`; `src/commands/proc.rs` (`PROC_CSV_WATCH_FRAME_MARKER`, `run` CSV watch loop, `render_once` CSV paths); `src/commands/mod.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | proc --csv / --tree --csv --watch frame marker + full CSV envelope each tick on stdout; stderr silent; rejects --csv --json --watch |
-| AC-007.89   | `tests/fr007_operator_csv_watch.rs`; `src/commands/mod.rs` (`HEALTH_CSV_WATCH_FRAME_MARKER`, `POOL_CSV_WATCH_FRAME_MARKER`, `STATUS_CSV_WATCH_FRAME_MARKER`, `PS_CSV_WATCH_FRAME_MARKER`, `emit_operator_csv_watch_frame`, `emit_operator_watch_footer`, `health --csv --watch`, `pool --csv --watch`, `status --csv --watch`, `ps --all --csv --watch`); `crates/sharecli-fleet/src/operator_pool_status.rs` | health/pool/status/ps --all --csv --watch frame marker + full CSV envelope each tick on stdout; stderr silent; rejects --csv --json --watch and ps --csv --watch without --all |
-| AC-007.90   | `tests/fr007_report_csv_watch.rs`; `src/commands/report.rs` (`REPORT_CSV_WATCH_FRAME_MARKER`, `run` CSV watch loop, `render_once` CSV path); `crates/sharecli-fleet/src/operator_pool_status.rs` | report --format csv --watch frame marker + full fleet CSV envelope each tick on stdout; stderr silent; pipe-safe (no ANSI clear) |
-| AC-007.91   | `tests/fr007_proc_pid_csv_watch.rs`; `src/commands/proc.rs` (`PROC_PID_CSV_WATCH_FRAME_MARKER`, `run` pid CSV watch loop, `render_pid_detail` CSV path); `src/commands/mod.rs` (`append_proc_csv_companions`); `crates/sharecli-fleet/src/operator_pool_status.rs` | proc --pid --csv --watch frame marker + PID CSV envelope each tick on stdout; stderr silent; rejects --pid --csv --json --watch |
-| AC-007.92   | `tests/fr007_proc_pid_combo_rejects.rs`; `src/commands/proc.rs` (`reject_pid_inventory_combos`, `run`) | proc --pid loud-rejects inventory flags (--tree/--family/--sort/--limit/…); --pid --csv/--json/--watch remain allowed |
-| AC-007.93   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_csv_watch_frame_smoke`) | Parity suite short CSV --watch frame-marker smoke for proc/tree/pid/report/health/pool/status/ps (AC-007.88–91); no long multi-frame dwell |
-| AC-007.94   | `tests/fr007_proc_csv_watch.rs` (`fr007_proc_csv_watch_footer_flushed_same_tick`); `src/commands/proc.rs`; `src/commands/report.rs`; `src/commands/mod.rs` (`emit_operator_csv_watch_footer`) | CSV --watch flushes `# [watch]` footer in the same tick (no deferred delivery via next frame) |
-| AC-007.95   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_csv_watch_footer_same_tick`) | Parity suite same-tick `# [watch]` flush matrix for all AC-007.93 CSV watch surfaces |
-| AC-007.96   | `tests/fr007_proc_watch_text_stderr_silent.rs` (`fr007_proc_watch_text_footer_flushed_same_tick`); `src/commands/proc.rs`; `src/commands/report.rs` | Text `--watch` flushes `[watch]` footer same tick (proc/report; operator already flushed) |
-| AC-007.97   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_text_watch_footer_same_tick`) | Parity suite same-tick text `[watch]` flush matrix for proc/tree/pid/report |
-| AC-007.98   | `tests/fr007_operator_envelope_parity_suite.rs` (`fr007_operator_matrix_cli_text_watch_footer_same_tick` + health/pool/status/ps rows) | Extends text flush matrix to operator health/pool/status/ps --all --watch |
+| AC-007.81   | `tests/fr007_report_csv_pool_status.rs`; `tests/fr007_report_csv_stderr_silent.rs`; `src/commands/report.rs` (`ReportFormat::Csv`, `render_report_csv_body`, `append_report_csv_companions`, `render_once` CSV path); `crates/sharecli-fleet/src/operator_pool_status.rs` | report --format csv fleet body → gate → host_watch → pool → status companion rows on stdout; rejects --watch; stderr silent on success (parity with proc CSV AC-007.79) |
+| AC-007.82   | `tests/fr007_health_pool_status_csv.rs`; `src/commands/mod.rs` (`render_health_csv_body`, `render_pool_csv_body`, `render_status_csv_body`, `append_operator_csv_companions`, `health --csv`, `pool --csv`, `status --csv`); `src/main.rs` (`Health.csv`, `Pool.csv`, `Status.csv`); `crates/sharecli-fleet/src/operator_pool_status.rs` | health/pool/status --csv command body → gate → host_watch → pool → status companion rows on stdout; rejects --json/--watch; stderr silent on success (parity with proc/report CSV AC-007.79/81) |
 
 ### FR-008 — Coalesce
 
@@ -248,9 +232,6 @@
 | AC-008.16 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::run_queued`, `hypervisor_run_queued_skips_coalesce_cache`); `crates/harness-native/src/strategies/queue.rs` (`queue_strategy_executes_via_hypervisor`, `priority_queue_strategy_executes_via_hypervisor`) | harness queue/priority_queue → Hypervisor nocache lane via `from_operator` |
 | AC-008.17 | `crates/sharecli-core/src/lib.rs` (`Hypervisor::from_config`, `HypervisorConfig::coalesce_ttl`, `coalesce_ttl`); `crates/harness-native/src/strategies/coalesce.rs` (`coalesce_strategy_executes_via_hypervisor`, `coalesce_strategy_serves_cache_on_replay`, `cache_strategy_executes_via_hypervisor`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_hypervisor_config`, `config_from_rule_opts`) | harness coalesce/cache → Hypervisor::run via from_operator + RuleOpts ttl/debounce/max_concurrent |
 | AC-008.18 | `crates/harness-native/src/strategies/debounce.rs` (`debounce_strategy_executes_via_hypervisor`, `debounce_strategy_serves_cache_on_replay`, `debounce_strategy_shares_in_window_store`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`config_from_rule_opts`, `build_hypervisor`) | harness debounce → Hypervisor::run via hypervisor_lane + debounce_ms → coalesce_debounce |
-| AC-008.19 | `crates/sharecli-ipc/src/cache_key.rs` (`cache_key_args_mode_ignores_cwd_and_env`, `cache_key_git_mode_parse_and_differs_from_args`); `tests/fr008_coalesce_mesh.rs` (`fr008_hypervisor_args_cache_key_mode_ignores_cwd`); `crates/harness-native/src/strategies/hypervisor_lane.rs` (`rule_opts_plumb_cache_key_mode_and_semantic`, `build_hypervisor_rule_nocache_args_*`, `build_hypervisor_omitted_nocache_args_keeps_defaults`); `crates/sharecli-core/src/lib.rs` (`HypervisorConfig::cache_key_mode`, `Hypervisor::run`) | CacheKeyMode time/args/git + per-rule nocache_args override semantics |
-| AC-008.20 | `crates/sharecli-ipc/src/semantic.rs` (`semantic_normalize_dot_to_project_root`, `semantic_normalize_canonicalizes_directory`); `tests/fr008_coalesce_mesh.rs` (`fr008_hypervisor_semantic_coalesces_repeated_lint_dot`); `crates/sharecli-core/src/lib.rs` (`HypervisorConfig::semantic`, `Hypervisor::run`) | semantic lint argv normalization before cache hash |
-| AC-008.21 | `crates/harness-native/src/strategies/retry.rs`; `crates/harness-native/src/strategies/circuit_breaker.rs`; `crates/harness-native/src/strategies/process.rs`; `crates/harness-native/src/strategies/mod.rs` | harness retry/circuit_breaker/passthrough (+ process delegates) → Hypervisor::run; no raw Command::spawn |
 
 ### FR-009 — FUSE
 
@@ -269,19 +250,6 @@
 | AC-009.12 | `tests/fr009_fuse_hypervisor_session.rs`; `sharecli-core` `fuse_session_id_for_command_key`; `sharecli-fuse` `mount_with_session` | Hypervisor FUSE session from coalesce CommandKey |
 | AC-009.13 | `tests/fr009_fuse_hypervisor_session.rs` (`fr009_hypervisor_spawn_outcome_fuse_session_id`); `sharecli-core` `SpawnOutcome::fuse_session_id` | SpawnOutcome exposes FUSE session when intercept active |
 | AC-009.14 | `tests/fr009_fuse_hypervisor_session.rs` (`fr009_remap_mount_to_backing_subtree`, `fr009_hypervisor_spawn_outcome_fuse_path_remap`); `sharecli-fuse` `path_remap.rs`; `sharecli-core` `SpawnOutcome::remap_fuse_path`, `FuseGuard` teardown | FUSE mount/backing remap + spawn/teardown lifecycle |
-| AC-009.15 | `tests/fr009_fuse_intercept.rs` (`fr009_create_rel_provenance_and_neg_invalidate`); `crates/sharecli-fuse/src/lib.rs` FUSE `create`/`mknod` | create files through intercept; provenance + cache/dentry invalidate |
-| AC-009.16 | `crates/sharecli-fuse/src/lib.rs` (`Filesystem::write` + `record_passthrough_write`); `tests/fr009_fuse_intercept.rs` (`fr009_privileged_mount_smoke`); `mount_smoke` extended smoke | live write metering + create/mkdir/unlink/rename mount smoke |
-| AC-009.17 | `tests/fr009_fuse_cli.rs`; `src/commands/fuse.rs`; `crates/sharecli-fuse/src/session_registry.rs` | fuse mount/unmount/status/list/commit/discard CLI + registry |
-| AC-009.18 | `crates/sharecli-fuse/src/agents_conf.rs` (`ac_009_18_*`); `src/commands/fuse.rs` | Feb `agents.conf` parse + agent id sanitize/validate |
-| AC-009.19 | `crates/sharecli-fuse/src/agent_cow.rs` (`ac_009_19_*`); `src/commands/fuse.rs` (`--cow` / `--agent`) | Per-agent CoW isolation + commit_all/discard_all |
-| AC-009.20 | `crates/sharecli-fuse/src/agent_cow.rs` (`ac_009_20_no_serialize_runs_callback`); `src/commands/fuse.rs` (`--no-serialize`) | `--no-serialize` skips per-path write locks |
-| AC-009.21 | `tests/fr009_fuse_cli.rs` (`fr009_cli_fuse_mount_rejects_*`, `fr009_cli_fuse_mount_help_documents_feb_flags`); `src/commands/fuse.rs` | CLI loud-reject invalid agent / missing agents.conf; help documents Feb flags |
-| AC-009.22 | `crates/fuse-smoke-runner`; `Containerfile.fuse-smoke`; `docs/ops/fuse-mount-smoke-matrix.md`; `just fuse-smoke` | OS×arch privileged mount-smoke matrix + Linux container / Colima path (no host macFUSE reboot) |
-| AC-009.23 | `crates/fuse-smoke-runner` (`macos_native`, `mac_host_linux_colima`, `macos_vm_tart`) | macOS native + Mac-hosted Colima/Tart cells |
-| AC-009.24 | `crates/fuse-smoke-runner` (`wsl2`); `docs/ops/fuse-mount-smoke-matrix.md` | WSL2 Linux FUSE smoke cell |
-| AC-009.25 | `crates/sharecli-fuse/src/winfsp_mount.rs`; `session_registry` Windows mounts; `docs/ops/winfsp-fuse-mount.md` | Windows WinFsp mount + smoke; loud `winfsp_missing` when absent |
-| AC-009.26 | `.github/workflows/fuse-mount-smoke.yml` | CI matrix mirroring local fuse-smoke cells |
-| AC-009.27 | `crates/sharecli-fuse/src/cow_session.rs`; Windows `session_registry` + `winfsp_mount` | WinFsp `--cow` + `fuse commit|discard` via shared CowMountHandle |
 
 ### FR-010 — Mesh
 
@@ -315,66 +283,6 @@
 
 ## Change log
 
-- **2026-07-23 — FR-009 FUSE mount-smoke matrix (AC-009.22..26):**
-  `fuse-smoke-runner` + `Containerfile.fuse-smoke` + Colima/mac/WSL/WinFsp cells;
-  workflow `fuse-mount-smoke.yml`; docs `fuse-mount-smoke-matrix.md`.
-- **2026-07-22 — FR-009 fuse CLI Feb-flag validation + TRACE backfill (AC-009.18..21):**
-  TRACE rows for agents.conf / AgentCowStore / `--no-serialize`; AC-009.21 CLI loud-rejects
-  invalid `--agent` and missing `--agents-conf`, and locks `fuse mount --help` Feb flags.
-- **2026-07-21 — FR-008 harness retry/circuit_breaker/process via Hypervisor (AC-008.21):** `retry`, `circuit_breaker`, and `passthrough`/process-delegating strategies execute via `Hypervisor::run` + `SpawnRequest::from_operator`; open circuit fails loudly; retry exhaustion surfaces non-zero exit.
-- **2026-07-21 — FR-008 cache_key modes + semantic normalization (AC-008.19..20):** `CacheKeyMode` time/args/git plumbed via rules.conf; per-rule `nocache_args=` override; `semantic=1` applies lint argv normalization before cache hash.
-- **2026-07-21 — FR-007 proc --pid --watch refresh surfaces (AC-007.87):**
-  `tests/fr007_proc_pid_watch.rs` locks text/NDJSON watch parity for `proc --pid N --watch`;
-  `render_pid_detail_once` + pid watch loop in `src/commands/proc.rs`; `--pid --csv --watch`
-  unlocked per AC-007.91.
-- **2026-07-22 — FR-007 operator text --watch same-tick flush matrix (AC-007.98):**
-  Extends `TEXT_WATCH_MATRIX` with health/pool/status/ps --all --watch rows under the same
-  one-gate-before-footer contract as AC-007.97.
-- **2026-07-22 — FR-007 text --watch same-tick flush matrix (AC-007.97):**
-  `fr007_operator_matrix_cli_text_watch_footer_same_tick` locks one gate before first
-  `[watch]` across proc/tree/pid/report text watch surfaces.
-- **2026-07-22 — FR-007 text --watch footer same-tick flush (AC-007.96):**
-  Flush stdout after text `[watch]` on proc/report watch loops; locked by
-  `fr007_proc_watch_text_footer_flushed_same_tick` (exactly one gate before first footer).
-- **2026-07-22 — FR-007 CSV watch same-tick flush matrix (AC-007.95):**
-  `fr007_operator_matrix_cli_csv_watch_footer_same_tick` locks one frame marker before first
-  `# [watch]` across proc/tree/pid/report/health/pool/status/ps CSV watch surfaces.
-- **2026-07-22 — FR-007 CSV watch footer same-tick flush (AC-007.94):**
-  Flush stdout after `# [watch]` on proc/report/operator CSV `--watch` loops so pipe
-  consumers see a complete frame without waiting for the next tick; locked by
-  `fr007_proc_csv_watch_footer_flushed_same_tick`.
-- **2026-07-22 — FR-007 CSV watch frame smoke in parity suite (AC-007.93):**
-  `fr007_operator_matrix_cli_csv_watch_frame_smoke` locks short single-frame marker + envelope
-  checks for AC-007.88–91 surfaces without multi-frame dwell.
-- **2026-07-22 — FR-007 proc --pid inventory combo rejects (AC-007.92):**
-  `reject_pid_inventory_combos` + `tests/fr007_proc_pid_combo_rejects.rs`; AC-006.24
-  updated so `--pid --csv` points at AC-007.86.
-- **2026-07-22 — FR-007 proc --pid --csv --watch (AC-007.91):**
-  `tests/fr007_proc_pid_csv_watch.rs` locks frame marker + CSV envelope for
-  `proc --pid N --csv --watch`; `PROC_PID_CSV_WATCH_FRAME_MARKER` in `src/commands/proc.rs`.
-- **2026-07-22 — FR-007 report --format csv --watch (AC-007.90):**
-  `tests/fr007_report_csv_watch.rs` locks `# sharecli-report-watch-frame` + fleet CSV envelope
-  each tick; `REPORT_CSV_WATCH_FRAME_MARKER` in `src/commands/report.rs`.
-- **2026-07-22 — FR-007 operator health/pool/status/ps --csv --watch (AC-007.89):**
-  `tests/fr007_operator_csv_watch.rs` locks per-command frame markers + CSV envelope;
-  `emit_operator_csv_watch_frame` / `emit_operator_watch_footer` in `src/commands/mod.rs`.
-- **2026-07-22 — FR-007 proc --csv / --tree --csv --watch (AC-007.88):**
-  `tests/fr007_proc_csv_watch.rs` locks `# sharecli-proc-watch-frame` + inventory CSV envelope;
-  `PROC_CSV_WATCH_FRAME_MARKER` in `src/commands/proc.rs`.
-- **2026-07-21 — FR-007 proc --pid operator envelope parity suite rows (AC-007.86):**
-  `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --pid` text/JSON/CSV one-shot matrix
-  rows (self-PID) locking gate → host_watch → pool → status companions; `render_pid_detail`
-  embeds pool/status on JSON, operator lines on text, and CSV companions on `--csv`.
-- **2026-07-21 — FR-007 proc --tree operator envelope parity suite rows (AC-007.85):**
-  `tests/fr007_operator_envelope_parity_suite.rs` adds `proc --tree` text/JSON/CSV one-shot matrix
-  rows locking gate → host_watch → pool → status companions (implementation from AC-007.75/77/79).
-- **2026-07-21 — FR-007 operator envelope matrix parity suite (AC-007.84):** `tests/fr007_operator_envelope_parity_suite.rs`
-  locks CLI text/JSON/CSV one-shot matrix (proc/report/health/pool/status/ps --all), IPC
-  `health.status` + `monitoring.report`, WS `health_update` decode, dashboard/tray/TUI companion
-  markers; no long `--watch` dwell cycles.
-- **2026-07-21 — FR-007 ps --all --csv operator companions (AC-007.83):** `sharecli ps --all --csv`
-  emits managed-process + agent-inventory CSV body then companion `gate` → `host_watch` → `pool` →
-  `status` records; requires `--all`; rejects `--json` / `--watch`; stderr silent on success.
 - **2026-07-21 — FR-007 health/pool/status CSV operator companions (AC-007.82):** `sharecli health --csv`,
   `pool --csv`, and `status --csv` emit command-specific CSV bodies then companion
   `gate` → `host_watch` → `pool` → `status` records (parity with proc CSV AC-007.79 and report
@@ -724,8 +632,6 @@
 - **2026-07-20 — FR-007 thermal TUI dashboard slice:** `sharecli thermal`
   polls ResourceWatchSample + FUSE read-coalesce meters each redraw
   (AC-007.9 TUI + AC-007.11); formalized AC-007.7..9 in FR.md.
-- **2026-07-21 — FR-008 cache key modes + semantic + per-rule nocache:** `CacheKeyMode`
-  (`time`/`args`/`git`), `semantic_normalize_argv`, `RuleOpts.nocache_args` (AC-008.19..20).
 - **2026-07-20 — FR-008 Hypervisor nocache e2e:** AC-008.10 side-effect
   re-exec + concurrent SlotQueue serialize + coalesce isolation
   (`tests/e2e_hypervisor_nocache.rs`).
@@ -740,9 +646,6 @@
   `SHARECLI_FUSE_MOUNT_SMOKE=1` (`run_mount_smoke`, AC-009.8).
 - **2026-07-20 — FR-009 write provenance:** `user.sharecli.session` /
   `user.sharecli.written_at` stamped on `write_rel` / `commit_rel` (AC-009.6).
-- **2026-07-21 — FR-009 FUSE gaps:** FUSE `create`/`mknod`, live `write` passthrough metering,
-  extended mount smoke (create/mkdir/unlink/rename), `FuseSessionRegistry`, and `sharecli fuse`
-  mount/unmount/status/list/commit/discard CLI (AC-009.15..17).
 - **2026-07-19 — FR-009/010 A+ closeout:** CoW `stage_bytes`/`commit_pending`/
   `discard_pending` (AC-009.5); `SmartMerger` + `WorktreePool` (AC-010.7..8).
 - **2026-07-19 — FR-009 A+ recovery:** InterceptFs passthrough + inode map +
