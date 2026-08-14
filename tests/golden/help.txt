@@ -7,6 +7,7 @@ Commands:
   surface       Send shell-free I/O requests to a ShareCLI-enabled Ghostty surface
   ps            List managed processes
   start         Start a harness process
+  agent-call    Run `agent-call --project <PATH> -- <PROGRAM> [ARGS]...` with shell-free structured argv; arguments pass unchanged, admission checks precede spawn, and paused calls report code, reason, resume condition, and suggestion
   stop          Stop managed processes
   status        Check process health
   proc          List host-detected coding agents (proc scan + RSS/FD samples)

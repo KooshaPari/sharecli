@@ -152,7 +152,7 @@ enum Commands {
         args: Vec<String>,
     },
 
-    /// Run an explicit program and argv inside a project without invoking a shell
+    /// Run `agent-call --project <PATH> -- <PROGRAM> [ARGS]...` with shell-free structured argv; arguments pass unchanged, admission checks precede spawn, and paused calls report code, reason, resume condition, and suggestion
     AgentCall {
         /// Working directory for the program
         #[arg(long)]
