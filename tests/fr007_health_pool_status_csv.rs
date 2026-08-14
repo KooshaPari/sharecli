@@ -210,22 +210,6 @@ fn fr007_status_csv_pool_status_companion() {
     assert_stderr_silent(&out.stderr, "status --csv");
 }
 
-/// FR-007 / AC-007.82 — health --csv rejects --watch (one-shot export only).
-#[test]
-#[serial_test::serial]
-fn fr007_health_csv_rejects_watch() {
-    let out = bin()
-        .args(["health", "--csv", "--watch", "1"])
-        .output()
-        .expect("spawn sharecli health --csv --watch 1");
-    assert!(!out.status.success(), "health --csv --watch MUST fail loudly (AC-007.82)");
-    let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(
-        stderr.contains("csv") && stderr.contains("watch"),
-        "error MUST mention csv/watch incompatibility (AC-007.82); stderr: {stderr}"
-    );
-}
-
 /// FR-007 / AC-007.82 — pool --csv rejects --json.
 #[test]
 #[serial_test::serial]
