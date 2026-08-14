@@ -18,6 +18,7 @@ pub use serve::run as serve_run;
 
 use crate::monitoring::HostResourceWatchJson;
 
+use crate::agent_call_policy::AgentCallPolicy;
 use crate::config::{self, Config, ConfigCmd, ProjectCmd};
 use crate::progress::StepProgress;
 #[cfg(test)]
@@ -727,6 +728,46 @@ pub async fn start(project: &str, harness: &str, cwd: Option<&str>, args: &[Stri
     println!("Working directory: {:?}", project_path);
 
     Ok(())
+}
+
+/// Execute an explicitly supplied program and argv for one project without a shell.
+pub async fn agent_call(project: PathBuf, program: &str, args: &[String]) -> Result<()> {
+    let policy_command = agent_call_policy_command(program, args);
+    let decision = AgentCallPolicy::new(project.clone()).admit(&policy_command);
+
+    if let Some(code) = decision.pause_code() {
+        let reason = decision.reason().unwrap_or("agent call admission was paused");
+        let resume = decision.resume_condition().unwrap_or("retry when the pause clears");
+        let suggestion = decision.suggestion().unwrap_or(resume);
+        anyhow::bail!(
+            "agent-call paused: code={code:?}; reason={reason}; resume={resume}; suggestion={suggestion}"
+        );
+    }
+
+    let project_label = project.display().to_string();
+    let pool = ProcessPool::new();
+    let info = pool
+        .spawn(program, args, Some(project.clone()), Some(project_label), Some(program.to_owned()))
+        .await?;
+
+    println!("Started process {} ({})", info.pid, info.name);
+    println!("Working directory: {:?}", project);
+    Ok(())
+}
+
+/// Represent direct argv losslessly for the string-based admission policy only.
+/// The resulting string is never executed; `agent_call` passes the original argv to
+/// `ProcessPool` directly.
+fn agent_call_policy_command(program: &str, args: &[String]) -> String {
+    std::iter::once(program)
+        .chain(args.iter().map(String::as_str))
+        .map(agent_call_policy_quote)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn agent_call_policy_quote(argument: &str) -> String {
+    format!("'{}'", argument.replace('\'', "'\"'\"'"))
 }
 
 /// When `force` is set, destructive SIGKILL requires explicit `--yes` (C09 L81.6).
@@ -1607,6 +1648,21 @@ fn expand_path(path: &str) -> String {
 #[cfg(test)]
 mod project_group_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn agent_call_pauses_before_spawning_an_invalid_program() {
+        let args = vec!["TODO".to_owned(), "/tmp/outside-project".to_owned()];
+        let error =
+            agent_call(PathBuf::from("/workspace/project"), "not-a-real-agent-call-program", &args)
+                .await
+                .expect_err("policy pause should prevent ProcessPool::spawn");
+        let message = error.to_string();
+
+        assert!(message.contains("code=HazardousRoot"));
+        assert!(message.contains("reason=command targets a path outside the project root"));
+        assert!(message.contains("resume=use a path inside the project root"));
+        assert!(message.contains("suggestion=use a path inside the project root"));
+    }
 
     fn make_proc(
         pid: u32,

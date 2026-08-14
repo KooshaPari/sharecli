@@ -57,8 +57,10 @@ mod xml_escape;
 mod xxhash3;
 mod xxtea;
 
+pub use sharecli::agent_call_policy;
+
 use commands::{
-    cast as cast_cmd, check_limits, config as config_cmd, fuse as fuse_cmd, health,
+    agent_call, cast as cast_cmd, check_limits, config as config_cmd, fuse as fuse_cmd, health,
     mesh as mesh_cmd, pool_status, project as project_cmd, ps, run_pool, serve_run, set_limits,
     start, status, stop,
 };
@@ -147,6 +149,21 @@ enum Commands {
         cwd: Option<String>,
 
         /// Arguments to pass
+        args: Vec<String>,
+    },
+
+    /// Run an explicit program and argv inside a project without invoking a shell
+    AgentCall {
+        /// Working directory for the program
+        #[arg(long)]
+        project: std::path::PathBuf,
+
+        /// Program to execute (supply after `--`)
+        #[arg(required = true)]
+        program: String,
+
+        /// Arguments passed unchanged to the program
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
 
@@ -949,6 +966,9 @@ async fn run() -> Result<()> {
         Commands::Start { project, harness, cwd, args } => {
             start(project, harness, cwd.as_deref(), args).await?
         }
+        Commands::AgentCall { project, program, args } => {
+            agent_call(project.clone(), program, args).await?
+        }
         Commands::Stop { pid, project, harness, all, force, yes } => {
             stop(*pid, project.as_deref(), harness.as_deref(), *all, *force, *yes).await?
         }
@@ -1750,5 +1770,51 @@ mod tests {
 
         // Clean up
         unsafe { std::env::remove_var("NO_COLOR") };
+    }
+
+    #[test]
+    fn agent_call_parser_preserves_argv_without_shell_interpretation() {
+        // Traces to: FR-004
+        let cli = Cli::try_parse_from([
+            "sharecli",
+            "agent-call",
+            "--project",
+            "/workspace/project",
+            "--",
+            "rg",
+            "TODO",
+            "src",
+            "todo; echo this must remain one argument",
+        ])
+        .expect("agent-call should accept an explicit project and argv after --");
+
+        let Commands::AgentCall { project, program, args } = cli.command else {
+            panic!("agent-call should parse to the AgentCall command");
+        };
+
+        assert_eq!(project, std::path::PathBuf::from("/workspace/project"));
+        assert_eq!(program, "rg");
+        assert_eq!(
+            args,
+            vec![
+                "TODO".to_owned(),
+                "src".to_owned(),
+                "todo; echo this must remain one argument".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn agent_call_policy_pause_is_structured_before_any_spawn() {
+        // Traces to: FR-004
+        use sharecli::agent_call_policy::{AgentCallPolicy, PauseCode};
+
+        let decision = AgentCallPolicy::new(std::path::PathBuf::from("/workspace/project"))
+            .admit("rg TODO /tmp/outside-project");
+
+        assert_eq!(decision.pause_code(), Some(PauseCode::HazardousRoot));
+        assert!(decision.reason().is_some_and(|reason| !reason.is_empty()));
+        assert!(decision.resume_condition().is_some_and(|condition| !condition.is_empty()));
+        assert!(decision.suggestion().is_some_and(|suggestion| !suggestion.is_empty()));
     }
 }

@@ -40,6 +40,17 @@ impl AgentCallDecision {
         self.pause_code
     }
 
+    /// A stable explanation for a structured pause, when admission was refused.
+    pub fn reason(&self) -> Option<&'static str> {
+        self.pause_code.map(|code| match code {
+            PauseCode::HazardousRoot => "command targets a path outside the project root",
+            PauseCode::ProjectLimit => "project call concurrency limit has been reached",
+            PauseCode::Thermal => "host thermal headroom is unavailable",
+            PauseCode::BuildSlot => "no build-command slot is currently available",
+            PauseCode::DeadlineExceeded => "configured execution deadline is zero",
+        })
+    }
+
     /// A human-readable condition that permits retrying a paused command.
     pub fn resume_condition(&self) -> Option<&str> {
         self.resume_condition.as_deref()
