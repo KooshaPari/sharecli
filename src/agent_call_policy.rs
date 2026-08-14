@@ -175,8 +175,9 @@ impl AgentCallPolicy {
             Some(target) => Path::new(target),
         };
         format!(
-            "rg --hidden --glob '!target' --glob '!node_modules' {pattern} {}",
-            target.display()
+            "rg --hidden --glob '!target' --glob '!node_modules' {} {}",
+            shell_quote(pattern),
+            shell_quote(&target.display().to_string())
         )
     }
 
@@ -217,6 +218,10 @@ fn is_build_command(words: &[String]) -> bool {
 
 fn target_outside_project_root(path: &Path) -> bool {
     path.is_absolute() || path.components().any(|component| component.as_os_str() == "..")
+}
+
+fn shell_quote(argument: &str) -> String {
+    format!("'{}'", argument.replace('\'', "'\"'\"'"))
 }
 
 fn tokenize(command: &str) -> Result<Vec<String>, ()> {

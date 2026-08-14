@@ -13,7 +13,17 @@ fn rewrites_recursive_grep_to_a_bounded_ripgrep_command() {
 
     assert_eq!(
         decision.command(),
-        "rg --hidden --glob '!target' --glob '!node_modules' TODO /workspace/project"
+        "rg --hidden --glob '!target' --glob '!node_modules' 'TODO' '/workspace/project'"
+    );
+}
+
+#[test]
+fn quotes_user_derived_recursive_grep_pattern_and_target() {
+    let decision = policy().admit(r#"grep -R "a; b's" "src dir""#);
+
+    assert_eq!(
+        decision.command(),
+        "rg --hidden --glob '!target' --glob '!node_modules' 'a; b'\"'\"'s' 'src dir'"
     );
 }
 
@@ -53,7 +63,7 @@ fn admits_absolute_regex_patterns_when_the_target_is_inside_the_project() {
     assert_eq!(decision.pause_code(), None);
     assert_eq!(
         decision.command(),
-        "rg --hidden --glob '!target' --glob '!node_modules' /tmp/needle src"
+        "rg --hidden --glob '!target' --glob '!node_modules' '/tmp/needle' 'src'"
     );
 }
 
