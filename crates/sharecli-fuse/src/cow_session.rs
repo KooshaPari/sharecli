@@ -29,7 +29,13 @@ impl CowMountHandle {
             opts.session_id.clone()
         };
         let default_agent = opts.agent.clone().unwrap_or_else(|| session_id.clone());
-        let cow_root = opts.cow_dir.clone().unwrap_or_else(|| backing.join(".sharecli-cow"));
+        let cow_root = opts.cow_dir.clone().unwrap_or_else(|| {
+            if opts.cow {
+                backing.join(".sharecli-cow")
+            } else {
+                backing.join(".sharecli-cow-staging")
+            }
+        });
         Self {
             backing: backing.to_path_buf(),
             session_id,
@@ -204,5 +210,28 @@ mod tests {
         assert_eq!(fs::read(&target).unwrap(), b"new");
         let prov = crate::read_provenance(&target).unwrap().expect("provenance");
         assert_eq!(prov.session_id, "sess-27");
+    }
+
+    /// The derived CoW root must follow the documented InterceptFsOptions
+    /// contract on every platform: `{backing}/.sharecli-cow` when CoW is
+    /// enabled, `{backing}/.sharecli-cow-staging` otherwise (the WinFsp path
+    /// previously always used `.sharecli-cow`, diverging from the Unix path).
+    #[test]
+    fn cow_handle_default_root_follows_documented_contract() {
+        let dir = TempDir::new().unwrap();
+        let backing = dir.path().join("back");
+        fs::create_dir_all(&backing).unwrap();
+
+        let cow_on = CowMountHandle::from_options(
+            &backing,
+            &InterceptFsOptions { session_id: "s".into(), cow: true, ..Default::default() },
+        );
+        assert_eq!(cow_on.cow_root(), backing.join(".sharecli-cow"));
+
+        let cow_off = CowMountHandle::from_options(
+            &backing,
+            &InterceptFsOptions { session_id: "s".into(), cow: false, ..Default::default() },
+        );
+        assert_eq!(cow_off.cow_root(), backing.join(".sharecli-cow-staging"));
     }
 }
