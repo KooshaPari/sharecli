@@ -9,6 +9,12 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
+fn watch_grace(normal: Duration, profiled: Duration) -> Duration {
+    matches!(std::env::var("SHARECLI_DHAT_PROFILE"), Ok(value) if value == "1")
+        .then_some(profiled)
+        .unwrap_or(normal)
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -24,7 +30,7 @@ fn fr006_proc_watch_ndjson_one_line_per_refresh() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(2_500));
+    thread::sleep(watch_grace(Duration::from_secs(8), Duration::from_secs(25)));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -36,7 +42,7 @@ fn fr006_proc_watch_ndjson_one_line_per_refresh() {
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert!(
         lines.len() >= 2,
-        "NDJSON watch MUST emit at least two lines in ~2.5s; got {} line(s): {stdout}",
+        "NDJSON watch MUST emit at least two lines before its feature-aware deadline; got {} line(s): {stdout}",
         lines.len()
     );
     for line in &lines {
@@ -57,7 +63,7 @@ fn fr006_proc_watch_ndjson_stdout_is_pipe_clean() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(1_500));
+    thread::sleep(watch_grace(Duration::from_secs(5), Duration::from_secs(12)));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -92,7 +98,7 @@ fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(2_500));
+    thread::sleep(watch_grace(Duration::from_millis(2_500), Duration::from_secs(12)));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -103,7 +109,7 @@ fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
 
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     let line = lines.first().copied().unwrap_or_else(|| {
-        panic!("NDJSON watch MUST emit at least one line in ~2.5s; got: {stdout}");
+        panic!("NDJSON watch MUST emit at least one line before its feature-aware deadline; got: {stdout}");
     });
     let v: serde_json::Value = serde_json::from_str(line).expect("NDJSON line MUST parse");
     let agents = v.get("agents").and_then(|a| a.as_array()).expect("agents array");

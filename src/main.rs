@@ -841,7 +841,9 @@ async fn run() -> Result<()> {
     use std::io::IsTerminal;
 
     #[cfg(feature = "dhat-heap")]
-    let _dhat_profiler = dhat::Profiler::new_heap();
+    let _dhat_profiler = std::env::var("SHARECLI_DHAT_PROFILE")
+        .is_ok_and(|value| value == "1")
+        .then(dhat::Profiler::new_heap);
 
     let cli = Cli::parse();
     let tokens = theme::Tokens::from_name(&cli.theme)

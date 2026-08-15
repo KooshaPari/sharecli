@@ -44,4 +44,8 @@ fn c00_l8_dhat_soft_avoids_clap_help_exit() {
         "dhat_soft must not invoke --help (skips Drop / no dhat-heap.json)"
     );
     assert!(script.contains("completions bash"), "dhat_soft must use a normal-returning CLI path");
+    assert!(
+        script.contains("SHARECLI_DHAT_PROFILE=1"),
+        "dhat_soft must explicitly opt into heap profiling"
+    );
 }

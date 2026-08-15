@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 /// Product / ops modules that may remain as root `pub mod` (Tier A+B + util).
 const ROOT_PUB_MOD_ALLOWLIST: &[&str] = &[
+    "agent_call_policy",
     "audit_log",
     "cast",
     "commands",

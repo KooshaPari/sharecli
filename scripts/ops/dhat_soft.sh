@@ -19,7 +19,7 @@ rm -f dhat-heap.json
 
 # clap --help/--version call process::exit and skip Drop, so Profiler never
 # flushes dhat-heap.json. Use a subcommand that returns from main() normally.
-stderr=$("$BIN" completions bash 2>&1 >/dev/null || true)
+stderr=$(SHARECLI_DHAT_PROFILE=1 "$BIN" completions bash 2>&1 >/dev/null || true)
 
 if [[ ! -f dhat-heap.json ]]; then
   echo "dhat-soft: missing dhat-heap.json artifact (need normal main return; not --help)" >&2

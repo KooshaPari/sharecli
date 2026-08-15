@@ -96,7 +96,7 @@ Full list: `src/lib.rs` `pub mod` declarations. Sample mapping:
 
 | Module | Tier | Proposed crate |
 |--------|------|----------------|
-| `runtime`, `spawn_policy`, `proc_table`, `scheduler` | A | `sharecli-runtime` |
+| `runtime`, `spawn_policy`, `proc_table`, `scheduler`, `agent_call_policy` | A | `sharecli-runtime` |
 | `config`, `config_loader`, `config_watcher`, `config_merger` | A | `sharecli-config` |
 | `serve_auth`, `serve_lock`, `http_red`, `audit_log`, `pprof_http` | B | `sharecli-serve` |
 | `otel`, `metrics`, `log_sink` | B | `sharecli-serve` or `sharecli-telemetry` (defer) |

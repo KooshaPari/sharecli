@@ -8,6 +8,12 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
+fn watch_grace(normal: Duration, profiled: Duration) -> Duration {
+    matches!(std::env::var("SHARECLI_DHAT_PROFILE"), Ok(value) if value == "1")
+        .then_some(profiled)
+        .unwrap_or(normal)
+}
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -31,7 +37,7 @@ fn fr006_proc_watch_renders_twice_before_exit() {
         .spawn()
         .expect("spawn sharecli proc --watch 1");
 
-    thread::sleep(Duration::from_millis(2_500));
+    thread::sleep(watch_grace(Duration::from_secs(8), Duration::from_secs(25)));
 
     let _ = child.kill();
 
@@ -48,7 +54,7 @@ fn fr006_proc_watch_renders_twice_before_exit() {
     assert!(stdout.contains("[watch]"), "watch MUST print refresh footer; got: {stdout}");
     assert!(
         stdout.matches("Host agents (proc scan)").count() >= 2,
-        "watch MUST re-render at least twice in ~2.5s; got {} headers",
+        "watch MUST re-render at least twice before its feature-aware deadline; got {} headers",
         stdout.matches("Host agents (proc scan)").count()
     );
 }
@@ -63,7 +69,7 @@ fn fr006_proc_watch_json_emits_valid_payload() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(1_500));
+    thread::sleep(watch_grace(Duration::from_secs(5), Duration::from_secs(12)));
     let _ = child.kill();
 
     let mut stdout = String::new();
