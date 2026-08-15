@@ -129,3 +129,40 @@ fn agent_call_denial_reports_structured_fields_without_running_probe() {
         log.display()
     );
 }
+
+/// An arbitrary direct program is denied when its first argument escapes the project.
+#[test]
+fn agent_call_denies_direct_program_with_absolute_outside_first_argument() {
+    let fixture = tempfile::tempdir().expect("temp fixture");
+    let project = fixture.path().join("project");
+    fs::create_dir(&project).expect("create project");
+    let outside_project = fixture.path().join("outside-project");
+
+    let out = bin()
+        .arg("agent-call")
+        .arg("--project")
+        .arg(&project)
+        .arg("--")
+        .arg("/usr/bin/printf")
+        .arg(&outside_project)
+        .output()
+        .expect("spawn denied direct agent-call");
+
+    assert!(
+        !out.status.success(),
+        "direct program with an out-of-project absolute first argument MUST be denied; combined output: {}",
+        combined_output(&out)
+    );
+    let combined = combined_output(&out);
+    for field in ["code=", "reason=", "resume=", "suggestion="] {
+        assert!(
+            combined.contains(field),
+            "denial MUST include structured {field} field; combined output: {combined}"
+        );
+    }
+    assert!(
+        out.stdout.is_empty(),
+        "denied direct program MUST not execute printf; stdout: {}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+}

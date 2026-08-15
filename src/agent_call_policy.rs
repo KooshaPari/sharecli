@@ -207,13 +207,16 @@ impl AgentCallPolicy {
     }
 
     fn targets_outside_project_root(&self, words: &[String]) -> bool {
-        words
-            .iter()
-            .skip(1)
-            .filter(|word| !word.starts_with('-'))
-            .skip(1)
-            .any(|word| target_outside_project_root(Path::new(word)))
+        let mut positional = words.iter().skip(1).filter(|word| !word.starts_with('-'));
+        if is_search_program(words) {
+            positional.next();
+        }
+        positional.any(|word| target_outside_project_root(Path::new(word)))
     }
+}
+
+fn is_search_program(words: &[String]) -> bool {
+    matches!(words.first().map(String::as_str), Some("rg" | "grep" | "egrep"))
 }
 
 fn has_recursive_flag(words: &[String]) -> bool {
