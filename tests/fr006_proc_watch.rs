@@ -8,18 +8,11 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
-// `--all-features` enables Dhat heap profiling, which intentionally makes a
-// whole-host snapshot substantially slower than the normal interactive build.
-const FIRST_FRAME_GRACE: Duration = if cfg!(feature = "dhat-heap") {
-    Duration::from_secs(12)
-} else {
-    Duration::from_millis(1_500)
-};
-const TWO_FRAME_GRACE: Duration = if cfg!(feature = "dhat-heap") {
-    Duration::from_secs(25)
-} else {
-    Duration::from_millis(2_500)
-};
+fn watch_grace(normal: Duration, profiled: Duration) -> Duration {
+    matches!(std::env::var("SHARECLI_DHAT_PROFILE"), Ok(value) if value == "1")
+        .then_some(profiled)
+        .unwrap_or(normal)
+}
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
@@ -44,7 +37,7 @@ fn fr006_proc_watch_renders_twice_before_exit() {
         .spawn()
         .expect("spawn sharecli proc --watch 1");
 
-    thread::sleep(TWO_FRAME_GRACE);
+    thread::sleep(watch_grace(Duration::from_secs(8), Duration::from_secs(25)));
 
     let _ = child.kill();
 
@@ -76,7 +69,7 @@ fn fr006_proc_watch_json_emits_valid_payload() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(FIRST_FRAME_GRACE);
+    thread::sleep(watch_grace(Duration::from_secs(5), Duration::from_secs(12)));
     let _ = child.kill();
 
     let mut stdout = String::new();

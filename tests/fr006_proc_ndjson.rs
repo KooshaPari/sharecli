@@ -9,20 +9,11 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
-// The all-features binary enables the deliberately allocation-heavy `dhat-heap`
-// profiler. A full host snapshot can therefore take several seconds before it
-// reaches the first flush, whereas production/default builds normally complete
-// within the short interactive window below.
-const FIRST_FRAME_GRACE: Duration = if cfg!(feature = "dhat-heap") {
-    Duration::from_secs(12)
-} else {
-    Duration::from_millis(2_500)
-};
-const TWO_FRAME_GRACE: Duration = if cfg!(feature = "dhat-heap") {
-    Duration::from_secs(25)
-} else {
-    Duration::from_millis(2_500)
-};
+fn watch_grace(normal: Duration, profiled: Duration) -> Duration {
+    matches!(std::env::var("SHARECLI_DHAT_PROFILE"), Ok(value) if value == "1")
+        .then_some(profiled)
+        .unwrap_or(normal)
+}
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
@@ -39,7 +30,7 @@ fn fr006_proc_watch_ndjson_one_line_per_refresh() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(TWO_FRAME_GRACE);
+    thread::sleep(watch_grace(Duration::from_secs(8), Duration::from_secs(25)));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -72,7 +63,7 @@ fn fr006_proc_watch_ndjson_stdout_is_pipe_clean() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(FIRST_FRAME_GRACE);
+    thread::sleep(watch_grace(Duration::from_secs(5), Duration::from_secs(12)));
     let _ = child.kill();
 
     let mut stdout = String::new();
@@ -107,7 +98,7 @@ fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(FIRST_FRAME_GRACE);
+    thread::sleep(watch_grace(Duration::from_millis(2_500), Duration::from_secs(12)));
     let _ = child.kill();
 
     let mut stdout = String::new();
