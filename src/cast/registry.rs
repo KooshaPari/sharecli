@@ -1,6 +1,6 @@
 //! Pane registry — a TOML-backed name → `PaneAddress` map.
 //!
-//! Persisted to `~/.config/sharecli/cast/pane-map.toml` by default; tests
+//! Persisted to `<sharecli-config-dir>/cast/pane-map.toml` by default; tests
 //! use `PaneRegistry::new_in(path)` for hermeticity.
 //!
 //! FR: FR-CAST-002
@@ -29,11 +29,9 @@ pub struct PaneRegistry {
 }
 
 impl PaneRegistry {
-    /// Open the default registry at `~/.config/sharecli/cast/pane-map.toml`.
+    /// Open the default registry under sharecli's configured data directory.
     pub fn new() -> Result<Self> {
-        let base = dirs::config_dir()
-            .ok_or_else(|| anyhow::anyhow!("could not resolve user config dir"))?;
-        Self::new_in(base.join("sharecli").join("cast"))
+        Self::new_in(crate::paths::well_known_paths().config_dir.join("cast"))
     }
 
     /// Open (or create) a registry whose file lives in `dir/pane-map.toml`.
