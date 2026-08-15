@@ -8,6 +8,19 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
+// `--all-features` enables Dhat heap profiling, which intentionally makes a
+// whole-host snapshot substantially slower than the normal interactive build.
+const FIRST_FRAME_GRACE: Duration = if cfg!(feature = "dhat-heap") {
+    Duration::from_secs(12)
+} else {
+    Duration::from_millis(1_500)
+};
+const TWO_FRAME_GRACE: Duration = if cfg!(feature = "dhat-heap") {
+    Duration::from_secs(25)
+} else {
+    Duration::from_millis(2_500)
+};
+
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
 }
@@ -31,7 +44,7 @@ fn fr006_proc_watch_renders_twice_before_exit() {
         .spawn()
         .expect("spawn sharecli proc --watch 1");
 
-    thread::sleep(Duration::from_millis(2_500));
+    thread::sleep(TWO_FRAME_GRACE);
 
     let _ = child.kill();
 
@@ -48,7 +61,7 @@ fn fr006_proc_watch_renders_twice_before_exit() {
     assert!(stdout.contains("[watch]"), "watch MUST print refresh footer; got: {stdout}");
     assert!(
         stdout.matches("Host agents (proc scan)").count() >= 2,
-        "watch MUST re-render at least twice in ~2.5s; got {} headers",
+        "watch MUST re-render at least twice before its feature-aware deadline; got {} headers",
         stdout.matches("Host agents (proc scan)").count()
     );
 }
@@ -63,7 +76,7 @@ fn fr006_proc_watch_json_emits_valid_payload() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(Duration::from_millis(1_500));
+    thread::sleep(FIRST_FRAME_GRACE);
     let _ = child.kill();
 
     let mut stdout = String::new();
