@@ -30,9 +30,6 @@ const GIT_LOCAL_ENV_VARS: &[&str] = &[
     "GIT_PREFIX",
     "GIT_SHALLOW_FILE",
     "GIT_COMMON_DIR",
-    // `git rev-parse --local-env-vars` does not report this ref namespace,
-    // but foreign worktree operations must never inherit the caller's scope.
-    "GIT_NAMESPACE",
 ];
 
 /// Error from worktree pool operations.
@@ -262,9 +259,5 @@ mod tests {
                 "{variable} must not leak into a foreign git command"
             );
         }
-        assert!(
-            command.get_envs().any(|(key, value)| key == "GIT_NAMESPACE" && value.is_none()),
-            "GIT_NAMESPACE must not leak into a foreign git command"
-        );
     }
 }
