@@ -139,24 +139,23 @@ fn fr007_ipc_health_snapshot_gate_before_host_watch() {
 fn fr007_ipc_health_snapshot_wire_roundtrip() {
     use sharecli_ipc::handler::HealthSnapshot;
 
-    let raw = format!(
-        r#"{{"managed_processes":3,"used_memory_mb":2048,"total_memory_mb":16384,
-        "healthy":true,"gate":{{"thermal_pressure":"GREEN","detected_agents":0,
-        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"}},
-        "host_watch":{{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
-        "mem_rss_bytes":4,"load_1m":0.5}},
-        "pool":{{"node_total":0,"node_idle":0,"bun_total":0,"bun_idle":0,"max_per_type":4,
+    let raw = r#"{"managed_processes":3,"used_memory_mb":2048,"total_memory_mb":16384,
+        "healthy":true,"gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":1,"net_rx_bytes":2,"net_tx_bytes":3,
+        "mem_rss_bytes":4,"load_1m":0.5},
+        "pool":{"node_total":0,"node_idle":0,"bun_total":0,"bun_idle":0,"max_per_type":4,
         "healthy":true,"issues":[],
-        "gate":{{"thermal_pressure":"GREEN","detected_agents":0,
-        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"}},
-        "host_watch":{{"fd_count":0,"net_rx_bytes":0,"net_tx_bytes":0,
-        "mem_rss_bytes":0,"load_1m":0.0}}}},
-        "status":{{"total_processes":0,"agents":[],"scanned":0,"watched":0,
-        "gate":{{"thermal_pressure":"GREEN","detected_agents":0,
-        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"}},
-        "host_watch":{{"fd_count":0,"net_rx_bytes":0,"net_tx_bytes":0,
-        "mem_rss_bytes":0,"load_1m":0.0}}}}}}"#
-    );
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":0,"net_rx_bytes":0,"net_tx_bytes":0,
+        "mem_rss_bytes":0,"load_1m":0.0}},
+        "status":{"total_processes":0,"agents":[],"scanned":0,"watched":0,
+        "gate":{"thermal_pressure":"GREEN","detected_agents":0,
+        "agent_total_rss_bytes":0,"agent_contention":"OK","gate_decision":"ADMIT"},
+        "host_watch":{"fd_count":0,"net_rx_bytes":0,"net_tx_bytes":0,
+        "mem_rss_bytes":0,"load_1m":0.0}}}"#
+        .to_string();
     let h: HealthSnapshot = serde_json::from_str(&raw).expect("decode HealthSnapshot wire JSON");
     assert_eq!(h.managed_processes, 3);
     assert_eq!(h.used_memory_mb, 2048);
