@@ -24,27 +24,6 @@ const HOST_CSV_HEADER: &str = "record,fd_count,net_rx_bytes,net_tx_bytes,mem_rss
 const POOL_CSV_HEADER: &str = "record,node_total,node_idle,bun_total,bun_idle,max_per_type,healthy";
 const STATUS_CSV_HEADER: &str = "record,scanned,watched,total_processes,agent_rows";
 
-fn drain_watch_pipes(child: &mut Child, dwell: Duration) -> (String, String) {
-    let stdout = child.stdout.take().expect("piped stdout");
-    let stderr = child.stderr.take().expect("piped stderr");
-    let stdout_reader = thread::spawn(move || {
-        let mut buf = String::new();
-        let mut out = stdout;
-        let _ = out.read_to_string(&mut buf);
-        buf
-    });
-    let stderr_reader = thread::spawn(move || {
-        let mut buf = String::new();
-        let mut err = stderr;
-        let _ = err.read_to_string(&mut buf);
-        buf
-    });
-    thread::sleep(dwell);
-    let _ = child.kill();
-    let _ = child.wait();
-    (stdout_reader.join().expect("stdout drain"), stderr_reader.join().expect("stderr drain"))
-}
-
 fn assert_csv_envelope(frame: &str, body_header: &str, context: &str) {
     let body = frame
         .find(body_header)
@@ -78,7 +57,9 @@ fn fr007_proc_csv_watch_stderr_silent_and_envelope() {
         .spawn()
         .expect("spawn proc --csv --watch 1");
 
-    let (stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(10_000));
+    let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
+        complete_csv_frame_count(buf, FLAT_CSV_HEADER) >= 2
+    });
 
     assert!(
         stderr.is_empty(),
@@ -118,7 +99,9 @@ fn fr007_proc_tree_csv_watch_stderr_silent_and_envelope() {
         .spawn()
         .expect("spawn proc --tree --csv --watch 1");
 
-    let (stdout, stderr) = drain_watch_pipes(&mut child, Duration::from_millis(10_000));
+    let (stdout, stderr) = drain_watch_until(&mut child, Duration::from_secs(45), |buf| {
+        complete_csv_frame_count(buf, TREE_CSV_HEADER) >= 2
+    });
 
     assert!(
         stderr.is_empty(),
@@ -203,6 +186,10 @@ fn drain_watch_until(
     let stdout = stdout_buf.lock().expect("stdout lock").clone();
     let stderr = stderr_buf.lock().expect("stderr lock").clone();
     (stdout, stderr)
+}
+
+fn complete_csv_frame_count(output: &str, body_header: &str) -> usize {
+    output.split(FRAME_MARKER).skip(1).filter(|frame| frame.contains(body_header)).count()
 }
 
 /// FR-007 / AC-007.94 — `# [watch]` footer must flush in the same tick as the CSV body.
