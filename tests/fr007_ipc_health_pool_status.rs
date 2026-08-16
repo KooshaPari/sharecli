@@ -158,7 +158,7 @@ fn fr007_ipc_health_snapshot_pool_status_order() {
         total_memory_mb: 16384,
         healthy: true,
         gate: gate.clone(),
-        host_watch: host_watch.clone(),
+        host_watch,
         pool: PoolSnapshot {
             node_total: 2,
             node_idle: 1,
@@ -168,7 +168,7 @@ fn fr007_ipc_health_snapshot_pool_status_order() {
             healthy: true,
             issues: vec![],
             gate: gate.clone(),
-            host_watch: host_watch.clone(),
+            host_watch,
             status: None,
         },
         status: StatusSnapshot {
