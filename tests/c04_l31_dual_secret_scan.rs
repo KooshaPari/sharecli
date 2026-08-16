@@ -19,10 +19,7 @@ fn fr003_security_yml_dual_secret_scanners() {
     // ignored by the action, so the repo config never applied); the direct
     // invocation must pin the version, verify the download, and use the repo
     // config against full history.
-    assert!(
-        security.contains("GITLEAKS_VERSION: 8.24.3"),
-        "security.yml must pin gitleaks 8.24.3"
-    );
+    assert!(security.contains("GITLEAKS_VERSION: 8.24.3"), "security.yml must pin gitleaks 8.24.3");
     assert!(
         security.contains("sha256sum -c -"),
         "security.yml must verify the gitleaks binary checksum"
