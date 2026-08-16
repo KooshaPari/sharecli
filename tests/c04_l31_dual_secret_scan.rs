@@ -27,27 +27,18 @@ fn fr003_security_yml_dual_secret_scanners() {
         run_gitleaks.contains("GITLEAKS_VERSION: 8.24.3"),
         "Run Gitleaks must pin gitleaks 8.24.3"
     );
-    assert!(
-        run_gitleaks.contains("GITLEAKS_SHA256:"),
-        "Run Gitleaks must pin a binary checksum"
-    );
+    assert!(run_gitleaks.contains("GITLEAKS_SHA256:"), "Run Gitleaks must pin a binary checksum");
     assert!(
         run_gitleaks.contains("sha256sum -c -"),
         "Run Gitleaks must verify the downloaded binary checksum"
     );
-    assert!(
-        run_gitleaks.contains("tar -xzf"),
-        "Run Gitleaks must extract the archive"
-    );
+    assert!(run_gitleaks.contains("tar -xzf"), "Run Gitleaks must extract the archive");
     assert!(
         run_gitleaks.contains("--proto '=https'"),
         "Run Gitleaks must enforce HTTPS-only downloads"
     );
     for flag in ["--redact", "--verbose", "--exit-code=2", "--config gitleaks.toml"] {
-        assert!(
-            run_gitleaks.contains(flag),
-            "Run Gitleaks must pass {flag}"
-        );
+        assert!(run_gitleaks.contains(flag), "Run Gitleaks must pass {flag}");
     }
     assert!(
         !run_gitleaks.contains("gitleaks/gitleaks-action@"),
