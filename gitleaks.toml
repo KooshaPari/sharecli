@@ -11,7 +11,6 @@ paths = [
   "^\\.env\\.template$",
   "^\\.env\\.local\\.example$",
   "^docs/.*$",
-  "^\\.github/.*$",
   "^.*\\.md$",
   "^test.*$",
   "^.*_test\\.py$",
@@ -91,15 +90,15 @@ entropy = 4.0
 [[rules]]
 id = "aws-secret-key"
 description = "AWS Secret Key"
-# Require "aws" context within 20 chars before the quoted 40-char base64
-# secret. A bare 40-char base64 pattern (as originally written) also matched
-# npm package-lock sha512 integrity hashes and base64 test fixtures.
-# The capture group also fixes gitleaks 8.24.x config load:
+# Require "aws" context within 20 chars before a 40-char base64 secret,
+# quoted or unquoted. A bare 40-char base64 pattern (as originally written)
+# also matched npm package-lock sha512 integrity hashes and base64 test
+# fixtures. The capture group also fixes gitleaks 8.24.x config load:
 # "invalid regex secret group 1, max regex secret group 0".
-regex = '''(?i)aws(.{0,20})?(['"][0-9a-zA-Z/+]{40}['"])'''
+regex = '''(?i)aws(?:.{0,20})?['"]?([0-9a-zA-Z/+]{40})['"]?'''
 tags = ["aws", "secret"]
 entropy = 4.5
-secretGroup = 2
+secretGroup = 1
 
 [[rules]]
 id = "slack-token"
@@ -120,7 +119,7 @@ description = "Private Key"
 regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----'''
 tags = ["privatekey", "crypto"]
 
-[rules.allowlists]
+[[rules.allowlists]]
 description = "Synthetic encrypted-PEM fixture in pem_decode unit tests"
 paths = ['''src/pem_decode\.rs$''']
 
