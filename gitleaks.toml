@@ -122,7 +122,10 @@ tags = ["privatekey", "crypto"]
 
 [[rules.allowlists]]
 description = "Synthetic encrypted-PEM fixture in pem_decode unit tests"
+condition = "and"
+regexTarget = "line"
 paths = ['''src/pem_decode\.rs$''']
+regexes = ['''^\s*let pem = "-----BEGIN RSA PRIVATE KEY-----''']
 
 [[rules]]
 id = "jwt-token"
