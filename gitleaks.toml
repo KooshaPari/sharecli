@@ -90,12 +90,13 @@ entropy = 4.0
 [[rules]]
 id = "aws-secret-key"
 description = "AWS Secret Key"
-# Require "aws" context within 20 chars before a 40-char base64 secret,
-# quoted or unquoted. A bare 40-char base64 pattern (as originally written)
-# also matched npm package-lock sha512 integrity hashes and base64 test
-# fixtures. The capture group also fixes gitleaks 8.24.x config load:
-# "invalid regex secret group 1, max regex secret group 0".
-regex = '''(?i)aws(?:.{0,20})?['"]?([0-9a-zA-Z/+]{40})['"]?'''
+# Require "aws" context within 24 chars before a 40-char base64 secret,
+# quoted or unquoted (covers `AWS_SECRET_ACCESS_KEY="<40>"` and
+# `AWS_SECRET_ACCESS_KEY = "<40>"`). A bare 40-char base64 pattern (as
+# originally written) also matched npm package-lock sha512 integrity hashes
+# and base64 test fixtures. The capture group also fixes gitleaks 8.24.x
+# config load: "invalid regex secret group 1, max regex secret group 0".
+regex = '''(?i)aws(?:.{0,24})?['"]?([0-9a-zA-Z/+]{40})['"]?'''
 tags = ["aws", "secret"]
 entropy = 4.5
 secretGroup = 1

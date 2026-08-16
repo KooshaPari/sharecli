@@ -17,13 +17,13 @@ See also: [`secrets.md`](secrets.md) (L18 env discipline), [`crypto-keys.md`](cr
 
 ## `gitleaks.toml` rules
 
-Config lives at the repo root. Gitleaks reads it automatically when invoked locally or via `gitleaks-action`.
+Config lives at the repo root. CI invokes it explicitly with `--config gitleaks.toml` (the pinned binary step in `security.yml`); locally, `gitleaks detect` also accepts `--config gitleaks.toml`.
 
 ### Allowlist
 
 | Kind | Purpose |
 |------|---------|
-| **Files** | Docs, GitHub workflows, markdown, tests, and `.env.example` / template files — placeholders are not production secrets |
+| **Paths** | Docs, markdown, tests, and `.env.example` / template files — placeholders are not production secrets |
 | **Regexes** | Known dev literals (`test-secret`, `CHANGE_ME_IN_PROD`, `your-*-here`, etc.) |
 
 Add a new file glob or regex when a fixture legitimately matches a rule (prefer tightening the fixture over disabling rules).
@@ -56,10 +56,10 @@ Entropy thresholds on API-key rules reduce noise on random-looking literals in t
 brew install gitleaks          # macOS
 # or: https://github.com/gitleaks/gitleaks/releases
 
-gitleaks detect --source . --verbose --redact --config gitleaks.toml
+gitleaks detect --source . --redact --verbose --config gitleaks.toml
 ```
 
-Match CI flags: `--verbose --redact` (same as `security.yml`).
+Match CI flags: `--redact --verbose` (same as `security.yml`).
 
 ## `security.yml` wiring
 
@@ -74,8 +74,13 @@ Workflow: [`.github/workflows/security.yml`](../../.github/workflows/security.ym
 **Job `secrets` (Secret Detection — gitleaks)**
 
 1. `actions/checkout` with `fetch-depth: 0` (full history — catches secrets in older commits on PRs).
-2. `gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7` with `args: --verbose --redact --config gitleaks.toml`.
-3. `GITHUB_TOKEN` supplied for PR annotation (read-only `contents` / `actions` permissions).
+2. Download the pinned gitleaks binary (version + SHA256-verified) and run `gitleaks detect --redact --verbose --exit-code=2 --config gitleaks.toml` over the full history.
+
+> Why not `gitleaks/gitleaks-action`? The action ignores its `args` input
+> (verified against the pinned action source), so `--config gitleaks.toml`
+> never applied and the lane scanned with the built-in rule set. The direct
+> invocation also pins the gitleaks version (the action floats unless
+> `GITLEAKS_VERSION` is set) and verifies the download checksum.
 
 **Job `trufflehog` (TruffleHog Scan)**
 
@@ -119,7 +124,7 @@ gitleaks detect --source . --verbose --redact --config gitleaks.toml
 trufflehog filesystem . --fail --only-verified
 ```
 
-Match CI flags: gitleaks `--verbose --redact --config gitleaks.toml`; trufflehog `--only-verified`.
+Match CI flags: gitleaks `--redact --verbose --exit-code=2 --config gitleaks.toml`; trufflehog `--only-verified`.
 
 ## Secret rotation checklist
 

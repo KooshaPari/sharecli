@@ -15,9 +15,25 @@ fn fr003_security_yml_dual_secret_scanners() {
     let security = fs::read_to_string(repo_root().join(".github/workflows/security.yml"))
         .expect("read security.yml");
 
+    // gitleaks runs as a pinned binary (the gitleaks-action `args` input is
+    // ignored by the action, so the repo config never applied); the direct
+    // invocation must pin the version, verify the download, and use the repo
+    // config against full history.
     assert!(
-        security.contains("gitleaks/gitleaks-action@"),
-        "security.yml must run gitleaks-action"
+        security.contains("GITLEAKS_VERSION: 8.24.3"),
+        "security.yml must pin gitleaks 8.24.3"
+    );
+    assert!(
+        security.contains("sha256sum -c -"),
+        "security.yml must verify the gitleaks binary checksum"
+    );
+    assert!(
+        security.contains("--config gitleaks.toml"),
+        "security.yml gitleaks must use the repo config"
+    );
+    assert!(
+        !security.contains("gitleaks/gitleaks-action@"),
+        "security.yml must not use gitleaks-action (its args input is ignored)"
     );
     assert!(
         security.contains("trufflesecurity/trufflehog@"),
