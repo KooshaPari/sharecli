@@ -9,6 +9,29 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 
+/// Git variables that bind a subprocess to the caller's repository.
+///
+/// Git exports these to hooks. Every command in this module intentionally
+/// operates on an explicit foreign checkout, so inheriting them would let a
+/// hook test inspect or mutate the hook's repository instead.
+const GIT_LOCAL_ENV_VARS: &[&str] = &[
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+];
+
 /// Error from worktree pool operations.
 #[derive(Debug, thiserror::Error)]
 pub enum WorktreePoolError {
@@ -150,9 +173,8 @@ impl WorktreePool {
 }
 
 fn ensure_git_repo(path: &Path) -> Result<(), WorktreePoolError> {
-    let status = Command::new("git")
+    let status = git_command(path)
         .args(["rev-parse", "--git-dir"])
-        .current_dir(path)
         .output()
         .map_err(|e| WorktreePoolError::Git(e.to_string()))?;
     if status.status.success() {
@@ -163,11 +185,8 @@ fn ensure_git_repo(path: &Path) -> Result<(), WorktreePoolError> {
 }
 
 fn git(cwd: &Path, args: &[&str]) -> Result<String, WorktreePoolError> {
-    let out = Command::new("git")
-        .args(args)
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| WorktreePoolError::Git(e.to_string()))?;
+    let out =
+        git_command(cwd).args(args).output().map_err(|e| WorktreePoolError::Git(e.to_string()))?;
     if out.status.success() {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     } else {
@@ -179,6 +198,15 @@ fn git(cwd: &Path, args: &[&str]) -> Result<String, WorktreePoolError> {
         );
         Err(WorktreePoolError::Git(msg))
     }
+}
+
+fn git_command(cwd: &Path) -> Command {
+    let mut command = Command::new("git");
+    command.current_dir(cwd);
+    for variable in GIT_LOCAL_ENV_VARS {
+        command.env_remove(variable);
+    }
+    command
 }
 
 #[cfg(test)]
@@ -220,5 +248,16 @@ mod tests {
         let pool_dir = TempDir::new().expect("pool");
         let err = WorktreePool::open(dir.path(), pool_dir.path()).expect_err("must fail");
         assert!(matches!(err, WorktreePoolError::NotGitRepo(_)));
+    }
+
+    #[test]
+    fn git_command_clears_hook_repository_context() {
+        let command = git_command(Path::new("/tmp"));
+        for variable in GIT_LOCAL_ENV_VARS {
+            assert!(
+                command.get_envs().any(|(key, value)| key == *variable && value.is_none()),
+                "{variable} must not leak into a foreign git command"
+            );
+        }
     }
 }
