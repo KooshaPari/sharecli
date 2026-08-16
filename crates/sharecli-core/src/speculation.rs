@@ -14,6 +14,7 @@
 //! - A sliding-window counter prevents stale高频 commands from being
 //!   speculated on indefinitely.
 
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -57,6 +58,7 @@ pub struct SpeculationCandidate {
 ///
 /// Wrapped in `Arc<Mutex<…>>` so the background task can drain candidates
 /// without blocking the hot `Hypervisor::run` path.
+#[derive(Default)]
 struct Inner {
     /// CommandKey → (hit count, first-seen instant).
     hits: HashMap<String, (u32, Instant)>,
@@ -64,6 +66,7 @@ struct Inner {
     requests: HashMap<String, SpeculationCandidate>,
 }
 
+#[derive(Default)]
 pub struct SpeculationTracker {
     inner: Mutex<Inner>,
 }
@@ -122,7 +125,7 @@ impl SpeculationTracker {
             .collect();
 
         // Highest frequency first.
-        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        scored.sort_by_key(|entry| Reverse(entry.0));
         scored.truncate(SPECULATION_MAX_CANDIDATES);
 
         let mut candidates = Vec::new();
