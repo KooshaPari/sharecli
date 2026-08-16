@@ -672,8 +672,13 @@ mod registry_no_mount_tests {
         backing: PathBuf,
         session_id: &str,
     ) {
+        // Production mount entry points register normalize_key(mountpoint);
+        // mirror that so by-mountpoint resolve_fs exercises the same contract
+        // (on macOS TempDir sits under /var -> /private/var, so the raw path
+        // and its canonical form differ).
+        let key = FuseSessionRegistry::normalize_key(&mountpoint);
         registry.mounts.lock().expect("fuse registry lock").insert(
-            mountpoint,
+            key,
             FuseMountEntry { fs, backing, session_id: session_id.to_string(), _session: None },
         );
     }
@@ -722,7 +727,7 @@ mod registry_no_mount_tests {
 
         let listed = registry.list();
         assert_eq!(listed.len(), 1, "got {listed:?}");
-        assert_eq!(listed[0].mountpoint, mountpoint);
+        assert_eq!(listed[0].mountpoint, FuseSessionRegistry::normalize_key(&mountpoint));
         assert_eq!(listed[0].backing, backing);
         assert_eq!(listed[0].session_id, "sess-1");
     }
