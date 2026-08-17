@@ -14,7 +14,6 @@
 //! - A sliding-window counter prevents stale高频 commands from being
 //!   speculated on indefinitely.
 
-use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -74,7 +73,7 @@ pub struct SpeculationTracker {
 impl SpeculationTracker {
     /// Create a new, empty tracker.
     pub fn new() -> Self {
-        Self { inner: Mutex::new(Inner { hits: HashMap::new(), requests: HashMap::new() }) }
+        Self::default()
     }
 
     /// Record one cache hit for `key`.
@@ -124,8 +123,10 @@ impl SpeculationTracker {
             .map(|(key, (count, _))| (*count, key.clone()))
             .collect();
 
-        // Highest frequency first.
-        scored.sort_by_key(|entry| Reverse(entry.0));
+        // Highest frequency first, then stable key order for deterministic truncation.
+        scored.sort_by(|(left_count, left_key), (right_count, right_key)| {
+            right_count.cmp(left_count).then_with(|| left_key.cmp(right_key))
+        });
         scored.truncate(SPECULATION_MAX_CANDIDATES);
 
         let mut candidates = Vec::new();
@@ -323,7 +324,11 @@ mod tests {
         }
 
         let candidates = tracker.drain_candidates().await;
-        assert!(candidates.len() <= SPECULATION_MAX_CANDIDATES, "must not exceed max candidates");
+        assert_eq!(candidates.len(), SPECULATION_MAX_CANDIDATES, "must cap candidates");
+        let keys: Vec<_> = candidates.into_iter().map(|candidate| candidate.key.0).collect();
+        let expected: Vec<_> =
+            (0..SPECULATION_MAX_CANDIDATES).map(|i| format!("key-{i:04}")).collect();
+        assert_eq!(keys, expected, "equal counts must use key order before truncation");
     }
 
     #[tokio::test]
