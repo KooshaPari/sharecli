@@ -72,7 +72,7 @@ fn fr007_proc_csv_watch_stderr_silent_and_envelope() {
     let complete_frames: Vec<&str> = stdout
         .split(FRAME_MARKER)
         .skip(1)
-        .filter(|frame| frame.contains(FLAT_CSV_HEADER))
+        .filter(|frame| frame.contains(FLAT_CSV_HEADER) && frame.contains("[watch]"))
         .collect();
     assert!(
         complete_frames.len() >= 2,
@@ -110,7 +110,7 @@ fn fr007_proc_tree_csv_watch_stderr_silent_and_envelope() {
     let complete_frames: Vec<&str> = stdout
         .split(FRAME_MARKER)
         .skip(1)
-        .filter(|frame| frame.contains(TREE_CSV_HEADER))
+        .filter(|frame| frame.contains(TREE_CSV_HEADER) && frame.contains("[watch]"))
         .collect();
     assert!(
         complete_frames.len() >= 2,
@@ -172,24 +172,46 @@ fn drain_watch_until(
         }
     });
     let deadline = Instant::now() + max_dwell;
+    let mut early_exit = None;
     while Instant::now() < deadline {
         let snapshot = stdout_buf.lock().expect("stdout lock").clone();
         if ready(&snapshot) {
             break;
         }
+        if let Some(status) = child.try_wait().expect("check watch child") {
+            early_exit = Some(status);
+            break;
+        }
         thread::sleep(Duration::from_millis(100));
     }
-    let _ = child.kill();
-    let _ = child.wait();
+    if early_exit.is_none() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
     let _ = stdout_reader.join();
     let _ = stderr_reader.join();
     let stdout = stdout_buf.lock().expect("stdout lock").clone();
     let stderr = stderr_buf.lock().expect("stderr lock").clone();
+    if let Some(status) = early_exit {
+        panic!("watch child exited before readiness: {status}; stdout: {stdout}; stderr: {stderr}");
+    }
     (stdout, stderr)
 }
 
 fn complete_csv_frame_count(output: &str, body_header: &str) -> usize {
-    output.split(FRAME_MARKER).skip(1).filter(|frame| frame.contains(body_header)).count()
+    output
+        .split(FRAME_MARKER)
+        .skip(1)
+        .filter(|frame| frame.contains(body_header) && frame.contains("[watch]"))
+        .count()
+}
+
+#[test]
+fn complete_csv_frame_count_requires_watch_footer() {
+    let partial = format!("{FRAME_MARKER}\n{FLAT_CSV_HEADER}\n");
+    let complete = format!("{partial}# [watch] tick=1\n");
+    assert_eq!(complete_csv_frame_count(&partial, FLAT_CSV_HEADER), 0);
+    assert_eq!(complete_csv_frame_count(&complete, FLAT_CSV_HEADER), 1);
 }
 
 /// FR-007 / AC-007.94 — `# [watch]` footer must flush in the same tick as the CSV body.
