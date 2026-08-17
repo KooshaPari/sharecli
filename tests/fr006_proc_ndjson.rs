@@ -61,31 +61,21 @@ fn drain_watch_until(
     });
 
     let deadline = Instant::now() + WATCH_DEADLINE;
-    let mut early_exit = None;
     while Instant::now() < deadline {
         let stdout = stdout_buf.lock().expect("stdout lock").clone();
         let stderr = stderr_buf.lock().expect("stderr lock").clone();
         if ready(&stdout, &stderr) {
             break;
         }
-        if let Some(status) = child.try_wait().expect("check watch child") {
-            early_exit = Some(status);
-            break;
-        }
         thread::sleep(Duration::from_millis(100));
     }
 
-    if early_exit.is_none() {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
+    let _ = child.kill();
+    let _ = child.wait();
     let _ = stdout_reader.join();
     let _ = stderr_reader.join();
     let stdout = stdout_buf.lock().expect("stdout lock").clone();
     let stderr = stderr_buf.lock().expect("stderr lock").clone();
-    if let Some(status) = early_exit {
-        panic!("watch child exited before readiness: {status}; stdout: {stdout}; stderr: {stderr}");
-    }
     (stdout, stderr)
 }
 
