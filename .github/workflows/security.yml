@@ -49,6 +49,7 @@ jobs:
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@e12da3c72f1fa4bd17a7345467d735c5aae1fbcf
         with:
+          version: v3.90.2
           extra_args: --only-verified
 
   # SAST Scanning
