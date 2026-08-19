@@ -1512,6 +1512,7 @@ fn cli_version() -> Result<()> {
         println!("{splash}");
         println!("sharecli {version}");
         println!("shared CLI process manager");
+        println!("Backbone-2 family (ASCII palette disabled)");
         println!("(NO_COLOR set — ASCII palette disabled)");
     } else {
         let splash = r#"

@@ -5,18 +5,94 @@
 //! AC-006.37 NDJSON agent rows include `state` (parity with flat `--json`, AC-006.32)
 
 use std::io::Read;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-fn watch_grace(normal: Duration, profiled: Duration) -> Duration {
-    matches!(std::env::var("SHARECLI_DHAT_PROFILE"), Ok(value) if value == "1")
-        .then_some(profiled)
-        .unwrap_or(normal)
-}
+const WATCH_DEADLINE: Duration = Duration::from_secs(45);
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))
+}
+
+fn complete_ndjson_line_count(output: &str) -> usize {
+    output
+        .split_inclusive('\n')
+        .filter(|line| line.ends_with('\n') && !line.trim().is_empty())
+        .count()
+}
+
+fn drain_watch_until(
+    child: &mut Child,
+    mut ready: impl FnMut(&str, &str) -> bool,
+) -> (String, String) {
+    let stdout = child.stdout.take().expect("piped stdout");
+    let stderr = child.stderr.take().expect("piped stderr");
+    let stdout_buf = Arc::new(Mutex::new(String::new()));
+    let stderr_buf = Arc::new(Mutex::new(String::new()));
+    let out_arc = Arc::clone(&stdout_buf);
+    let err_arc = Arc::clone(&stderr_buf);
+    let stdout_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 16_384];
+        let mut out = stdout;
+        loop {
+            match out.read(&mut chunk) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => out_arc
+                    .lock()
+                    .expect("stdout lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+            }
+        }
+    });
+    let stderr_reader = thread::spawn(move || {
+        let mut chunk = [0u8; 4096];
+        let mut err = stderr;
+        loop {
+            match err.read(&mut chunk) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => err_arc
+                    .lock()
+                    .expect("stderr lock")
+                    .push_str(&String::from_utf8_lossy(&chunk[..n])),
+            }
+        }
+    });
+
+    let deadline = Instant::now() + WATCH_DEADLINE;
+    let mut early_exit = None;
+    while Instant::now() < deadline {
+        let stdout = stdout_buf.lock().expect("stdout lock").clone();
+        let stderr = stderr_buf.lock().expect("stderr lock").clone();
+        if ready(&stdout, &stderr) {
+            break;
+        }
+        if let Some(status) = child.try_wait().expect("check watch child") {
+            early_exit = Some(status);
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    if early_exit.is_none() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    let _ = stdout_reader.join();
+    let _ = stderr_reader.join();
+    let stdout = stdout_buf.lock().expect("stdout lock").clone();
+    let stderr = stderr_buf.lock().expect("stderr lock").clone();
+    if let Some(status) = early_exit {
+        panic!("watch child exited before readiness: {status}; stdout: {stdout}; stderr: {stderr}");
+    }
+    (stdout, stderr)
+}
+
+#[test]
+fn complete_ndjson_line_count_requires_newline_delimited_objects() {
+    assert_eq!(complete_ndjson_line_count("{\"ts\":1}\n{\"ts\":2}\n"), 2);
+    assert_eq!(complete_ndjson_line_count("{\"ts\":1}\n{\"ts\":2}"), 1);
 }
 
 /// FR-006 / AC-006.18 — each watch refresh is a single parseable NDJSON line with `ts`.
@@ -30,14 +106,8 @@ fn fr006_proc_watch_ndjson_one_line_per_refresh() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(watch_grace(Duration::from_secs(8), Duration::from_secs(25)));
-    let _ = child.kill();
-
-    let mut stdout = String::new();
-    if let Some(mut out) = child.stdout.take() {
-        let _ = out.read_to_string(&mut stdout);
-    }
-    let _ = child.wait();
+    let (stdout, _) =
+        drain_watch_until(&mut child, |stdout, _| complete_ndjson_line_count(stdout) >= 2);
 
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert!(
@@ -63,18 +133,9 @@ fn fr006_proc_watch_ndjson_stdout_is_pipe_clean() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(watch_grace(Duration::from_secs(5), Duration::from_secs(12)));
-    let _ = child.kill();
-
-    let mut stdout = String::new();
-    let mut stderr = String::new();
-    if let Some(mut out) = child.stdout.take() {
-        let _ = out.read_to_string(&mut stdout);
-    }
-    if let Some(mut err) = child.stderr.take() {
-        let _ = err.read_to_string(&mut stderr);
-    }
-    let _ = child.wait();
+    let (stdout, stderr) = drain_watch_until(&mut child, |stdout, stderr| {
+        complete_ndjson_line_count(stdout) >= 1 && stderr.contains("[watch]")
+    });
 
     assert!(
         !stdout.contains("[watch]"),
@@ -98,14 +159,8 @@ fn fr006_proc_watch_ndjson_agent_rows_include_state_key() {
         .spawn()
         .expect("spawn sharecli proc --json --watch 1");
 
-    thread::sleep(watch_grace(Duration::from_millis(2_500), Duration::from_secs(12)));
-    let _ = child.kill();
-
-    let mut stdout = String::new();
-    if let Some(mut out) = child.stdout.take() {
-        let _ = out.read_to_string(&mut stdout);
-    }
-    let _ = child.wait();
+    let (stdout, _) =
+        drain_watch_until(&mut child, |stdout, _| complete_ndjson_line_count(stdout) >= 1);
 
     let lines: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
     let line = lines.first().copied().unwrap_or_else(|| {

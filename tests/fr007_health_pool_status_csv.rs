@@ -115,7 +115,7 @@ fn fr007_render_health_csv_body() {
         healthy: true,
         issues: vec![],
         gate: gate.clone(),
-        host_watch: host_watch.clone(),
+        host_watch,
         status: None,
     };
     let health = HealthJson {

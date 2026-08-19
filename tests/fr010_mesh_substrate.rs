@@ -20,6 +20,24 @@ use std::path::Path;
 use std::process::Command;
 use tempfile::TempDir;
 
+const GIT_LOCAL_ENV_VARS: &[&str] = &[
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+];
+
 /// FR-010 / AC-010.1 — disconnected registry uses default mesh prefix.
 #[test]
 fn fr010_default_subject_prefix() {
@@ -146,7 +164,12 @@ fn fr010_smart_merge_git_fallback_conflict() {
 
 fn git_init_with_commit(dir: &Path) {
     let run = |args: &[&str]| {
-        let st = Command::new("git").args(args).current_dir(dir).output().expect("git");
+        let mut command = Command::new("git");
+        command.args(args).current_dir(dir);
+        for variable in GIT_LOCAL_ENV_VARS {
+            command.env_remove(variable);
+        }
+        let st = command.output().expect("git");
         assert!(
             st.status.success(),
             "git {:?} failed: {}",

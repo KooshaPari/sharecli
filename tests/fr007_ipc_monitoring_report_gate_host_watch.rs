@@ -110,7 +110,7 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
             thread_count: None,
         }],
         gate: gate.clone(),
-        host_watch: host_watch.clone(),
+        host_watch,
         pool: PoolSnapshot {
             node_total: 2,
             node_idle: 1,
@@ -120,7 +120,7 @@ fn fr007_ipc_monitoring_report_snapshot_gate_before_host_watch() {
             healthy: true,
             issues: vec![],
             gate: gate.clone(),
-            host_watch: host_watch.clone(),
+            host_watch,
             status: None,
         },
         status: StatusSnapshot {

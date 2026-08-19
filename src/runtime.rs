@@ -848,7 +848,7 @@ mod tests {
         );
 
         let info = pool.spawn(cmd, &args, None, None, None).await;
-        assert!(info.is_ok());
+        assert!(info.is_ok(), "process-pool spawn failed: {info:?}");
 
         let list = pool.list().await;
         assert!(!list.is_empty());
