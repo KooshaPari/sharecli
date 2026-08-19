@@ -34,6 +34,7 @@ pub mod pool_index {
 }
 pub mod paths;
 pub mod pprof_http;
+pub mod pyroscope_stub;
 pub mod proc_table;
 pub mod progress;
 pub mod runtime;
