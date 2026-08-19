@@ -42,7 +42,7 @@
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
 | C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-625 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` (83.48% @ `d3cb7c4`) · `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json` · `tests/c01_coverage_pin_gate.rs` | agent-c01 |
 | C01 | L11 | Post-#399 broad-workspace pin refresh | Med | W15.2 · T-691 · FR-003 | Status: Closed | Measured **80.51%** @ `5d8dc08` (run 29985746034); `TEST_COVERAGE_MATRIX.md` + `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` | agent-c01 |
-| C10 | L98 | Dashboard hex drift vs tokens.css | Med | W15.4 · T-692 · FR-003 | Status: Gap | SCORECARD C10 top-3; `assets/tokens.css` vs `src/dashboard.html` hexes | agent-c10 |
+| C10 | L98 | Dashboard hex drift vs tokens.css | Med | W15.4 · T-692 · FR-003 | Status: Closed | `tests/c10_l105_hex_drift.rs` 3/3 pass 2026-08-19; `assets/tokens.css` 12/12 bb2 hexes == `src/dashboard.html` `:root`; `src/theme.rs` mirror verified | agent-c10 |
 | C01 | L12 | FR↔acceptance-test SSOT | Med | T-670 · FR-003 | Status: Closed | `FUNCTIONAL_REQUIREMENTS.md` · `docs/specs/TRACEABILITY.md` · `tests/c01_fr_ssot_gate.rs` | agent-c01 |
 | C02 | L25 | Serve HTTP rate limit middleware | Med | W14 · FR-003 | Status: Closed | `src/serve_rate_limit.rs` · `src/commands/serve.rs` · `docs/ops/rate-limits.md` · `tests/c02_serve_rate_limit.rs` | agent-c02 |
 | C05 | L45+ | Pyroscope push / multi-hop / live PD | Med | residual | Status: Gap | `docs/ops/trace-multihop.md` · `docs/ops/live-pd.md` | agent-c05 |
