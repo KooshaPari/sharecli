@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-07-22 (Wave15 reconcile v6 after #392: #396 C10 L99; #399 tests landed / pin refresh Gap; pin `bba2411`; unweighted ~90.1% A / tier-1 ~91% A)
+**Last sync:** 2026-08-19 (T-692 C10 L105 dashboard hex drift closed — 12/12 bb2 hexes aligned via `tests/c10_l105_hex_drift.rs`; W15.4 DONE; unweighted ~90.1% A)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -186,7 +186,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W15.1 | C10 dashboard skeleton loading states | C10 L99 · FR-003 · #396 · T-685 · `tests/c10_l99_skeleton_states.rs` | Status: DONE |
 | W15.2 | Broad-workspace coverage lift (#399) + pin refresh | C01 L11 · FR-003 · #399 · T-691 · `TEST_COVERAGE_MATRIX.md` (honest **80.51%** @ `5d8dc08`) | Status: DONE |
 | W15.3 | Governance reconcile v6 (SCORECARD/JSON/DAG) | T-690 · FR-003 | Status: DONE |
-| W15.4 | Dashboard hex drift (token alignment) | C10 L98 · FR-003 · T-692 | Status: READY |
+| W15.4 | Dashboard hex drift (token alignment) | C10 L105 · FR-003 · T-692 | Status: DONE |
 
 ## Sync protocol
 
