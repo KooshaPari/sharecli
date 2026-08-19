@@ -672,8 +672,14 @@ mod registry_no_mount_tests {
         backing: PathBuf,
         session_id: &str,
     ) {
+        // Production mount entry points register normalize_key(mountpoint).
+        // Canonicalize independently here (not FuseSessionRegistry::
+        // normalize_key) so the fixture stays decoupled from the resolution
+        // path under test; on macOS TempDir sits under /var -> /private/var,
+        // so the raw path and its canonical form differ.
+        let key = mountpoint.canonicalize().unwrap_or_else(|_| mountpoint.clone());
         registry.mounts.lock().expect("fuse registry lock").insert(
-            mountpoint,
+            key,
             FuseMountEntry { fs, backing, session_id: session_id.to_string(), _session: None },
         );
     }
@@ -722,7 +728,8 @@ mod registry_no_mount_tests {
 
         let listed = registry.list();
         assert_eq!(listed.len(), 1, "got {listed:?}");
-        assert_eq!(listed[0].mountpoint, mountpoint);
+        let canonical = mountpoint.canonicalize().unwrap_or_else(|_| mountpoint.clone());
+        assert_eq!(listed[0].mountpoint, canonical);
         assert_eq!(listed[0].backing, backing);
         assert_eq!(listed[0].session_id, "sess-1");
     }
