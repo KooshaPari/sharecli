@@ -119,6 +119,15 @@ flowchart TD
 | T-691 | Coverage pin refresh post-#399 | FR-003 / C01 L11 | T-685 | S | DONE | Measured **80.51%** lines @ `5d8dc08` (run 29985746034); matrix + pin gates cite real % |
 | T-692 | Dashboard hex drift (token alignment) | FR-003 / C10 L105 | T-685 | M | DONE | Verified `assets/tokens.css` == `src/dashboard.html` `:root` 12/12 bb2 hexes + no hex outside root (`tests/c10_l105_hex_drift.rs` 3/3 C10 L105 gate); `src/theme.rs` mirror verified 2026-08-19 |
 
+## Wave16 backlog (IN_PROGRESS - queuing blocked C11/C05 live, doing unblocked)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-700 | Wave16 kickoff - define backlog + queue blocked | audit | T-692 | S | IN_PROGRESS | This PR defines Wave16 and queues C11 L112 / C05 L45+ live PD (user secrets/live infra) while doing unblocked |
+| T-710 | C05 L45+ soft Pyroscope push stub (no live PD) | FR-003 / C05 L45+ | T-700 | M | BLOCKED | `src/pyroscope_stub.rs` + `tests/c05_pyroscope_stub.rs` soft gate, docs in `docs/ops/pyroscope-stub.md`, scope: stub only, no live push, no secrets |
+| T-720 | C08 L76 Harbor soft gate stub (benchora port) | FR-003 / C08 L76 | T-700 | M | BLOCKED | `docs/eval/harbor-soft-stub.md` + `tests/c08_harbor_soft_stub.rs` soft gate, scope: doc stub only, EXTRACTED lane noted, no 7d log |
+| T-730 | C01 coverage pin refresh (llvm-cov) | FR-003 / C01 L11 | T-700 | S | BLOCKED | `TEST_COVERAGE_MATRIX.md` pin cited at `485daaa` 80.51% + snapshot |
+
 ## Ownership notes
 
 - Do **not** claim tasks that touch `release.yml`, `Containerfile`, fuzz, benches, or `spawn-core` from the C03 FR-test lane alone — package those under Wave4 WBS IDs.
