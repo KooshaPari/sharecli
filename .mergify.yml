@@ -1,0 +1,13 @@
+pull_request_rules:
+  - name: automatic merge on CI success
+    conditions:
+      - "#approved-reviews-by>=1"
+      - check-success=ci
+    actions:
+      merge:
+        method: squash
+  - name: automatic rebase
+    conditions:
+      - conflict
+    actions:
+      rebase: {}

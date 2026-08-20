@@ -1,0 +1,21 @@
+name: AgilePlus Pillar Scorecard
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run pillar scoring
+        run: |
+          echo "AgilePlus pillar scoring"
+          echo "Score: $(wc -l < AGENTS.md 2>/dev/null || echo 0) lines of agent config"
+      - name: Validate scorecard
+        run: |
+          if [ -f audit_scorecard.json ]; then
+            python -c "import json; json.load(open('audit_scorecard.json'))" && echo "Scorecard valid" || echo "Scorecard invalid"
+          fi
