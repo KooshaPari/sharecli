@@ -32,10 +32,7 @@ fn has_harbor_log(dir: &Path) -> bool {
 #[test]
 fn c08_harbor_soft_stub_no_7d_log() {
     // Soft gate, no 7d log required. Detect any harbor-7d.log anywhere.
-    assert!(
-        !has_harbor_log(Path::new(".")),
-        "no harbor-7d.log should exist anywhere in repo"
-    );
+    assert!(!has_harbor_log(Path::new(".")), "no harbor-7d.log should exist anywhere in repo");
     assert!(
         Path::new("docs/eval/harbor-soft-stub.md").exists(),
         "harbor-soft-stub.md must exist for T-720"
@@ -45,16 +42,10 @@ fn c08_harbor_soft_stub_no_7d_log() {
 #[test]
 fn c08_harbor_soft_stub_extracted_notion() {
     // Ensures stub acknowledges EXTRACTED status by reading the doc.
-    let content = fs::read_to_string("docs/eval/harbor-soft-stub.md")
-        .expect("harbor-soft-stub.md exists");
-    assert!(
-        content.contains("EXTRACTED"),
-        "Harbor 7d log is EXTRACTED, not in sharecli main"
-    );
-    assert!(
-        content.contains("benchora/harbor-soft"),
-        "doc must reference EXTRACTED lane"
-    );
+    let content =
+        fs::read_to_string("docs/eval/harbor-soft-stub.md").expect("harbor-soft-stub.md exists");
+    assert!(content.contains("EXTRACTED"), "Harbor 7d log is EXTRACTED, not in sharecli main");
+    assert!(content.contains("benchora/harbor-soft"), "doc must reference EXTRACTED lane");
 }
 
 #[test]
