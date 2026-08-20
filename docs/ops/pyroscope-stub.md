@@ -4,14 +4,14 @@
 
 Wave16 T-710 soft gate for `C05 L45+` Pyroscope push / multi-hop / live PD.
 
-- **Real live PD** remains `Gap` in `GAP-QA-MATRIX.md` — requires user infra (`live-pd` endpoint, auth, `PYROSCOPE_URL` secrets) and is `BLOCKED`/`Gap`.
+- **Real live PD** remains `Gap` in `GAP-QA-MATRIX.md` - requires user infra (`live-pd` endpoint, auth, `PYROSCOPE_URL` secrets) and is `BLOCKED`/`Gap`.
 - **This stub** provides a no-op `PyroscopeStub` in `src/pyroscope_stub.rs` that satisfies the soft gate without live infra.
 
 ## Files
 
-- `src/pyroscope_stub.rs` — `PyroscopeStub` struct, `is_stub() -> true`, `push(&[u8]) -> Ok(())`, `is_enabled()`.
-- `tests/c05_pyroscope_stub.rs` — 3 soft gate tests (`c05_pyroscope_stub_*`), no network, no secrets.
-- `src/lib.rs` — `pub mod pyroscope_stub`.
+- `src/pyroscope_stub.rs` - `PyroscopeStub` struct, `is_stub() -> true`, `push(&[u8]) -> Ok(())`, `is_enabled()`.
+- `tests/c05_pyroscope_stub.rs` - 3 soft gate tests (`c05_pyroscope_stub_*`), no network, no secrets.
+- `src/lib.rs` - `pub mod pyroscope_stub`.
 
 ## Soft gate
 
