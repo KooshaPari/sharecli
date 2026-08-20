@@ -25,9 +25,9 @@
 | Field | Evidence |
 |-------|----------|
 | Source revision | `e89755ce6cab33c1fb060842f0768003b85889a8` (Wave16 T-730 pin refresh) |
-| Retained snapshot | `audit/coverage-snapshots/8c68bb5.coverage-snapshot.json` (retained in-tree; **81.17%** lines @ `8c68bb5`) - the pin refresh **80.51%** @ `e89755c` uses no new snapshot; prior **81.22%** @ `28bfb10` (run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303)) retained as CI artifact |
+| Retained snapshot | `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` (retained; **80.51%** lines @ `5d8dc08`) - the pin refresh **80.51%** @ `e89755c` reuses this snapshot; prior **81.22%** @ `28bfb10` (run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303)) retained as CI artifact |
 | Measured line percentage | **80.51%** (40,077 lines; 32,266 covered) |
-| Functions / regions | 84.17% functions · 82.75% regions (same snapshot) |
+| Functions / regions | 84.17% functions · 82.75% regions (same `5d8dc08` snapshot) |
 | Meets 85% unit gate? | **No** for broad workspace (`meets_lines_target: false`); PR hard gate uses scoped `--lib` ignores in `quality-gate.yml` |
 | CI artifact parity | Coverage run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303) uploaded `coverage-snapshot-28bfb101ecf4523131cd1dfb71950b46189b9e65` |
 
@@ -38,7 +38,7 @@
 | Prior revision | `28bfb101ecf4523131cd1dfb71950b46189b9e65` (post-#606 re-measure) |
 | Prior snapshot | `audit/coverage-snapshots/8c68bb5.coverage-snapshot.json` (retained **81.17%** @ `8c68bb5`) + CI artifact for **81.22%** @ `28bfb10` (run 30083201303) |
 | Prior line percentage | **81.22%** (40,392 lines; 32,806 covered) |
-| Note | Superseded by Wave16 T-730 pin **80.51%** @ `e89755c` — no new snapshot; older `5d8dc08` **80.51%** snapshot retained as `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` |
+| Note | Superseded by Wave16 T-730 pin **80.51%** @ `e89755c` - no new snapshot; older `5d8dc08` **80.51%** snapshot retained as `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` |
 
 ### Wave15 / #399 → remeasure → #583 climb (2026-07-22..23)
 
