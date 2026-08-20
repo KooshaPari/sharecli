@@ -57,17 +57,24 @@ fn fr003_l303_fr_guardrail_coverage_and_pin() {
         }
     }
 
+    let measured_start = matrix
+        .find("## Measured coverage pin")
+        .expect("TEST_COVERAGE_MATRIX must have Measured coverage pin section");
+    let prior_start = matrix
+        .find("### Prior pin (superseded)")
+        .expect("TEST_COVERAGE_MATRIX must have Prior pin section");
+    let measured_section = &matrix[measured_start..prior_start];
     assert!(
-        matrix.contains("80.51%"),
-        "TEST_COVERAGE_MATRIX must pin measured broad-workspace line coverage"
+        measured_section.contains("80.51%"),
+        "Measured pin section must pin 80.51%"
     );
     assert!(
-        matrix.contains("e89755c"),
-        "TEST_COVERAGE_MATRIX must pin current source revision"
+        measured_section.contains("e89755c"),
+        "Measured pin section must pin current source revision e89755c"
     );
     assert!(
-        matrix.contains("5d8dc08"),
-        "TEST_COVERAGE_MATRIX must reference retained snapshot"
+        measured_section.contains("5d8dc08"),
+        "Measured pin section must reference retained snapshot 5d8dc08"
     );
     assert!(
         root.join("audit/coverage-snapshots/5d8dc08.coverage-snapshot.json").is_file(),
