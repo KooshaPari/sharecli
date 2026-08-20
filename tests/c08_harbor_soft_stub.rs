@@ -52,10 +52,7 @@ fn c08_harbor_soft_stub_extracted_notion() {
 fn c08_harbor_soft_stub_no_live_infra_doc_scope() {
     // Doc-scope only - verifies stub doc scopes correctly, no live infra.
     let content = fs::read_to_string("docs/eval/harbor-soft-stub.md").unwrap();
-    assert!(
-        content.contains("doc stub only"),
-        "scope must remain doc stub only"
-    );
+    assert!(content.contains("doc stub only"), "scope must remain doc stub only");
     // Ensure no Harbor workflow or live infra script is committed in sharecli main.
     assert!(
         !Path::new(".github/workflows/harbor.yml").exists(),
