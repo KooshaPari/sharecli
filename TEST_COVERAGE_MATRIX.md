@@ -2,7 +2,7 @@
 
 **Project**: sharecli  
 **Document Version**: 1.7
-**Last Updated**: 2026-07-24 (post-#606 coverage re-measure — 81.22%)
+**Last Updated**: 2026-08-20 (Wave16 T-730 pin refresh — 80.51% at e89755c, prior 81.22% at 28bfb10)
 
 ---
 
