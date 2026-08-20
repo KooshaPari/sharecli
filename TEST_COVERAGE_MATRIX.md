@@ -27,7 +27,7 @@
 | Source revision | `e89755ce6cab33c1fb060842f0768003b85889a8` (Wave16 T-730 pin refresh) |
 | Retained snapshot | `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` (retained; **80.51%** lines @ `5d8dc08`) - the pin refresh **80.51%** @ `e89755c` reuses this snapshot; prior **81.22%** @ `28bfb10` (run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303)) retained as CI artifact |
 | Measured line percentage | **80.51%** (40,077 lines; 32,266 covered) |
-| Functions / regions | 84.17% functions · 82.75% regions (same `5d8dc08` snapshot) |
+| Functions / regions | 83.23% functions · 82.21% regions (same `5d8dc08` snapshot) |
 | Meets 85% unit gate? | **No** for broad workspace (`meets_lines_target: false`); PR hard gate uses scoped `--lib` ignores in `quality-gate.yml` |
 | CI artifact parity | Coverage run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303) uploaded `coverage-snapshot-28bfb101ecf4523131cd1dfb71950b46189b9e65` |
 
