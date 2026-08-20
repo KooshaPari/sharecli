@@ -36,6 +36,7 @@ pub mod paths;
 pub mod pprof_http;
 pub mod proc_table;
 pub mod progress;
+pub mod pyroscope_stub;
 pub mod runtime;
 pub mod scheduler;
 pub mod serve_auth;

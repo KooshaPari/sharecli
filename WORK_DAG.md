@@ -123,8 +123,8 @@ flowchart TD
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
-| T-700 | Wave16 kickoff - define backlog + queue blocked | audit | T-692 | S | IN_PROGRESS | This PR defines Wave16 and queues C11 L112 / C05 L45+ live PD (user secrets/live infra) while doing unblocked |
-| T-710 | C05 L45+ soft Pyroscope push stub (no live PD) | FR-003 / C05 L45+ | T-700 | M | BLOCKED | `src/pyroscope_stub.rs` + `tests/c05_pyroscope_stub.rs` soft gate, docs in `docs/ops/pyroscope-stub.md`, scope: stub only, no live push, no secrets |
+| T-700 | Wave16 kickoff - define backlog + queue blocked | audit | T-692 | S | DONE | Wave16 defined in `WORK_DAG.md` `e89755c` (#749) - queued C11 L112 / C05 L45+ live PD |
+| T-710 | C05 L45+ soft Pyroscope push stub (no live PD) | FR-003 / C05 L45+ | T-700 | M | DONE | `src/pyroscope_stub.rs` + `tests/c05_pyroscope_stub.rs` 3/3 soft gate, `docs/ops/pyroscope-stub.md`, scope: stub only, no live push, no secrets |
 | T-720 | C08 L76 Harbor soft gate stub (benchora port) | FR-003 / C08 L76 | T-700 | M | BLOCKED | `docs/eval/harbor-soft-stub.md` + `tests/c08_harbor_soft_stub.rs` soft gate, scope: doc stub only, EXTRACTED lane noted, no 7d log |
 | T-730 | C01 coverage pin refresh (llvm-cov) | FR-003 / C01 L11 | T-700 | S | BLOCKED | `TEST_COVERAGE_MATRIX.md` pin cited at `485daaa` 80.51% + snapshot |
 
