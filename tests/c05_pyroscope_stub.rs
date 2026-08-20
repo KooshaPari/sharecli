@@ -1,4 +1,5 @@
 //! C05 L45+ soft gate — Pyroscope stub (T-710 Wave16)
+//! FR: FR-003
 //! Scope: stub only, no live push, no secrets.
 //! Verifies `src/pyroscope_stub.rs` soft gate via `sharecli::pyroscope_stub`.
 
