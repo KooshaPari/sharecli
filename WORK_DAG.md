@@ -134,8 +134,8 @@ flowchart TD
 |----|------|-------------|------|--------|--------|-----------|
 | T-800 | Wave17 kickoff - define backlog + queue blocked | audit | T-730 | S | DONE | Wave17 defined in `WORK_DAG.md` `eb2b865` - queued C11 L112 / C05 L45+ live PD |
 | T-810 | C01 coverage lift toward 85% (nextest) | FR-003 / C01 L11 | T-800 | M | BLOCKED | `TEST_COVERAGE_MATRIX.md` lift to 82%+ with retained snapshot, no invented % |
-| T-820 | C08 Harbor hard 7d soak (benchora) | FR-003 / C08 L76 | T-800 | M | BLOCKED | `docs/eval/harbor-7d.log` live soak in `benchora/harbor-soft` remains EXTRACTED |
-| T-830 | C10 residual polish (hex drift) | FR-003 / C10 L105 | T-800 | S | BLOCKED | `assets/tokens.css` vs `src/dashboard.html` :root drift 0, or doc-only |
+| T-820 | C08 Harbor hard 7d soak (benchora) | FR-003 / C08 L76 | T-800 | M | BLOCKED | External artifact `benchora/harbor-soft/harbor-7d.log` live 7d soak remains EXTRACTED (lane `benchora/harbor-soft`, not tracked in `sharecli` `main`; local `docs/eval/harbor-soft-stub.md` is stub only) |
+| T-830 | C10 residual polish (hex drift) | FR-003 / C10 L105 | T-800 | S | DONE | Verified 0 drift per T-692 (`assets/tokens.css` == `src/dashboard.html` `:root` 12/12 bb2 hexes, `tests/c10_l105_hex_drift.rs` 3/3); residual polish now doc-only |
 
 ## Ownership notes
 
