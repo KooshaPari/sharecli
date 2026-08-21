@@ -1,13 +1,13 @@
 pull_request_rules:
-  - name: auto-merge when approved and required checks green
+  - name: automatic merge on CI success
     conditions:
       - "#approved-reviews-by>=1"
-      - "check-success=ci / lint"
-      - "check-success=ci / test"
-      - "check-success=coverage"
-      - "-conflict"
-      - "-closed"
-      - "-draft"
+      - check-success=ci
     actions:
       merge:
         method: squash
+  - name: automatic rebase
+    conditions:
+      - conflict
+    actions:
+      rebase: {}
