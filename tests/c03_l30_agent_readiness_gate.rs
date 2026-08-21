@@ -64,10 +64,7 @@ fn fr003_l303_fr_guardrail_coverage_and_pin() {
         .find("### Prior pin (superseded)")
         .expect("TEST_COVERAGE_MATRIX must have Prior pin section");
     let measured_section = &matrix[measured_start..prior_start];
-    assert!(
-        measured_section.contains("80.51%"),
-        "Measured pin section must pin 80.51%"
-    );
+    assert!(measured_section.contains("80.51%"), "Measured pin section must pin 80.51%");
     assert!(
         measured_section.contains("e89755c"),
         "Measured pin section must pin current source revision e89755c"

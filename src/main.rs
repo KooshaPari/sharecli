@@ -9,7 +9,7 @@ use clap_complete::Shell;
 use sharecli::session::GhosttyControlClient;
 use sharecli_session::{
     LayoutSnapshot, RecoveryExecutor, SessionObservation, SessionService, SessionStore,
-    SidecarStateProvider, SurfaceObservationScanner,
+    SidecarStateProvider, SurfaceObservationScanner, DEFAULT_RECOVERY_MAX_AGE_SECONDS,
 };
 use sharecli_thermal_tui as thermal_tui;
 use std::io::Write;
@@ -489,6 +489,9 @@ enum SessionCmd {
     },
     /// Print the pending recovery plan
     RecoveryPlan {
+        /// Maximum observation age in seconds (default: four hours)
+        #[arg(long, default_value_t = DEFAULT_RECOVERY_MAX_AGE_SECONDS, value_parser = clap::value_parser!(u64).range(1..=604800))]
+        max_age_seconds: u64,
         #[arg(long)]
         db: Option<std::path::PathBuf>,
     },
@@ -519,6 +522,9 @@ enum SessionCmd {
         /// Maximum number of concurrent launches
         #[arg(long, default_value_t = 4)]
         max_parallel: usize,
+        /// Maximum observation age in seconds (default: four hours)
+        #[arg(long, default_value_t = DEFAULT_RECOVERY_MAX_AGE_SECONDS, value_parser = clap::value_parser!(u64).range(1..=604800))]
+        max_age_seconds: u64,
         #[arg(long)]
         db: Option<std::path::PathBuf>,
     },
@@ -1115,7 +1121,7 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
     let (db, operation) = match cmd {
         SessionCmd::List { db } => (db.clone(), None),
         SessionCmd::Inspect { id, db } => (db.clone(), Some(id.as_str())),
-        SessionCmd::RecoveryPlan { db } => (db.clone(), None),
+        SessionCmd::RecoveryPlan { db, .. } => (db.clone(), None),
         SessionCmd::Observe { db, .. } => (db.clone(), None),
         SessionCmd::Observations { db, .. } => (db.clone(), None),
         SessionCmd::Compact { db } => (db.clone(), None),
@@ -1199,15 +1205,18 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
         SessionCmd::Inspect { .. } => {
             serde_json::to_value(service.inspect(operation.expect("id"))?)?
         }
-        SessionCmd::RecoveryPlan { .. } => serde_json::to_value(service.recovery_plan()?)?,
+        SessionCmd::RecoveryPlan { max_age_seconds, .. } => serde_json::to_value(
+            service.recovery_plan(chrono::Duration::seconds(*max_age_seconds as i64))?,
+        )?,
         SessionCmd::Observations { surface_id, .. } => {
             serde_json::to_value(service.observations(surface_id.as_deref())?)?
         }
         SessionCmd::Compact { .. } => serde_json::json!({
             "removed": service.compact_observations()?
         }),
-        SessionCmd::Recover { execute, max_parallel, .. } => {
-            let sessions = service.recovery_plan()?;
+        SessionCmd::Recover { execute, max_parallel, max_age_seconds, .. } => {
+            let sessions =
+                service.recovery_plan(chrono::Duration::seconds(*max_age_seconds as i64))?;
             let executor = RecoveryExecutor::new(*max_parallel);
             let results =
                 if *execute { executor.execute(&sessions) } else { executor.dry_run(&sessions) };

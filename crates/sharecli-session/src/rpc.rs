@@ -1,10 +1,12 @@
 #[cfg(test)]
 use crate::SurfaceSubscribeAck;
+use crate::DEFAULT_RECOVERY_MAX_AGE_SECONDS;
 use crate::{
     LayoutRestoreReport, LayoutSnapshot, SessionService, SurfaceCapabilities, SurfaceEventError,
     SurfaceEventHub, SurfaceRecord, SurfaceSubscribeRequest,
 };
 use anyhow::Result;
+use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -138,9 +140,9 @@ pub async fn dispatch(service: Arc<SessionService>, line: &str) -> Response {
             .and_then(|id| {
                 service.inspect(id).map(|v| serde_json::to_value(v).unwrap_or_default())
             }),
-        "recovery.plan" => {
-            service.recovery_plan().map(|v| serde_json::to_value(v).unwrap_or_default())
-        }
+        "recovery.plan" => service
+            .recovery_plan(Duration::seconds(DEFAULT_RECOVERY_MAX_AGE_SECONDS as i64))
+            .map(|v| serde_json::to_value(v).unwrap_or_default()),
         method => Err(anyhow::anyhow!("unknown method: {method}")),
     };
     match outcome {

@@ -126,6 +126,11 @@ async fn fr003_ipc_handler_session_recovery_methods_are_dry_run_safe() {
     assert!(execute.error.is_none(), "recovery.execute error: {:?}", execute.error);
     assert!(execute.result.is_array());
 
+    let invalid_age = handler
+        .dispatch(r#"{"id":171,"method":"recovery.plan","params":{"max_age_seconds":0}}"#)
+        .await;
+    assert!(invalid_age.error.is_some(), "zero max_age_seconds must be rejected");
+
     let observe = handler
         .dispatch(
             &serde_json::json!({
