@@ -57,7 +57,6 @@ pub mod discovery;
 pub mod events;
 pub mod layout;
 pub mod ledger;
-pub mod migration;
 pub mod recovery;
 pub mod resolver;
 pub mod rpc;
@@ -79,7 +78,6 @@ pub use recovery::{validate_recipe, RecoveryExecutor, RecoveryOutcome, RecoveryR
 pub use resolver::{resolve as resolve_session, EvidenceSource, Resolution};
 pub use state::{append_record, SidecarRecord, SidecarStateProvider};
 
-/// Default freshness window for automatic recovery plans.
 pub const DEFAULT_RECOVERY_MAX_AGE_SECONDS: u64 = 4 * 60 * 60;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -231,7 +229,22 @@ impl SessionStore {
     }
     fn init(conn: Connection) -> Result<Self> {
         conn.pragma_update(None, "journal_mode", "WAL")?;
-        migration::run_migrations(&conn)?;
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, harness TEXT NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, resume_json TEXT NOT NULL, confidence TEXT NOT NULL, state TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS session_observations (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                observed_at TEXT NOT NULL,
+                surface_id TEXT NOT NULL,
+                surface_json TEXT NOT NULL,
+                session_json TEXT,
+                capabilities_json TEXT NOT NULL,
+                kind TEXT NOT NULL
+             );
+             CREATE INDEX IF NOT EXISTS session_observations_surface_seq
+                ON session_observations(surface_id, seq);
+             CREATE INDEX IF NOT EXISTS session_observations_time
+                ON session_observations(observed_at);",
+        )?;
         Ok(Self { conn: Mutex::new(conn) })
     }
     pub fn upsert(&self, session: &AgentSession) -> Result<()> {
@@ -249,58 +262,23 @@ impl SessionStore {
     /// Build a recovery plan from the newest fresh observation per surface.
     pub fn recovery_plan(&self, max_age: Duration) -> Result<Vec<AgentSession>> {
         if max_age <= Duration::zero() {
-            tracing::error!(?max_age, "recovery plan requested with non-positive max age");
             anyhow::bail!("recovery max age must be positive");
         }
-        let now = Utc::now();
-        let cutoff = now - max_age;
-        let mut latest: BTreeMap<String, (DateTime<Utc>, i64, SessionObservation)> =
-            BTreeMap::new();
+        let cutoff = Utc::now() - max_age;
+        let mut latest = BTreeMap::new();
         for observation in self.observations(None)? {
-            let observed_at = match DateTime::parse_from_rfc3339(&observation.observed_at) {
-                Ok(value) => value.with_timezone(&Utc),
-                Err(error) => {
-                    tracing::warn!(
-                        surface_id = %observation.surface.id,
-                        observed_at = %observation.observed_at,
-                        error = %error,
-                        "ignoring observation with malformed timestamp"
-                    );
-                    continue;
-                }
-            };
-            if observed_at > now {
-                tracing::warn!(
-                    surface_id = %observation.surface.id,
-                    observed_at = %observed_at,
-                    "ignoring future-dated observation"
-                );
-                continue;
-            }
-            if observed_at < cutoff {
-                tracing::debug!(
-                    surface_id = %observation.surface.id,
-                    observed_at = %observed_at,
-                    "ignoring stale observation"
-                );
-                continue;
-            }
-            let surface_id = observation.surface.id.clone();
-            let candidate = (observed_at, observation.seq, observation);
-            let replace = latest
-                .get(&surface_id)
-                .is_none_or(|current| (candidate.0, candidate.1) > (current.0, current.1));
-            if replace {
-                latest.insert(surface_id, candidate);
-            }
+            latest.insert(observation.surface.id.clone(), observation);
         }
         let mut sessions = BTreeMap::new();
-        for (_, _, observation) in latest.into_values() {
+        for observation in latest.into_values() {
             if observation.kind == ObservationKind::Exited {
                 continue;
             }
             let Some(session) = observation.session else { continue };
-            if !session.auto_resumable() {
+            let Ok(observed_at) = DateTime::parse_from_rfc3339(&observation.observed_at) else {
+                continue;
+            };
+            if observed_at.with_timezone(&Utc) < cutoff || !session.auto_resumable() {
                 continue;
             }
             sessions.insert(session.id.clone(), session);
