@@ -268,7 +268,8 @@ impl SessionStore {
         }
         let now = Utc::now();
         let cutoff = now - max_age;
-        let mut latest = BTreeMap::new();
+        let mut latest: BTreeMap<String, (DateTime<Utc>, i64, SessionObservation)> =
+            BTreeMap::new();
         for observation in self.observations(None)? {
             let observed_at = match DateTime::parse_from_rfc3339(&observation.observed_at) {
                 Ok(value) => value.with_timezone(&Utc),
@@ -298,10 +299,17 @@ impl SessionStore {
                 );
                 continue;
             }
-            latest.insert(observation.surface.id.clone(), observation);
+            let surface_id = observation.surface.id.clone();
+            let candidate = (observed_at, observation.seq, observation);
+            let replace = latest
+                .get(&surface_id)
+                .map_or(true, |current| (candidate.0, candidate.1) > (current.0, current.1));
+            if replace {
+                latest.insert(surface_id, candidate);
+            }
         }
         let mut sessions = BTreeMap::new();
-        for observation in latest.into_values() {
+        for (_, _, observation) in latest.into_values() {
             if observation.kind == ObservationKind::Exited {
                 continue;
             }

@@ -115,3 +115,28 @@ fn future_observation_cannot_replace_current_surface_evidence() {
     assert_eq!(plan.len(), 1);
     assert_eq!(plan[0].session_id, "current-id");
 }
+
+#[test]
+fn delayed_older_observation_cannot_replace_newer_surface_evidence() {
+    let store = SessionStore::open_memory().unwrap();
+    let now = Utc::now();
+    store
+        .append_observation(&observation(
+            "surface-delayed",
+            &(now - Duration::minutes(2)).to_rfc3339(),
+            Some(AgentSession::codex("newer-id", "/tmp/project")),
+            ObservationKind::Updated,
+        ))
+        .unwrap();
+    store
+        .append_observation(&observation(
+            "surface-delayed",
+            &(now - Duration::minutes(10)).to_rfc3339(),
+            Some(AgentSession::codex("older-id", "/tmp/project")),
+            ObservationKind::Updated,
+        ))
+        .unwrap();
+
+    let plan = SessionService::new(store).recovery_plan(Duration::hours(1)).unwrap();
+    assert_eq!(plan.iter().map(|s| s.session_id.as_str()).collect::<Vec<_>>(), ["newer-id"]);
+}
