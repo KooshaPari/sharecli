@@ -78,6 +78,7 @@ pub use recovery::{validate_recipe, RecoveryExecutor, RecoveryOutcome, RecoveryR
 pub use resolver::{resolve as resolve_session, EvidenceSource, Resolution};
 pub use state::{append_record, SidecarRecord, SidecarStateProvider};
 
+/// Default freshness window for automatic recovery plans.
 pub const DEFAULT_RECOVERY_MAX_AGE_SECONDS: u64 = 4 * 60 * 60;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -262,11 +263,41 @@ impl SessionStore {
     /// Build a recovery plan from the newest fresh observation per surface.
     pub fn recovery_plan(&self, max_age: Duration) -> Result<Vec<AgentSession>> {
         if max_age <= Duration::zero() {
+            tracing::error!(?max_age, "recovery plan requested with non-positive max age");
             anyhow::bail!("recovery max age must be positive");
         }
-        let cutoff = Utc::now() - max_age;
+        let now = Utc::now();
+        let cutoff = now - max_age;
         let mut latest = BTreeMap::new();
         for observation in self.observations(None)? {
+            let observed_at = match DateTime::parse_from_rfc3339(&observation.observed_at) {
+                Ok(value) => value.with_timezone(&Utc),
+                Err(error) => {
+                    tracing::warn!(
+                        surface_id = %observation.surface.id,
+                        observed_at = %observation.observed_at,
+                        error = %error,
+                        "ignoring observation with malformed timestamp"
+                    );
+                    continue;
+                }
+            };
+            if observed_at > now {
+                tracing::warn!(
+                    surface_id = %observation.surface.id,
+                    observed_at = %observed_at,
+                    "ignoring future-dated observation"
+                );
+                continue;
+            }
+            if observed_at < cutoff {
+                tracing::debug!(
+                    surface_id = %observation.surface.id,
+                    observed_at = %observed_at,
+                    "ignoring stale observation"
+                );
+                continue;
+            }
             latest.insert(observation.surface.id.clone(), observation);
         }
         let mut sessions = BTreeMap::new();
@@ -275,10 +306,7 @@ impl SessionStore {
                 continue;
             }
             let Some(session) = observation.session else { continue };
-            let Ok(observed_at) = DateTime::parse_from_rfc3339(&observation.observed_at) else {
-                continue;
-            };
-            if observed_at.with_timezone(&Utc) < cutoff || !session.auto_resumable() {
+            if !session.auto_resumable() {
                 continue;
             }
             sessions.insert(session.id.clone(), session);
