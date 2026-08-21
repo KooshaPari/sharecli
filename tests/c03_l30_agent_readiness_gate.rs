@@ -57,12 +57,27 @@ fn fr003_l303_fr_guardrail_coverage_and_pin() {
         }
     }
 
+    let measured_start = matrix
+        .find("## Measured coverage pin")
+        .expect("TEST_COVERAGE_MATRIX must have Measured coverage pin section");
+    let prior_start = matrix
+        .find("### Prior pin (superseded)")
+        .expect("TEST_COVERAGE_MATRIX must have Prior pin section");
+    let measured_section = &matrix[measured_start..prior_start];
     assert!(
-        matrix.contains("81.17%"),
-        "TEST_COVERAGE_MATRIX must pin measured broad-workspace line coverage"
+        measured_section.contains("80.51%"),
+        "Measured pin section must pin 80.51%"
     );
     assert!(
-        root.join("audit/coverage-snapshots/8c68bb5.coverage-snapshot.json").is_file(),
+        measured_section.contains("e89755c"),
+        "Measured pin section must pin current source revision e89755c"
+    );
+    assert!(
+        measured_section.contains("5d8dc08"),
+        "Measured pin section must reference retained snapshot 5d8dc08"
+    );
+    assert!(
+        root.join("audit/coverage-snapshots/5d8dc08.coverage-snapshot.json").is_file(),
         "retained llvm-cov snapshot artifact must exist"
     );
     assert!(ci.contains("cargo nextest run"), "ci.yml must run nextest guardrail suite");
