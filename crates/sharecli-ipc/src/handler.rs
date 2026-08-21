@@ -28,6 +28,7 @@ use std::sync::{Arc, OnceLock};
 #[cfg(target_os = "linux")]
 use anyhow::Context;
 use anyhow::Result;
+use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sharecli::commands::proc::{AgentProcRow, AgentProcSnapshot};
@@ -37,7 +38,10 @@ use sharecli::runtime::SharedRuntime;
 use sharecli::{ProcessInfo, ProcessPool};
 use sharecli_fleet::thermal::ThermalGovernor;
 use sharecli_fleet::{count_host_agents, gate_status_snapshot, GateStatusSnapshot};
-use sharecli_session::{LayoutSnapshot, RecoveryExecutor, SessionObservation, SessionStore};
+use sharecli_session::{
+    LayoutSnapshot, RecoveryExecutor, SessionObservation, SessionStore,
+    DEFAULT_RECOVERY_MAX_AGE_SECONDS,
+};
 use tokio::sync::RwLock;
 
 use crate::log_buffer::global as global_log_buffer;
@@ -272,6 +276,18 @@ fn shared_runtime() -> &'static SharedRuntime {
     })
 }
 
+fn recovery_max_age_seconds(params: &Value) -> Result<u64> {
+    let seconds = params
+        .get("max_age_seconds")
+        .and_then(Value::as_u64)
+        .unwrap_or(DEFAULT_RECOVERY_MAX_AGE_SECONDS);
+    anyhow::ensure!(
+        (1..=604_800).contains(&seconds),
+        "max_age_seconds must be between 1 and 604800"
+    );
+    Ok(seconds)
+}
+
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
@@ -393,13 +409,20 @@ impl Handler {
                 Ok(serde_json::json!({"id": id}))
             }
 
-            "recovery.plan" => Ok(serde_json::to_value(self.sessions.list()?)?),
+            "recovery.plan" => {
+                let max_age_seconds = recovery_max_age_seconds(&req.params)?;
+                Ok(serde_json::to_value(
+                    self.sessions.recovery_plan(Duration::seconds(max_age_seconds as i64))?,
+                )?)
+            }
 
             "recovery.execute" => {
                 let execute = req.params.get("execute").and_then(Value::as_bool).unwrap_or(false);
                 let max_parallel =
                     req.params.get("max_parallel").and_then(Value::as_u64).unwrap_or(4) as usize;
-                let sessions = self.sessions.list()?;
+                let max_age_seconds = recovery_max_age_seconds(&req.params)?;
+                let sessions =
+                    self.sessions.recovery_plan(Duration::seconds(max_age_seconds as i64))?;
                 let executor = RecoveryExecutor::new(max_parallel);
                 let results =
                     if execute { executor.execute(&sessions) } else { executor.dry_run(&sessions) };
