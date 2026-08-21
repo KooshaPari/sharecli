@@ -119,14 +119,23 @@ flowchart TD
 | T-691 | Coverage pin refresh post-#399 | FR-003 / C01 L11 | T-685 | S | DONE | Measured **80.51%** lines @ `5d8dc08` (run 29985746034); matrix + pin gates cite real % |
 | T-692 | Dashboard hex drift (token alignment) | FR-003 / C10 L105 | T-685 | M | DONE | Verified `assets/tokens.css` == `src/dashboard.html` `:root` 12/12 bb2 hexes + no hex outside root (`tests/c10_l105_hex_drift.rs` 3/3 C10 L105 gate); `src/theme.rs` mirror verified 2026-08-19 |
 
-## Wave16 backlog (IN_PROGRESS - queuing blocked C11/C05 live, doing unblocked)
+## Wave16 backlog (DONE - T-700..T-730 all DONE, queued C11/C05 live remain BLOCKED)
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
 | T-700 | Wave16 kickoff - define backlog + queue blocked | audit | T-692 | S | DONE | Wave16 defined in `WORK_DAG.md` `e89755c` (#749) - queued C11 L112 / C05 L45+ live PD |
 | T-710 | C05 L45+ soft Pyroscope push stub (no live PD) | FR-003 / C05 L45+ | T-700 | M | DONE | `src/pyroscope_stub.rs` + `tests/c05_pyroscope_stub.rs` 3/3 soft gate, `docs/ops/pyroscope-stub.md`, scope: stub only, no live push, no secrets |
 | T-720 | C08 L76 Harbor soft gate stub (benchora port) | FR-003 / C08 L76 | T-700 | M | DONE | `docs/eval/harbor-soft-stub.md` + `tests/c08_harbor_soft_stub.rs` 3/3 soft gate, scope: doc stub only, EXTRACTED lane noted, no 7d log |
-| T-730 | C01 coverage pin refresh (llvm-cov) | FR-003 / C01 L11 | T-700 | S | DONE | `TEST_COVERAGE_MATRIX.md` pin cited at `e89755c` 80.51% + snapshot (refresh, no new snapshot) |
+| T-730 | C01 coverage pin refresh (llvm-cov) | FR-003 / C01 L11 | T-700 | S | DONE | `TEST_COVERAGE_MATRIX.md` pin cited at `e89755c` 80.51% + snapshot (refresh, no new snapshot) `eb2b865` (#752) |
+
+## Wave17 backlog (IN_PROGRESS - queuing blocked C11/C05 live, defining next)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-800 | Wave17 kickoff - define backlog + queue blocked | audit | T-730 | S | DONE | Wave17 defined in `WORK_DAG.md` `eb2b865` - queued C11 L112 / C05 L45+ live PD |
+| T-810 | C01 coverage lift toward 85% (nextest) | FR-003 / C01 L11 | T-800 | M | BLOCKED | `TEST_COVERAGE_MATRIX.md` lift to 82%+ with retained snapshot, no invented % |
+| T-820 | C08 Harbor hard 7d soak (benchora) | FR-003 / C08 L76 | T-800 | M | BLOCKED | External artifact `benchora/harbor-soft/harbor-7d.log` live 7d soak remains EXTRACTED (lane `benchora/harbor-soft`, not tracked in `sharecli` `main`; local `docs/eval/harbor-soft-stub.md` is stub only) |
+| T-830 | C10 residual polish (hex drift) | FR-003 / C10 L105 | T-800 | S | DONE | Verified 0 drift per T-692 (`assets/tokens.css` == `src/dashboard.html` `:root` 12/12 bb2 hexes, `tests/c10_l105_hex_drift.rs` 3/3); residual polish now doc-only |
 
 ## Ownership notes
 
