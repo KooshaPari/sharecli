@@ -19,7 +19,7 @@ mod tests {
         let service = SessionService::new(store);
         let inspect = service.inspect(&session.id).unwrap().unwrap();
         assert_eq!(inspect.resume.harness, "forge");
-        assert_eq!(service.recovery_plan().unwrap().len(), 1);
+        assert!(service.recovery_plan(chrono::Duration::hours(1)).unwrap().is_empty());
     }
 
     #[test]
@@ -45,8 +45,10 @@ mod tests {
 }
 
 use anyhow::{Context, Result};
+use chrono::{DateTime, Duration, Utc};
 use rusqlite::{params, Connection, TransactionBehavior};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -75,6 +77,8 @@ pub use ledger::{ObservationKind, SessionObservation, SurfaceCapabilities};
 pub use recovery::{validate_recipe, RecoveryExecutor, RecoveryOutcome, RecoveryResult};
 pub use resolver::{resolve as resolve_session, EvidenceSource, Resolution};
 pub use state::{append_record, SidecarRecord, SidecarStateProvider};
+
+pub const DEFAULT_RECOVERY_MAX_AGE_SECONDS: u64 = 4 * 60 * 60;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResumeRecipe {
@@ -254,6 +258,33 @@ impl SessionStore {
         let rows = stmt.query_map([], Self::row)?.collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
+
+    /// Build a recovery plan from the newest fresh observation per surface.
+    pub fn recovery_plan(&self, max_age: Duration) -> Result<Vec<AgentSession>> {
+        if max_age <= Duration::zero() {
+            anyhow::bail!("recovery max age must be positive");
+        }
+        let cutoff = Utc::now() - max_age;
+        let mut latest = BTreeMap::new();
+        for observation in self.observations(None)? {
+            latest.insert(observation.surface.id.clone(), observation);
+        }
+        let mut sessions = BTreeMap::new();
+        for observation in latest.into_values() {
+            if observation.kind == ObservationKind::Exited {
+                continue;
+            }
+            let Some(session) = observation.session else { continue };
+            let Ok(observed_at) = DateTime::parse_from_rfc3339(&observation.observed_at) else {
+                continue;
+            };
+            if observed_at.with_timezone(&Utc) < cutoff || !session.auto_resumable() {
+                continue;
+            }
+            sessions.insert(session.id.clone(), session);
+        }
+        Ok(sessions.into_values().collect())
+    }
     pub fn get(&self, id: &str) -> Result<Option<AgentSession>> {
         let conn = self.conn.lock().map_err(|_| anyhow::anyhow!("session store poisoned"))?;
         let mut stmt =
@@ -423,8 +454,8 @@ impl SessionService {
     pub fn inspect(&self, id: &str) -> Result<Option<AgentSession>> {
         self.store.get(id)
     }
-    pub fn recovery_plan(&self) -> Result<Vec<AgentSession>> {
-        self.store.list()
+    pub fn recovery_plan(&self, max_age: Duration) -> Result<Vec<AgentSession>> {
+        self.store.recovery_plan(max_age)
     }
     pub fn observations(&self, surface_id: Option<&str>) -> Result<Vec<SessionObservation>> {
         self.store.observations(surface_id)
