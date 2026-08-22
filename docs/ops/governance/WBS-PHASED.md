@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-19 (T-692 C10 L105 dashboard hex drift closed — 12/12 bb2 hexes aligned via `tests/c10_l105_hex_drift.rs`; W15.4 DONE; unweighted ~90.1% A)
+**Last sync:** 2026-08-21 (Wave16 W16.2/W16.3 DONE T-700..T-730 89b8806/eb2b865 + Wave17 T-800 DONE 89b8806 queued C11/C05 live; W16.3 80.51% @e89755c; T-830 DONE per T-692; unweighted ~90.1% A tier-1 91.3% A)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -179,7 +179,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W14.5 | Cluster score lifts (#364–#391) | C00–C11 lane evidence | Status: DONE |
 | W14.6 | Governance sync (WBS/GAP/DAG/RC/SCORECARD) | T-680 · #392 | Status: DONE |
 
-### Wave15 — Post-#392 reconcile (IN_PROGRESS)
+### Wave15 — Post-#392 reconcile (DONE)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
@@ -187,6 +187,23 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W15.2 | Broad-workspace coverage lift (#399) + pin refresh | C01 L11 · FR-003 · #399 · T-691 · `TEST_COVERAGE_MATRIX.md` (honest **80.51%** @ `5d8dc08`) | Status: DONE |
 | W15.3 | Governance reconcile v6 (SCORECARD/JSON/DAG) | T-690 · FR-003 | Status: DONE |
 | W15.4 | Dashboard hex drift (token alignment) | C10 L105 · FR-003 · T-692 | Status: DONE |
+
+### Wave16 — W16.2/W16.3 soft gates (DONE - T-700..T-730 all DONE)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W16.1 | Wave16 kickoff - queue blocked C11/C05 live | audit · T-700 · `WORK_DAG.md` `e89755c` (#749) | Status: DONE |
+| W16.2 | C05 Pyroscope soft stub + C08 Harbor soft stub (no live) | FR-003 · C05 L45+ · C08 L76 · T-710/#750 · T-720/#751 · `src/pyroscope_stub.rs` `docs/eval/harbor-soft-stub.md` | Status: DONE |
+| W16.3 | C01 coverage pin refresh 80.51% @e89755c | FR-003 · C01 L11 · T-730 · `TEST_COVERAGE_MATRIX.md` `80.51%` `5d8dc08` `eb2b865` (#752) | Status: DONE |
+
+### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800 DONE, T-810/820 queued)
+
+| WBS | Work | Links | Status |
+|-----|------|-------|--------|
+| W17.1 | Wave17 kickoff - queue blocked C11/C05 live | audit · T-800 · `WORK_DAG.md` `eb2b865` (#755 `89b8806`) | Status: DONE |
+| W17.2 | C01 coverage lift toward 85% (nextest) | FR-003 · C01 L11 · T-810 · `TEST_COVERAGE_MATRIX.md` lift 82%+ | Status: BLOCKED |
+| W17.3 | C08 Harbor hard 7d soak external | FR-003 · C08 L76 · T-820 · `benchora/harbor-soft/harbor-7d.log` EXTRACTED | Status: BLOCKED |
+| W17.4 | C10 residual polish | FR-003 · C10 L105 · T-830 · `tests/c10_l105_hex_drift.rs` | Status: DONE |
 
 ## Sync protocol
 

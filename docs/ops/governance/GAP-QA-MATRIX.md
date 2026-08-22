@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-19 (T-692 C10 L105 dashboard hex drift closed — 12/12 bb2 hexes `assets/tokens.css` == `src/dashboard.html` `:root` via `tests/c10_l105_hex_drift.rs` 3/3; WORK_DAG T-692 DONE, W15.4 DONE; unweighted ~90.1% A)
+**Last sync:** 2026-08-21 (Wave16 W16.2/W16.3 DONE T-700..T-730 89b8806/eb2b865 + Wave17 T-800 DONE 89b8806 T-830 DONE per T-692; W16.3 80.51% @e89755c; unweighted ~90.1% A tier-1 91.3% A)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
