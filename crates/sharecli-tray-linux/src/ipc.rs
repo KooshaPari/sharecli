@@ -9,10 +9,14 @@
 //! `socket_path` stay unit-testable cross-platform.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
 
+#[allow(unused_imports)]
 use std::io::{BufRead, BufReader, Write};
+#[cfg(unix)]
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
+#[allow(unused_imports)]
 use std::sync::atomic::{AtomicU64, Ordering};
+#[allow(unused_imports)]
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
@@ -142,8 +146,10 @@ pub fn socket_path() -> PathBuf {
     base.join("sharecli").join("ipc.sock")
 }
 
+#[cfg_attr(not(unix), allow(dead_code))]
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
+#[cfg(unix)]
 fn call<T: for<'de> Deserialize<'de>>(method: &str, params: serde_json::Value) -> Result<T> {
     let path = socket_path();
     let stream = UnixStream::connect(&path)
@@ -171,6 +177,11 @@ fn call<T: for<'de> Deserialize<'de>>(method: &str, params: serde_json::Value) -
         return Err(anyhow!("IPC error ({method}): {err}"));
     }
     resp.result.ok_or_else(|| anyhow!("IPC response for {method} had no result"))
+}
+
+#[cfg(not(unix))]
+fn call<T: for<'de> Deserialize<'de>>(_method: &str, _params: serde_json::Value) -> Result<T> {
+    Err(anyhow!("IPC not supported on this platform"))
 }
 
 pub fn list_processes() -> Result<Vec<ProcessSummary>> {
