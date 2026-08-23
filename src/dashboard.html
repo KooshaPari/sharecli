@@ -426,6 +426,7 @@
   const operatorPanels = document.getElementById('operator-panels');
   const lastUpdate = document.getElementById('last-update');
   let reconnectTimer = null;
+  let emptyTimer = null;
   let hadProcesses = false;
   let disconnectShown = false;
   const traceparent = document.documentElement.dataset.traceparent || '';
@@ -561,9 +562,17 @@
       label.textContent = 'connected — loading processes…';
       disconnectShown = false;
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      if (emptyTimer) { clearTimeout(emptyTimer); }
+      emptyTimer = setTimeout(() => {
+        emptyTimer = null;
+        if (document.getElementById('loading-row')) {
+          renderEmptyState('first-run');
+        }
+      }, 300);
     };
 
     ws.onmessage = (evt) => {
+      if (emptyTimer) { clearTimeout(emptyTimer); emptyTimer = null; }
       let data;
       try { data = JSON.parse(evt.data); } catch { return; }
       if (data.event === 'thermal_warning') {
