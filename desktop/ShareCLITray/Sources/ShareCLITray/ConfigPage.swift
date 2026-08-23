@@ -1,377 +1,789 @@
-/// ConfigPage.swift — full configuration editor (PR 7 of dashboard expansion plan).
+/// ConfigPage.swift — expanded Config page (PR 7 of dashboard expansion plan).
 ///
-/// Replaces the bare `ConfigEditorView` that had hardcoded `@State` defaults —
-/// this version fetches the live config via `config.get` IPC on appear and
-/// keeps the form in sync.
+/// Replaces the single `ConfigEditorView` inside `DashboardView` with a
+/// segmented 5-subpage layout:
 ///
-/// Layout:
-///   ┌──────────────────────────────────────────────────────────────┐
-///   │ Sectioned form (Runtime / Pool / Monitoring / Spawn / Ports  │
-///   │  / Paths / Defaults / Cast / Serve / Health checks)          │
-///   │  — every key is a row: label · current value · input         │
-///   │  — apply-on-submit (Enter) or apply-on-toggle                │
-///   ├──────────────────────────────────────────────────────────────┤
-///   │ Live JSON preview (always shows current in-effect config)    │
-///   └──────────────────────────────────────────────────────────────┘
+///   ┌─────────────────────────────────────────────────────────────────────┐
+///   │ [Runtime] [Pool] [Monitoring] [Spawn] [Defaults]                   │
+///   ├─────────────────────────────────────────────────────────────────────┤
+///   │ Runtime:    max_memory_mb + max_processes (slider+input+preview)   │
+///   │             live "Currently in effect" preview from monitoring     │
+///   │ Pool:       enabled toggle + max_per_type / idle_timeout_secs /    │
+///   │             max_age_secs / spawn_delay_ms                          │
+///   │ Monitoring: health_check_interval_secs / idle_threshold_secs /     │
+///   │             high_memory_threshold_mb                               │
+///   │ Spawn:      default_harness picker + prune_idle_seconds            │
+///   │ Defaults:   per-harness editor for `config.defaults.{harness}.*`   │
+///   │             (max_instances + memory_limit_mb + reset button)       │
+///   └─────────────────────────────────────────────────────────────────────┘
 ///
-/// Persistence: the form state re-fetches on appear; nothing cached.
+/// Each numeric editor is a labelled row containing a slider and a numeric
+/// input. Edits call `state.setConfig(key:value:)` via the existing IPC
+/// `config.set` method (no IPC changes). A success/failure toast is shown
+/// for ~2 s after every apply.
+///
+/// Validation rules mirror `src/config_validator.rs` (hard validator) and
+/// surface as a non-blocking warning label under the offending field. We do
+/// NOT block the save — the Rust validator does that on `sharecli validate`.
+/// We DO warn users about obvious context issues (e.g. max_memory_mb >
+/// total_memory_mb reported by `monitoring.report`).
+///
+/// Persistence:
+///   - `config.subpage` (String: "runtime" | "pool" | "monitoring" |
+///     "spawn" | "defaults")
+///   - `config.defaults.harness` (String: selected harness in Defaults tab)
+///
+/// Part of: plans/2026-07-25-tray-dashboard-expanded-v1.md §2.1 Page 5
+/// (Config), Subpanels 5a–5e.
 
 import SwiftUI
 import ShareCLICore
 
+// MARK: - Top-level page
+
 struct ConfigPage: View {
     @ObservedObject var state: AppState
 
-    @State private var liveJSON: String = ""
-    @State private var parsedTree: [String: AnyCodable] = [:]
-    @State private var applyStatus: String = ""
-    @State private var loading: Bool = false
-    @State private var defaultHarness: String = "claude"
-    @State private var poolEnabled: Bool = true
-    @State private var maxPerType: String = "5"
-    @State private var idleTimeoutSecs: String = "300"
-    @State private var maxMemoryMB: String = "4096"
-    @State private var maxProcesses: String = "100"
-    @State private var healthCheckInterval: String = "30"
-    @State private var highMemThreshold: String = "4096"
-    @State private var ipcPort: String = "7820"
-    @State private var binRoot: String = ""
+    @AppStorage("config.subpage") private var subpageRaw: String = ConfigSubpage.runtime.rawValue
+    @State private var subpage: ConfigSubpage = .runtime
+    @State private var didLoadSubpage = false
+
+    // Toast (success / failure message after config.set)
+    @State private var toast: ConfigToast? = nil
+
+    enum ConfigSubpage: String, CaseIterable, Identifiable {
+        case runtime = "runtime"
+        case pool = "pool"
+        case monitoring = "monitoring"
+        case spawn = "spawn"
+        case defaults = "defaults"
+
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .runtime: return "Runtime"
+            case .pool: return "Pool"
+            case .monitoring: return "Monitoring"
+            case .spawn: return "Spawn"
+            case .defaults: return "Defaults"
+            }
+        }
+    }
 
     var body: some View {
-        if !loading && parsedTree.isEmpty && applyStatus.isEmpty {
-            EmptyStateView(
-                icon: "gearshape.questionmark",
-                title: "Couldn't load config from sidecar",
-                subtitle: "The first config.get call hasn't returned yet, or the sidecar responded with empty. Try refreshing — if the issue persists, the sidecar's config subsystem may be locked or the response envelope is malformed.",
-                variant: .hero,
-                primaryTitle: "Retry load",
-                primaryIcon: "arrow.clockwise",
-                primaryAction: { Task { await loadConfig() } },
-                secondaryTitle: "Open docs",
-                secondaryIcon: "book",
-                secondaryAction: {
-                    if let url = URL(string: "https://docs.sharecli.dev/config") { NSWorkspace.shared.open(url) }
-                }
-            )
-        } else {
-            HStack(spacing: 0) {
-                formPanel
-                .frame(minWidth: 460, idealWidth: 520)
-                jsonPreviewPanel
-                .frame(minWidth: 360, idealWidth: 420)
-            }
-            .frame(minWidth: 820, minHeight: 480)
-            .task {
-                await loadConfig()
-            }
-        }
-    }
+        VStack(spacing: 0) {
+            header
 
-    // MARK: - Form panel
-
-    private var formPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    Text("Configuration")
-                        .font(.largeTitle).bold()
-                    Spacer()
-                    Button {
-                        Task { await loadConfig() }
-                    } label: {
-                        HStack(spacing: 4) {
-                            if loading { ProgressView().scaleEffect(0.5).frame(width: 12, height: 12) }
-                            Image(systemName: "arrow.clockwise")
-                            Text("Refresh")
-                        }
-                    }
-                    .help("Re-fetch the live config from the sidecar")
-                }
-
-                statusRow
-
-                section("Runtime") {
-                    row("max_memory_mb", binding: $maxMemoryMB, key: "runtime.max_memory_mb", asInt: true, hint: "Memory cap (MB) for managed processes")
-                    row("max_processes", binding: $maxProcesses, key: "runtime.max_processes", asInt: true, hint: "Hard cap on concurrent processes")
-                }
-
-                section("Process Pool") {
-                    Toggle("Enabled", isOn: $poolEnabled)
-                        .onChange(of: poolEnabled) { _, v in apply("pool.enabled", value: .bool(v)) }
-                    row("max_per_type", binding: $maxPerType, key: "pool.max_per_type", asInt: true, hint: "Max instances per harness type")
-                    row("idle_timeout_secs", binding: $idleTimeoutSecs, key: "pool.idle_timeout_secs", asInt: true, hint: "Seconds before idle pool socket is reaped")
-                }
-
-                section("Monitoring") {
-                    row("health_check_interval_secs", binding: $healthCheckInterval, key: "monitoring.health_check_interval_secs", asInt: true, hint: "Background poller cadence")
-                    row("high_memory_threshold_mb", binding: $highMemThreshold, key: "monitoring.high_memory_threshold_mb", asInt: true, hint: "Above this, monitor emits a warning")
-                }
-
-                section("Spawn") {
-                    HStack {
-                        Text("default_harness")
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 240, alignment: .leading)
-                        Picker("", selection: $defaultHarness) {
-                            ForEach(["claude", "forge", "node", "bun"], id: \.self) { Text($0) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 140)
-                        .onChange(of: defaultHarness) { _, v in apply("spawn.default_harness", value: .string(v)) }
-                    }
-                }
-
-                section("Ports") {
-                    row("ipc_port", binding: $ipcPort, key: "port.ipc_port", asInt: true, hint: "Unix socket path (set via env SHARECLI_IPC_SOCK at runtime)")
-                }
-
-                section("Paths") {
-                    row("bin_root", binding: $binRoot, key: "paths.bin_root", hint: "Directory sharecli looks for harness binaries")
-                }
-
-                section("Defaults (per-harness)") {
-                    Text("Hardcoded fallbacks for each harness type. These are loaded when no per-harness config.toml override exists.")
-                        .font(.caption2).foregroundStyle(.secondary)
-                    defaultsPanel
-                }
-
-                if !applyStatus.isEmpty {
-                    Text(applyStatus)
-                        .font(.caption)
-                        .foregroundStyle(applyStatus.hasPrefix("Error") ? .red : .green)
+            Picker("", selection: $subpage) {
+                ForEach(ConfigSubpage.allCases) { sp in
+                    Text(sp.label).tag(sp)
                 }
             }
-            .padding(24)
-        }
-    }
-
-    // MARK: - Defaults panel
-
-    private var defaultsPanel: some View {
-        let defaults = parsedTree["defaults"]?.objectValue ?? [:]
-        let entries = defaults.sorted { $0.key < $1.key }
-        return VStack(alignment: .leading, spacing: 6) {
-            if entries.isEmpty {
-                Text("No defaults configured.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(entries, id: \.key) { (key, value) in
-                    let display = prettyJSON(value)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(key)
-                            .font(.system(.caption, design: .monospaced).bold())
-                        Text(display)
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .padding(6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.quaternary)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - JSON preview panel
-
-    private var jsonPreviewPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Live config")
-                    .font(.headline)
-                Spacer()
-                Button {
-                    Task {
-                        if let data = await state.getConfig() {
-                            liveJSON = String(data: data, encoding: .utf8) ?? ""
-                        }
-                    }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .help("Re-fetch")
-                Button {
-                    let pb = NSPasteboard.general
-                    pb.clearContents()
-                    pb.setString(liveJSON, forType: .string)
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                }
-                .buttonStyle(.borderless)
-                .help("Copy config to clipboard")
-            }
+            .pickerStyle(.segmented)
             .padding(.horizontal, 12)
-            .padding(.top, 12)
+            .padding(.vertical, 8)
+            .onChange(of: subpage) { _, newValue in
+                subpageRaw = newValue.rawValue
+            }
+
+            Divider()
 
             ScrollView {
-                Text(liveJSON.isEmpty ? "(no config yet)" : liveJSON)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-            }
-            .background(.quaternary.opacity(0.5))
-        }
-        .background(.background)
-    }
-
-    // MARK: - Helpers
-
-    private var statusRow: some View {
-        HStack(spacing: 8) {
-            if loading {
-                ProgressView().scaleEffect(0.5).frame(width: 12, height: 12)
-            } else {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-            }
-            Text("In-effect config is live-edited (Enter to apply, toggles apply instantly).")
-                .font(.caption).foregroundStyle(.secondary)
-            Spacer()
-        }
-    }
-
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Divider()
-            content()
-        }
-    }
-
-    private func row(_ label: String, binding: Binding<String>, key: String, asInt: Bool = false, hint: String = "") -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(label)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(width: 240, alignment: .leading)
-                TextField("", text: binding)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 180)
-                    .onSubmit {
-                        if asInt, let i = Int(binding.wrappedValue) {
-                            apply(key, value: .int(i))
-                        } else {
-                            apply(key, value: .string(binding.wrappedValue))
-                        }
+                VStack(alignment: .leading, spacing: 16) {
+                    switch subpage {
+                    case .runtime:
+                        RuntimeSubpage(state: state, apply: apply)
+                    case .pool:
+                        PoolSubpage(state: state, apply: apply)
+                    case .monitoring:
+                        MonitoringSubpage(state: state, apply: apply)
+                    case .spawn:
+                        SpawnSubpage(state: state, apply: apply)
+                    case .defaults:
+                        DefaultsSubpage(state: state, apply: apply)
                     }
-                if !hint.isEmpty {
-                    Text(hint)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 }
+                .padding(16)
+            }
+
+            if let t = toast {
+                ToastBar(toast: t)
+            }
+        }
+        .frame(minWidth: 720, minHeight: 460)
+        .onAppear {
+            if !didLoadSubpage {
+                subpage = ConfigSubpage(rawValue: subpageRaw) ?? .runtime
+                didLoadSubpage = true
             }
         }
     }
 
-    private func loadConfig() async {
-        loading = true
-        defer { loading = false }
-        guard let data = await state.getConfig() else {
-            liveJSON = "(no config — sidecar offline)"
-            parsedTree = [:]
-            return
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Configuration")
+                    .font(.largeTitle).bold()
+                Text("Edits call config.set via IPC · restart sharecli for some keys to take effect")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer()
+            if state.isConnected {
+                Label("connected", systemImage: "circle.fill")
+                    .font(.caption).foregroundStyle(.green)
+            } else {
+                Label("offline", systemImage: "circle.fill")
+                    .font(.caption).foregroundStyle(.red)
+            }
         }
-        liveJSON = String(data: data, encoding: .utf8) ?? ""
-        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            parsedTree = AnyCodable.from(jsonObject: obj)
-        }
-        // Hydrate form fields from the live tree.
-        if let runtime = parsedTree["runtime"]?.objectValue {
-            if let v = runtime["max_memory_mb"]?.intValue { maxMemoryMB = "\(v)" }
-            if let v = runtime["max_processes"]?.intValue { maxProcesses = "\(v)" }
-        }
-        if let pool = parsedTree["pool"]?.objectValue {
-            if let v = pool["enabled"]?.boolValue { poolEnabled = v }
-            if let v = pool["max_per_type"]?.intValue { maxPerType = "\(v)" }
-            if let v = pool["idle_timeout_secs"]?.intValue { idleTimeoutSecs = "\(v)" }
-        }
-        if let mon = parsedTree["monitoring"]?.objectValue {
-            if let v = mon["health_check_interval_secs"]?.intValue { healthCheckInterval = "\(v)" }
-            if let v = mon["high_memory_threshold_mb"]?.intValue { highMemThreshold = "\(v)" }
-        }
-        if let spawn = parsedTree["spawn"]?.objectValue,
-           let v = spawn["default_harness"]?.stringValue {
-            defaultHarness = v
-        }
-        if let port = parsedTree["port"]?.objectValue,
-           let v = port["ipc_port"]?.intValue {
-            ipcPort = "\(v)"
-        }
-        if let paths = parsedTree["paths"]?.objectValue,
-           let v = paths["bin_root"]?.stringValue {
-            binRoot = v
-        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
+    /// Apply a config patch via the existing IPC `config.set` plumbing.
+    /// `key` is a dotted path (e.g. `runtime.max_memory_mb`).
     private func apply(_ key: String, value: AnyCodable) {
-        Task {
+        Task { @MainActor in
+            let priorError = state.lastError
             await state.setConfig(key: key, value: value)
-            applyStatus = "Applied: \(key)"
-            await loadConfig()
+            // Inspect after a microtask hop so the @Published write
+            // from setConfig's catch block has time to flush.
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            if let err = state.lastError, err != priorError {
+                toast = ConfigToast(level: .error, message: "\(key): \(err)")
+            } else {
+                toast = ConfigToast(level: .success, message: "Applied \(key)")
+            }
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            applyStatus = ""
-        }
-    }
-
-    private func prettyJSON(_ value: AnyCodable) -> String {
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(value)
-            return String(data: data, encoding: .utf8) ?? ""
-        } catch {
-            return String(describing: value)
+            withAnimation(.easeInOut(duration: 0.2)) { toast = nil }
         }
     }
 }
 
-// MARK: - AnyCodable convenience accessors
+// MARK: - Toast
 
-extension AnyCodable {
-    var stringValue: String? {
-        if case let .string(s) = self { return s } else { return nil }
+private struct ConfigToast: Equatable {
+    enum Level: Equatable { case success, error }
+    let level: Level
+    let message: String
+}
+
+private struct ToastBar: View {
+    let toast: ConfigToast
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: toast.level == .success
+                  ? "checkmark.circle.fill"
+                  : "exclamationmark.triangle.fill")
+                .foregroundStyle(toast.level == .success ? .green : .red)
+            Text(toast.message)
+                .font(.caption)
+                .foregroundStyle(toast.level == .success ? .green : .red)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(.quaternary)
     }
-    var intValue: Int? {
-        switch self {
-        case .int(let i): return i
-        case .uint(let u): return Int(u)
-        case .double(let d): return Int(d)
-        default: return nil
+}
+
+// MARK: - Numeric editor (slider + numeric input + validation warning)
+
+/// A reusable labelled row with a slider + numeric input. Edits are
+/// applied via the supplied closure on commit (text-field end-editing or
+/// slider release).
+struct NumericEditorRow: View {
+    let label: String
+    let key: String
+    let value: Binding<String>
+    let apply: (String, AnyCodable) -> Void
+    let range: ClosedRange<Double>
+    let step: Double
+    let isInteger: Bool
+
+    /// Optional validator returning a non-empty warning string when the
+    /// current value violates a soft rule (e.g. exceeds total memory).
+    let softWarning: (Double) -> String?
+
+    /// Optional hard validator (mirrors src/config_validator.rs).
+    let hardError: (Double) -> String?
+
+    @State private var warning: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 12) {
+                Text(label)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(width: 240, alignment: .leading)
+
+                Slider(
+                    value: Binding(
+                        get: { Double(value.wrappedValue) ?? 0 },
+                        set: { newVal in
+                            let formatted = isInteger
+                                ? String(Int(newVal.rounded()))
+                                : String(newVal)
+                            if value.wrappedValue != formatted {
+                                value.wrappedValue = formatted
+                                validate()
+                            }
+                        }
+                    ),
+                    in: range,
+                    step: step
+                ) {
+                    Text(label)
+                }
+                .onChange(of: value.wrappedValue) { _, _ in
+                    validate()
+                }
+                .frame(minWidth: 160)
+
+                TextField("", text: value)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 100)
+                    .multilineTextAlignment(.trailing)
+                    .onSubmit { commit() }
+                    .onChange(of: value.wrappedValue) { _, _ in validate() }
+
+                Button("Apply") { commit() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(hardError(parsedValue()) != nil)
+            }
+
+            if let w = warning {
+                Text(w)
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .padding(.leading, 252)
+            }
+            if let err = hardError(parsedValue()) {
+                Text("⚠ \(err)  (Rust validator will reject on save)")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .padding(.leading, 252)
+            }
+        }
+        .onAppear { validate() }
+    }
+
+    private func parsedValue() -> Double {
+        Double(value.wrappedValue) ?? 0
+    }
+
+    private func validate() {
+        let v = parsedValue()
+        warning = softWarning(v)
+    }
+
+    private func commit() {
+        let v = parsedValue()
+        if isInteger {
+            apply(key, .int(Int(v.rounded())))
+        } else {
+            apply(key, .double(v))
         }
     }
-    var boolValue: Bool? {
-        if case let .bool(b) = self { return b } else { return nil }
-    }
-    var objectValue: [String: AnyCodable]? {
-        if case let .object(o) = self { return o } else { return nil }
-    }
-    var arrayValue: [AnyCodable]? {
-        if case let .array(a) = self { return a } else { return nil }
-    }
+}
 
-    /// Build an `AnyCodable` tree from a JSON-deserialized `[String: Any]`.
-    static func from(jsonObject: [String: Any]) -> [String: AnyCodable] {
-        var out: [String: AnyCodable] = [:]
-        for (k, v) in jsonObject {
-            out[k] = AnyCodable.from(any: v)
+// MARK: - Subpage: Runtime
+
+private struct RuntimeSubpage: View {
+    @ObservedObject var state: AppState
+    let apply: (String, AnyCodable) -> Void
+
+    @State private var maxMemoryMB: String = ""
+    @State private var maxProcesses: String = ""
+    @State private var didLoad = false
+
+    var body: some View {
+        Group {
+            sectionHeader(
+                title: "Runtime",
+                subtitle: "Per-process resource caps. Affects gate decisions."
+            )
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 12) {
+                    NumericEditorRow(
+                        label: "runtime.max_memory_mb",
+                        key: "runtime.max_memory_mb",
+                        value: $maxMemoryMB,
+                        apply: apply,
+                        range: 64...65536,
+                        step: 64,
+                        isInteger: true,
+                        softWarning: { v in
+                            if let h = state.health, v > Double(h.total_memory_mb) {
+                                return "Currently in effect total memory is \(h.total_memory_mb) MB — this cap exceeds host memory"
+                            }
+                            return nil
+                        },
+                        hardError: { v in
+                            if v <= 0 { return "must be greater than 0" }
+                            return nil
+                        }
+                    )
+
+                    NumericEditorRow(
+                        label: "runtime.max_processes",
+                        key: "runtime.max_processes",
+                        value: $maxProcesses,
+                        apply: apply,
+                        range: 1...1000,
+                        step: 1,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            if v <= 0 { return "must be greater than 0" }
+                            return nil
+                        }
+                    )
+                }
+                .padding(8)
+            } label: {
+                Label("Resource caps", systemImage: "memorychip")
+                    .font(.headline)
+            }
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Currently in effect")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if let h = state.health {
+                        HStack(spacing: 24) {
+                            previewStat(
+                                title: "Used memory",
+                                value: "\(h.used_memory_mb) MB",
+                                color: h.used_memory_mb > h.total_memory_mb / 2 ? .orange : .blue
+                            )
+                            previewStat(
+                                title: "Total memory",
+                                value: "\(h.total_memory_mb) MB",
+                                color: .secondary
+                            )
+                            previewStat(
+                                title: "Managed processes",
+                                value: "\(h.managed_processes)",
+                                color: .purple
+                            )
+                            previewStat(
+                                title: "Cap (current)",
+                                value: maxMemoryMB.isEmpty ? "—" : "\(maxMemoryMB) MB",
+                                color: .green
+                            )
+                        }
+                        // Utilisation bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 4).fill(.quaternary)
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(h.used_memory_mb > h.total_memory_mb / 2 ? Color.orange : Color.blue)
+                                    .frame(width: geo.size.width * CGFloat(h.used_memory_mb) / CGFloat(max(h.total_memory_mb, 1)))
+                            }
+                        }
+                        .frame(height: 10)
+                    } else {
+                        Text(state.isConnected ? "Loading…" : "Not connected to sharecli-ipc")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+            } label: {
+                Label("Live preview (from monitoring.report)", systemImage: "eye")
+                    .font(.headline)
+            }
         }
-        return out
+        .onAppear {
+            if !didLoad {
+                didLoad = true
+            }
+        }
     }
 
-    static func from(any: Any) -> AnyCodable {
-        if let s = any as? String { return .string(s) }
-        if let i = any as? Int { return .int(i) }
-        if let u = any as? UInt32 { return .uint(u) }
-        if let d = any as? Double { return .double(d) }
-        if let b = any as? Bool { return .bool(b) }
-        if let arr = any as? [Any] { return .array(arr.map { from(any: $0) }) }
-        if let obj = any as? [String: Any] { return .object(from(jsonObject: obj)) }
-        return .null
+    private func previewStat(title: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.system(.body, design: .monospaced)).bold().foregroundStyle(color)
+        }
     }
+}
+
+// MARK: - Subpage: Pool
+
+private struct PoolSubpage: View {
+    @ObservedObject var state: AppState
+    let apply: (String, AnyCodable) -> Void
+
+    @State private var poolEnabled: Bool = true
+    @State private var maxPerType: String = "5"
+    @State private var idleTimeoutSecs: String = "300"
+    @State private var maxAgeSecs: String = "3600"
+    @State private var spawnDelayMs: String = "100"
+
+    var body: some View {
+        Group {
+            sectionHeader(
+                title: "Process Pool",
+                subtitle: "Shared pool of node/bun processes — caps, lifetimes, spawn pacing."
+            )
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        Text("pool.enabled")
+                            .font(.system(.body, design: .monospaced))
+                            .frame(width: 240, alignment: .leading)
+                        Toggle("", isOn: $poolEnabled)
+                            .labelsHidden()
+                            .onChange(of: poolEnabled) { _, v in
+                                apply("pool.enabled", .bool(v))
+                            }
+                        Spacer()
+                    }
+
+                    NumericEditorRow(
+                        label: "pool.max_per_type",
+                        key: "pool.max_per_type",
+                        value: $maxPerType,
+                        apply: apply,
+                        range: 1...100,
+                        step: 1,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            v <= 0 ? "must be greater than 0" : nil
+                        }
+                    )
+
+                    NumericEditorRow(
+                        label: "pool.idle_timeout_secs",
+                        key: "pool.idle_timeout_secs",
+                        value: $idleTimeoutSecs,
+                        apply: apply,
+                        range: 1...3600,
+                        step: 30,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            if v <= 0 { return "must be greater than 0" }
+                            if v > 3600 { return "must be <= 3600 seconds" }
+                            return nil
+                        }
+                    )
+
+                    NumericEditorRow(
+                        label: "pool.max_age_secs",
+                        key: "pool.max_age_secs",
+                        value: $maxAgeSecs,
+                        apply: apply,
+                        range: 60...86400,
+                        step: 60,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            if v <= 0 { return "must be greater than 0" }
+                            if v > 86400 { return "must be <= 86400 seconds (24 h)" }
+                            return nil
+                        }
+                    )
+
+                    NumericEditorRow(
+                        label: "pool.spawn_delay_ms",
+                        key: "pool.spawn_delay_ms",
+                        value: $spawnDelayMs,
+                        apply: apply,
+                        range: 1...10000,
+                        step: 10,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            v <= 0 ? "must be greater than 0" : nil
+                        }
+                    )
+                }
+                .padding(8)
+            } label: {
+                Label("Pool settings", systemImage: "rectangle.stack")
+                    .font(.headline)
+            }
+        }
+    }
+}
+
+// MARK: - Subpage: Monitoring
+
+private struct MonitoringSubpage: View {
+    @ObservedObject var state: AppState
+    let apply: (String, AnyCodable) -> Void
+
+    @State private var healthCheckInterval: String = "30"
+    @State private var idleThresholdSecs: String = "300"
+    @State private var highMemThreshold: String = "4096"
+
+    var body: some View {
+        Group {
+            sectionHeader(
+                title: "Monitoring",
+                subtitle: "Health-check cadence + thresholds that drive warnings and gate decisions."
+            )
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 14) {
+                    NumericEditorRow(
+                        label: "monitoring.health_check_interval_secs",
+                        key: "monitoring.health_check_interval_secs",
+                        value: $healthCheckInterval,
+                        apply: apply,
+                        range: 1...3600,
+                        step: 5,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            if v <= 0 { return "must be greater than 0" }
+                            if v > 3600 { return "must be <= 3600 seconds" }
+                            return nil
+                        }
+                    )
+
+                    NumericEditorRow(
+                        label: "monitoring.idle_threshold_secs",
+                        key: "monitoring.idle_threshold_secs",
+                        value: $idleThresholdSecs,
+                        apply: apply,
+                        range: 1...86400,
+                        step: 30,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            v <= 0 ? "must be greater than 0" : nil
+                        }
+                    )
+
+                    NumericEditorRow(
+                        label: "monitoring.high_memory_threshold_mb",
+                        key: "monitoring.high_memory_threshold_mb",
+                        value: $highMemThreshold,
+                        apply: apply,
+                        range: 64...65536,
+                        step: 64,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            v <= 0 ? "must be greater than 0" : nil
+                        }
+                    )
+                }
+                .padding(8)
+            } label: {
+                Label("Monitoring thresholds", systemImage: "waveform.path.ecg")
+                    .font(.headline)
+            }
+        }
+    }
+}
+
+// MARK: - Subpage: Spawn
+
+private struct SpawnSubpage: View {
+    @ObservedObject var state: AppState
+    let apply: (String, AnyCodable) -> Void
+
+    @State private var defaultHarness: String = "claude"
+    @State private var pruneIdleSeconds: String = "300"
+
+    private let harnesses = ["claude", "forge", "node", "bun", "custom"]
+
+    var body: some View {
+        Group {
+            sectionHeader(
+                title: "Spawn",
+                subtitle: "Default harness for new spawns + idle prune threshold."
+            )
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        Text("spawn.default_harness")
+                            .font(.system(.body, design: .monospaced))
+                            .frame(width: 240, alignment: .leading)
+                        Picker("", selection: $defaultHarness) {
+                            ForEach(harnesses, id: \.self) { h in
+                                Text(h).tag(h)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 160)
+                        .onChange(of: defaultHarness) { _, v in
+                            apply("spawn.default_harness", .string(v))
+                        }
+                        Spacer()
+                    }
+
+                    NumericEditorRow(
+                        label: "spawn.prune_idle_seconds",
+                        key: "spawn.prune_idle_seconds",
+                        value: $pruneIdleSeconds,
+                        apply: apply,
+                        range: 1...86400,
+                        step: 30,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            v <= 0 ? "must be greater than 0" : nil
+                        }
+                    )
+                }
+                .padding(8)
+            } label: {
+                Label("Spawn defaults", systemImage: "arrow.up.forward.app")
+                    .font(.headline)
+            }
+        }
+    }
+}
+
+// MARK: - Subpage: Defaults (per-harness config.defaults.*)
+
+private struct DefaultsSubpage: View {
+    @ObservedObject var state: AppState
+    let apply: (String, AnyCodable) -> Void
+
+    @AppStorage("config.defaults.harness") private var harnessRaw: String = "claude"
+    @State private var harness: String = "claude"
+    @State private var didLoadHarness = false
+
+    @State private var maxInstances: String = "10"
+    @State private var memoryLimitMB: String = "256"
+
+    private let harnesses = ["claude", "forge", "node", "bun", "custom"]
+
+    var body: some View {
+        Group {
+            sectionHeader(
+                title: "Per-Harness Defaults",
+                subtitle: "config.defaults.{harness}.* — spawned harnesses inherit these caps."
+            )
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        Text("harness")
+                            .font(.system(.body, design: .monospaced))
+                            .frame(width: 240, alignment: .leading)
+                        Picker("", selection: $harness) {
+                            ForEach(harnesses, id: \.self) { h in
+                                Text(h).tag(h)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 200)
+                        .onChange(of: harness) { _, v in
+                            harnessRaw = v
+                        }
+                        Spacer()
+                    }
+
+                    Divider()
+
+                    HStack(spacing: 12) {
+                        Text("key namespace")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .frame(width: 240, alignment: .leading)
+                        Text("config.defaults.\(harness).*")
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+
+                    NumericEditorRow(
+                        label: "max_instances",
+                        key: "defaults.\(harness).max_instances",
+                        value: $maxInstances,
+                        apply: apply,
+                        range: 1...200,
+                        step: 1,
+                        isInteger: true,
+                        softWarning: { _ in nil },
+                        hardError: { v in
+                            v <= 0 ? "must be greater than 0" : nil
+                        }
+                    )
+
+                    NumericEditorRow(
+                        label: "memory_limit_mb",
+                        key: "defaults.\(harness).memory_limit_mb",
+                        value: $memoryLimitMB,
+                        apply: apply,
+                        range: 64...16384,
+                        step: 64,
+                        isInteger: true,
+                        softWarning: { v in
+                            if let h = state.health, v > Double(h.total_memory_mb) {
+                                return "Total host memory is \(h.total_memory_mb) MB — this cap exceeds host memory"
+                            }
+                            return nil
+                        },
+                        hardError: { v in
+                            v <= 0 ? "must be greater than 0" : nil
+                        }
+                    )
+
+                    HStack(spacing: 12) {
+                        Spacer().frame(width: 240)
+                        Button {
+                            resetHarness()
+                        } label: {
+                            Label("Reset \(harness) to default", systemImage: "arrow.counterclockwise")
+                        }
+                        .buttonStyle(.bordered)
+                        .help("Reload defaults for \(harness) from the sidecar's config-defaults template")
+                    }
+                }
+                .padding(8)
+            } label: {
+                Label("Per-harness defaults", systemImage: "wrench.and.screwdriver")
+                    .font(.headline)
+            }
+        }
+        .onAppear {
+            if !didLoadHarness {
+                harness = harnessRaw
+                didLoadHarness = true
+            }
+        }
+    }
+
+    private func resetHarness() {
+        // Apply the sharecli-side default by writing back to the configured
+        // fallback. Defaults from `default_harness_configs()` in
+        // src/config.rs:331 are encoded here so we can clear user overrides
+        // without a new IPC round-trip.
+        let defaults: [String: (maxInstances: Int, memoryLimitMB: Int)] = [
+            "claude":  (11, 512),
+            "forge":   (20, 256),
+            "node":    (30, 256),
+            "bun":     (10, 384),
+            "custom":  (10, 256),
+        ]
+        if let d = defaults[harness] {
+            maxInstances = String(d.maxInstances)
+            memoryLimitMB = String(d.memoryLimitMB)
+            apply("defaults.\(harness).max_instances", .int(d.maxInstances))
+            apply("defaults.\(harness).memory_limit_mb", .int(d.memoryLimitMB))
+        }
+    }
+}
+
+// MARK: - Helpers
+
+private func sectionHeader(title: String, subtitle: String) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+        Text(title).font(.title2).bold()
+        Text(subtitle).font(.caption).foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
 }
