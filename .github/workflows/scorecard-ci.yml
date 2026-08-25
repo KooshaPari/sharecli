@@ -1,0 +1,61 @@
+name: 88-Pillar Scorecard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: 'Score threshold (0-88)'
+        required: false
+        default: '35'
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run 88-Pillar Scorecard
+        id: scorecard
+        run: |
+          THRESHOLD="${{ github.event.inputs.threshold || '35' }}"
+          python scripts/scorecard_ci.py . --exclude-enterprise --threshold "$THRESHOLD" --fail-on-drop || EXIT_CODE=$?
+          SCORE=$(python -c "import json; print(json.load(open('scorecard-report.json'))['score'])" 2>/dev/null || echo "0")
+          TOTAL=$(python -c "import json; print(json.load(open('scorecard-report.json'))['total'])" 2>/dev/null || echo "88")
+          PCT=$(python -c "import json; print(f'{json.load(open("scorecard-report.json"))["percentage"]:.1f}')" 2>/dev/null || echo "0")
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "percentage=$PCT" >> $GITHUB_OUTPUT
+          echo "threshold=$THRESHOLD" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "status=PASS" >> $GITHUB_OUTPUT
+          else
+            echo "status=FAIL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Scorecard Summary
+        run: |
+          echo "## 88-Pillar Scorecard Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Score | ${{ steps.scorecard.outputs.score }}/${{ steps.scorecard.outputs.total }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Percentage | ${{ steps.scorecard.outputs.percentage }}% |" >> $GITHUB_STEP_SUMMARY
+          echo "| Threshold | ${{ steps.scorecard.outputs.threshold }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | **${{ steps.scorecard.outputs.status }}** |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Scorecard Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-report
+          path: scorecard-report.json
+          retention-days: 7
