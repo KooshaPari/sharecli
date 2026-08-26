@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-21 (Wave16 W16.2/W16.3 DONE T-700..T-730 89b8806/eb2b865 + Wave17 T-800 DONE 89b8806 T-830 DONE per T-692; W16.3 80.51% @e89755c; unweighted ~90.1% A tier-1 91.3% A)
+**Last sync:** 2026-08-26 (Wave17 T-800 DONE 89b8806 + T-810 prep 3520208 + T-810 lift 403ins @e298e0f #771 — 6 tests session+coordination; W17.2 still BLOCKED pending llvm-cov 82%+ mint; W16.3 80.51% @e89755c retained; T-830 DONE per T-692)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 

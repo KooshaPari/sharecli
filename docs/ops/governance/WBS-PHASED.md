@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-21 (Wave16 W16.2/W16.3 DONE T-700..T-730 89b8806/eb2b865 + Wave17 T-800 DONE 89b8806 queued C11/C05 live; W16.3 80.51% @e89755c; T-830 DONE per T-692; unweighted ~90.1% A tier-1 91.3% A)
+**Last sync:** 2026-08-26 (Wave17 T-800 DONE 89b8806 + T-810 prep 3520208 + T-810 lift 403ins @e298e0f #771 — 6 tests session+coordination; W17.2 still BLOCKED pending llvm-cov 82%+ mint; W16.3 80.51% @e89755c retained; unweighted ~90.1% A tier-1 91.3% A)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -201,7 +201,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
 | W17.1 | Wave17 kickoff - queue blocked C11/C05 live | audit · T-800 · `WORK_DAG.md` `eb2b865` (#755 `89b8806`) | Status: DONE |
-| W17.2 | C01 coverage lift toward 85% (nextest) | FR-003 · C01 L11 · T-810 · `TEST_COVERAGE_MATRIX.md` lift 82%+ | Status: BLOCKED |
+| W17.2 | C01 coverage lift toward 85% (nextest) | FR-003 · C01 L11 · T-810 · `TEST_COVERAGE_MATRIX.md` lift 82%+ — 6 tests @e298e0f #771 `tests/session_cov.rs` + `tests/coordination_cov.rs` | Status: IN_PROGRESS (helpers landed, awaiting llvm-cov refresh) |
 | W17.3 | C08 Harbor hard 7d soak external | FR-003 · C08 L76 · T-820 · `benchora/harbor-soft/harbor-7d.log` EXTRACTED | Status: BLOCKED |
 | W17.4 | C10 residual polish | FR-003 · C10 L105 · T-830 · `tests/c10_l105_hex_drift.rs` | Status: DONE |
 
