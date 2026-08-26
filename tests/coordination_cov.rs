@@ -1,5 +1,5 @@
 //! FR: FR-003
-//! T-810 coordination + agent policy lift — CommandLockStore, PriorityTaskQueue, PauseCode.
+//! T-810 coordination + agent policy lift - CommandLockStore, PriorityTaskQueue, PauseCode.
 
 use std::path::PathBuf;
 
@@ -111,6 +111,12 @@ fn fr003_priority_task_queue_ordering_and_lifecycle() {
 
     assert_eq!(queue.len().expect("len 4"), 4);
     assert!(!queue.is_empty().expect("not empty"));
+
+    // Persistence via second instance - same file, peek highest priority
+    let queue2 = PriorityTaskQueue::new(&path);
+    assert_eq!(queue2.len().expect("len persisted 4"), 4);
+    let peek2 = queue2.peek().expect("peek persisted").expect("some");
+    assert_eq!(peek2.priority, QueuePriority::Critical);
 
     // list_all sorted
     let listed = queue.list_all().expect("list sorted");

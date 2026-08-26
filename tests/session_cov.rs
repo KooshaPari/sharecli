@@ -1,5 +1,5 @@
 //! FR: FR-003
-//! T-810 session coverage lift — ZmxSessionAdapter, GhosttyCapabilities, GhosttyControlClient.
+//! T-810 session coverage lift - ZmxSessionAdapter, GhosttyCapabilities, GhosttyControlClient.
 
 use std::fs;
 
