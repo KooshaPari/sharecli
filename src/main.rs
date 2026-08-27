@@ -910,7 +910,7 @@ async fn run() -> Result<()> {
                     .create(true)
                     .append(true)
                     .open(&log_path_for_writer)
-                    .expect("reopen log file"),
+                    .unwrap_or_else(|e| panic!("failed to reopen log file at {}: {e}", log_path_for_writer.display())),
             )
         };
         if json {
@@ -1203,7 +1203,7 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
     let value = match cmd {
         SessionCmd::List { .. } => serde_json::to_value(service.list()?)?,
         SessionCmd::Inspect { .. } => {
-            serde_json::to_value(service.inspect(operation.expect("id"))?)?
+            serde_json::to_value(service.inspect(operation.ok_or_else(|| anyhow::anyhow!("session inspect requires an operation id"))?)?)?
         }
         SessionCmd::RecoveryPlan { max_age_seconds, .. } => serde_json::to_value(
             service.recovery_plan(chrono::Duration::seconds(*max_age_seconds as i64))?,
@@ -1678,8 +1678,8 @@ async fn prune(idle_seconds: u64, force: bool) -> Result<()> {
     let processes = pool.list().await;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .expect("system clock before Unix epoch")
-        .as_secs();
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
 
     let candidates: Vec<_> = processes
         .into_iter()

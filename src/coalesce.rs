@@ -27,7 +27,7 @@ impl<T: Clone> Coalescer<T> {
     /// absorbed into the pending slot.
     pub fn push(&self, value: T) -> Option<T> {
         let now = Instant::now();
-        let mut guard = self.state.lock().expect("coalescer mutex poisoned");
+        let mut guard = self.state.lock().unwrap_or_else(|e| e.into_inner());
         match guard.as_ref() {
             Some((_, last)) if now.duration_since(*last) < self.window => {
                 // Replace the buffered value (last-write-wins semantics).
@@ -44,10 +44,10 @@ impl<T: Clone> Coalescer<T> {
     /// Returns the buffered value if its window has elapsed, draining it.
     pub fn drain(&self) -> Option<T> {
         let now = Instant::now();
-        let mut guard = self.state.lock().expect("coalescer mutex poisoned");
+        let mut guard = self.state.lock().unwrap_or_else(|e| e.into_inner());
         match guard.as_ref() {
             Some((_, last)) if now.duration_since(*last) >= self.window => {
-                let (v, _) = guard.take().unwrap();
+                let (v, _) = guard.take().expect("value guaranteed present by match guard");
                 Some(v)
             }
             _ => None,

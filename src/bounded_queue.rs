@@ -40,7 +40,7 @@ impl<T> BoundedQueue<T> {
     }
 
     pub fn push(&self, value: T) -> Result<(), QueueFullError<T>> {
-        let mut g = self.items.lock().expect("bounded_queue mutex poisoned");
+        let mut g = self.items.lock().unwrap_or_else(|e| e.into_inner());
         if g.len() >= self.capacity {
             return Err(QueueFullError(value));
         }
@@ -49,12 +49,12 @@ impl<T> BoundedQueue<T> {
     }
 
     pub fn pop(&self) -> Option<T> {
-        let mut g = self.items.lock().expect("bounded_queue mutex poisoned");
+        let mut g = self.items.lock().unwrap_or_else(|e| e.into_inner());
         g.pop_front()
     }
 
     pub fn len(&self) -> usize {
-        let g = self.items.lock().expect("bounded_queue mutex poisoned");
+        let g = self.items.lock().unwrap_or_else(|e| e.into_inner());
         g.len()
     }
 
@@ -63,7 +63,7 @@ impl<T> BoundedQueue<T> {
     }
 
     pub fn is_full(&self) -> bool {
-        let g = self.items.lock().expect("bounded_queue mutex poisoned");
+        let g = self.items.lock().unwrap_or_else(|e| e.into_inner());
         g.len() >= self.capacity
     }
 

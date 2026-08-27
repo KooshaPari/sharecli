@@ -372,7 +372,7 @@ async fn serve_rate_limit_middleware(
     }
 
     let denied = {
-        let mut guard = state.rate_limit.lock().expect("rate limit mutex");
+        let mut guard = state.rate_limit.lock().unwrap_or_else(|e| e.into_inner());
         match guard.as_mut() {
             Some(lim) => !lim.try_acquire(),
             None => false,
@@ -381,7 +381,7 @@ async fn serve_rate_limit_middleware(
 
     if denied {
         let retry_after = {
-            let guard = state.rate_limit.lock().expect("rate limit mutex");
+            let guard = state.rate_limit.lock().unwrap_or_else(|e| e.into_inner());
             guard.as_ref().map(|l| l.retry_after_secs()).unwrap_or(1)
         };
         let mut response = ErrorEnvelope::rate_limited("HTTP rate limit exceeded; retry later")

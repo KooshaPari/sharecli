@@ -62,7 +62,7 @@ impl ConfigWatcher {
                     // elapsed since the *previous* action.
                     let now = Instant::now();
                     {
-                        let mut guard = last_clone.lock().expect("debounce mutex poisoned");
+                        let mut guard = last_clone.lock().unwrap_or_else(|e| e.into_inner());
                         if let Some(prev) = *guard {
                             if now.duration_since(prev) < DEBOUNCE {
                                 // Still within debounce window — skip.
