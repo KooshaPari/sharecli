@@ -1,18 +1,23 @@
-name: Fuzz (soft)
+name: Fuzz
 
 on:
-  schedule:
-    - cron: "0 8 * * *"
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   fuzz:
-    name: cargo fuzz ${{ matrix.target }} (soft)
+    name: cargo fuzz (${{ matrix.target }})
     runs-on: ubuntu-24.04
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -31,5 +36,5 @@ jobs:
           shared-key: fuzz
       - name: Install cargo-fuzz
         run: cargo install --locked cargo-fuzz
-      - name: Fuzz ${{ matrix.target }} (300s)
-        run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=300
+      - name: Fuzz ${{ matrix.target }} (60s)
+        run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=60

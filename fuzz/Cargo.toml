@@ -19,3 +19,38 @@ path = "fuzz_targets/toml_lite.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "dns_query_parser"
+path = "fuzz_targets/dns_query_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "snmpv3_msg"
+path = "fuzz_targets/snmpv3_msg.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ssh_packet"
+path = "fuzz_targets/ssh_packet.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "coap_option_parse"
+path = "fuzz_targets/coap_option_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ldap_filter"
+path = "fuzz_targets/ldap_filter.rs"
+test = false
+doc = false
+bench = false
