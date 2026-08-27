@@ -1,10 +1,10 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-07-12
+**Date:** 2026-08-26
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** (pending merge of feat/sharecli-t200-fr002-threat-release)
+**Commit audited:** `2a490be` (governance sync + #771 T-810 lift 403ins; 80.51% @e89755c retained pending llvm-cov 82%+ mint)
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
@@ -44,7 +44,7 @@
 - **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06); C10 dashboard hex drift.
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
 - **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**.
-- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **90.1% A** / tier-1 **91% A** at `bba2411`.
+- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **90.1% A** / tier-1 **91% A** at `2a490be` (WBS Last sync 2026-08-26 W17.2 IN_PROGRESS @e298e0f).
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
 ## Supersedes
