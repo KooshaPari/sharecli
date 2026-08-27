@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91% weighted)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)  
-**Pin commit:** `2a490be` (`main` after #773 governance sync + #771 T-810 lift 403ins)  
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **~91% A**, unweighted **~90.1% A** — `TEST_COVERAGE_MATRIX.md` 80.51% @e89755c retained pending llvm-cov 82%+ mint
+**Pin commit:** `fa887e9` (`main` after fast-forward over #774 governance sync + #773 WBS sync + #771 T-810 lift 403ins + #766 #765 #764 #763 #762 #761 provenance merges + #760 T-810 prep + #759 WBS/GAP Wave17.1; `--lib` coverage **77.34%** @ `fa887e9` local run `local-lib-20260827`; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence)  
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **~91% A**, unweighted **~90.1% A** — `TEST_COVERAGE_MATRIX.md` lib pin **77.34%** @ `fa887e9` shipped; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence
 
 ## RC scope (what shipped Jul 14–19)
 

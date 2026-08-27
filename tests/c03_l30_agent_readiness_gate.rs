@@ -61,21 +61,34 @@ fn fr003_l303_fr_guardrail_coverage_and_pin() {
         .find("## Measured coverage pin")
         .expect("TEST_COVERAGE_MATRIX must have Measured coverage pin section");
     let prior_start = matrix
-        .find("### Prior pin (superseded)")
+        .find("### Prior pin (superseded for current cycle)")
         .expect("TEST_COVERAGE_MATRIX must have Prior pin section");
     let measured_section = &matrix[measured_start..prior_start];
-    assert!(measured_section.contains("80.51%"), "Measured pin section must pin 80.51%");
+    assert!(measured_section.contains("77.34%"), "Measured pin section must pin --lib 77.34%");
     assert!(
-        measured_section.contains("e89755c"),
-        "Measured pin section must pin current source revision e89755c"
+        measured_section.contains("fa887e9"),
+        "Measured pin section must pin current source revision fa887e9"
     );
     assert!(
-        measured_section.contains("5d8dc08"),
-        "Measured pin section must reference retained snapshot 5d8dc08"
+        measured_section.contains("fa887e9.coverage-snapshot.json"),
+        "Measured pin section must reference retained snapshot fa887e9"
+    );
+    assert!(
+        root.join("audit/coverage-snapshots/fa887e9.coverage-snapshot.json").is_file(),
+        "retained llvm-cov snapshot artifact must exist"
+    );
+    // Workspace-broad pin 80.51% @ 5d8dc08 retained as historical evidence.
+    assert!(
+        matrix.contains("80.51%"),
+        "TEST_COVERAGE_MATRIX must retain prior workspace-broad pin 80.51%"
+    );
+    assert!(
+        matrix.contains("5d8dc08"),
+        "TEST_COVERAGE_MATRIX must retain prior workspace-broad pin sha 5d8dc08"
     );
     assert!(
         root.join("audit/coverage-snapshots/5d8dc08.coverage-snapshot.json").is_file(),
-        "retained llvm-cov snapshot artifact must exist"
+        "prior workspace-broad llvm-cov snapshot artifact must exist"
     );
     assert!(ci.contains("cargo nextest run"), "ci.yml must run nextest guardrail suite");
     assert!(justfile.contains("test"), "justfile must expose test recipe");

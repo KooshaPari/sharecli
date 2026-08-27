@@ -9,7 +9,9 @@ use sharecli_core::{
     fuse_session_id_for_command_key, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,
     ThermalDecision,
 };
-use sharecli_fuse::{read_provenance, remap_mount_to_backing, InterceptFs};
+use sharecli_fuse::remap_mount_to_backing;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use sharecli_fuse::{read_provenance, InterceptFs};
 use sharecli_ipc::command_key;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
