@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91% weighted)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)  
-**Pin commit:** `bba2411` (`main` after #569)  
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **~91% A**, unweighted **~90.1% A**
+**Pin commit:** `2a490be` (`main` after #773 governance sync + #771 T-810 lift 403ins)  
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **~91% A**, unweighted **~90.1% A** — `TEST_COVERAGE_MATRIX.md` 80.51% @e89755c retained pending llvm-cov 82%+ mint
 
 ## RC scope (what shipped Jul 14–19)
 
