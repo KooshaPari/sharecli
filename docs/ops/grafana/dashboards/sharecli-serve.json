@@ -1,0 +1,137 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "HTTP request rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(sharecli_http_requests_total[5m])",
+          "legendFormat": "requests/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "title": "HTTP 5xx error rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(sharecli_http_errors_total[5m])",
+          "legendFormat": "errors/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "title": "HTTP latency (avg)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(sharecli_http_request_duration_ms_sum[5m]) / rate(sharecli_http_request_duration_ms_count[5m])",
+          "legendFormat": "avg ms",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "title": "Process up",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sharecli_process_up",
+          "legendFormat": "{{process}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decmbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "title": "Process memory",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sharecli_process_memory_mb",
+          "legendFormat": "{{process}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["sharecli", "serve", "red"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "name": "datasource",
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "sharecli serve",
+  "uid": "sharecli-serve",
+  "version": 1
+}

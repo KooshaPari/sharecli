@@ -1,0 +1,96 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Process up (fleet)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sharecli_process_up",
+          "legendFormat": "{{process}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "decmbytes" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Process RSS (fleet)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sharecli_process_memory_mb",
+          "legendFormat": "{{process}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "percent" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "title": "CPU utilization (fleet)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(sharecli_process_cpu_seconds_total[5m]) * 100",
+          "legendFormat": "{{process}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "percent" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "title": "Pool saturation",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sharecli_pool_running / sharecli_pool_capacity",
+          "legendFormat": "{{pool}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["sharecli", "process", "fleet"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "name": "datasource",
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "sharecli process",
+  "uid": "sharecli-process",
+  "version": 1
+}

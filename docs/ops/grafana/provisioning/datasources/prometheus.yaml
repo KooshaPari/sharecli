@@ -1,0 +1,31 @@
+apiVersion: 1
+
+datasources:
+  # C05 L49: Prometheus datasource provisioning for sharecli.
+  # The host/URL is left intentionally blank so that the operator
+  # (or the auto-generated `just grafana-up` container) supplies it
+  # via the SHARECLI_PROMETHEUS_URL environment variable at boot.
+  # This file is what Grafana's `--config` and `provisioning` subsystem
+  # consumes on startup; the operator never needs to click through
+  # the Grafana UI to wire a datasource.
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    editable: false
+    isDefault: true
+    jsonData:
+      timeInterval: '15s'
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: '>= 2.40.0'
+      cacheLevel: High
+      incrementalQuerying: true
+    secureJsonData:
+      # When the operator doesn't set SHARECLI_PROMETHEUS_URL at runtime
+      # we fall back to the in-cluster default that sharecli's
+      # containerized Prometheus sidecar exposes.
+      tlsCACert: ''
+      tlsSkipVerify: false
+      basicAuth: false
