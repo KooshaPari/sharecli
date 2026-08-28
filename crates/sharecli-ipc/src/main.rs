@@ -83,6 +83,7 @@ async fn main() -> Result<()> {
     }
 }
 
+#[cfg(unix)]
 async fn serve_unix_connection(
     stream: tokio::net::UnixStream,
     handler: Arc<Handler>,

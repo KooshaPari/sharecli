@@ -1,10 +1,10 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-26
+**Date:** 2026-08-27
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `2a490be` (governance sync + #771 T-810 lift 403ins; 80.51% @e89755c retained pending llvm-cov 82%+ mint)
+**Commit audited:** `fa887e9` (Wave17 T-810 `--lib` pin DONE — fast-forwarded over #774 governance sync + #773 WBS sync + #771 T-810 lift 403ins; lib **77.34%** @ `fa887e9` local run `local-lib-20260827`; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence)
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
@@ -39,12 +39,14 @@
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C10 **97% A**; C01/C09 **93% A**.
 - **Wave15:** C10 L99 skeletons (#396) → C10 **35/36 (97% A)**; #399 coverage tests landed; broad pin refreshed to measured **81.17%** @ `8c68bb5` (run 30005505196 / post-#583; prior **80.51%** @ `5d8dc08`).
+- **Wave16:** C01 coverage pin refresh `eb2b865` (#752) — **80.51%** @ `5d8dc08` retained (no new snapshot).
+- **Wave17:** C01 lib coverage pin `fa887e9` (T-810) — **77.34%** lines / **79.79%** funcs / **80.14%** regions (`--lib --all-features` local run `local-lib-20260827`); workspace-broad remeasure blocked on Windows by `tests/fr008_coalesce_mesh` operator-env critical-timeout hang + `tests/fr009_*` FUSE cfg-gate regressions. Workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. C01 L11 stays **3**; C01 stays **28/30 (93% A)**. **No invented %**.
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06); C10 dashboard hex drift.
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
 - **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**.
-- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **90.1% A** / tier-1 **91% A** at `2a490be` (WBS Last sync 2026-08-26 W17.2 IN_PROGRESS @e298e0f).
+- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **90.1% A** / tier-1 **91% A** at `fa887e9` (WBS Last sync 2026-08-27 W17.2 DONE `--lib` pin **77.34%**; workspace pin **80.51%** @ `5d8dc08` retained).
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
 ## Supersedes

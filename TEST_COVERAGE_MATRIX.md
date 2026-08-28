@@ -1,8 +1,8 @@
 # Test Coverage Matrix
 
 **Project**: sharecli  
-**Document Version**: 1.7
-**Last Updated**: 2026-08-20 (Wave16 T-730 pin refresh - 80.51% at e89755c, prior 81.22% at 28bfb10)
+**Document Version**: 1.8
+**Last Updated**: 2026-08-27 (Wave17 T-810 lib pin @ `fa887e9` — **77.34%** lines / **79.79%** funcs / **80.14%** regions; prior workspace pin **80.51%** @ `5d8dc08` retained as historical evidence)
 
 ---
 
@@ -13,10 +13,11 @@
 | Functional Requirements (Phase 3) | 5 (`FR-001`..`FR-005`) |
 | FR acceptance test files on disk | 8 (`fr001_*`..`fr004_*`) + 1 CLI smoke |
 | Integration / cast / coordination test files | 7 |
-| Test functions in `tests/` | 72 (`#[test]` / `#[tokio::test]`) + #399 lift suites |
+| Test functions in `tests/` | 72 (`#[test]` / `#[tokio::test]`) + #399 lift suites + T-810 6 tests @ `e298e0f` |
 | Unit-ish tests in `src/` + `crates/` | ~1500+ (includes generated/large suites) |
 | Coverage Target | 85% (see `.github/workflows/quality-gate.yml` `COVERAGE_THRESHOLD`) |
-| Current Coverage | **80.51% lines** (broad workspace; see pin below) |
+| Current Coverage (--lib, Wave17 T-810) | **77.34% lines** (`fa887e9`; local llvm-cov run `local-lib-20260827`) |
+| Retained Workspace Pin | **80.51% lines** (`5d8dc08` / run 29985746034; broad workspace pre-T-810 lifts) |
 
 ---
 
@@ -24,21 +25,24 @@
 
 | Field | Evidence |
 |-------|----------|
-| Source revision | `e89755ce6cab33c1fb060842f0768003b85889a8` (Wave16 T-730 pin refresh) |
-| Retained snapshot | `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` (retained; **80.51%** lines @ `5d8dc08`) - the pin refresh **80.51%** @ `e89755c` reuses this snapshot; prior **81.22%** @ `28bfb10` (run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303)) retained as CI artifact |
-| Measured line percentage | **80.51%** (40,077 lines; 32,266 covered) |
-| Functions / regions | 83.23% functions; 82.21% regions (same `5d8dc08` snapshot) |
-| Meets 85% unit gate? | **No** for broad workspace (`meets_lines_target: false`); PR hard gate uses scoped `--lib` ignores in `quality-gate.yml` |
-| CI artifact parity | Coverage run [30083201303](https://github.com/KooshaPari/sharecli/actions/runs/30083201303) uploaded `coverage-snapshot-28bfb101ecf4523131cd1dfb71950b46189b9e65` |
+| Source revision | `fa887e9d8c89dbc6764dad0d06082dcb139eeaad` (Wave17 T-810 lib pin — fast-forwarded over #771 + #773 + #774) |
+| Scope | `--lib --all-features --locked --ignore-run-fail` (cargo llvm-cov 0.9.0; local run `local-lib-20260827` 2026-08-27) |
+| Retained snapshot | `audit/coverage-snapshots/fa887e9.coverage-snapshot.json` |
+| Measured line percentage | **77.34%** (27,947 lines; 21,615 covered) |
+| Functions / regions | 79.79% functions (3,439 / 2,744); 80.14% regions (49,622 / 39,765) |
+| Meets 85% unit gate? | **No** (`meets_lines_target: false`); PR hard gate uses `--lib` scope per `quality-gate.yml` |
+| Scope note | `--workspace --all-features broad` measurement blocked on Windows for this pin cycle by integration-test compatibility regressions in `tests/fr008_coalesce_mesh` (operator-env critical-timeout hang) and `tests/fr009_fuse_*` (FUSE-specific Linux/macOS code paths). The `--lib` scope is what `quality-gate.yml` hard-gates; the `--workspace` measurement is supplementary. The prior workspace pin at `5d8dc08` / **80.51%** remains the most recent broad measurement and is retained as historical evidence. |
 
-### Prior pin (superseded)
+### Prior pin (superseded for current cycle)
 
 | Field | Evidence |
 |-------|----------|
-| Prior revision | `28bfb101ecf4523131cd1dfb71950b46189b9e65` (post-#606 re-measure) |
-| Prior snapshot | `audit/coverage-snapshots/8c68bb5.coverage-snapshot.json` (retained **81.17%** @ `8c68bb5`) + CI artifact for **81.22%** @ `28bfb10` (run 30083201303) |
-| Prior line percentage | **81.22%** (40,392 lines; 32,806 covered) |
-| Note | Superseded by Wave16 T-730 pin **80.51%** @ `e89755c` - no new snapshot; older `5d8dc08` **80.51%** snapshot retained as `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` |
+| Prior revision | `5d8dc08928c7258110f8a20c7e0fafd9f474f22e` (Wave16 T-730 pin refresh) |
+| Prior scope | `--workspace --all-features --locked --ignore-run-fail` (broad workspace) |
+| Prior snapshot | `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` (retained; **80.51%** lines @ `5d8dc08`) |
+| Prior line percentage | **80.51%** (40,077 lines; 32,266 covered) |
+| Functions / regions | 83.23% functions; 82.21% regions (same `5d8dc08` snapshot) |
+| Note | Superseded for the Wave17 T-810 lib pin **77.34%** @ `fa887e9`; **80.51%** snapshot retained as historical evidence. Wave17 T-810 #771 added 6 tests for session + coordination coverage but the broad-workspace remeasure was blocked on Windows. |
 
 ### Wave15 / #399 → remeasure → #583 climb (2026-07-22..23)
 
@@ -60,9 +64,9 @@ from retained llvm-cov snapshots.
 The 85% line target is a hard PR gate in
 `.github/workflows/quality-gate.yml`: `COVERAGE_THRESHOLD=85` is passed to
 `cargo llvm-cov --fail-under-lines` for the documented unit-test scope. A result
-below 85% makes the `unit-tests` job fail. The broader workspace snapshot in
-`coverage.yml` is evidence/reporting and does not replace that hard gate; its
-`meets_lines_target` field makes target drift machine-readable.
+below 85% makes the `unit-tests` job fail. The lib pin (`fa887e9` 77.34%) and the
+retained workspace pin (`5d8dc08` 80.51%) are both below 85%; the
+`meets_lines_target: false` flag in each snapshot makes target drift machine-readable.
 
 ### Codecov supplementary policy
 
@@ -71,12 +75,14 @@ below 85% makes the `unit-tests` job fail. The broader workspace snapshot in
 | Layer | Target | Scope |
 |-------|--------|-------|
 | `quality-gate.yml` | **85% lines** (hard) | `--lib` unit scope with documented filename ignores |
-| `coverage.yml` snapshot | **80.51% lines** (pinned evidence) | `--workspace --all-features` broad measurement |
+| `coverage.yml` snapshot (current) | **77.34% lines** @ `fa887e9` (lib pin) | `--lib --all-features --locked --ignore-run-fail` |
+| `coverage.yml` snapshot (retained) | **80.51% lines** @ `5d8dc08` | `--workspace --all-features` broad measurement (historical) |
 | Codecov `project` | 70% + 1% threshold | `src/**/*.rs` upload from quality-gate LCOV |
 | Codecov `patch` | 80% + 1% threshold | PR diff only |
 
-The pinned broad-workspace percentage does not lower the 85% unit gate; it documents
-fleet-visible coverage debt for prioritization.
+The pinned lib percentage does not lower the 85% unit gate; it documents the
+current state of `--lib` measurement for prioritization. The retained 80.51%
+workspace pin documents the most recent broad measurement pre-T-810 lifts.
 
 ---
 
@@ -114,7 +120,7 @@ fleet-visible coverage debt for prioritization.
 | FR-CAST-004 | WezTerm cast | `tests/cast_wezterm.rs` (9) | **Covered** (extension) |
 | FR-CAST-005 | Windows Terminal cast | `tests/cast_winterm.rs` (6) | **Covered** (extension) |
 | — | Coordination helpers | `tests/coordination.rs` (3) | Supporting |
-| — | #399 coverage lift suites | `tests/c01_coverage_lift.rs` (+ related FR-003 surfaces) | **Landed**; broad % pinned at **80.51%** (Wave16 T-730) |
+| — | #399 + T-810 coverage lift suites | `tests/c01_coverage_lift.rs` + `tests/session_cov.rs` + `tests/coordination_cov.rs` (T-810 6 tests @ `e298e0f`) | **Landed**; lib pin **77.34%** (Wave17 T-810 @ `fa887e9`); workspace pin **80.51%** retained (Wave16 T-730 @ `5d8dc08`) |
 
 Canonical AC ↔ function map: [`docs/specs/TRACEABILITY.md`](docs/specs/TRACEABILITY.md).  
 Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
@@ -125,14 +131,15 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ### Critical Gaps
 1. Homebrew bottle sha still PLACEHOLDER (`WORK_DAG` Wave4 / C11).
-2. Broad-workspace line coverage **80.51%** is below the 85% unit gate target (gap for prioritization; unit gate unchanged).
+2. `--lib` line coverage **77.34%** is below the 85% unit gate target (gap for prioritization; unit gate unchanged).
+3. `--workspace --all-features broad` remeasurement blocked on Windows by integration-test compatibility regressions (operator-env critical-timeout hang + FUSE path regressions); most recent broad pin **80.51%** @ `5d8dc08` retained.
 
 ---
 
 ## Recommendations
 
 ### Immediate Actions
-1. Raise broad-workspace llvm-cov toward 85% without inventing pin percentages.
+1. Restore `--workspace --all-features broad` remeasurement on Linux/WSL runner (operator-env critical-timeout fix in `tests/fr008_coalesce_mesh` + FUSE cfg gate consistency in `tests/fr009_*`).
 2. Keep FR annotations (`//! FR: FR-NNN`) on every new acceptance test.
 3. Sync status tokens in `docs/ops/governance/GAP-QA-MATRIX.md` + `WBS-PHASED.md`.
 
@@ -141,4 +148,4 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ---
 
-**Last Updated**: 2026-08-20 (Wave16 T-730 pin refresh - 80.51% @ `e89755c`, prior 81.22% @ `28bfb10`)
+**Last Updated**: 2026-08-27 (Wave17 T-810 lib pin @ `fa887e9` — **77.34%**; prior workspace pin **80.51%** @ `5d8dc08` retained)

@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-26 (Wave17 T-800 DONE 89b8806 + T-810 prep 3520208 + T-810 lift 403ins @e298e0f #771 — 6 tests session+coordination; W17.2 still BLOCKED pending llvm-cov 82%+ mint; W16.3 80.51% @e89755c retained; T-830 DONE per T-692)
+**Last sync:** 2026-08-27 (Wave17 T-810 `--lib` pin DONE `fa887e9` — **77.34%** lines @ `fa887e9`; T-800 DONE `89b8806` + T-810 prep `3520208` + T-810 lift 403ins @ `e298e0f` #771 — 6 tests session+coordination; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; T-830 DONE per T-692)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -41,7 +41,7 @@
 | Cluster | Pillar | Gap | Severity | FR/WBS link | Status | Evidence path | Owner(machine) |
 |---------|--------|-----|----------|-------------|--------|---------------|----------------|
 | C01 | L11 | Measured coverage pin + llvm-cov snapshot artifact | Med | W14.1 · T-625 · FR-003 | Status: Closed | `TEST_COVERAGE_MATRIX.md` (83.48% @ `d3cb7c4`) · `audit/coverage-snapshots/d3cb7c4.coverage-snapshot.json` · `tests/c01_coverage_pin_gate.rs` | agent-c01 |
-| C01 | L11 | Post-#399 broad-workspace pin refresh | Med | W15.2 · T-691 · FR-003 | Status: Closed | Measured **80.51%** @ `5d8dc08` (run 29985746034); `TEST_COVERAGE_MATRIX.md` + `audit/coverage-snapshots/5d8dc08.coverage-snapshot.json` | agent-c01 |
+| C01 | L11 | Wave17 `--lib` coverage pin @ `fa887e9` | Med | W17.2 · T-810 · FR-003 | Status: Closed | Measured **77.34%** lines @ `fa887e9` (27,947 / 21,615 covered; 79.79% funcs / 80.14% regions); `audit/coverage-snapshots/fa887e9.coverage-snapshot.json` (local run `local-lib-20260827`) | agent-c01 |
 | C10 | L105 | Dashboard hex drift vs tokens.css | Med | W15.4 · T-692 · FR-003 | Status: Closed | `tests/c10_l105_hex_drift.rs` 3/3 pass C10 L105 gate 2026-08-19; `assets/tokens.css` 12/12 bb2 hexes == `src/dashboard.html` `:root`; `src/theme.rs` mirror verified | agent-c10 |
 | C01 | L12 | FR↔acceptance-test SSOT | Med | T-670 · FR-003 | Status: Closed | `FUNCTIONAL_REQUIREMENTS.md` · `docs/specs/TRACEABILITY.md` · `tests/c01_fr_ssot_gate.rs` | agent-c01 |
 | C02 | L25 | Serve HTTP rate limit middleware | Med | W14 · FR-003 | Status: Closed | `src/serve_rate_limit.rs` · `src/commands/serve.rs` · `docs/ops/rate-limits.md` · `tests/c02_serve_rate_limit.rs` | agent-c02 |

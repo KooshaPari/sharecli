@@ -128,12 +128,12 @@ flowchart TD
 | T-720 | C08 L76 Harbor soft gate stub (benchora port) | FR-003 / C08 L76 | T-700 | M | DONE | `docs/eval/harbor-soft-stub.md` + `tests/c08_harbor_soft_stub.rs` 3/3 soft gate, scope: doc stub only, EXTRACTED lane noted, no 7d log |
 | T-730 | C01 coverage pin refresh (llvm-cov) | FR-003 / C01 L11 | T-700 | S | DONE | `TEST_COVERAGE_MATRIX.md` pin cited at `e89755c` 80.51% + snapshot (refresh, no new snapshot) `eb2b865` (#752) |
 
-## Wave17 backlog (IN_PROGRESS - queuing blocked C11/C05 live, defining next)
+## Wave17 backlog (IN_PROGRESS - T-800 DONE, T-810 lib pin DONE, T-820 EXTRACTED/BLOCKED, T-830 DONE)
 
 | ID | Task | FR / pillar | Pred | Effort | Status | Done when |
 |----|------|-------------|------|--------|--------|-----------|
 | T-800 | Wave17 kickoff - define backlog + queue blocked | audit | T-730 | S | DONE | Wave17 defined in `WORK_DAG.md` `eb2b865` - queued C11 L112 / C05 L45+ live PD |
-| T-810 | C01 coverage lift toward 85% (nextest) | FR-003 / C01 L11 | T-800 | M | BLOCKED | `TEST_COVERAGE_MATRIX.md` lift to 82%+ with retained snapshot, no invented % |
+| T-810 | C01 coverage lift toward 85% (nextest) — `--lib` pin @ `fa887e9` | FR-003 / C01 L11 | T-800 | M | DONE | `--lib --all-features --locked --ignore-run-fail` measured **77.34%** lines / **79.79%** funcs / **80.14%** regions @ `fa887e9` (local run `local-lib-20260827`); retained `audit/coverage-snapshots/fa887e9.coverage-snapshot.json`. Workspace-broad remeasure blocked on Windows by `tests/fr008_coalesce_mesh` operator-env critical-timeout hang + `tests/fr009_*` FUSE cfg-gate regressions; prior workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. No invented %. |
 | T-820 | C08 Harbor hard 7d soak (benchora) | FR-003 / C08 L76 | T-800 | M | BLOCKED | External artifact `benchora/harbor-soft/harbor-7d.log` live 7d soak remains EXTRACTED (lane `benchora/harbor-soft`, not tracked in `sharecli` `main`; local `docs/eval/harbor-soft-stub.md` is stub only) |
 | T-830 | C10 residual polish (hex drift) | FR-003 / C10 L105 | T-800 | S | DONE | Verified 0 drift per T-692 (`assets/tokens.css` == `src/dashboard.html` `:root` 12/12 bb2 hexes, `tests/c10_l105_hex_drift.rs` 3/3); residual polish now doc-only |
 

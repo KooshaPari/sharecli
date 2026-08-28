@@ -12,6 +12,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -233,6 +234,7 @@ fn first_non_flag_arg(args: &[String]) -> String {
     String::new()
 }
 
+#[cfg(unix)]
 fn exec_bash_harness(harness_home: &Path, invoked_as: &str, args: &[String]) -> ! {
     // Prefer harness.bash (when Rust binary replaced bin/harness), else bin/harness
     let bash_harness = harness_home.join("bin").join("harness.bash");
@@ -253,12 +255,14 @@ fn exec_bash_harness(harness_home: &Path, invoked_as: &str, args: &[String]) -> 
     std::process::exit(127);
 }
 
+#[cfg(unix)]
 fn exec_real(real: &Path, args: &[String]) -> ! {
     let err = Command::new(real).args(args).exec();
     eprintln!("helios-shield: exec {:?} failed: {}", real, err);
     std::process::exit(127);
 }
 
+#[cfg(unix)]
 fn main() {
     init_tracing();
     let harness_home = harness_home();
@@ -375,4 +379,10 @@ fn main() {
         Ok(code) => std::process::exit(code),
         Err(_) => exec_bash_harness(&harness_home, &invoked, &args),
     }
+}
+
+#[cfg(not(unix))]
+fn main() {
+    eprintln!("helios-shield: unix-only dispatcher; not supported on this platform");
+    std::process::exit(1);
 }

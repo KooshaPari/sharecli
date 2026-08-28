@@ -286,6 +286,7 @@ fn fr009_global_neg_dentry_meters() {
 }
 
 /// FR-009 / AC-009.10 — process-wide write-serialize meters track CoW + passthrough.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn fr009_global_write_serialize_meters() {
     use sharecli_fuse::{global_write_serialize_meters, InterceptFs};

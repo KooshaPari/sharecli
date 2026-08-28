@@ -1,4 +1,4 @@
-//! C01 L11 — measured broad-workspace coverage pin (FR-003).
+//! C01 L11 — measured `--lib` coverage pin (FR-003).
 //!
 //! FR: FR-003
 
@@ -16,31 +16,31 @@ fn fr003_coverage_matrix_pins_numeric_line_percent() {
         .expect("read TEST_COVERAGE_MATRIX.md");
 
     assert!(
-        matrix.contains("81.17%"),
-        "TEST_COVERAGE_MATRIX must pin measured broad-workspace line coverage"
+        matrix.contains("77.34%"),
+        "TEST_COVERAGE_MATRIX must pin measured --lib line coverage at 77.34%"
     );
     assert!(
-        matrix.contains("audit/coverage-snapshots/8c68bb5.coverage-snapshot.json"),
-        "TEST_COVERAGE_MATRIX must cite retained snapshot artifact path"
+        matrix.contains("audit/coverage-snapshots/fa887e9.coverage-snapshot.json"),
+        "TEST_COVERAGE_MATRIX must cite retained lib-pin snapshot artifact path"
     );
 }
 
 /// FR-003 / C01 L11 — retained snapshot is machine-readable and matches the matrix pin.
 #[test]
 fn fr003_coverage_snapshot_artifact_matches_pin() {
-    let path = repo_root().join("audit/coverage-snapshots/8c68bb5.coverage-snapshot.json");
+    let path = repo_root().join("audit/coverage-snapshots/fa887e9.coverage-snapshot.json");
     let raw = fs::read_to_string(&path).expect("read coverage snapshot artifact");
     let snapshot: serde_json::Value =
         serde_json::from_str(&raw).expect("parse coverage snapshot JSON");
 
     let lines_percent = snapshot["coverage"]["lines"]["percent"].as_f64().expect("lines.percent");
     assert!(
-        (lines_percent - 81.17).abs() < 0.01,
+        (lines_percent - 77.34).abs() < 0.01,
         "snapshot lines.percent must match matrix pin; got {lines_percent}"
     );
 
     let sha = snapshot["source"]["git_sha"].as_str().expect("source.git_sha");
-    assert!(sha.starts_with("8c68bb5"), "snapshot git_sha must match filename pin; got {sha}");
+    assert!(sha.starts_with("fa887e9"), "snapshot git_sha must match filename pin; got {sha}");
 }
 
 /// FR-003 / C01 L11 — coverage workflow retains compact llvm-cov snapshot artifact.
@@ -75,4 +75,22 @@ fn fr003_coverage_yml_emits_snapshot_artifact() {
         workflow.contains("--ignore-run-fail"),
         "coverage.yml must use --ignore-run-fail so evidence snapshot is produced despite known test flakes"
     );
+}
+
+/// FR-003 / C01 L11 — prior workspace-broad pin snapshot retained as historical evidence.
+#[test]
+fn fr003_coverage_workspace_pin_retained_as_historical() {
+    let path = repo_root().join("audit/coverage-snapshots/5d8dc08.coverage-snapshot.json");
+    let raw = fs::read_to_string(&path).expect("read 5d8dc08 coverage snapshot artifact");
+    let snapshot: serde_json::Value =
+        serde_json::from_str(&raw).expect("parse 5d8dc08 coverage snapshot JSON");
+
+    let lines_percent = snapshot["coverage"]["lines"]["percent"].as_f64().expect("lines.percent");
+    assert!(
+        (lines_percent - 80.51).abs() < 0.01,
+        "5d8dc08 snapshot lines.percent must remain 80.51%; got {lines_percent}"
+    );
+
+    let sha = snapshot["source"]["git_sha"].as_str().expect("source.git_sha");
+    assert!(sha.starts_with("5d8dc08"), "5d8dc08 snapshot git_sha must match filename; got {sha}");
 }

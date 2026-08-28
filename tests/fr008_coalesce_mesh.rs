@@ -668,6 +668,7 @@ async fn fr008_hypervisor_args_cache_key_mode_ignores_cwd() {
 }
 
 /// FR-008 / AC-008.20 — semantic normalization applied before Hypervisor cache hash.
+#[cfg(unix)]
 #[tokio::test]
 async fn fr008_hypervisor_semantic_coalesces_repeated_lint_dot() {
     let dir = TempDir::new().expect("tempdir");

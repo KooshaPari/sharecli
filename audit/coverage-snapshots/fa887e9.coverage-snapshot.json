@@ -1,0 +1,36 @@
+{
+  "coverage": {
+    "branches": {
+      "count": 0,
+      "covered": 0,
+      "percent": 0.0
+    },
+    "functions": {
+      "count": 3439,
+      "covered": 2744,
+      "percent": 79.79
+    },
+    "lines": {
+      "count": 27947,
+      "covered": 21615,
+      "percent": 77.34
+    },
+    "regions": {
+      "count": 49622,
+      "covered": 39765,
+      "percent": 80.14
+    }
+  },
+  "meets_lines_target": false,
+  "schema_version": 1,
+  "source": {
+    "format": "llvm.coverage.json.export",
+    "git_sha": "fa887e9d8c89dbc6764dad0d06082dcb139eeaad",
+    "github_run_id": "local-lib-20260827",
+    "tool": "cargo llvm-cov"
+  },
+  "target": {
+    "enforcement": ".github/workflows/quality-gate.yml",
+    "lines_percent": 85.0
+  }
+}
