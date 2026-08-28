@@ -1,5 +1,21 @@
 name: Release Attestation
 
+# ============================================================================
+# C06 SLSA Build Level 3 — ephemeral containerized generator
+# ============================================================================
+# Promoted from SLSA Build L2 (attest-build-provenance@v1 action) to
+# SLSA Build L3 (generator_containerized_slsa3.yml@v2 reusable workflow).
+#
+# L3 hardening:
+#   - Build runs in ephemeral container with digest-pinned base image
+#   - Provenance signed via ephemeral Sigstore Fulcio key (no long-lived key)
+#   - Provenance logged to ephemeral Rekor (TUF-pinned transparency log)
+#   - OIDC identity from GitHub Actions (subject: repo:owner/repo:ref:refs/tags/<tag>)
+#
+# Inputs / Outputs mirror the L2 generator for drop-in compatibility.
+# See docs/ops/slsa-l3-plan.md for full migration rationale + hermetic notes.
+# ============================================================================
+
 on:
   release:
     types: [published]
@@ -12,75 +28,38 @@ permissions:
 
 jobs:
   build-and-attest:
-    name: Build and Attest (SLSA Build L2)
-    runs-on: ubuntu-24.04
+    name: Build and Attest (SLSA Build L3)
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_containerized_slsa3.yml@v2
+    with:
+      source-repo: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+      build-command: |
+        set -euo pipefail
+        cargo build --release --locked --workspace --all-targets
+        mkdir -p release-artifacts
+        find target/release -maxdepth 1 -type f -executable \
+          -exec cp -t release-artifacts/ {} + 2>/dev/null || true
+        tar \
+          --exclude='./target' \
+          --exclude='./.git' \
+          --exclude='./release-artifacts' \
+          -czf release-artifacts/source.tar.gz \
+          -C "$RUNNER_TEMP/workdir" .
+        cat > release-artifacts/BUILD_MANIFEST.txt <<EOF
+        # Release Build Manifest (SLSA Build L3)
+        repository: ${{ github.repository }}
+        ref:        ${{ github.ref }}
+        sha:        ${{ github.sha }}
+        runner:     ephemeral-container
+        rustc:      $(rustc --version)
+        cargo:      $(cargo --version)
+        built_at:   $(date -u +%Y-%m-%dT%H:%M:%SZ)
+        slsa_level: 3
+        generator:   slsa-framework/slsa-github-generator/.github/workflows/generator_containerized_slsa3.yml@v2
+        EOF
+        echo "=== Release artifacts ==="
+        ls -la release-artifacts/
+      artifact-path: release-artifacts
     permissions:
       contents: read
       id-token: write
       attestations: write
-    env:
-      CARGO_WORKDIR: .
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-        with:
-          workspaces: |
-            . -> target
-
-      - name: Build release artifacts
-        working-directory: ${{ env.CARGO_WORKDIR }}
-        run: |
-          set -euo pipefail
-          cargo build --release --locked --workspace --all-targets
-
-      - name: Stage release artifacts
-        working-directory: ${{ env.CARGO_WORKDIR }}
-        run: |
-          set -euo pipefail
-          mkdir -p release-artifacts
-          # Copy all built executables
-          find target/release -maxdepth 1 -type f -executable \
-            -exec cp -t release-artifacts/ {} + 2>/dev/null || true
-          # Source tarball
-          tar \
-            --exclude='./target' \
-            --exclude='./.git' \
-            --exclude='./release-artifacts' \
-            -czf release-artifacts/source.tar.gz \
-            -C "$GITHUB_WORKSPACE/${{ env.CARGO_WORKDIR }}" .
-          # Build manifest
-          cat > release-artifacts/BUILD_MANIFEST.txt <<EOF
-          # Release Build Manifest
-          repository: ${{ github.repository }}
-          ref:        ${{ github.ref }}
-          sha:        ${{ github.sha }}
-          runner:     ${{ runner.os }}
-          rustc:      $(rustc --version)
-          cargo:      $(cargo --version)
-          built_at:   $(date -u +%Y-%m-%dT%H:%M:%SZ)
-          EOF
-          echo "=== Release artifacts ==="
-          ls -la release-artifacts/
-
-      - name: Upload artifacts for provenance
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: release-artifacts
-          path: ${{ env.CARGO_WORKDIR }}/release-artifacts/
-          if-no-files-found: warn
-          retention-days: 90
-
-      - name: Attest build provenance (SLSA Build L2)
-        uses: slsa-framework/slsa-github-generator/attest-build-provenance@v1
-        with:
-          artifact-name: release-artifacts

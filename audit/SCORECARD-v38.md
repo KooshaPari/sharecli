@@ -20,7 +20,7 @@
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 26/30 | 87% | B | Verified commit evidence for L34 (ruleset 19181236 active); org 2FA enforce; artifact cosign releases |
 | C05 | Observability (deep) | L41–L50 | 26/30 | 87% | B | live PD roster; tray dashboard HTTP trace; branch protection |
-| C06 | Supply Chain | L51–L60 | 26/30 | 87% | B | SLSA L3; build provenance L3; vendor/mirror |
+| C06 | Supply Chain | L51–L60 | 27/30 | 90% | A | hermetic `--offline` + `vendor/`; SLSA generator re-pin to commit-sha |
 | C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
@@ -29,24 +29,25 @@
 
 ## Overall
 
-**Weighted overall score:** 91% · **Overall grade:** A
+**Weighted overall score:** 91.2% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+87+87+87+90+73+93+97+87)/12 = 1081/12 = **90.1% A**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+90+87+90+73+93+97+87)/12 = 1095/12 = **91.3% A**.)
 
-**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (87+87+87+90+73+93+97+87) = 760 + 701 = 1461 / 16 = **91.3%** (A).
+**Tier-1 double-weight (C00–C03):** (97+93+90+100)×2 + (90+87+90+73+93+97+87) = 760 + 707 = 1467 / 16 = **91.7%** (A).
 
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C10 **97% A**; C01/C09 **93% A**.
 - **Wave15:** C10 L99 skeletons (#396) → C10 **35/36 (97% A)**; #399 coverage tests landed; broad pin refreshed to measured **81.17%** @ `8c68bb5` (run 30005505196 / post-#583; prior **80.51%** @ `5d8dc08`).
 - **Wave16:** C01 coverage pin refresh `eb2b865` (#752) — **80.51%** @ `5d8dc08` retained (no new snapshot).
-- **Wave17:** C01 lib coverage pin `fa887e9` (T-810) — **77.34%** lines / **79.79%** funcs / **80.14%** regions (`--lib --all-features` local run `local-lib-20260827`); workspace-broad remeasure blocked on Windows by `tests/fr008_coalesce_mesh` operator-env critical-timeout hang + `tests/fr009_*` FUSE cfg-gate regressions. Workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. C01 L11 stays **3**; C01 stays **28/30 (93% A)**. **No invented %**.
+- **Wave17:** C01 lib coverage pin `fa887e9` (T-810) — **77.34%** lines / **79.79%** funcs / **80.14%** regions (`--lib --all-features` local run `local-lib-20260827`); workspace-broad remeasure blocked on Windows by `tests/fr008_coalesce_mesh` operator-env critical-timeout hang + `tests/fr009_*` FUSE cfg-gate regressions. Workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. C01 L11 stays **3**; C01 stays **28/30 (93% A)**. **No invented %**. PR #775 MERGED → main `691bde6`.
+- **Wave17 Plan 777:** C06 L53 SLSA Build L2 → **L3** — `.github/workflows/release-attestation.yml` promoted from `attest-build-provenance@v1` (L2 action) to `generator_containerized_slsa3.yml@v2` (L3 reusable workflow, ephemeral container + Sigstore Fulcio + Rekor). C06 **26/30 87% B → 27/30 90% A**. C06 L53 2→3; L54 stays 2 (hermetic flags wired but not hard gate); L55/L56 unchanged (already 3). Unweighted **90.1% A → 91.3% A**; tier-1 **91.3% A → 91.7% A**. See `docs/ops/slsa-l3-plan.md` §"Wave17 Plan 777" + `audit/.lane-c06/C06.md`.
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
-- **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 network-block (C06); C10 dashboard hex drift.
+- **Highest-leverage remaining:** L34 Verified commit evidence on `main` (ruleset 19181236 already active; operator guide `docs/ops/gpg-verified-commits-l34.md`); C11 L112 codesign/notarize secrets (zero repo secrets confirmed); SLSA L3 commit-sha re-pin (C06); C10 dashboard hex drift.
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
 - **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**.
-- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **90.1% A** / tier-1 **91% A** at `fa887e9` (WBS Last sync 2026-08-27 W17.2 DONE `--lib` pin **77.34%**; workspace pin **80.51%** @ `5d8dc08` retained).
+- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **91.3% A** / tier-1 **91.7% A** at `691bde6` (post Plan 777 SLSA L3 promotion; WBS Last sync 2026-08-27 W17.2 DONE `--lib` pin **77.34%**; workspace pin **80.51%** @ `5d8dc08` retained; C06 26/30 87% B → 27/30 90% A).
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
 ## Supersedes

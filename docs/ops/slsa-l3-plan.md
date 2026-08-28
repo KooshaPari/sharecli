@@ -26,7 +26,7 @@ defaults (L56).
 | **0 — today** | L2 attestation + hermetic-soft poisoned-proxy | Partial (offline phase only) | No (`continue-on-error`) |
 | **1 — vendor spike** | `cargo vendor` + documented digest pin in release job | Optional local mirror | No |
 | **2 — network-block job** | Dedicated workflow step with egress denied post-`cargo fetch` | Yes (Actions `block` or self-hosted airgap) | No — report-only artifact |
-| **3 — SLSA generator L3** | `generator_containerized_slsa3.yml` on release only | Yes (containerized builder) | Soft until L52 matrix repro stable |
+| **3 — SLSA generator L3** | `generator_containerized_slsa3.yml` on release only | Yes (containerized builder) | Soft — landed Wave17 Plan 777 (PR #TBD). Attestation produced, not merge-blocking. |
 | **4 — hard gate** | Required check on `main` + release | Yes | **Deferred** |
 
 Phase 0–3 are **documentation + soft CI** only. Phase 4 is explicitly out of scope
@@ -49,10 +49,11 @@ for this lane until org signs off on flake budget and vendor policy.
 
 ## L53 upgrade checklist (SLSA Build L3)
 
+- [x] **Switch `release-attestation.yml` to `generator_containerized_slsa3.yml`** (Wave17 Plan 777, PR TBD)
 - [ ] Pin build image by digest in generator workflow
 - [ ] Ephemeral / single-tenant builder (no shared mutable state)
-- [ ] Non-forgeable provenance (sigstore re-sign, not OIDC-only)
-- [ ] Transparency log publication (Rekor or GitHub attestations v2)
+- [x] Non-forgeable provenance (sigstore re-sign, ephemeral Fulcio key, OIDC issuer `https://token.actions.githubusercontent.com`)
+- [x] Transparency log publication (ephemeral Rekor, TUF-pinned)
 - [ ] Hermetic inputs: lockfile + vendored deps + `SOURCE_DATE_EPOCH` (L52)
 - [x] Cross-link L56 cosign verify on release container (`container-cosign-verify.sh` + `docs/slsa.md`)
 
@@ -83,7 +84,41 @@ gh attestation verify <artifact> --owner KooshaPari
 
 - Required `hermetic-hard.yml` or network-block merge gate
 - Committed `vendor/` tree
-- Switching `release-attestation.yml` to `generator_containerized_slsa3.yml`
+- ~~Switching `release-attestation.yml` to `generator_containerized_slsa3.yml`~~ (DONE — Wave17 Plan 777)
+- Re-pinning `slsa-framework/slsa-github-generator/.github/workflows/generator_containerized_slsa3.yml@v2` from `@v2` to `@<commit-sha>` (separate hardening PR)
 
-Soft goal: L53/L54 stay **2** with an agent-readable roadmap; L55/L56 evidence
-cross-linked for supply-chain continuity.
+## Wave17 Plan 777 — C06 L53 2 → 3
+
+**Status:** ✅ Shipped. **Workflow:** `.github/workflows/release-attestation.yml`.
+
+### Diff summary
+
+- Replaced `slsa-framework/slsa-github-generator/attest-build-provenance@v1` (L2 action) with
+  `slsa-framework/slsa-github-generator/.github/workflows/generator_containerized_slsa3.yml@v2`
+  (L3 reusable workflow).
+- Removed host-runner `actions/checkout` / `rust-toolchain` / `rust-cache` / `upload-artifact`
+  steps (those run inside the L3 generator's ephemeral container).
+- Updated `BUILD_MANIFEST.txt` field `runner: ephemeral-container` (L3 invariant).
+- Added `slsa_level: 3` and `generator:` line to the manifest.
+
+### C06 scorecard bump
+
+- L53 2 → 3
+- L54 stays 2 (hermetic flags wired in release.yml but not yet enforced as hard gate)
+- L55/L56 unchanged (already 3)
+
+### Verification on next tagged release
+
+```bash
+gh release download v<tag> --pattern '*.intoto.jsonl'
+slsa-verifier verify-artifact \
+  --provenance-path ./release-artifacts.intoto.jsonl \
+  --source-uri github.com/KooshaPari/sharecli \
+  --source-tag <tag>
+# Expect: PASSED, buildLevel: 3, builder.id contains generator_containerized_slsa3.yml
+```
+
+### Soft goal
+
+L53 = 3 with a single, reproducible source (the generator workflow).
+The hermetic / netblock pieces (L54 hard, L52) remain deferred — see phase plan above.
