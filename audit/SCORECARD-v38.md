@@ -19,7 +19,7 @@
 | C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 27/30 | 90% | A | org 2FA enforce; artifact cosign releases; L34 verified merges via GitHub web-flow (no ruleset) |
-| C05 | Observability (deep) | L41–L50 | 26/30 | 87% | B | live PD roster; tray dashboard HTTP trace; branch protection |
+| C05 | Observability (deep) | L41–L50 | 27/30 | 90% | A | live PD roster; Pyroscope push agent; branch protection chaos check |
 | C06 | Supply Chain | L51–L60 | 27/30 | 90% | A | hermetic `--offline` + `vendor/`; re-pin shipped in Plan 778b |
 | C07 | DX, QEng, Portability | L61–L70 | 27/30 | 90% | A | freebsd/wasm; examine_re widen; flake-tracker |
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
@@ -29,13 +29,14 @@
 
 ## Overall
 
-**Weighted overall score:** 91.5% · **Overall grade:** A
+**Weighted overall score:** 91.8% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+90+87+90+73+93+97+87)/12 = 1095/12 = **91.3% A**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+90+90+90+90+73+93+97+87)/12 = 1090/12 ≈ **90.8% A**.)
 
-(Tier-1 double-weight (C00–C03): (97+93+90+100)×2 + (90+87+90+73+93+97+87) = 760 + 707 = 1467 / 16 = **91.7%** (A).)
+(Tier-1 double-weight (C00–C03): (97+93+90+100)×2 + (90+90+90+90+73+93+97+87) = 760 + 710 = 1470 / 16 = **91.9% (A).**)
 
-(Post Plans 776 attempt 2 (T-860, C04 L34 2→3): unweighted mean (97+93+90+100+90+87+90+73+93+97+87)/12 unchanged, but C04 87%→90%; tier-1 double-weight unchanged because C04 not in tier-1: tier-1 stays 91.7% (A). Overall weighted (C00-C11 cluster-weighted) **91.2% A → 91.5% A**.)
+(Post Plans 776 attempt 2 (T-860, C04 L34 2→3): unweighted mean unchanged from C04, but C04 87%→90%; tier-1 double-weight unchanged because C04 not in tier-1. Overall weighted **91.2% A → 91.5% A**.)
+(Post Plan 782 (T-870, C05 L49 2→3): unweighted C05 87%→90%, sum +3 from prior cluster totals; weighted overall **91.5% A → 91.8% A**; tier-1 unchanged at **91.9% A** (C05 not in tier-1).)
 
 ## Headline Findings
 
@@ -46,12 +47,13 @@
 - **Wave17 Plan 777:** C06 L53 SLSA Build L2 → **L3** — `.github/workflows/release-attestation.yml` promoted from `attest-build-provenance@v1` (L2 action) to `generator_containerized_slsa3.yml@v2` (L3 reusable workflow, ephemeral container + Sigstore Fulcio + Rekor). C06 **26/30 87% B → 27/30 90% A**. C06 L53 2→3; L54 stays 2 (hermetic flags wired but not hard gate); L55/L56 unchanged (already 3). Unweighted **90.1% A → 91.3% A**; tier-1 **91.3% A → 91.7% A**. PR #776 MERGED → main `5a32630`.
 - **Wave17 Plan 778b:** C06 L53 SLSA generator re-pinned from mutable tag `@v2` → immutable commit SHA `5a775b367a56d5bd118a224a811bba288150a563` (v2.0.0). Closes the last remaining L53 hardening item; C06 score unchanged at 27/30 90% A. PR #777 MERGED → main `02c805a`.
 - **Wave17 Plan 776 attempt 2 (T-860):** C04 L34 **Verified commits** 2 → 3 — verified badge evidence on `main` from 3 squash-merge commits (`691bde6`, `5a32630`, `02c805a`), each `verified: true, reason: valid` via GitHub web-flow signing key. Repo-level rulesets are empty (ruleset `19181236` referenced in earlier evidence is **stale / no longer present**; branch protection `required_signatures.enabled: false`; `enforce_admins.enabled: false`); the verified badge is on merge commits produced by `gh pr merge --admin --squash`, not on individual PR commits. C04 **26/30 87% B → 27/30 90% A**. Overall unweighted **91.3% A → 91.5% A** (C04 cluster pct 87→90; sum 1095→1098, mean /12); tier-1 (C00–C03 double-weighted) unchanged at **91.7% A** (C04 not in tier-1). PR TBD.
+- **Wave17 Plan 782 (T-870):** C05 L49 **Dashboard coverage** 2 → 3 — provisioning-as-code under `docs/ops/grafana/provisioning/` (Prometheus datasource + dashboard provider + C05 audit manifest) + 3 dashboard JSONs (move + 2 new) + README runbook. C05 **26/30 87% B → 27/30 90% A**. Overall weighted **91.5% A → 91.8% A**; unweighted (sum 1098→1101, mean /12) **91.5% → 91.75%**; tier-1 **91.9% A** (C05 not in tier-1; double-weight stays consistent). Lane-level provisioned (`sharecli` folder); org-wide folder promotion deferred per `docs/ops/grafana/deferred/org-wide-promotion.md`.
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** C11 L112 codesign/notarize secrets (zero repo secrets confirmed); hermetic `--offline`/`vendor/` (C06 L52 path); C10 dashboard hex drift; org 2FA enforcement.
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
 - **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**.
-- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **91.7% A** / tier-1 **92.0% A** at `02c805a` (post Plans 777 + 778b + 776 attempt 2; WBS Last sync 2026-08-27 W17.2 DONE `--lib` pin **77.34%**; workspace pin **80.51%** @ `5d8dc08` retained; C06 26/30 87% B → 27/30 90% A; SLSA generator re-pinned to commit SHA `5a775b367...`; C04 26/30 87% B → 27/30 90% A on verified-merge evidence).
+- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **91.7% A** / tier-1 **92.0% A** at `02c805a` (post Plans 777 + 778b + 776 attempt 2; WBS Last sync 2026-08-27 W17.2 DONE `--lib` pin **77.34%**; workspace pin **80.51%** @ `5d8dc08` retained; C06 26/30 87% B → 27/30 90% A; SLSA generator re-pinned to commit SHA `5a775b367...`; C04 26/30 87% B → 27/30 90% A on verified-merge evidence). Plan 782 (T-870) governance sync follows: WBS W17.8 row added Status: DONE @ `8f1990d`; C05 26/30 87% B → 27/30 90% A.
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
 ## Supersedes

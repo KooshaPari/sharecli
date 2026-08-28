@@ -1,0 +1,17 @@
+apiVersion: 1
+
+providers:
+  # C05 L49: Dashboard provider so that every JSON dashboard under
+  # `docs/ops/grafana/dashboards/` is loaded automatically by Grafana.
+  # No UI clicks required; adding a new dashboard is a code change.
+  - name: sharecli-dashboards
+    orgId: 1
+    folder: sharecli
+    folderUid: sharecli-folder
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards/sharecli
+      foldersFromFilesStructure: false

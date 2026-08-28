@@ -1,0 +1,34 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "name": "sharecli-c05",
+      "title": "sharecli observability (C05)",
+      "description": "Wave17 Plan 782 — provisioning metadata for the C05 cluster of Grafana dashboards. Source files live under docs/ops/grafana/dashboards/.",
+      "tags": ["sharecli", "c05", "wave17"],
+      "version": "1.0.0",
+      "wave": "Wave17",
+      "plan": "782",
+      "dashboards": [
+        {
+          "uid": "sharecli-serve",
+          "title": "sharecli serve",
+          "path": "docs/ops/grafana/dashboards/sharecli-serve.json",
+          "tags": ["sharecli", "serve", "red"]
+        },
+        {
+          "uid": "sharecli-process",
+          "title": "sharecli process",
+          "path": "docs/ops/grafana/dashboards/sharecli-process.json",
+          "tags": ["sharecli", "process", "fleet"]
+        },
+        {
+          "uid": "sharecli-trace",
+          "title": "sharecli trace",
+          "path": "docs/ops/grafana/dashboards/sharecli-trace.json",
+          "tags": ["sharecli", "trace", "otel"]
+        }
+      ]
+    }
+  ]
+}
