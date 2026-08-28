@@ -7,6 +7,7 @@ pub mod proc;
 pub mod report;
 pub mod serve;
 pub mod uninstall;
+pub mod upgrade;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
