@@ -910,7 +910,12 @@ async fn run() -> Result<()> {
                     .create(true)
                     .append(true)
                     .open(&log_path_for_writer)
-                    .unwrap_or_else(|e| panic!("failed to reopen log file at {}: {e}", log_path_for_writer.display())),
+                    .unwrap_or_else(|e| {
+                        panic!(
+                            "failed to reopen log file at {}: {e}",
+                            log_path_for_writer.display()
+                        )
+                    }),
             )
         };
         if json {
@@ -1202,9 +1207,9 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
     let service = SessionService::new(store);
     let value = match cmd {
         SessionCmd::List { .. } => serde_json::to_value(service.list()?)?,
-        SessionCmd::Inspect { .. } => {
-            serde_json::to_value(service.inspect(operation.ok_or_else(|| anyhow::anyhow!("session inspect requires an operation id"))?)?)?
-        }
+        SessionCmd::Inspect { .. } => serde_json::to_value(service.inspect(
+            operation.ok_or_else(|| anyhow::anyhow!("session inspect requires an operation id"))?,
+        )?)?,
         SessionCmd::RecoveryPlan { max_age_seconds, .. } => serde_json::to_value(
             service.recovery_plan(chrono::Duration::seconds(*max_age_seconds as i64))?,
         )?,

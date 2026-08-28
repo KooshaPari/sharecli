@@ -75,24 +75,15 @@ fn fr003_ghostty_capabilities_and_degraded_reason() {
     assert!(!caps.app_intents);
     assert!(!caps.accessibility_readback);
     assert!(!caps.control_socket);
-    assert_eq!(
-        GhosttyAdapter::degraded_reason(&caps),
-        Some("native surface API unavailable")
-    );
+    assert_eq!(GhosttyAdapter::degraded_reason(&caps), Some("native surface API unavailable"));
 
     // Enable apple_events but still no control_socket -> native RPC unavailable
     let caps = GhosttyCapabilities::from_probe(true, false, false);
-    assert_eq!(
-        GhosttyAdapter::degraded_reason(&caps),
-        Some("native RPC unavailable")
-    );
+    assert_eq!(GhosttyAdapter::degraded_reason(&caps), Some("native RPC unavailable"));
 
     // App intents true, still no socket
     let caps = GhosttyCapabilities::from_probe(false, true, false);
-    assert_eq!(
-        GhosttyAdapter::degraded_reason(&caps),
-        Some("native RPC unavailable")
-    );
+    assert_eq!(GhosttyAdapter::degraded_reason(&caps), Some("native RPC unavailable"));
 
     // With control_socket true -> no degradation
     let caps = GhosttyCapabilities::from_probe(true, true, true).with_control_socket(true);
@@ -102,10 +93,7 @@ fn fr003_ghostty_capabilities_and_degraded_reason() {
     // with_control_socket false after true then degraded
     let caps = GhosttyCapabilities::from_probe(true, true, true).with_control_socket(false);
     assert!(!caps.control_socket);
-    assert_eq!(
-        GhosttyAdapter::degraded_reason(&caps),
-        Some("native RPC unavailable")
-    );
+    assert_eq!(GhosttyAdapter::degraded_reason(&caps), Some("native RPC unavailable"));
 
     // All false but control_socket true manually -> no surface API unavailable, but still socket true means None
     let caps = GhosttyCapabilities::from_probe(false, false, false).with_control_socket(true);
