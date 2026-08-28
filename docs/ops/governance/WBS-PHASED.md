@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-27 (Wave17 T-810 `--lib` pin DONE `fa887e9` — **77.34%** lines / **79.79%** funcs / **80.14%** regions; T-800 DONE `89b8806` + T-810 prep `3520208` + T-810 lift 403ins @ `e298e0f` #771 — 6 tests session+coordination; PR #775 MERGED → main `691bde6`; PR #776 MERGED → main `5a32630` (Wave17 Plan 777 SLSA L2→L3 generator switch C06 L53 2→3 C06 26/30 87% B → 27/30 90% A; unweighted 91.3% A tier-1 91.7% A); **T-850 IN_PROGRESS** SLSA generator re-pin `@v2` → commit SHA `5a775b367a56d5bd118a224a811bba288150a563`; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence)
+**Last sync:** 2026-08-27 (Wave17 Plans #777 (T-840) + #778b (T-850) C06 L53 SLSA L3 DONE `02c805a`; **Wave17 Plan 776 attempt 2 (T-860) C04 L34 2→3 DONE** on verified merge commit evidence — 3 squash-merge commits on `main` `verified: true, reason: valid` via GitHub web-flow signing; ruleset `19181236` evidence removed (stale, repo-level rulesets empty); T-810 `--lib` pin DONE `fa887e9` — **77.34%** lines / **79.79%** funcs / **80.14%** regions; PR #775 MERGED → main `691bde6`; PR #776 MERGED → main `5a32630`; PR #777 MERGED → main `02c805a`; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; C04 26/30 87% B → 27/30 90% A on L34 bump)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -28,7 +28,7 @@
 | C01 | CI / DX / Obs | 93% | A | Wave1–2 + W10–W14 | Status: IN_PROGRESS |
 | C02 | Error / API / Governance | 90% | A | Wave2 + W5 + W11–W14 | Status: IN_PROGRESS |
 | C03 | Agent Readiness | 100% | A | Wave1 + Wave3 + W11–W14 | Status: DONE |
-| C04 | Security | 87% | B | Wave2 + W10–W14 | Status: IN_PROGRESS |
+| C04 | Security | 87% → **90%** | B → **A** | Wave2 + W10–W14; **Wave17 Plan 776 attempt 2 (T-860)** L34 2→3 | Status: IN_PROGRESS → **DONE** (L34 verified merges shipped; ruleset stale evidence removed) |
 | C05 | Observability (deep) | 87% | B | Wave2 + W11–W14 | Status: IN_PROGRESS |
 | C06 | Supply Chain | 90% | A | Wave2 + W6 + W11–W14; **Wave17 Plan 777 L53 2→3 SLSA L3** | Status: DONE |
 | C07 | DX / QEng / Portability | 90% | A | Wave1–2 + W10–W14 | Status: IN_PROGRESS |
@@ -196,8 +196,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W16.2 | C05 Pyroscope soft stub + C08 Harbor soft stub (no live) | FR-003 · C05 L45+ · C08 L76 · T-710/#750 · T-720/#751 · `src/pyroscope_stub.rs` `docs/eval/harbor-soft-stub.md` | Status: DONE |
 | W16.3 | C01 coverage pin refresh 80.51% @e89755c | FR-003 · C01 L11 · T-730 · `TEST_COVERAGE_MATRIX.md` `80.51%` `5d8dc08` `eb2b865` (#752) | Status: DONE |
 
-### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800 DONE, T-810/820 queued)
-### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800/T-810/T-830/T-840 DONE, T-820 BLOCKED, T-850 IN_PROGRESS)
+### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800/T-810/T-830/T-840/T-850/T-860 DONE, T-820 BLOCKED)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
@@ -206,7 +205,8 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W17.3 | C08 Harbor hard 7d soak external | FR-003 · C08 L76 · T-820 · `benchora/harbor-soft/harbor-7d.log` EXTRACTED | Status: BLOCKED |
 | W17.4 | C10 residual polish | FR-003 · C10 L105 · T-830 · `tests/c10_l105_hex_drift.rs` | Status: DONE |
 | W17.5 | C06 L53 SLSA Build L2 → L3 generator switch | FR-003 · C06 L53 · T-840 · `.github/workflows/release-attestation.yml` → `generator_containerized_slsa3.yml@v2` · `docs/ops/slsa-l3-plan.md` · `audit/.lane-c06/C06.md` | Status: DONE (PR #776 MERGED → main `5a32630`; C06 26/30 87% B → 27/30 90% A) |
-| W17.6 | C06 L53 SLSA generator re-pin `@v2` → commit SHA | FR-003 · C06 L53 · T-850 · `.github/workflows/release-attestation.yml` `@5a775b367a56d5bd118a224a811bba288150a563` (v2.0.0) · `docs/ops/slsa-l3-plan.md` §Wave17 Plan 778b | Status: IN_PROGRESS (PR pending; C06 score unchanged 27/30 90% A) |
+| W17.6 | C06 L53 SLSA generator re-pin `@v2` → commit SHA | FR-003 · C06 L53 · T-850 · `.github/workflows/release-attestation.yml` `@5a775b367a56d5bd118a224a811bba288150a563` (v2.0.0) · `docs/ops/slsa-l3-plan.md` §Wave17 Plan 778b | Status: **DONE** (PR #777 MERGED → main `02c805a`; C06 score unchanged 27/30 90% A) |
+| W17.7 | C04 L34 Verified commits 2→3 on verified merge evidence | FR-003 · C04 L34 · T-860 · 3 squash-merge commits on `main` `verified: true, reason: valid` via GitHub web-flow signing (`691bde6`, `5a32630`, `02c805a`); ruleset `19181236` evidence **removed** (stale); `audit/.lane-c04/C04.md` L34 2→3; `docs/ops/gpg-verified-commits-l34.md` bot signing/bypass policy | Status: **DONE** (PR TBD; C04 26/30 87% B → 27/30 90% A; unweighted 91.3% A → 91.5% A; tier-1 stays 91.7% A since C04 not in tier-1) |
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.

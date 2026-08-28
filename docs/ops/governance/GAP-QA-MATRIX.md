@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-27 (Wave17 T-810 `--lib` pin DONE `fa887e9` — **77.34%** lines @ `fa887e9`; T-800 DONE `89b8806` + T-810 prep `3520208` + T-810 lift 403ins @ `e298e0f` #771 — 6 tests session+coordination; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; T-830 DONE per T-692)
+**Last sync:** 2026-08-27 (Wave17 Plans #777 + #778b SLSA L3 DONE `02c805a`; Wave17 Plan 776 attempt 2 T-860 C04 L34 2→3 DONE on verified merge commit evidence — 3 squash-merge commits on `main` `verified: true, reason: valid` via GitHub web-flow signing; T-810 `--lib` pin DONE `fa887e9` — **77.34%** lines @ `fa887e9`; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; T-830 DONE per T-692)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 

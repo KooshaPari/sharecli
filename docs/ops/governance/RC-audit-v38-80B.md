@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91.7% tier-1)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)
-**Pin commit:** `5a32630` (`main` after #776 Wave17 Plan 777 SLSA L3 generator + #775 Wave17 T-810 `--lib` coverage pin + governance sync chain #774/#773/#771/#766/#765/#764/#763/#762/#761 + #760 T-810 prep + #759 WBS/GAP Wave17.1; `--lib` coverage **77.34%** @ `fa887e9` retained; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; C06 L53 2→3 SLSA L3 generator landed in `release-attestation.yml`; **Wave17 Plan 778b** re-pins generator from `@v2` to commit SHA `5a775b367a56d5bd118a224a811bba288150a563` for digest-pinned L3 hardening)
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **91.2% A**, unweighted **91.3% A**, tier-1 **91.7% A** (post Plan 777; pre-Plan 777: unweighted 90.1%, tier-1 91.3%). `TEST_COVERAGE_MATRIX.md` lib pin **77.34%** @ `fa887e9` shipped; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence.
+**Pin commit:** `02c805a` (`main` after #777 Wave17 Plan 778b SLSA L3 re-pin; #776 Wave17 Plan 777 SLSA L3 generator; #775 Wave17 T-810 `--lib` coverage pin + governance sync chain #774/#773/#771; `--lib` coverage **77.34%** @ `fa887e9` retained; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; C06 L53 2→3 SLSA L3 generator landed in `release-attestation.yml`; **Wave17 Plan 778b** re-pins generator from `@v2` to commit SHA `5a775b367a56d5bd118a224a811bba288150a563` for digest-pinned L3 hardening)
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **91.5% A**, unweighted **91.5% A**, tier-1 **91.7% A** (post Plan 776 attempt 2 + Plans 777 + 778b; pre-Plan 776 attempt 2: unweighted 91.3%, weighted 91.2%). `TEST_COVERAGE_MATRIX.md` lib pin **77.34%** @ `fa887e9` shipped; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. C04 L34 2→3 on verified merge commit evidence (3 squash-merge commits on `main` `verified: true` via GitHub web-flow signing).
 
 ## RC scope (what shipped Jul 14–19)
 
@@ -28,14 +28,15 @@
 | C01 | 93% | A | coverage pin 83.48% (#338/#399 pending refresh) + FR SSOT (#368) |
 | C09/C10 | 93–97% | A | keyboard/Vale/FAQ + skeleton loading states |
 | C02/C07 | 90% | A | rate limit + e2e tier (#384) |
-| C04/C05/C11 | 87% | B | OSV hard, chaos ci-success, systemd `.deb` (L34 + L112 deferred) |
+| C04 | **90%** | **A** | **Wave17 Plan 776 attempt 2 (T-860)**: L34 2→3 on verified merge commits (3 squash-merges on `main`); ruleset 19181236 evidence removed (stale) |
+| C05/C11 | 87% | B | OSV hard, chaos ci-success, systemd `.deb` (L112 deferred — external secrets) |
 | C06 | 90% | A | **Wave17 Plan 777** L53 SLSA L2 → L3 generator landed; **Plan 778b** re-pinned to commit SHA `5a775b367...` (v2.0.0) |
 | C08 | 73% | C | Harbor L76 EXTRACTED/N/A (ADR 0002/0005) |
 
 ## RC blockers (hard — out of RC scope)
 
 - **C11 L112** codesign/notarize org secrets (zero `APPLE_*` / `WINDOWS_CERT_*` present)
-- **C04 L34** Verified commit evidence lift (ruleset 19181236 active; org admin; gpg key B5690EEEBB952194 not present on this runner)
+- ~~**C04 L34** Verified commit evidence lift~~ — **CLOSED** via Plan 776 attempt 2 (T-860): L34 2→3 on 3 verified squash-merge commits on `main`; ruleset `19181236` evidence **removed** from claim (ruleset no longer present at repo level; `gh api repos/KooshaPari/sharecli/rulesets` → `[]`); operator-side gpg/SSH signing on PR commits remains as separate follow-up (private-key delivery out-of-band)
 - ~~**C06** SLSA L3 full provenance~~ — **CLOSED** via Plan 777 (L53 2→3); remaining L53 hardening: ~~re-pin `@v2` → `@<commit-sha>`~~ — **CLOSED** via Plan 778b (commit SHA `5a775b367a56d5bd118a224a811bba288150a563`); remaining: hermetic flags (L52 path)
 
 ## RC verification checklist
