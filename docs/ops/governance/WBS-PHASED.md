@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-27 (Wave17 T-810 `--lib` pin DONE `fa887e9` — **77.34%** lines / **79.79%** funcs / **80.14%** regions; T-800 DONE `89b8806` + T-810 prep `3520208` + T-810 lift 403ins @ `e298e0f` #771 — 6 tests session+coordination; PR #775 MERGED → main `691bde6`; **T-840 IN_PROGRESS** SLSA L2→L3 generator switch C06 L53 2→3 C06 26/30 87% B → 27/30 90% A; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; unweighted 91.3% A tier-1 91.7% A)
+**Last sync:** 2026-08-27 (Wave17 T-810 `--lib` pin DONE `fa887e9` — **77.34%** lines / **79.79%** funcs / **80.14%** regions; T-800 DONE `89b8806` + T-810 prep `3520208` + T-810 lift 403ins @ `e298e0f` #771 — 6 tests session+coordination; PR #775 MERGED → main `691bde6`; PR #776 MERGED → main `5a32630` (Wave17 Plan 777 SLSA L2→L3 generator switch C06 L53 2→3 C06 26/30 87% B → 27/30 90% A; unweighted 91.3% A tier-1 91.7% A); **T-850 IN_PROGRESS** SLSA generator re-pin `@v2` → commit SHA `5a775b367a56d5bd118a224a811bba288150a563`; workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -197,7 +197,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W16.3 | C01 coverage pin refresh 80.51% @e89755c | FR-003 · C01 L11 · T-730 · `TEST_COVERAGE_MATRIX.md` `80.51%` `5d8dc08` `eb2b865` (#752) | Status: DONE |
 
 ### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800 DONE, T-810/820 queued)
-### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800/T-810/T-830 DONE, T-820 BLOCKED, T-840 IN_PROGRESS)
+### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800/T-810/T-830/T-840 DONE, T-820 BLOCKED, T-850 IN_PROGRESS)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
@@ -205,7 +205,8 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W17.2 | C01 coverage lift toward 85% (nextest) — `--lib` pin DONE | FR-003 · C01 L11 · T-810 · `TEST_COVERAGE_MATRIX.md` lib pin **77.34%** @ `fa887e9` (local `local-lib-20260827`); workspace-broad pin **80.51%** @ `5d8dc08` retained as historical evidence; `tests/session_cov.rs` + `tests/coordination_cov.rs` | Status: DONE (lib pin shipped; workspace-broad remeasure blocked on Windows by `tests/fr008_coalesce_mesh` operator-env critical-timeout hang + `tests/fr009_*` FUSE cfg-gate regressions) |
 | W17.3 | C08 Harbor hard 7d soak external | FR-003 · C08 L76 · T-820 · `benchora/harbor-soft/harbor-7d.log` EXTRACTED | Status: BLOCKED |
 | W17.4 | C10 residual polish | FR-003 · C10 L105 · T-830 · `tests/c10_l105_hex_drift.rs` | Status: DONE |
-| W17.5 | C06 L53 SLSA Build L2 → L3 generator switch | FR-003 · C06 L53 · T-840 · `.github/workflows/release-attestation.yml` → `generator_containerized_slsa3.yml@v2` · `docs/ops/slsa-l3-plan.md` · `audit/.lane-c06/C06.md` | Status: IN_PROGRESS (workflow + governance sync ready; PR pending) |
+| W17.5 | C06 L53 SLSA Build L2 → L3 generator switch | FR-003 · C06 L53 · T-840 · `.github/workflows/release-attestation.yml` → `generator_containerized_slsa3.yml@v2` · `docs/ops/slsa-l3-plan.md` · `audit/.lane-c06/C06.md` | Status: DONE (PR #776 MERGED → main `5a32630`; C06 26/30 87% B → 27/30 90% A) |
+| W17.6 | C06 L53 SLSA generator re-pin `@v2` → commit SHA | FR-003 · C06 L53 · T-850 · `.github/workflows/release-attestation.yml` `@5a775b367a56d5bd118a224a811bba288150a563` (v2.0.0) · `docs/ops/slsa-l3-plan.md` §Wave17 Plan 778b | Status: IN_PROGRESS (PR pending; C06 score unchanged 27/30 90% A) |
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.
