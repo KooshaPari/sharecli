@@ -4,7 +4,7 @@
 **Date:** 2026-08-27
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `02c805a` (Wave17 Plan 778b SLSA L3 re-pin DONE; post #777 governance sync + #776 SLSA L3 generator + #775 `--lib` pin; lib **77.34%** @ `fa887e9` local run `local-lib-20260827`; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence)
+**Commit audited:** `5ae9ec2` (Wave17 Plan 782 (T-870, C05 L49) DONE; post #781 governance sync + #780 C04 L34 verified-merge evidence + #778b SLSA L3 re-pin + #777 SLSA L3 generator + #776 + #775 `--lib` pin; lib **77.34%** @ `fa887e9` local run `local-lib-20260827`; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence). **Plan 793 (T-880, C11 L111) follow-up** on top: `src/commands/upgrade.rs` soft probe ships.
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
@@ -25,18 +25,19 @@
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 42/45 | 93% | A | live VO/NVDA soft; L81.9 undo; L81.15 CTA tokens |
 | C10 | Visual Identity | L96–L107 | 35/36 | 97% | A | visual provenance ledger; PNG regen after hex lock; light-theme dashboard matrix |
-| C11 | Packaging + Distribution | L108–L122 | 39/45 | 87% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
+| C11 | Packaging + Distribution | L108–L122 | 40/45 | 89% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
 ## Overall
 
-**Weighted overall score:** 91.8% · **Overall grade:** A
+**Weighted overall score:** 92.0% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+90+90+90+90+73+93+97+87)/12 = 1090/12 ≈ **90.8% A**.)
+(Unweighted mean of cluster pcts: (97+93+90+100+90+90+90+90+73+93+97+89)/12 = 1092/12 = **91.0% A**.)
 
-(Tier-1 double-weight (C00–C03): (97+93+90+100)×2 + (90+90+90+90+73+93+97+87) = 760 + 710 = 1470 / 16 = **91.9% (A).**)
+(Tier-1 double-weight (C00–C03): (97+93+90+100)×2 + (90+90+90+90+73+93+97+89) = 760 + 712 = 1472 / 16 = **92.0% (A).**)
 
 (Post Plans 776 attempt 2 (T-860, C04 L34 2→3): unweighted mean unchanged from C04, but C04 87%→90%; tier-1 double-weight unchanged because C04 not in tier-1. Overall weighted **91.2% A → 91.5% A**.)
 (Post Plan 782 (T-870, C05 L49 2→3): unweighted C05 87%→90%, sum +3 from prior cluster totals; weighted overall **91.5% A → 91.8% A**; tier-1 unchanged at **91.9% A** (C05 not in tier-1).)
+(Post Plan 793 (T-880, C11 L111 1→2): unweighted C11 87%→89%, sum +2 (1090→1092); weighted overall **91.8% A → 92.0% A**; tier-1 sum 1470→1472 / 16 = **92.0% A** (C11 not in tier-1).)
 
 ## Headline Findings
 
@@ -48,6 +49,7 @@
 - **Wave17 Plan 778b:** C06 L53 SLSA generator re-pinned from mutable tag `@v2` → immutable commit SHA `5a775b367a56d5bd118a224a811bba288150a563` (v2.0.0). Closes the last remaining L53 hardening item; C06 score unchanged at 27/30 90% A. PR #777 MERGED → main `02c805a`.
 - **Wave17 Plan 776 attempt 2 (T-860):** C04 L34 **Verified commits** 2 → 3 — verified badge evidence on `main` from 3 squash-merge commits (`691bde6`, `5a32630`, `02c805a`), each `verified: true, reason: valid` via GitHub web-flow signing key. Repo-level rulesets are empty (ruleset `19181236` referenced in earlier evidence is **stale / no longer present**; branch protection `required_signatures.enabled: false`; `enforce_admins.enabled: false`); the verified badge is on merge commits produced by `gh pr merge --admin --squash`, not on individual PR commits. C04 **26/30 87% B → 27/30 90% A**. Overall unweighted **91.3% A → 91.5% A** (C04 cluster pct 87→90; sum 1095→1098, mean /12); tier-1 (C00–C03 double-weighted) unchanged at **91.7% A** (C04 not in tier-1). PR TBD.
 - **Wave17 Plan 782 (T-870):** C05 L49 **Dashboard coverage** 2 → 3 — provisioning-as-code under `docs/ops/grafana/provisioning/` (Prometheus datasource + dashboard provider + C05 audit manifest) + 3 dashboard JSONs (move + 2 new) + README runbook. C05 **26/30 87% B → 27/30 90% A**. Overall weighted **91.5% A → 91.8% A**; unweighted (sum 1098→1101, mean /12) **91.5% → 91.75%**; tier-1 **91.9% A** (C05 not in tier-1; double-weight stays consistent). Lane-level provisioned (`sharecli` folder); org-wide folder promotion deferred per `docs/ops/grafana/deferred/org-wide-promotion.md`.
+- **Wave17 Plan 793 (T-880):** C11 L111 **Auto-Update** 1 → 2 — soft probe ships in main: `src/commands/upgrade.rs` exposes `UpgradeChannel` (crates-io / cargo-binstall / homebrew / github-releases), `probe()`, `check()` CLI handler; `src/main.rs` wires `Commands::Upgrade { check, channel }` clap subcommand (no install path; soft contract); 6 FR-003 tests pass via `tests/c11_l111_soft_upgrade.rs`. **NO** network egress. Hard signed self-update / Sparkle / WinUI appcast remain deferred to L112 + TUF pipeline (`docs/ops/in-binary-updater.md`). C11 **39/45 87% B → 40/45 89% B**. Overall weighted **91.8% A → 92.0% A**; unweighted sum 1090→1092 / 12 = **91.0% A**; tier-1 sum 1470→1472 / 16 = **92.0% A**.
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** C11 L112 codesign/notarize secrets (zero repo secrets confirmed); hermetic `--offline`/`vendor/` (C06 L52 path); C10 dashboard hex drift; org 2FA enforcement.

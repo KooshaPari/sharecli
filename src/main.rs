@@ -472,6 +472,21 @@ enum Commands {
         #[arg(long)]
         dry_run: bool,
     },
+
+    /// Soft auto-update probe (C11 L111) — report current vs latest
+    /// advertised version without performing any install. Operators MUST
+    /// execute the printed `install_hint` themselves (e.g.
+    /// `cargo install sharecli --force`). Hard signed updates are
+    /// blocked on L112 secrets.
+    Upgrade {
+        /// Only report; never install. Always true (no `--apply` flag yet).
+        #[arg(long, default_value_t = true)]
+        check: bool,
+
+        /// Channel to advertise (crates-io | binstall | brew | gh-releases)
+        #[arg(long, default_value = "crates-io")]
+        channel: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -1037,6 +1052,9 @@ async fn run() -> Result<()> {
                 _ => OnConflict::Abort,
             };
             serve_run(bind, policy).await?
+        }
+        Commands::Upgrade { check: _, channel } => {
+            commands::upgrade::check(Some(channel.as_str()))?;
         }
         Commands::Thermal { cap } => {
             let gov = sharecli_fleet::thermal::ThermalGovernor::new();
