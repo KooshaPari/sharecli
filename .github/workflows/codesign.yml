@@ -30,6 +30,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Validate Apple secrets
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PWD: ${{ secrets.APPLE_CERTIFICATE_PWD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          missing=()
+          [[ -z "$APPLE_CERTIFICATE" ]] && missing+=("APPLE_CERTIFICATE")
+          [[ -z "$APPLE_CERTIFICATE_PWD" ]] && missing+=("APPLE_CERTIFICATE_PWD")
+          [[ -z "$APPLE_ID" ]] && missing+=("APPLE_ID")
+          [[ -z "$APPLE_TEAM_ID" ]] && missing+=("APPLE_TEAM_ID")
+          [[ -z "$APPLE_APP_PASSWORD" ]] && missing+=("APPLE_APP_PASSWORD")
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "::error::Missing Apple signing secrets: ${missing[*]}"
+            echo "See docs/ops/governance/APPLE_SECRETS_SETUP.md for setup instructions"
+            exit 1
+          fi
+          echo "All Apple signing secrets configured"
+
       - name: Import Apple certificate
         uses: apple-actions/import-codesign-certs@v3
         with:

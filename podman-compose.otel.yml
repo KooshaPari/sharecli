@@ -1,0 +1,47 @@
+version: '3.8'
+# C05 OTel local collector stack - Podman/WSL edition
+#
+# Brings up a local OpenTelemetry Collector + Jaeger using Podman
+# so developers can validate OTLP export without shipping spans to
+# a remote endpoint.
+#
+# Usage (Podman):
+#   podman-compose -f podman-compose.otel.yml up -d
+#
+# Usage (WSL + Podman):
+#   wsl podman-compose -f podman-compose.otel.yml up -d
+#
+# Then point sharecli at the collector:
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 cargo run serve
+#
+# Ports:
+#   4317  - OTLP gRPC receiver  (for gRPC-based OTel SDKs)
+#   4318  - OTLP HTTP receiver  (sharecli default - opentelemetry-otlp HTTP)
+#   8888  - Prometheus scrape endpoint (collector self-metrics)
+#   16686 - Jaeger UI
+#   14268 - Jaeger collector HTTP (for agent -> collector push)
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: sharecli-otel-collector
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Prometheus metrics
+      - "16686:16686" # Jaeger UI (forwarded through collector)
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      - jaeger
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: sharecli-jaeger
+    ports:
+      - "14268:14268" # Jaeger collector HTTP
+      - "16686:16686" # Jaeger UI
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped

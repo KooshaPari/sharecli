@@ -39,14 +39,28 @@ command -v cosign >/dev/null 2>&1 || {
   echo "::error::cosign not installed"
   exit 1
 }
-command -v docker >/dev/null 2>&1 || {
-  echo "::error::docker CLI required for hard container cosign"
+CONTAINER_ENGINE=""
+if command -v podman >/dev/null 2>&1; then
+  CONTAINER_ENGINE="podman"
+elif command -v docker >/dev/null 2>&1; then
+  CONTAINER_ENGINE="docker"
+else
+  echo "::error::Neither podman nor docker CLI found — hard container cosign requires a container engine"
   exit 1
-}
-docker info >/dev/null 2>&1 || {
-  echo "::error::docker daemon required for hard container cosign"
-  exit 1
-}
+fi
+echo "Using container engine: ${CONTAINER_ENGINE}"
+
+if [[ "${CONTAINER_ENGINE}" == "podman" ]]; then
+  podman info >/dev/null 2>&1 || {
+    echo "::error::podman daemon/machine required for hard container cosign"
+    exit 1
+  }
+else
+  docker info >/dev/null 2>&1 || {
+    echo "::error::docker daemon required for hard container cosign"
+    exit 1
+  }
+fi
 
 cosign version
 
@@ -72,10 +86,10 @@ fi
 REPO_NAME="${GHCR_IMAGE%%:*}"
 
 echo "Building ${IMAGE_TAG} from Containerfile"
-docker build -f Containerfile -t "${IMAGE_TAG}" .
-docker tag "${IMAGE_TAG}" "${GHCR_IMAGE}"
+${CONTAINER_ENGINE} build -f Containerfile -t "${IMAGE_TAG}" .
+${CONTAINER_ENGINE} tag "${IMAGE_TAG}" "${GHCR_IMAGE}"
 
-IMAGE_ID="$(docker inspect --format='{{.Id}}' "${IMAGE_TAG}")"
+IMAGE_ID=""$(${CONTAINER_ENGINE} inspect --format='{{.Id}}' "${IMAGE_TAG}")"
 printf '%s\n' "${IMAGE_ID}" >sharecli-ci-image-id.txt
 echo "Local image ID: ${IMAGE_ID}"
 echo "Target GHCR ref: ${GHCR_IMAGE}"
@@ -126,24 +140,31 @@ if [[ -z "${GITHUB_TOKEN:-}" ]]; then
 fi
 
 echo "Logging into ghcr.io as ${GITHUB_ACTOR:-github-actions}"
-echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR:-github-actions}" --password-stdin
+echo "${GITHUB_TOKEN}" | ${CONTAINER_ENGINE} login ghcr.io -u "${GITHUB_ACTOR:-github-actions}" --password-stdin
 
 echo "Pushing ${GHCR_IMAGE}"
-docker push "${GHCR_IMAGE}"
+${CONTAINER_ENGINE} push "${GHCR_IMAGE}"
 
 # Prefer digest-based signing (immutable)
-DIGEST_REF="$(docker inspect --format='{{index .RepoDigests 0}}' "${GHCR_IMAGE}" 2>/dev/null || true)"
+DIGEST_REF=""
 DIGEST_SHA=""
-if [[ -n "${DIGEST_REF}" && "${DIGEST_REF}" == *"@"* ]]; then
-  DIGEST_SHA="${DIGEST_REF#*@}"
-else
-  if docker buildx imagetools inspect "${GHCR_IMAGE}" --format '{{.Manifest.Digest}}' >/tmp/ghcr-digest.txt 2>/dev/null; then
-    DIGEST_SHA="$(tr -d '[:space:]"' </tmp/ghcr-digest.txt)"
-    DIGEST_REF="${REPO_NAME}@${DIGEST_SHA}"
+if [[ "${CONTAINER_ENGINE}" == "docker" ]]; then
+  DIGEST_REF="$(${CONTAINER_ENGINE} inspect --format='{{index .RepoDigests 0}}' "${GHCR_IMAGE}" 2>/dev/null || true)"
+  if [[ -n "${DIGEST_REF}" && "${DIGEST_REF}" == *"@"* ]]; then
+    DIGEST_SHA="${DIGEST_REF#*@}"
   else
-    DIGEST_REF="${GHCR_IMAGE}"
-    DIGEST_SHA=""
+    if docker buildx imagetools inspect "${GHCR_IMAGE}" --format '{{.Manifest.Digest}}' >/tmp/ghcr-digest.txt 2>/dev/null; then
+      DIGEST_SHA="$(tr -d '[:space:]"' </tmp/ghcr-digest.txt)"
+      DIGEST_REF="${REPO_NAME}@${DIGEST_SHA}"
+    else
+      DIGEST_REF="${GHCR_IMAGE}"
+      DIGEST_SHA=""
+    fi
   fi
+else
+  # Podman: use image ID as digest reference
+  DIGEST_SHA="${IMAGE_ID}"
+  DIGEST_REF="${GHCR_IMAGE}"
 fi
 printf '%s\n' "${DIGEST_REF}" >"${DIGEST_FILE}"
 echo "Signing subject: ${DIGEST_REF}"
