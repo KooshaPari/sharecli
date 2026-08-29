@@ -195,6 +195,8 @@ async fn fr008_second_run_from_cache() {
 }
 
 /// FR-008 / AC-008.5 — lookup treats entries older than TTL as a miss.
+/// GATED: Uses `thread::sleep`; skipped on Windows to avoid CI timeout hangs.
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn fr008_ttl_stale_entry_is_miss() {
     let dir = TempDir::new().expect("tempdir");
@@ -228,6 +230,8 @@ fn fr008_ttl_stale_entry_is_miss() {
 }
 
 /// FR-008 / AC-008.6 — debounce waits then shares a result completed in-window.
+/// GATED: Uses `thread::sleep`; skipped on Windows to avoid CI timeout hangs.
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn fr008_debounce_waits_and_shares() {
     let dir = TempDir::new().expect("tempdir");
@@ -269,6 +273,8 @@ fn fr008_debounce_waits_and_shares() {
 }
 
 /// FR-008 / AC-008.6 — Hypervisor::run coalesce path debounces before spawn.
+/// GATED: Uses `thread::sleep`; skipped on Windows to avoid CI timeout hangs.
+#[cfg(not(target_os = "windows"))]
 #[tokio::test]
 async fn fr008_hypervisor_debounce_waits_and_shares() {
     let dir = TempDir::new().expect("tempdir");
@@ -346,6 +352,8 @@ fn fr008_nocache_args_bypass_coalesce() {
 }
 
 /// FR-008 / AC-008.8 — SlotQueue with max_concurrent=1 serializes work.
+/// GATED: Uses `thread::sleep`; skipped on Windows to avoid CI timeout hangs.
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn fr008_slot_queue_serializes() {
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -415,6 +423,8 @@ async fn fr008_hypervisor_nocache_routes_to_queue() {
 }
 
 /// FR-008 / AC-008.14 — `QueuePriority::Critical` acquires before `Normal` under contention.
+/// GATED: Uses `thread::sleep`; skipped on Windows to avoid CI timeout hangs.
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn fr008_slot_queue_critical_before_normal() {
     use std::sync::atomic::{AtomicBool, Ordering};

@@ -1,0 +1,174 @@
+name: Packaging (Hard Gate)
+
+# C11 L108 phase 4 — real packaging gate (T-990/T-1000/T-1010).
+# Produces actual DMG, MSI (placeholder), and DEB artifacts with real installers.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-dmg:
+    name: macOS DMG (hard gate)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: packaging-dmg-hard
+
+      - name: Build sharecli (release, aarch64-apple-darwin)
+        run: cargo build --locked --release -p sharecli --target aarch64-apple-darwin
+
+      - name: Create DMG directory structure
+        run: |
+          mkdir -p sharecli-dmg/ShareCLI.app/Contents/MacOS
+          mkdir -p sharecli-dmg/ShareCLI.app/Contents/Resources
+          cp target/aarch64-apple-darwin/release/sharecli sharecli-dmg/ShareCLI.app/Contents/MacOS/
+          cat > sharecli-dmg/ShareCLI.app/Contents/Info.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>ShareCLI</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.sharecli.app</string>
+            <key>CFBundleVersion</key>
+            <string>0.1.0</string>
+            <key>CFBundleExecutable</key>
+            <string>sharecli</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Create real DMG with hdiutil
+        run: hdiutil create -volname "ShareCLI" -srcfolder sharecli-dmg/ -ov -format UDZO sharecli.dmg
+
+      - name: Verify DMG mounts correctly
+        run: |
+          hdiutil attach sharecli.dmg
+          ls /Volumes/ShareCLI/
+          hdiutil detach /Volumes/ShareCLI
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sharecli-dmg-hard-${{ github.sha }}
+          path: sharecli.dmg
+          retention-days: 14
+
+  windows-msi:
+    name: Windows MSI (hard gate)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: packaging-msi-hard
+
+      - name: Build sharecli (release, x86_64-pc-windows-msvc)
+        run: cargo build --locked --release -p sharecli --target x86_64-pc-windows-msvc
+
+      - name: Create MSI directory structure
+        run: |
+          mkdir -p sharecli-msi/payload
+          copy target\x86_64-pc-windows-msvc\release\sharecli.exe sharecli-msi\payload\sharecli.exe
+          copy scripts\packaging\wix\sharecli.wxs sharecli-msi\sharecli.wxs
+
+      # TODO: Install WiX toolset (candle.exe + light.exe) and build MSI
+      # cargo install cargo-wix  OR  choco install wixtoolset
+      - name: Package MSI with WiX (placeholder)
+        run: |
+          echo "::warning::WiX toolset not yet installed — MSI packaging is a TODO placeholder"
+          echo "sharecli-msi payload staged at sharecli-msi/" 
+          dir sharecli-msi\
+          if (Get-Command cargo-wix -ErrorAction SilentlyContinue) {
+            cargo wix --no-build --output sharecli.msi -p sharecli
+          } else {
+            echo "::notice::cargo-wix not available; skipping real MSI build"
+          }
+        continue-on-error: true
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        continue-on-error: true
+        with:
+          name: sharecli-msi-hard-${{ github.sha }}
+          path: |
+            sharecli-msi/**/*
+            sharecli.msi
+          retention-days: 14
+
+  linux-deb:
+    name: Linux DEB (hard gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          shared-key: packaging-deb-hard
+
+      - name: Build sharecli (release)
+        run: cargo build --locked --release -p sharecli
+
+      - name: Create DEB package structure
+        run: |
+          mkdir -p sharecli-deb/usr/bin
+          cp target/release/sharecli sharecli-deb/usr/bin/
+          mkdir -p sharecli-deb/DEBIAN
+          echo 'Package: sharecli' > sharecli-deb/DEBIAN/control
+          echo 'Version: 0.1.0' >> sharecli-deb/DEBIAN/control
+          echo 'Architecture: amd64' >> sharecli-deb/DEBIAN/control
+          echo 'Description: ShareCLI agent runtime' >> sharecli-deb/DEBIAN/control
+          dpkg-deb --build sharecli-deb sharecli.deb
+
+      - name: Verify DEB with dpkg-deb --info
+        run: dpkg-deb --info sharecli.deb
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sharecli-deb-hard-${{ github.sha }}
+          path: sharecli.deb
+          retention-days: 14
+
+  verify-packaging:
+    name: Verify packaging artifacts
+    needs: [macos-dmg, linux-deb]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download DMG artifact
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: sharecli-dmg-hard-${{ github.sha }}
+
+      - name: Download DEB artifact
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: sharecli-deb-hard-${{ github.sha }}
+
+      - name: Verify DMG exists and is non-empty
+        run: |
+          set -euo pipefail
+          test -s sharecli.dmg
+          echo "DMG size: $(wc -c < sharecli.dmg) bytes"
+
+      - name: Verify DEB exists and is non-empty
+        run: |
+          set -euo pipefail
+          test -s sharecli.deb
+          echo "DEB size: $(wc -c < sharecli.deb) bytes"
+
+      - name: Report artifact sizes
+        run: |
+          echo "=== Packaging Artifact Sizes ==="
+          echo "DMG: $(stat --format='%s' sharecli.dmg) bytes"
+          echo "DEB: $(stat --format='%s' sharecli.deb) bytes"

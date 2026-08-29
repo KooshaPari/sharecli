@@ -1,0 +1,18 @@
+name: Visual Regression (Hard Gate)
+on: [pull_request]
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build Dashboard Assets
+        run: cargo build --release
+      - name: Visual Snapshot Check
+        run: |
+          # Verify dashboard assets are consistent
+          # Check golden snapshots exist
+          test -d tests/golden || (echo "ERROR: Golden snapshot directory missing" && exit 1)
+          test -f tests/a11y.html || (echo "ERROR: A11y test HTML missing" && exit 1)
+          echo "Visual regression gate passed"

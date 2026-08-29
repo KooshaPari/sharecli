@@ -1,0 +1,19 @@
+name: DCO Sign-off (Hard Gate)
+on: [pull_request]
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: DCO Sign-off Check
+        run: |
+          # Verify all commits have DCO sign-off
+          COMMITS=$(git log --format='%H %s' origin/${{ github.base_ref }}..HEAD)
+          for sha in $(echo "$COMMITS" | awk '{print $1}'); do
+            MSG=$(git log -1 --format='%B' $sha)
+            if ! echo "$MSG" | grep -q 'Signed-off-by:'; then
+              echo "ERROR: Commit $sha missing DCO sign-off"
+              exit 1
+            fi
+          done
+          echo "All commits have DCO sign-off"

@@ -136,6 +136,49 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 
 ---
 
+## Wave18 Coverage Recovery Plan (ADR-007)
+
+| Phase | Target | Scope | Effort | Tasks | Timeline |
+|-------|--------|-------|--------|-------|----------|
+| Phase 1 | Unblock workspace measurement | `--workspace` >=80% | M | T-910 | Week 1 |
+| Phase 2 | Lift --lib to 80% | `--lib` >=80% | L | T-920 | Week 2-3 |
+| Phase 3 | Lift to 85%+ | `--lib` >=85% | L | T-930 | Week 4 |
+
+### Phase 1: Unblock workspace measurement (T-910)
+
+1. Add `#[cfg(target_os = "linux")]` / `#[cfg(target_os = "macos")]` gate to FUSE-specific test paths in `tests/fr009_*`
+2. Fix `tests/fr008_coalesce_mesh` timeout by wrapping in `tokio::time::timeout`
+3. Add `--workspace` measurement to CI as supplementary (not blocking)
+
+### Phase 2: Lift --lib to 80% (T-920)
+
+| Module | Lines to cover | Test approach |
+|--------|---------------|---------------|
+| `serve_rate_limit.rs` | ~40 | Unit tests for rate limit exhaustion, token bucket refill |
+| `serve_auth.rs` | ~30 | JWT validation edge cases, expired token, malformed header |
+| `config_watcher.rs` | ~50 | Mock filesystem events, debounce timer test |
+| `thermal.rs` | ~25 | Platform-conditional mock thermal readings |
+| `dashboard_assets.rs` | ~20 | Asset MIME type mapping tests |
+| `alloc.rs` | ~15 | jemalloc/dhat feature gate compilation tests |
+| **Total** | **~180 lines** | |
+
+### Phase 3: Lift to 85%+ (T-930)
+
+1. Add integration tests for `serve` endpoints with mock state
+2. Add `fr012_serve_jwt_auth` edge case tests (token rotation, audience mismatch)
+3. Add `fr011_thermal_gate` platform mock tests
+4. Add `fr008_coalesce_mesh` mesh convergence tests with mocked network
+5. Pin final 85%+ snapshot with `meets_lines_target: true`
+
+### Ratchet Mechanism
+
+Once 85% is achieved, the ratchet locks:
+- `quality-gate.yml` `COVERAGE_THRESHOLD: 85` is never decreased
+- Each coverage-lift PR includes `audit/coverage-snapshots/<sha>.coverage-snapshot.json`
+- `COVERAGE_RATCHET: true` prevents lowering the threshold
+
+---
+
 ## Recommendations
 
 ### Immediate Actions
@@ -146,6 +189,11 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ### Short-term Actions
 1. Claim Wave4 packaging (brew sha after `v*` attach) or residual C10 hex drift (T-692).
 
+### Wave18 Actions (NEW)
+1. Claim T-910 to unblock workspace measurement (ADR-007 Phase 1).
+2. Claim T-920 to lift --lib to 80% (ADR-007 Phase 2).
+3. Claim T-930 to reach 85% gate (ADR-007 Phase 3).
+
 ---
 
-**Last Updated**: 2026-08-27 (Wave17 T-810 lib pin @ `fa887e9` — **77.34%**; prior workspace pin **80.51%** @ `5d8dc08` retained)
+**Last Updated**: 2026-08-28 (Wave18 gap remediation; ADR-007 coverage ratchet recovery plan added)

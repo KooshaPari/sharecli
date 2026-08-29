@@ -1,0 +1,20 @@
+name: GPG Signed Commits (Hard Gate)
+on: [pull_request]
+jobs:
+  gpg:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify GPG Signed Commits
+        run: |
+          COMMITS=$(git log --format='%H' origin/${{ github.base_ref }}..HEAD)
+          for sha in $COMMITS; do
+            SIG=$(git log -1 --format='%G?' $sha)
+            if [ "$SIG" = "N" ]; then
+              echo "ERROR: Commit $sha is not GPG signed"
+              exit 1
+            fi
+          done
+          echo "All commits are GPG signed"

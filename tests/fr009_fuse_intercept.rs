@@ -13,6 +13,10 @@
 //! AC-009.10 global write-serialize meters aggregate for status/TUI
 //! AC-009.15 FUSE create via create_rel stamps provenance + invalidates neg/read cache
 //! AC-009.16 privileged mount smoke create/mkdir/unlink/rename (SHARECLI_FUSE_MOUNT_SMOKE=1)
+//!
+//! GATED: Requires FUSE kernel support (Linux/macOS only).
+
+#![cfg(not(target_os = "windows"))]
 
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
