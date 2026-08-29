@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true  # Wave18: hard gate deferred until signing infra ready
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: DCO Sign-off Check
         run: |
           # Verify all commits have DCO sign-off

@@ -26,12 +26,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: false
 
       - name: setup python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -89,7 +89,7 @@ jobs:
           head -40 audit/.flake-tracker/flake-report.json
 
       - name: upload report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flake-report
           path: audit/.flake-tracker/flake-report.json

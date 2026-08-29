@@ -32,7 +32,7 @@ jobs:
     # Pinned to v2.0.0 commit SHA per SLSA L3 hardening requirement
     # (digest-pinned generator). Tag `@v2` is mutable; this SHA is immutable.
     # Resolves via: curl -sL https://api.github.com/repos/slsa-framework/slsa-github-generator/git/refs/tags/v2.0.0 | jq -r .object.sha
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_containerized_slsa3.yml@5a775b367a56d5bd118a224a811bba288150a563 # v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_containerized_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       source-repo: ${{ github.repository_owner }}/${{ github.event.repository.name }}
       build-command: |
