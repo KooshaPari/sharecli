@@ -1081,10 +1081,7 @@ async fn run() -> Result<()> {
                 if entries.is_empty() {
                     eprintln!("No history entries. CLI invocations are recorded automatically.");
                 } else if *json {
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&entries).unwrap_or_default()
-                    );
+                    println!("{}", serde_json::to_string_pretty(&entries).unwrap_or_default());
                 } else {
                     for entry in &entries {
                         println!("{}", commands::history::format_entry(entry));

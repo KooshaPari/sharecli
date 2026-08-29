@@ -31,10 +31,8 @@ fn dashboard_html() -> PathBuf {
 
 #[test]
 fn fr003_history_module_exists() {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("commands")
-        .join("history.rs");
+    let path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src").join("commands").join("history.rs");
     assert!(path.exists(), "history.rs must exist at {}", path.display());
 }
 
@@ -85,31 +83,40 @@ fn fr003_history_recent_limit_works() {
 #[test]
 fn fr003_history_source_has_deserialize_derive() {
     let source = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("commands")
-            .join("history.rs"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src").join("commands").join("history.rs"),
     )
     .expect("read history.rs");
-    assert!(
-        source.contains("Deserialize"),
-        "HistoryEntry must derive Deserialize"
-    );
+    assert!(source.contains("Deserialize"), "HistoryEntry must derive Deserialize");
 }
 
 #[test]
 fn fr003_history_source_defines_append_to() {
     let source = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("commands")
-            .join("history.rs"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src").join("commands").join("history.rs"),
     )
     .expect("read history.rs");
-    assert!(
-        source.contains("pub fn append_to"),
-        "history.rs must define pub fn append_to"
-    );
+    assert!(source.contains("pub fn append_to"), "history.rs must define pub fn append_to");
+}
+
+#[test]
+fn fr003_history_fresh_install_returns_empty() {
+    use sharecli::commands::history::{clear, read_recent};
+
+    let dir = std::env::temp_dir().join("sharecli_hist_fresh_test");
+    let _ = fs::create_dir_all(&dir);
+    let path = dir.join("nonexistent_history.jsonl");
+    // Ensure file does not exist
+    let _ = fs::remove_file(&path);
+
+    // read_recent should return empty vec on missing file (fresh install)
+    let entries = read_recent(&path, 20).unwrap();
+    assert!(entries.is_empty(), "fresh install must return empty history");
+
+    // clear should succeed on missing file (creates parent dirs + empty file)
+    clear(&path).expect("clear must succeed on missing file");
+    assert!(path.exists(), "clear must create the file");
+
+    let _ = fs::remove_dir_all(&dir);
 }
 
 // ---------------------------------------------------------------------------
@@ -119,10 +126,7 @@ fn fr003_history_source_defines_append_to() {
 #[test]
 fn fr003_cta_primary_token_in_css() {
     let css = fs::read_to_string(tokens_css()).expect("read tokens.css");
-    assert!(
-        css.contains("--bb2-cta-primary"),
-        "tokens.css must define --bb2-cta-primary"
-    );
+    assert!(css.contains("--bb2-cta-primary"), "tokens.css must define --bb2-cta-primary");
     assert!(
         css.contains("--bb2-cta-primary-text"),
         "tokens.css must define --bb2-cta-primary-text"
@@ -132,10 +136,7 @@ fn fr003_cta_primary_token_in_css() {
 #[test]
 fn fr003_cta_secondary_token_in_css() {
     let css = fs::read_to_string(tokens_css()).expect("read tokens.css");
-    assert!(
-        css.contains("--bb2-cta-secondary"),
-        "tokens.css must define --bb2-cta-secondary"
-    );
+    assert!(css.contains("--bb2-cta-secondary"), "tokens.css must define --bb2-cta-secondary");
     assert!(
         css.contains("--bb2-cta-secondary-text"),
         "tokens.css must define --bb2-cta-secondary-text"
@@ -170,14 +171,8 @@ fn fr003_cta_primary_matches_pulse_green_in_dark() {
 #[test]
 fn fr003_cta_button_classes_in_dashboard() {
     let html = fs::read_to_string(dashboard_html()).expect("read dashboard.html");
-    assert!(
-        html.contains("cta-primary"),
-        "dashboard.html must define .cta-primary class"
-    );
-    assert!(
-        html.contains("cta-secondary"),
-        "dashboard.html must define .cta-secondary class"
-    );
+    assert!(html.contains("cta-primary"), "dashboard.html must define .cta-primary class");
+    assert!(html.contains("cta-secondary"), "dashboard.html must define .cta-secondary class");
     assert!(
         html.contains("var(--bb2-cta-primary)"),
         ".cta-primary must use var(--bb2-cta-primary)"

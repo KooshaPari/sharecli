@@ -2,13 +2,13 @@
 
 pub mod cast;
 pub mod fuse;
+pub mod history;
 pub mod mesh;
 pub mod proc;
 pub mod report;
 pub mod serve;
 pub mod uninstall;
 pub mod upgrade;
-pub mod history;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;

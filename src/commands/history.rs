@@ -28,16 +28,8 @@ pub struct HistoryEntry {
 impl HistoryEntry {
     /// Create a new entry with the current timestamp.
     pub fn now(command: &str, args: &str, exit_code: i32) -> Self {
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        Self {
-            ts,
-            command: command.to_string(),
-            args: args.to_string(),
-            exit_code,
-        }
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+        Self { ts, command: command.to_string(), args: args.to_string(), exit_code }
     }
 }
 
@@ -46,15 +38,12 @@ impl HistoryEntry {
 /// Uses `$XDG_STATE_HOME/sharecli/history.jsonl` or falls back to
 /// `~/.local/state/sharecli/history.jsonl`.
 pub fn history_path() -> PathBuf {
-    let base = std::env::var("XDG_STATE_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .unwrap_or_else(|_| ".".to_string());
-            PathBuf::from(home).join(".local").join("state")
-        });
+    let base = std::env::var("XDG_STATE_HOME").ok().map(PathBuf::from).unwrap_or_else(|| {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string());
+        PathBuf::from(home).join(".local").join("state")
+    });
     base.join("sharecli").join("history.jsonl")
 }
 
@@ -68,19 +57,20 @@ pub fn append_to(entry: &HistoryEntry, path: &Path) {
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    if let Ok(mut file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-    {
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
         let _ = serde_json::to_writer(&mut file, entry);
         let _ = writeln!(file);
     }
 }
 
 /// Read the last `limit` entries from the history file.
+/// Returns an empty vec if the file does not exist (fresh install).
 pub fn read_recent(path: &Path, limit: usize) -> Result<Vec<HistoryEntry>> {
-    let file = fs::File::open(path).context("open history file")?;
+    let file = match fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
+        Err(e) => return Err(e).context("open history file"),
+    };
     let reader = BufReader::new(file);
     let mut entries: Vec<HistoryEntry> = reader
         .lines()
@@ -96,8 +86,11 @@ pub fn read_recent(path: &Path, limit: usize) -> Result<Vec<HistoryEntry>> {
     Ok(entries)
 }
 
-/// Clear the history file.
+/// Clear the history file (creates parent dirs and empty file if absent).
 pub fn clear(path: &Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
     fs::write(path, "").context("clear history file")?;
     Ok(())
 }
@@ -136,11 +129,8 @@ fn chrono_from_epoch(secs: u64) -> String {
         y += 1;
     }
     let leap = is_leap(y);
-    let month_days: [u64; 12] = [
-        31,
-        if leap { 29 } else { 28 },
-        31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
-    ];
+    let month_days: [u64; 12] =
+        [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     let mut m_idx = 0u64;
     for (i, &md) in month_days.iter().enumerate() {
         if remaining < md {
