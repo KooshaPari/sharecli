@@ -17,14 +17,19 @@ impl Backoff {
         Self { strategy, base, max }
     }
     pub fn delay_for(&self, attempt: u32) -> Duration {
-        let ms = match self.strategy {
-            BackoffStrategy::Fixed => self.base.as_millis() as u64,
-            BackoffStrategy::Linear => self.base.as_millis() as u64 * (attempt as u64 + 1),
-            BackoffStrategy::Exponential => {
-                self.base.as_millis() as u64 * 2u64.saturating_pow(attempt).min(u64::MAX / 2)
-            }
+        // Use u128 to prevent overflow at extreme attempts. FR-003 / C02 L26
+        // acceptance: any attempt MUST clamp to max. Linear at attempt=u32::MAX
+        // and Exponential at attempt=63 both overflowed u64 in the previous
+        // implementation, breaking the clamp.
+        let base = self.base.as_millis() as u128;
+        let max = self.max.as_millis() as u128;
+        let raw = match self.strategy {
+            BackoffStrategy::Fixed => base,
+            BackoffStrategy::Linear => base.saturating_mul(attempt as u128 + 1),
+            BackoffStrategy::Exponential => base.saturating_mul(2u128.saturating_pow(attempt)),
         };
-        Duration::from_millis(ms.min(self.max.as_millis() as u64))
+        let capped = raw.min(max) as u64;
+        Duration::from_millis(capped)
     }
     pub fn strategy(&self) -> BackoffStrategy {
         self.strategy
