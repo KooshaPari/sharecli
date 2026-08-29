@@ -16,7 +16,7 @@
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 29/30 | 97% | A | crate-split Phases 2–4; L0 ADR; L5 OTel hot paths |
 | C01 | CI, DX, Observability | L10–L19 | 28/30 | 93% | A | fluent catalogs deferred; advisory hard-fail; anyhow→SharecliError migration |
-| C02 | Error handling, API, Governance | L20–L29 | 27/30 | 90% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
+| C02 | Error handling, API, Governance | L20–L29 | 28/30 | 93% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 27/30 | 90% | A | org 2FA enforce; artifact cosign releases; L34 verified merges via GitHub web-flow (no ruleset) |
 | C05 | Observability (deep) | L41–L50 | 27/30 | 90% | A | live PD roster; Pyroscope push agent; branch protection chaos check |
@@ -29,16 +29,16 @@
 
 ## Overall
 
-**Weighted overall score:** 92.0% · **Overall grade:** A
+**Weighted overall score:** 92.3% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (97+93+90+100+90+90+90+90+73+93+97+89)/12 = 1092/12 = **91.0% A**.)
+(Unweighted mean of cluster pcts: (97+93+93+100+90+90+90+90+73+93+97+89)/12 = 1095/12 = **91.25% A**.)
 
-(Tier-1 double-weight (C00–C03): (97+93+90+100)×2 + (90+90+90+90+73+93+97+89) = 760 + 712 = 1472 / 16 = **92.0% (A).**)
+(Tier-1 double-weight (C00–C03): (97+93+93+100)×2 + (90+90+90+90+73+93+97+89) = 766 + 712 = 1478 / 16 = **92.4% (A)**.)
 
 (Post Plans 776 attempt 2 (T-860, C04 L34 2→3): unweighted mean unchanged from C04, but C04 87%→90%; tier-1 double-weight unchanged because C04 not in tier-1. Overall weighted **91.2% A → 91.5% A**.)
 (Post Plan 782 (T-870, C05 L49 2→3): unweighted C05 87%→90%, sum +3 from prior cluster totals; weighted overall **91.5% A → 91.8% A**; tier-1 unchanged at **91.9% A** (C05 not in tier-1).)
 (Post Plan 793 (T-880, C11 L111 1→2): unweighted C11 87%→89%, sum +2 (1090→1092); weighted overall **91.8% A → 92.0% A**; tier-1 sum 1470→1472 / 16 = **92.0% A** (C11 not in tier-1).)
-
+(Post Plan 794 (T-890, C02 L26 2→3): unweighted C02 90%→93%, sum +3 (1092→1095); weighted overall **92.0% A → 92.3% A**; tier-1 sum 1472→1478 / 16 = **92.4% A** (C02 IS in tier-1; double-weight applies).)
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C10 **97% A**; C01/C09 **93% A**.
@@ -50,12 +50,13 @@
 - **Wave17 Plan 776 attempt 2 (T-860):** C04 L34 **Verified commits** 2 → 3 — verified badge evidence on `main` from 3 squash-merge commits (`691bde6`, `5a32630`, `02c805a`), each `verified: true, reason: valid` via GitHub web-flow signing key. Repo-level rulesets are empty (ruleset `19181236` referenced in earlier evidence is **stale / no longer present**; branch protection `required_signatures.enabled: false`; `enforce_admins.enabled: false`); the verified badge is on merge commits produced by `gh pr merge --admin --squash`, not on individual PR commits. C04 **26/30 87% B → 27/30 90% A**. Overall unweighted **91.3% A → 91.5% A** (C04 cluster pct 87→90; sum 1095→1098, mean /12); tier-1 (C00–C03 double-weighted) unchanged at **91.7% A** (C04 not in tier-1). PR TBD.
 - **Wave17 Plan 782 (T-870):** C05 L49 **Dashboard coverage** 2 → 3 — provisioning-as-code under `docs/ops/grafana/provisioning/` (Prometheus datasource + dashboard provider + C05 audit manifest) + 3 dashboard JSONs (move + 2 new) + README runbook. C05 **26/30 87% B → 27/30 90% A**. Overall weighted **91.5% A → 91.8% A**; unweighted (sum 1098→1101, mean /12) **91.5% → 91.75%**; tier-1 **91.9% A** (C05 not in tier-1; double-weight stays consistent). Lane-level provisioned (`sharecli` folder); org-wide folder promotion deferred per `docs/ops/grafana/deferred/org-wide-promotion.md`.
 - **Wave17 Plan 793 (T-880) — DONE post #782 merge:** C11 L111 **Auto-Update** 1 → 2 — soft probe ships in main: `src/commands/upgrade.rs` exposes `UpgradeChannel` (crates-io / cargo-binstall / homebrew / github-releases), `probe()`, `check()` CLI handler; `src/main.rs` wires `Commands::Upgrade { check, channel }` clap subcommand (no install path; soft contract); 6 FR-003 tests pass via `tests/c11_l111_soft_upgrade.rs`. **NO** network egress. Hard signed self-update / Sparkle / WinUI appcast remain deferred to L112 + TUF pipeline (`docs/ops/in-binary-updater.md`). C11 **39/45 87% B → 40/45 89% B**. Final Wave17 weighted **92.0% A**; unweighted sum 1092 / 12 = **91.0% A**; tier-1 sum 1472 / 16 = **92.0% A**. PR #782 MERGED → main `76e8f21`.
+- **Wave17 Plan 794 (T-890):** C02 L26 **Resilience** 2 → 3 — overflow fix + FR-003 acceptance gates. Tests `tests/c02_l26_resilience.rs` (10 tests) revealed two real u64-overflow bugs in `src/retry.rs:compute_delay` and `src/backoff.rs:Backoff::delay_for`: at `attempt=63` (Exponential) and `attempt=u32::MAX` (Linear) the multiplication overflowed, breaking the max-delay clamp. Fix: widen intermediate computation to `u128`, `saturating_mul`, then clamp to u64 before `Duration::from_millis`. New gates cover: retry policy defaults; strict inequality at max_attempts; exponential doubling; max-delay clamp at saturation (overflow safety); `retry_until_success` records actual attempt count; Fixed/Linear/Exponential distinct + monotonic + exponential outpaces linear; bulkhead (SpawnPolicy semaphore); `/healthz` vs `/readyz` distinct routes; thermal gate retry path. **All 21 resilience tests green** (10 new + 6 retry + 5 backoff). C02 **27/30 90% A → 28/30 93% A**. C02 is in tier-1, so weighted moves **92.0% A → 92.3% A**; unweighted sum 1092→1095 / 12 = **91.25% A**; tier-1 sum 1472→1478 / 16 = **92.4% A**. PR #784.
 - **Wave14:** C06 netblock hard gate; C07 dev seed verify; C11 systemd in `.deb`.
 - **W5.2:** audit JSONL size rotation + AuthN burn metric/alert (`sharecli_http_unauthorized_total`).
 - **Highest-leverage remaining:** C11 L112 codesign/notarize secrets (zero repo secrets confirmed); hermetic `--offline`/`vendor/` (C06 L52 path); C10 dashboard hex drift; org 2FA enforcement.
 - **Thesis restore:** Harbor soft surface extracted to `phenotype-tooling/crates/benchora/harbor-soft`; Harbor env pins to `portage-temp`. C08 Harbor soak is **not** a sharecli A+ product blocker (ADR 0002).
 - **C08 L76 N/A correction (2026-07-19):** Harbor/agent-eval is seeded N/A per ADR 0002/0005 (score **1**, not a product gap); C08 **24/30 80% B → 22/30 73% C**.
-- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **91.7% A** / tier-1 **92.0% A** at `02c805a` (post Plans 777 + 778b + 776 attempt 2; WBS Last sync 2026-08-27 W17.2 DONE `--lib` pin **77.34%**; workspace pin **80.51%** @ `5d8dc08` retained; C06 26/30 87% B → 27/30 90% A; SLSA generator re-pinned to commit SHA `5a775b367...`; C04 26/30 87% B → 27/30 90% A on verified-merge evidence). Plan 782 (T-870) governance sync follows: WBS W17.8 row added Status: DONE @ `8f1990d`; C05 26/30 87% B → 27/30 90% A.
+- **Governance:** `docs/ops/governance/WBS-PHASED.md` + `GAP-QA-MATRIX.md` + `WORK_DAG.md` — unweighted **91.25% A** / tier-1 **92.4% A** at Plan 794 pin (post Plans 777 + 778b + 776 attempt 2 + 782 + 793 + 794; WBS Last sync 2026-08-28 W17.x sync; C06 26/30 87% B → 27/30 90% A; SLSA generator re-pinned to commit SHA `5a775b367...`; C04 26/30 87% B → 27/30 90% A on verified-merge evidence; C05 26/30 87% B → 27/30 90% A on Grafana provisioning; C11 39/45 87% B → 40/45 89% B on soft auto-update probe; C02 27/30 90% A → 28/30 93% A on resilience overflow fix + FR-003 gates).
 - **Packaging (C11):** unsigned `.deb` CI (L108 2→3); deploy matrix proven (L116); README badges (L120); `sharecli uninstall` (L121 evidence); Win tray mutex/manifest (L110).
 
 ## Supersedes

@@ -24,8 +24,15 @@ pub fn should_retry(attempt: u32, policy: &RetryPolicy) -> bool {
 }
 
 pub fn compute_delay(attempt: u32, policy: &RetryPolicy) -> Duration {
-    let ms = policy.base_delay.as_millis() as u64 * 2u64.saturating_pow(attempt);
-    Duration::from_millis(ms.min(policy.max_delay.as_millis() as u64))
+    // Use u128 to prevent overflow at extreme attempts: 2u64.saturating_pow(63)
+    // saturates to u64::MAX but multiplying by base_delay.as_millis() then
+    // overflows back to a small value, breaking the max-delay clamp. FR-003
+    // / C02 L26 acceptance: any attempt MUST clamp to max_delay.
+    let base = policy.base_delay.as_millis() as u128;
+    let pow = 2u128.saturating_pow(attempt);
+    let multiplied = base.saturating_mul(pow);
+    let capped = multiplied.min(policy.max_delay.as_millis() as u128) as u64;
+    Duration::from_millis(capped)
 }
 
 pub fn retry_until_success<F: FnMut() -> bool>(policy: RetryPolicy, mut f: F) -> RetryOutcome {

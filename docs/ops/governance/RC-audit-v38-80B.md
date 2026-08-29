@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91.9% tier-1)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)
-**Pin commit:** `5ae9ec2` (`main` after #781 Wave17 Plan 782 + #780 Wave17 Plan 776 attempt 2 + #777 Wave17 Plan 778b SLSA L3 re-pin + #776 Wave17 Plan 777 SLSA L3 generator + #775 Wave17 T-810 `--lib` coverage pin; governance sync chain #774/#773/#771; **Plan 793 (T-880, C11 L111) follow-up** with `src/commands/upgrade.rs` soft upgrade probe)
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **92.0% A**, unweighted **91.0% A** (sum 1092 / 12), tier-1 **92.0% A** (post Plans 776 attempt 2 + 777 + 778b + 782 + 793; pre-Plan 776 attempt 2: unweighted 91.3%, weighted 91.2%; pre-Plan 793: unweighted 91.75%, weighted 91.8%, tier-1 91.9%). `TEST_COVERAGE_MATRIX.md` lib pin **77.34%** @ `fa887e9` shipped; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. C04 L34 2→3 on verified merge commit evidence (3 squash-merge commits on `main` `verified: true` via GitHub web-flow signing). C05 L49 2→3 on Grafana provisioning as code (Plan 782). C06 L53 2→3 SLSA L3 generator landed in `release-attestation.yml`; **Wave17 Plan 778b** re-pins generator from `@v2` to commit SHA `5a775b367a56d5bd118a224a811bba288150a563` for digest-pinned L3 hardening. **C11 L111 1→2** on soft upgrade probe (Plan 793, no install path, no network egress).
+**Pin commit:** `b2997fa` (`main` after #783 governance lock post #782 Wave17 Plan 793 + #781 Wave17 Plan 782 + #780 Wave17 Plan 776 attempt 2 + #777 Wave17 Plan 778b SLSA L3 re-pin + #776 Wave17 Plan 777 SLSA L3 generator + #775 Wave17 T-810 `--lib` coverage pin; **Plan 794 (T-890, C02 L26) follow-up** with `tests/c02_l26_resilience.rs` 10 FR-003 acceptance gates + `src/retry.rs` + `src/backoff.rs` u128 overflow fix)
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **92.3% A**, unweighted **91.25% A** (sum 1095 / 12), tier-1 **92.4% A** (post Plans 776 attempt 2 + 777 + 778b + 782 + 793 + **794**; pre-Plan 776 attempt 2: unweighted 91.3%, weighted 91.2%; pre-Plan 793: unweighted 91.75%, weighted 91.8%, tier-1 91.9%; pre-Plan 794: weighted 92.0%, unweighted 91.0%, tier-1 92.0%). `TEST_COVERAGE_MATRIX.md` lib pin **77.34%** @ `fa887e9` shipped; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. C04 L34 2→3 on verified merge commit evidence (3 squash-merge commits on `main` `verified: true` via GitHub web-flow signing). C05 L49 2→3 on Grafana provisioning as code (Plan 782). C06 L53 2→3 SLSA L3 generator landed in `release-attestation.yml`; **Wave17 Plan 778b** re-pins generator from `@v2` to commit SHA `5a775b367a56d5bd118a224a811bba288150a563` for digest-pinned L3 hardening. **C11 L111 1→2** on soft upgrade probe (Plan 793, no install path, no network egress). **C02 L26 2→3** on resilience overflow fix + FR-003 acceptance gates (Plan 794, fixed real u64-overflow at saturation; C02 cluster now 28/30 93% A; tier-1 C02 contributes to weighted bump).
 
 ## RC scope (what shipped Jul 14–19)
 
@@ -27,7 +27,7 @@
 | C00 | 97% | A | L4/L6 async shutdown + perf budgets (#373) |
 | C01 | 93% | A | coverage pin 83.48% (#338/#399 pending refresh) + FR SSOT (#368) |
 | C09/C10 | 93–97% | A | keyboard/Vale/FAQ + skeleton loading states |
-| C02/C07 | 90% | A | rate limit + e2e tier (#384) |
+| C02/C07 | 90% → **93%** | **A** | rate limit + e2e tier (#384); **Wave17 Plan 794 (T-890)**: L26 2→3 on overflow fix + FR-003 acceptance gates |
 | C04 | **90%** | **A** | **Wave17 Plan 776 attempt 2 (T-860)**: L34 2→3 on verified merge commits (3 squash-merges on `main`); ruleset 19181236 evidence removed (stale) |
 | C05 | **90%** | **A** | **Wave17 Plan 782 (T-870)**: L49 2→3 — Grafana provisioning as code (1 datasource + 1 provider + 3 dashboards + 1 audit manifest). C05 was 87% B pre-Plan 782; now 90% A. |
 | C11 | **89%** | **B** | **Wave17 Plan 793 (T-880)**: L111 1→2 — soft auto-update probe (`src/commands/upgrade.rs` + `Commands::Upgrade` + 6 FR-003 tests, no network egress, no install path). C11 was 87% B pre-Plan 793; now 89% B. L112 codesign/notarize still Blocked on org secrets. |
@@ -40,6 +40,7 @@
 - ~~**C05 L49** Dashboard coverage provisioning~~ — **CLOSED** via Plan 782 (T-870): L49 2→3 on Grafana provisioning as code (1 Prometheus datasource + 1 dashboard provider + 3 dashboards + 1 audit manifest + README runbook). C05 26/30 87% B → 27/30 90% A. Lane-level provisioned (`sharecli` folder); org-wide folder promotion deferred (out of repo scope).
 - ~~**C04 L34** Verified commit evidence lift~~ — **CLOSED** via Plan 776 attempt 2 (T-860): L34 2→3 on 3 verified squash-merge commits on `main`; ruleset `19181236` evidence **removed** from claim (ruleset no longer present at repo level; `gh api repos/KooshaPari/sharecli/rulesets` → `[]`); operator-side gpg/SSH signing on PR commits remains as separate follow-up (private-key delivery out-of-band)
 - ~~**C06** SLSA L3 full provenance~~ — **CLOSED** via Plan 777 (L53 2→3); remaining L53 hardening: ~~re-pin `@v2` → `@<commit-sha>`~~ — **CLOSED** via Plan 778b (commit SHA `5a775b367a56d5bd118a224a811bba288150a563`); remaining: hermetic flags (L52 path)
+- ~~**C02 L26** Resilience FR-003 acceptance gates~~ — **CLOSED** via Plan 794 (T-890): L26 2→3 on overflow fix + FR-003 acceptance gates (`tests/c02_l26_resilience.rs` 10/10 pass + `src/retry.rs` u128 saturating_mul + `src/backoff.rs` u128 saturating_mul; saturation overflow at extreme attempts now clamps correctly). C02 27/30 90% A → 28/30 93% A.
 
 ## RC verification checklist
 
