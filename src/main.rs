@@ -472,70 +472,6 @@ enum Commands {
         #[arg(long)]
         dry_run: bool,
     },
-
-    /// Soft auto-update probe (C11 L111) — report current vs latest
-    /// advertised version without performing any install. Operators MUST
-    /// execute the printed `install_hint` themselves (e.g.
-    /// `cargo install sharecli --force`). Hard signed updates are
-    /// blocked on L112 secrets.
-    Upgrade {
-        /// Only report; never install. Always true (no `--apply` flag yet).
-        #[arg(long, default_value_t = true)]
-        check: bool,
-
-        /// Channel to advertise (crates-io | binstall | brew | gh-releases)
-        #[arg(long, default_value = "crates-io")]
-        channel: String,
-    },
-
-    /// Show recent CLI invocation history (C09 L81.12)
-    History {
-        /// Maximum number of entries to display
-        #[arg(long, default_value_t = 20)]
-        limit: usize,
-
-        /// Output as machine-readable JSON
-        #[arg(long)]
-        json: bool,
-
-        /// Clear all history entries
-        #[arg(long)]
-        clear: bool,
-    },
-    /// Harbor soak harness — long-running CLI stability evaluation
-    Soak {
-        /// Subcommand: run (default) or report
-        #[command(subcommand)]
-        cmd: SoakCmd,
-    },
-}
-
-#[derive(Subcommand, Debug)]
-enum SoakCmd {
-    /// Run the soak harness (executes scenarios repeatedly)
-    Run {
-        /// Total duration in seconds (overrides config)
-        #[arg(short, long)]
-        duration: Option<u64>,
-
-        /// Interval between scenario runs in seconds (overrides config)
-        #[arg(short, long)]
-        interval: Option<u64>,
-
-        /// Path to soak.yaml config
-        #[arg(short, long, default_value = "soak.yaml")]
-        config: std::path::PathBuf,
-
-        /// Output path for the JSON report
-        #[arg(short, long)]
-        output: Option<std::path::PathBuf>,
-    },
-    /// Display an existing soak report
-    Report {
-        /// Path to the soak report JSON
-        #[arg(short, long, default_value = "soak-report.json")]
-        output: std::path::PathBuf,
-    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -974,12 +910,7 @@ async fn run() -> Result<()> {
                     .create(true)
                     .append(true)
                     .open(&log_path_for_writer)
-                    .unwrap_or_else(|e| {
-                        panic!(
-                            "failed to reopen log file at {}: {e}",
-                            log_path_for_writer.display()
-                        )
-                    }),
+                    .expect("reopen log file"),
             )
         };
         if json {
@@ -1102,35 +1033,6 @@ async fn run() -> Result<()> {
             };
             serve_run(bind, policy).await?
         }
-        Commands::Upgrade { check: _, channel } => {
-            commands::upgrade::check(Some(channel.as_str()))?;
-        }
-        Commands::History { limit, json, clear } => {
-            let path = commands::history::history_path();
-            if *clear {
-                commands::history::clear(&path)?;
-                eprintln!("History cleared.");
-            } else {
-                let entries = commands::history::read_recent(&path, *limit)?;
-                if entries.is_empty() {
-                    eprintln!("No history entries. CLI invocations are recorded automatically.");
-                } else if *json {
-                    println!("{}", serde_json::to_string_pretty(&entries).unwrap_or_default());
-                } else {
-                    for entry in &entries {
-                        println!("{}", commands::history::format_entry(entry));
-                    }
-                }
-            }
-        }
-        Commands::Soak { cmd } => match cmd {
-            SoakCmd::Run { duration, interval, config, output } => {
-                commands::soak::run(*duration, *interval, config, output.as_deref())?;
-            }
-            SoakCmd::Report { output } => {
-                commands::soak::report_cmd(output)?;
-            }
-        },
         Commands::Thermal { cap } => {
             let gov = sharecli_fleet::thermal::ThermalGovernor::new();
             let poll_pool_status = move || {
@@ -1300,9 +1202,9 @@ fn session_cmd(cmd: &SessionCmd) -> Result<()> {
     let service = SessionService::new(store);
     let value = match cmd {
         SessionCmd::List { .. } => serde_json::to_value(service.list()?)?,
-        SessionCmd::Inspect { .. } => serde_json::to_value(service.inspect(
-            operation.ok_or_else(|| anyhow::anyhow!("session inspect requires an operation id"))?,
-        )?)?,
+        SessionCmd::Inspect { .. } => {
+            serde_json::to_value(service.inspect(operation.expect("id"))?)?
+        }
         SessionCmd::RecoveryPlan { max_age_seconds, .. } => serde_json::to_value(
             service.recovery_plan(chrono::Duration::seconds(*max_age_seconds as i64))?,
         )?,
@@ -1776,8 +1678,8 @@ async fn prune(idle_seconds: u64, force: bool) -> Result<()> {
     let processes = pool.list().await;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+        .expect("system clock before Unix epoch")
+        .as_secs();
 
     let candidates: Vec<_> = processes
         .into_iter()
