@@ -1,10 +1,10 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-29 (post-#787 Wave18 gap remediation merge at `17e02d0`)
+**Date:** 2026-08-29 (post-#795 backlog sweep merge at `4ee0f9b`)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `4766abf` (Wave17 Plan 796 / **T-910 (C09 L81.12 + L81.15) DONE** — `src/commands/history.rs` (JSONL-backed invocation history + fresh-install safe-read) + `assets/tokens.css` (CTA token system) + `src/dashboard.html` (inline CTA variables) + `tests/c09_l81_recognition_cta.rs` (11/11 PASS); C09 L81.12 2→3 + L81.15 2→3. CodeRabbit fixes: fresh-install empty history + dashboard inline CTA. Earlier PRs: #789/#788/#786/#785/#784/#783/#782/#780/#777/#776/#775. Final Wave17 score: weighted **93.1% A** · unweighted **92.6% A** · tier-1 **93.4% A**.)
+**Commit audited:** `4ee0f9b` (Wave18 backlog sweep + post-#787 governance lock — PR #767 (winfsp bump), #768 (session recovery freshness), #770 (mutants provenance no-op), #787 (Wave18 gap remediation: src/commands/upgrade.rs + src/commands/soak.rs + src/bin/soak.rs + tests/soak_basic.rs + src/commands/forgecode.rs + fr008/fr009 Windows cfg-gate fixes + c03/c07 type-coerce fixes + actionlint-clean .github/workflows/soak.yml), #791/#793/#795 (deps + version-accessibility). **No score changes** — Wave17 final remains locked: weighted **93.1% A** · unweighted **92.6% A** · tier-1 **93.4% A**.)
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
