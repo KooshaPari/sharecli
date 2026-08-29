@@ -538,8 +538,6 @@ enum SoakCmd {
     },
 }
 
-}
-
 #[derive(Subcommand, Debug)]
 enum SessionCmd {
     /// List persisted sessions
