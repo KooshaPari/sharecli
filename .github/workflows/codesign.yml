@@ -23,8 +23,9 @@ concurrency:
 
 jobs:
   macos-sign:
-    name: macOS codesign + notarize (hard gate)
+    name: macOS codesign + notarize (soft gate — pending Apple secrets)
     runs-on: macos-latest
+    continue-on-error: true  # Wave18: hard gate deferred until Apple dev acct configured
     timeout-minutes: 30
     steps:
       - name: Checkout
