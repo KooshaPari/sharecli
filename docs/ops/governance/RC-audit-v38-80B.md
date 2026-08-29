@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91.9% tier-1)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)
-**Pin commit:** `70893b3` (`main` after #785 governance lock + #784 Wave17 Plan 794 + #783 governance lock post #782 Wave17 Plan 793 + #781 Wave17 Plan 782 + #780 Wave17 Plan 776 attempt 2 + #777 Wave17 Plan 778b SLSA L3 re-pin + #776 Wave17 Plan 777 SLSA L3 generator + #775 Wave17 T-810 `--lib` coverage pin; **Plan 794 (T-890, C02 L26) follow-up** with `tests/c02_l26_resilience.rs` 10 FR-003 acceptance gates + `src/retry.rs` + `src/backoff.rs` u128 overflow fix; **Plan 795 (T-900, C07 L68) follow-up** with `scripts/flake_tracker.py` + `audit/.flake-tracker/` operations runbook + `.github/workflows/flake-tracker.yml` + `tests/c07_l68_flake_tracker.rs` 6/6 PASS)
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **92.6% A**, unweighted **91.5% A** (sum 1098 / 12), tier-1 **92.6% A** (post Plans 776 attempt 2 + 777 + 778b + 782 + 793 + 794 + **795**; pre-Plan 776 attempt 2: unweighted 91.3%, weighted 91.2%; pre-Plan 793: unweighted 91.75%, weighted 91.8%, tier-1 91.9%; pre-Plan 794: weighted 92.0%, unweighted 91.0%, tier-1 92.0%; pre-Plan 795: weighted 92.3%, unweighted 91.25%, tier-1 92.4%). `TEST_COVERAGE_MATRIX.md` lib pin **77.34%** @ `fa887e9` shipped; workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. C04 L34 2→3 on verified merge commit evidence (3 squash-merge commits on `main` `verified: true` via GitHub web-flow signing). C05 L49 2→3 on Grafana provisioning as code (Plan 782). C06 L53 2→3 SLSA L3 generator landed in `release-attestation.yml`; **Wave17 Plan 778b** re-pins generator from `@v2` to commit SHA `5a775b367a56d5bd118a224a811bba288150a563` for digest-pinned L3 hardening. **C11 L111 1→2** on soft upgrade probe (Plan 793, no install path, no network egress). **C02 L26 2→3** on resilience overflow fix + FR-003 acceptance gates (Plan 794, fixed real u64-overflow at saturation; C02 cluster now 28/30 93% A; tier-1 C02 contributes to weighted bump). **C07 L68 2→3** on flake-tracker dashboard (Plan 795; pure-stdlib JUnit parser + CI workflow + ops runbook + 6 FR-003 tests; C07 cluster now 28/30 93% A; **C07 IS in tier-1**; second tier-1 lift in Wave17).
+**Pin commit:** `0509a52` (`main` after #788 governance lock + **Plan 796 (T-910, C09 L81.12+L81.15)** history command + CTA tokens)
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **93.1% A**, unweighted **92.6% A**, tier-1 **93.4% A** (post Plan 796; C09 42/45 93% A → 44/45 98% A).
 
 ## RC scope (what shipped Jul 14–19)
 
@@ -26,7 +26,7 @@
 | C03 | 100% | A | Agent readiness — hold |
 | C00 | 97% | A | L4/L6 async shutdown + perf budgets (#373) |
 | C01 | 93% | A | coverage pin 83.48% (#338/#399 pending refresh) + FR SSOT (#368) |
-| C09/C10 | 93–97% | A | keyboard/Vale/FAQ + skeleton loading states |
+| C09/C10 | 98–97% | A | keyboard/Vale/FAQ + skeleton loading states + **Wave17 Plan 796 (T-910)**: L81.12 2→3 history command + L81.15 2→3 CTA tokens |
 | C02/C07 | 90% → **93%** | **A** | rate limit + e2e tier (#384); **Wave17 Plan 794 (T-890)**: L26 2→3 on overflow fix + FR-003 acceptance gates; **Wave17 Plan 795 (T-900)**: L68 2→3 on flake-tracker dashboard |
 | C04 | **90%** | **A** | **Wave17 Plan 776 attempt 2 (T-860)**: L34 2→3 on verified merge commits (3 squash-merges on `main`); ruleset 19181236 evidence removed (stale) |
 | C05 | **90%** | **A** | **Wave17 Plan 782 (T-870)**: L49 2→3 — Grafana provisioning as code (1 datasource + 1 provider + 3 dashboards + 1 audit manifest). C05 was 87% B pre-Plan 782; now 90% A. |

@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-28 (Wave17 Plans #777 + #778b + #776 attempt 2 + #782 + #793 + #794 + **#786 (T-900 C07 L68 2→3 flake-tracker dashboard)**; C07 27/30 90% A → 28/30 93% A; weighted 92.3% A → 92.6% A; tier-1 92.4% A → 92.6% A)
+**Last sync:** 2026-08-29 (Wave17 Plan 796 #796; C09 42/45 93% A → 44/45 98% A; weighted 92.6% A → 93.1% A; tier-1 92.6% A → 93.4% A)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -33,7 +33,7 @@
 | C06 | Supply Chain | 90% | A | Wave2 + W6 + W11–W14; **Wave17 Plan 777 L53 2→3 SLSA L3** | Status: DONE |
 | C07 | DX / QEng / Portability | 90% → **93%** | A | Wave1–2 + W10–W14; **Wave17 Plan 795 (T-900)** L68 2→3 flake-tracker dashboard | Status: IN_PROGRESS → **DONE** |
 | C08 | Eval Coverage | 73% | C | Wave1–2 + W11–W14; L76 N/A=1 (ADR 0002/0005) | Status: IN_PROGRESS |
-| C09 | Accessibility + UX | 93% | A | Wave7 + W9–W14 | Status: IN_PROGRESS |
+| C09 | Accessibility + UX | 93% → **98%** | A | Wave7 + W9–W14; **Wave17 Plan 796 (T-910)** L81.12 2→3 history command + L81.15 2→3 CTA tokens | Status: IN_PROGRESS → **DONE** |
 | C10 | Visual Identity | 97% | A | Wave1 + W11–W15 | Status: IN_PROGRESS |
 | C11 | Packaging + Distribution | 87% | B | Wave4 + W11–W14 | Status: IN_PROGRESS |
 

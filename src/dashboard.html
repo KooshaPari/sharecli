@@ -17,6 +17,11 @@
     --bb2-sync-violet: #a371f7;
     --bb2-warm-amber: #d29922;
     --bb2-error: #f85149;
+    /* CTA tokens (C09 L81.15) — primary/secondary action colors */
+    --bb2-cta-primary: #3fb950;
+    --bb2-cta-primary-text: #0a0d12;
+    --bb2-cta-secondary: #a371f7;
+    --bb2-cta-secondary-text: #ffffff;
     --bb2-text: #e2e8f0;
     --bb2-muted: #94a3b8;
     --bb2-cell: #cbd5e1;
@@ -331,6 +336,29 @@
     thead th { padding: 6px 8px; }
     tbody td { padding: 5px 8px; }
   }
+  /* CTA token system (C09 L81.15) — primary/secondary action buttons */
+  .cta-primary {
+    background: var(--bb2-cta-primary);
+    color: var(--bb2-cta-primary-text);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity var(--motion-duration-fast, 150ms) var(--motion-ease);
+  }
+  .cta-primary:hover { opacity: 0.85; }
+  .cta-secondary {
+    background: var(--bb2-cta-secondary);
+    color: var(--bb2-cta-secondary-text);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity var(--motion-duration-fast, 150ms) var(--motion-ease);
+  }
+  .cta-secondary:hover { opacity: 0.85; }
 </style>
 </head>
 <body>

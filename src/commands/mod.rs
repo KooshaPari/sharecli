@@ -2,6 +2,7 @@
 
 pub mod cast;
 pub mod fuse;
+pub mod history;
 pub mod mesh;
 pub mod proc;
 pub mod report;
