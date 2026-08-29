@@ -114,7 +114,7 @@ jobs:
             echo "Synthesised fallback $SOAK_REPORT"
           fi
 
-          echo "exit_code=${{ steps.soak.outcome }}" >> "$GITHUB_OUTPUT"
+          echo "exit_code=${{ steps.soak.conclusion }}" >> "$GITHUB_OUTPUT"
 
       # ── Upload artifacts ──────────────────────────────────────────────
       - name: Upload soak report artifact
