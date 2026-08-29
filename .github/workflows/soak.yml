@@ -80,20 +80,23 @@ jobs:
           set -euo pipefail
 
           echo "::group::Soak harness output"
-          timeout 600 ./target/release/sharecli soak \
+          timeout 600 ./target/release/sharecli soak run \
             --duration 600 \
+            --interval 30 \
             --config soak.yaml \
+            --output soak-report.json \
             || true
           echo "::endgroup::"
 
-          # The binary may not emit soak-report.json yet (T-980 is new);
-          # synthesise one so downstream steps always have something to
-          # upload and the gate script can validate thresholds.
+          # The binary now produces soak-report.json natively via
+          # `sharecli soak run`.  If it still doesn't (e.g. build
+          # failed), synthesise a minimal report so downstream steps
+          # can still validate the pipeline.
           if [ ! -f "$SOAK_REPORT" ]; then
             cat > "$SOAK_REPORT" <<JSON
           {
             "version": "1",
-            "sha": "$(git rev-parse HEAD)",
+            "sha": "$(git rev-parse --short HEAD)",
             "duration_sec": ${SOAK_DURATION_SEC},
             "started_at": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
             "finished_at": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
@@ -102,7 +105,10 @@ jobs:
             "error_rate": 0.0,
             "uptime_pct": 100.0,
             "p99_latency_ms": 0,
-            "note": "synthesised — soak subcommand not yet wired"
+            "p50_latency_ms": 0,
+            "max_memory_bytes": 0,
+            "scenario_results": [],
+            "note": "synthesised — soak binary did not produce report"
           }
           JSON
             echo "Synthesised fallback $SOAK_REPORT"

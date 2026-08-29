@@ -1,0 +1,40 @@
+# soak.yaml — Harbor soak harness configuration
+# Consumed by `sharecli soak run` and `.github/workflows/soak.yml`
+#
+# Each scenario is a CLI command that gets executed repeatedly.
+# The harness tracks latency, error rates, and memory usage.
+# Thresholds are asserted in CI and in tests/c08_harbor_soak_gate.rs.
+
+duration_seconds: 600
+
+report_file: soak-report.json
+
+thresholds:
+  max_error_rate: 0.05       # <5% error rate to pass
+  min_uptime_pct: 95.0       # >=95% uptime to pass
+  max_p99_latency_ms: 2000   # p99 latency <= 2s to pass
+
+scenarios:
+  - name: healthz
+    command: ["sharecli", "health", "--json"]
+    timeout_secs: 10
+
+  - name: status
+    command: ["sharecli", "status", "--json"]
+    timeout_secs: 15
+
+  - name: config-show
+    command: ["sharecli", "config", "show", "--json"]
+    timeout_secs: 10
+
+  - name: pool-status
+    command: ["sharecli", "pool", "--json"]
+    timeout_secs: 10
+
+  - name: proc-scan
+    command: ["sharecli", "proc", "--json"]
+    timeout_secs: 30
+
+  - name: list
+    command: ["sharecli", "list", "--json"]
+    timeout_secs: 10
