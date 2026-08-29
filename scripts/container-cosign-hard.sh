@@ -89,7 +89,7 @@ echo "Building ${IMAGE_TAG} from Containerfile"
 ${CONTAINER_ENGINE} build -f Containerfile -t "${IMAGE_TAG}" .
 ${CONTAINER_ENGINE} tag "${IMAGE_TAG}" "${GHCR_IMAGE}"
 
-IMAGE_ID=""$(${CONTAINER_ENGINE} inspect --format='{{.Id}}' "${IMAGE_TAG}")"
+IMAGE_ID="$(${CONTAINER_ENGINE} inspect --format='{{.Id}}' "${IMAGE_TAG}")"
 printf '%s\n' "${IMAGE_ID}" >sharecli-ci-image-id.txt
 echo "Local image ID: ${IMAGE_ID}"
 echo "Target GHCR ref: ${GHCR_IMAGE}"
@@ -125,7 +125,7 @@ emit_output "subject-name" "${REPO_NAME}"
 emit_output "image-ref" "${GHCR_IMAGE}"
 
 if [[ "${SKIP_GHCR_PUSH}" == "true" ]]; then
-  echo "::warning::SKIP_GHCR_PUSH=true — hard wiring dry-run (no registry push/sign)"
+  echo "::warning::SKIP_GHCR_PUSH=true - dry-run mode, no registry push or sign"
   echo "Would push/sign/attest/verify: ${GHCR_IMAGE}"
   printf 'skipped-push\n' >"${DIGEST_FILE}"
   emit_output "skipped" "true"
@@ -134,7 +134,7 @@ if [[ "${SKIP_GHCR_PUSH}" == "true" ]]; then
 fi
 
 if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  echo "::error::GITHUB_TOKEN required to login/push GHCR (packages:write + id-token:write)"
+  echo "::error::GITHUB_TOKEN required to login/push GHCR - packages:write + id-token:write"
   echo "::error::If org registry permissions block GITHUB_TOKEN, re-run with SKIP_GHCR_PUSH=true"
   exit 1
 fi
@@ -174,7 +174,7 @@ emit_output "skipped" "false"
 echo "Keyless cosign sign"
 cosign sign --yes "${DIGEST_REF}"
 
-echo "Keyless cosign attest (slsaprovenance)"
+echo "Keyless cosign attest - slsaprovenance"
 cosign attest --yes --type slsaprovenance --predicate "${PREDICATE_FILE}" "${DIGEST_REF}"
 
 # --- Rekor transparency log verification (T-1120) ---
@@ -205,16 +205,14 @@ echo "Rekor transparency log entry verified for ${DIGEST_REF}"
 
 # --- End Rekor transparency log verification (T-1120) ---
 
-echo "Verify signature chain (cosign verify without JSON output)"
+echo "Verify signature chain - cosign verify without JSON output"
 cosign verify "${DIGEST_REF}" \
   --certificate-identity-regexp "${IDENTITY_REGEXP}" \
   --certificate-oidc-issuer "${OIDC_ISSUER}"
 
 echo "Verify attestation"
-cosign verify-attestation --type slsaprovenance "${DIGEST_REF}" \
-  --certificate-identity-regexp "${IDENTITY_REGEXP}" \
-  --certificate-oidc-issuer "${OIDC_ISSUER}" >/dev/null
+cosign verify-attestation --type slsaprovenance "${DIGEST_REF}" --certificate-identity-regexp "${IDENTITY_REGEXP}" --certificate-oidc-issuer "${OIDC_ISSUER}" >/dev/null
 
-echo "Hard container cosign publish green (Rekor: verified): ${DIGEST_REF}"
+echo "Hard container cosign publish green - Rekor verified: ${DIGEST_REF}"
 echo "Consumer verify:"
 echo "  bash scripts/container-cosign-verify.sh ${DIGEST_REF}"
