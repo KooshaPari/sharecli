@@ -156,7 +156,7 @@ jobs:
           retention-days: 90
 
       - name: Install hyperfine
-        uses: taiki-e/install-action@288e746965032cfcc232e09af2daf5f23c14d780 # v2.86.1
+        uses: taiki-e/install-action@fcf5432d9f50d67e37ee6e29bdb7a224ff67b4a7 # v2.86.8
         with:
           tool: hyperfine
 
@@ -213,7 +213,7 @@ jobs:
           key: hyperfine-healthz
 
       - name: Install hyperfine
-        uses: taiki-e/install-action@288e746965032cfcc232e09af2daf5f23c14d780 # v2.86.1
+        uses: taiki-e/install-action@fcf5432d9f50d67e37ee6e29bdb7a224ff67b4a7 # v2.86.8
         with:
           tool: hyperfine
 
