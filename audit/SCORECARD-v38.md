@@ -1,10 +1,10 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-28
+**Date:** 2026-08-29
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `70893b3` (Wave17 Plan 795 / **T-900 (C07 L68) DONE** — `scripts/flake_tracker.py` (pure-stdlib JUnit parser) + `scripts/comment_flake_tracker.py` (PR commenter) + `audit/.flake-tracker/` (operations runbook + baseline + report path) + `.github/workflows/flake-tracker.yml` (advisory CI job) + `tests/c07_l68_flake_tracker.rs` (FR-003 acceptance gate, 6/6 PASS); C07 L68 2→3 on real flake-tracker dashboard evidence. Earlier PRs in chain: #785 Plan 794 gov-lock / #784 Plan 794 (T-890, C02 L26) DONE / #783 Plan 793 (T-880, C11 L111) DONE / #782 Plan 782 (T-870, C05 L49) DONE / #780 Plan 776 att 2 (T-860, C04 L34) DONE / #777 Plan 778b (T-850, SLSA L3 re-pin) DONE / #776 Plan 777 (T-840, SLSA L2→L3) DONE / #775 T-810 (`--lib` pin 77.34% @ `fa887e9`, run `local-lib-20260827`); workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. Final Wave17 score: weighted **92.6% A** · unweighted **91.5% A** · tier-1 **92.4% A** — second cluster lifted (C07 IS in tier-1).
+**Commit audited:** `1c6756e` (Wave17 Plan 795 / **T-900 (C07 L68) DONE** — `scripts/flake_tracker.py` (pure-stdlib JUnit parser) + `scripts/comment_flake_tracker.py` (PR commenter) + `audit/.flake-tracker/` (operations runbook + baseline + report path) + `.github/workflows/flake-tracker.yml` (advisory CI job) + `tests/c07_l68_flake_tracker.rs` (FR-003 acceptance gate, 6/6 PASS); C07 L68 2→3 on real flake-tracker dashboard evidence. Earlier PRs in chain: #785 Plan 794 gov-lock / #784 Plan 794 (T-890, C02 L26) DONE / #783 Plan 793 (T-880, C11 L111) DONE / #782 Plan 782 (T-870, C05 L49) DONE / #780 Plan 776 att 2 (T-860, C04 L34) DONE / #777 Plan 778b (T-850, SLSA L3 re-pin) DONE / #776 Plan 777 (T-840, SLSA L2→L3) DONE / #775 T-810 (`--lib` pin 77.34% @ `fa887e9`, run `local-lib-20260827`); workspace pin **80.51%** @ `5d8dc08` retained as historical evidence. Final Wave17 score: weighted **92.6% A** · unweighted **91.5% A** · tier-1 **92.6% A** — second cluster lifted (C07 IS in tier-1).
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
