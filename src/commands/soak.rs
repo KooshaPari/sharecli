@@ -187,7 +187,7 @@ pub fn run(
     }
     let interval = interval_secs.map(Duration::from_secs).unwrap_or_else(|| {
         let raw = config.duration_seconds as f64 / 10.0;
-        Duration::from_millis((raw.max(1.0).min(30.0) * 1000.0) as u64)
+        Duration::from_millis((raw.clamp(1.0, 30.0) * 1000.0) as u64)
     });
 
     let report_path =
