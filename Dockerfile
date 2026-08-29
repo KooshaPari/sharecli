@@ -6,5 +6,5 @@
 FROM rust:1.85-slim AS builder
 WORKDIR /app
 COPY . .
-RUN cargo build --release 2>&1 | tail -10 || true
+RUN cargo build --locked --release 2>&1 | tail -10 || true
 CMD ["./target/release/sharecli"]
