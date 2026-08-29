@@ -45,19 +45,19 @@ if command -v podman >/dev/null 2>&1; then
 elif command -v docker >/dev/null 2>&1; then
   CONTAINER_ENGINE="docker"
 else
-  echo "::error::Neither podman nor docker CLI found — hard container cosign requires a container engine"
+  echo "::error::Neither podman nor docker CLI found - hard container cosign requires a container engine" >&2
   exit 1
 fi
 echo "Using container engine: ${CONTAINER_ENGINE}"
 
 if [[ "${CONTAINER_ENGINE}" == "podman" ]]; then
   podman info >/dev/null 2>&1 || {
-    echo "::error::podman daemon/machine required for hard container cosign"
+    echo "::error::podman daemon/machine required for hard container cosign" >&2
     exit 1
   }
 else
   docker info >/dev/null 2>&1 || {
-    echo "::error::docker daemon required for hard container cosign"
+    echo "::error::docker daemon required for hard container cosign" >&2
     exit 1
   }
 fi
@@ -190,7 +190,7 @@ cosign verify "${DIGEST_REF}" \
 
 # Assert the bundle contains the critical claim (Rekor log structure).
 if ! grep -q '"critical"' "${REKOR_BUNDLE_FILE}"; then
-  echo "::error::Rekor transparency log bundle missing 'critical' claim"
+  echo "::error::Rekor transparency log bundle missing 'critical' claim" >&2
   exit 1
 fi
 if ! grep -q '"identity"' "${REKOR_BUNDLE_FILE}"; then
