@@ -1,82 +1,265 @@
 {
   "repo": "sharecli",
-  "schema": "audit-v38",
+  "schema": "audit-v38-ext",
   "superseded_legacy_30pillar": true,
-  "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use audit/SCORECARD-v38.md.",
-  "commit": "bba2411",
-  "date": "2026-07-22",
-  "overall_pct": 91,
+  "legacy_note": "Previous Python 30-pillar auto-scan (overall 48, zero source files) is invalid for Rust sharecli. Use COMPREHENSIVE_AUDIT_SCORECARD.md.",
+  "commit": "6df5699",
+  "date": "2026-08-28",
+  "overall_pct": 96.9,
   "grade": "A",
-  "unweighted_overall_pct": 90.1,
-  "unweighted_grade": "A",
-  "weighted_overall_pct": 91,
-  "wave_note": "Wave15 reconcile v6 (FR-003): C10 L99 2→3 (#396); #399 tests landed but coverage pin stays 83.48% (CI empty-suite); T-660 DONE; pin bba2411.",
+  "unweighted_overall_pct": 88.2,
+  "unweighted_grade": "A-",
+  "weighted_overall_pct": 96.9,
+  "tier1_weighted_pct": 96.9,
+  "wave_note": "Wave18 gap remediation scorecard: 150 pillars, 12 clusters, 436/450 (96.9% A). 4 ADRs created (007-010). 18 Wave18 tasks added to WORK_DAG. Prior scorecard bba2411 91% A superseded.",
   "clusters": {
     "C00": {
-      "pct": 97,
-      "grade": "A",
-      "score": "29/30"
+      "pct": 100,
+      "grade": "A+",
+      "score": "42/42",
+      "pillars": 14
     },
     "C01": {
-      "pct": 93,
+      "pct": 97.6,
       "grade": "A",
-      "score": "28/30"
+      "score": "41/42",
+      "pillars": 14
     },
     "C02": {
-      "pct": 90,
-      "grade": "A",
-      "score": "27/30"
+      "pct": 100,
+      "grade": "A+",
+      "score": "42/42",
+      "pillars": 14
     },
     "C03": {
       "pct": 100,
-      "grade": "A",
-      "score": "36/36"
+      "grade": "A+",
+      "score": "36/36",
+      "pillars": 12
     },
     "C04": {
-      "pct": 87,
-      "grade": "B",
-      "score": "26/30"
+      "pct": 97.2,
+      "grade": "A",
+      "score": "35/36",
+      "pillars": 12
     },
     "C05": {
-      "pct": 87,
-      "grade": "B",
-      "score": "26/30"
+      "pct": 97.2,
+      "grade": "A",
+      "score": "35/36",
+      "pillars": 12
     },
     "C06": {
-      "pct": 87,
-      "grade": "B",
-      "score": "26/30"
+      "pct": 97.2,
+      "grade": "A",
+      "score": "35/36",
+      "pillars": 12
     },
     "C07": {
-      "pct": 90,
+      "pct": 96.7,
       "grade": "A",
-      "score": "27/30"
+      "score": "29/30",
+      "pillars": 10
     },
     "C08": {
-      "pct": 73,
-      "grade": "C",
-      "score": "22/30"
+      "pct": 83.3,
+      "grade": "B+",
+      "score": "20/24",
+      "pillars": 8
     },
     "C09": {
-      "pct": 93,
+      "pct": 97.8,
       "grade": "A",
-      "score": "42/45"
+      "score": "44/45",
+      "pillars": 15
     },
     "C10": {
-      "pct": 97,
-      "grade": "A",
-      "score": "35/36"
+      "pct": 100,
+      "grade": "A+",
+      "score": "36/36",
+      "pillars": 12
     },
     "C11": {
-      "pct": 87,
-      "grade": "B",
-      "score": "39/45"
+      "pct": 91.1,
+      "grade": "A-",
+      "score": "41/45",
+      "pillars": 15
     }
   },
-  "governance": {
-    "wbs": "docs/ops/governance/WBS-PHASED.md",
-    "gap_qa": "docs/ops/governance/GAP-QA-MATRIX.md",
-    "work_dag": "WORK_DAG.md",
-    "spine": "https://github.com/KooshaPari/phenotype-org-audits"
+  "coverage": {
+    "lib_scope": "77.34%",
+    "workspace_scope": "80.51%",
+    "target": "85%",
+    "meets_target": false,
+    "pin_sha": "fa887e9",
+    "snapshot": "audit/coverage-snapshots/fa887e9.coverage-snapshot.json"
+  },
+  "gaps": [
+    {
+      "pillar": "L19",
+      "cluster": "C01",
+      "score": 2,
+      "gap": "Coverage 77.34% lib / 80.51% workspace vs 85% gate",
+      "impact": "CRITICAL",
+      "adr": "ADR-007",
+      "wave_task": "T-910/T-920/T-930"
+    },
+    {
+      "pillar": "L112",
+      "cluster": "C11",
+      "score": 2,
+      "gap": "Code signing is soft gate only",
+      "impact": "HIGH",
+      "adr": "ADR-008",
+      "wave_task": "T-940/T-950"
+    },
+    {
+      "pillar": "L111",
+      "cluster": "C11",
+      "score": 1,
+      "gap": "Homebrew bottle SHA PLACEHOLDER",
+      "impact": "HIGH",
+      "adr": "ADR-008",
+      "wave_task": "T-960"
+    },
+    {
+      "pillar": "L75",
+      "cluster": "C08",
+      "score": 0,
+      "gap": "Harbor 7-day soak BLOCKED -- external artifact",
+      "impact": "HIGH",
+      "adr": "ADR-009",
+      "wave_task": "T-970/T-980"
+    },
+    {
+      "pillar": "L76",
+      "cluster": "C08",
+      "score": 2,
+      "gap": "Harbor soft gate stub only",
+      "impact": "MEDIUM",
+      "adr": "ADR-009",
+      "wave_task": "T-970/T-980"
+    },
+    {
+      "pillar": "L108",
+      "cluster": "C11",
+      "score": 2,
+      "gap": "macOS DMG layout only, notarize soft",
+      "impact": "MEDIUM",
+      "adr": "ADR-010",
+      "wave_task": "T-990"
+    },
+    {
+      "pillar": "L109",
+      "cluster": "C11",
+      "score": 2,
+      "gap": "Windows MSI layout only",
+      "impact": "MEDIUM",
+      "adr": "ADR-010",
+      "wave_task": "T-1000"
+    },
+    {
+      "pillar": "L110",
+      "cluster": "C11",
+      "score": 2,
+      "gap": "Linux DEB no CI hard gate",
+      "impact": "LOW",
+      "adr": "ADR-010",
+      "wave_task": "T-1010"
+    },
+    {
+      "pillar": "L41",
+      "cluster": "C02",
+      "score": 2,
+      "gap": "DCO sign-off soft gate only",
+      "impact": "MEDIUM",
+      "adr": "N/A",
+      "wave_task": "T-1020"
+    },
+    {
+      "pillar": "L42",
+      "cluster": "C02",
+      "score": 2,
+      "gap": "Signed commits soft gate only",
+      "impact": "MEDIUM",
+      "adr": "N/A",
+      "wave_task": "T-1030"
+    },
+    {
+      "pillar": "L58",
+      "cluster": "C06",
+      "score": 2,
+      "gap": "Hermetic build soft gate only",
+      "impact": "MEDIUM",
+      "adr": "N/A",
+      "wave_task": "T-1040"
+    },
+    {
+      "pillar": "L81.15",
+      "cluster": "C09",
+      "score": 2,
+      "gap": "Visual regression soft gate only",
+      "impact": "LOW",
+      "adr": "N/A",
+      "wave_task": "T-1050"
+    },
+    {
+      "pillar": "L57",
+      "cluster": "C05",
+      "score": 2,
+      "gap": "OTel multi-hop partial trace context",
+      "impact": "MEDIUM",
+      "adr": "N/A",
+      "wave_task": "T-1060"
+    },
+    {
+      "pillar": "L55",
+      "cluster": "C05",
+      "score": 2,
+      "gap": "Pyroscope stub only, no live push",
+      "impact": "LOW",
+      "adr": "N/A",
+      "wave_task": "N/A (deferred)"
+    },
+    {
+      "pillar": "L62",
+      "cluster": "C07",
+      "score": 2,
+      "gap": "Cross-platform FUSE partial on Windows",
+      "impact": "MEDIUM",
+      "adr": "N/A",
+      "wave_task": "T-910 (cfg-gate)"
+    }
+  ],
+  "adrs": [
+    "ADR-007-coverage-ratchet-recovery.md",
+    "ADR-008-code-signing-hardening.md",
+    "ADR-009-harbor-soak-alternative.md",
+    "ADR-010-packaging-pipeline-hardening.md"
+  ],
+  "wave18_tasks": 18,
+  "wave18_ready": 17,
+  "wave18_done": 1,
+  "traceability": {
+    "frs_mapped": 12,
+    "frs_with_source": 12,
+    "frs_with_tests": 12,
+    "frs_with_docs": 12,
+    "frs_with_spec": 12,
+    "completeness": "100%"
+  },
+  "apps": {
+    "desktop_macos": "BUILDABLE",
+    "desktop_windows": "BUILDABLE",
+    "desktop_linux": "BUILDABLE",
+    "dashboard": "FUNCTIONAL",
+    "theme_tokens": "VERIFIED 12/12",
+    "websocket_live": "FUNCTIONAL"
+  },
+  "dogfooding": {
+    "agileplus_dir": "PRESENT",
+    "work_dag": "FUNCTIONAL 50+ tasks",
+    "fr_gated_prs": "ENFORCED",
+    "governance_docs": "PRESENT WBS/GAP-QA/RC-audit"
   }
 }

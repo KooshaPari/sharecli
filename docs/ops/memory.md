@@ -20,19 +20,22 @@ Implementation: `src/alloc.rs` (`#[global_allocator]` + `active_allocator_label(
 
 Container images build with `--features jemalloc` (`Containerfile`).
 
-## Soft budgets (operator)
+## RSS budgets (operator)
 
-| Surface | Soft budget | How to sample |
-|---------|-------------|----------------|
-| `sharecli serve` RSS (idle) | < 64 MiB on linux CI runners | `just rss-soft` / `scripts/ops/rss_soft.sh` |
-| `sharecli serve` RSS (32 procs) | < 256 MiB | same |
-| `sharecli serve` heap (dhat) | < 64 MiB total at idle smoke | `just dhat-soft` / `scripts/ops/dhat_soft.sh` |
+| Surface | Budget | How to sample | Gate |
+|---------|--------|---------------|------|
+| `sharecli serve` RSS (idle) | < 64 MiB on linux CI runners | `just rss-soft` / `scripts/ops/rss_soft.sh` | soft |
+| `sharecli serve` RSS (idle) | < 64 MiB on linux CI runners | `scripts/ops/rss_gate.sh` | **hard** |
+| `sharecli serve` RSS (32 procs) | < 256 MiB | same | soft |
+| `sharecli serve` heap (dhat) | < 64 MiB total at idle smoke | `just dhat-soft` / `scripts/ops/dhat_soft.sh` | soft |
 
-These are **not** hard merge gates yet (soft CI uses `continue-on-error`).
+RSS idle has both a soft gate (`rss-soft.yml`, `continue-on-error`) and a hard
+gate (`rss.yml`, required check). The hard gate uses `rss_gate.sh` which exits
+non-zero on budget breach.
 
 ## Follow-ups
 
-- Hard RSS gate after jemalloc soak on main.
 - Loom tests for `ProcessPool` / `serve_lock` (C00 L7): `crates/sharecli-sync` + `just loom` / `ci.yml` `loom` job.
 - Soft RSS sample: `just rss-soft` / `.github/workflows/rss-soft.yml`.
 - Soft dhat sample: `just dhat-soft` / `.github/workflows/dhat-soft.yml`.
+- Hard RSS gate: `.github/workflows/rss.yml` / `scripts/ops/rss_gate.sh`.

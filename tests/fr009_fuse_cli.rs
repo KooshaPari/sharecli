@@ -4,6 +4,11 @@
 //! AC-009.11 CLI `fuse provenance <path>` reads write xattrs via read_provenance
 //! AC-009.17 CLI fuse mount/unmount/status/list/commit/discard operator surface
 //! AC-009.21 CLI loud-rejects invalid `--agent` / missing `--agents-conf`; help documents Feb flags
+//!
+//! GATED: All tests in this file require Linux/macOS (FUSE kernel support).
+//! On Windows these tests are skipped via `cfg` to keep `--workspace` measurement unblocked.
+
+#![cfg(not(target_os = "windows"))]
 
 use sharecli_fuse::{annotate_write_at, read_provenance};
 use std::process::Command;

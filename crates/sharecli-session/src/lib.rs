@@ -57,6 +57,7 @@ pub mod discovery;
 pub mod events;
 pub mod layout;
 pub mod ledger;
+pub mod migration;
 pub mod recovery;
 pub mod resolver;
 pub mod rpc;
@@ -230,22 +231,7 @@ impl SessionStore {
     }
     fn init(conn: Connection) -> Result<Self> {
         conn.pragma_update(None, "journal_mode", "WAL")?;
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, harness TEXT NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, resume_json TEXT NOT NULL, confidence TEXT NOT NULL, state TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS session_observations (
-                seq INTEGER PRIMARY KEY AUTOINCREMENT,
-                observed_at TEXT NOT NULL,
-                surface_id TEXT NOT NULL,
-                surface_json TEXT NOT NULL,
-                session_json TEXT,
-                capabilities_json TEXT NOT NULL,
-                kind TEXT NOT NULL
-             );
-             CREATE INDEX IF NOT EXISTS session_observations_surface_seq
-                ON session_observations(surface_id, seq);
-             CREATE INDEX IF NOT EXISTS session_observations_time
-                ON session_observations(observed_at);",
-        )?;
+        migration::run_migrations(&conn)?;
         Ok(Self { conn: Mutex::new(conn) })
     }
     pub fn upsert(&self, session: &AgentSession) -> Result<()> {

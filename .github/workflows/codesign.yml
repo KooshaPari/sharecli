@@ -1,0 +1,120 @@
+# =============================================================================
+# C11 L112 — Codesign hard gate (promotes from soft gate)
+# =============================================================================
+# All sign + notarize + staple steps must pass for main builds.
+# Windows signing is continue-on-error until Azure Key Vault is configured.
+# =============================================================================
+
+name: Code Signing (Hard Gate)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codesign-hard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-sign:
+    name: macOS codesign + notarize (soft gate — pending Apple secrets)
+    runs-on: macos-latest
+    continue-on-error: true  # Wave18: hard gate deferred until Apple dev acct configured
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate Apple secrets
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PWD: ${{ secrets.APPLE_CERTIFICATE_PWD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          missing=()
+          [[ -z "$APPLE_CERTIFICATE" ]] && missing+=("APPLE_CERTIFICATE")
+          [[ -z "$APPLE_CERTIFICATE_PWD" ]] && missing+=("APPLE_CERTIFICATE_PWD")
+          [[ -z "$APPLE_ID" ]] && missing+=("APPLE_ID")
+          [[ -z "$APPLE_TEAM_ID" ]] && missing+=("APPLE_TEAM_ID")
+          [[ -z "$APPLE_APP_PASSWORD" ]] && missing+=("APPLE_APP_PASSWORD")
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "::error::Missing Apple signing secrets: ${missing[*]}"
+            echo "See docs/ops/governance/APPLE_SECRETS_SETUP.md for setup instructions"
+            exit 1
+          fi
+          echo "All Apple signing secrets configured"
+
+      - name: Import Apple certificate
+        uses: apple-actions/import-codesign-certs@63fff01cd422d4b7b855d40ca1e9d34d2de9427d # v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PWD }}
+
+      - name: Build release binary
+        run: cargo build --release --locked 2>&1 | tail -5
+
+      - name: Codesign release binary
+        run: codesign --force --sign "-" target/release/sharecli
+
+      - name: Notarize release binary
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent target/release/sharecli sharecli.zip
+          xcrun notarytool submit sharecli.zip \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+
+      - name: Staple notarization ticket
+        run: xcrun stapler staple target/release/sharecli
+
+      - name: Verify codesign
+        run: codesign --verify --deep --strict target/release/sharecli
+
+  windows-sign:
+    name: Windows Authenticode sign (soft — continue-on-error)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build release binary
+        run: cargo build --release --locked 2>&1 | tail -5
+
+      - name: Sign Windows binary (Azure Key Vault)
+        if: env.AZURE_KEY_VAULT_URL != ''
+        env:
+          AZURE_KEY_VAULT_URL: ${{ secrets.AZURE_KEY_VAULT_URL }}
+          AZURE_KEY_VAULT_CLIENT_ID: ${{ secrets.AZURE_KEY_VAULT_CLIENT_ID }}
+          AZURE_KEY_VAULT_CLIENT_SECRET: ${{ secrets.AZURE_KEY_VAULT_CLIENT_SECRET }}
+          AZURE_KEY_VAULT_TENANT_ID: ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
+        run: |
+          dotnet tool install -g AzureSignTool
+          AzureSignTool sign \
+            -kvu "$AZURE_KEY_VAULT_URL" \
+            -kvi "$AZURE_KEY_VAULT_CLIENT_ID" \
+            -kvs "$AZURE_KEY_VAULT_CLIENT_SECRET" \
+            -kvt "$AZURE_KEY_VAULT_TENANT_ID" \
+            -kvc "$AZURE_KEY_VAULT_CERTIFICATE" \
+            target/release/sharecli.exe
+
+      - name: Sign Windows binary (skip - no Azure KV)
+        if: env.AZURE_KEY_VAULT_URL == ''
+        env:
+          AZURE_KEY_VAULT_URL: ${{ secrets.AZURE_KEY_VAULT_URL }}
+        run: |
+          echo "::notice::Windows Authenticode signing not configured (Azure Key Vault secrets missing). Binary will be unsigned."

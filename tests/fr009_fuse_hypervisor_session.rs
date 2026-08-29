@@ -4,6 +4,10 @@
 //! AC-009.12 Hypervisor cache-miss FUSE mounts derive session id from coalesce CommandKey
 //! AC-009.13 Hypervisor SpawnOutcome exposes fuse_session_id when intercept is active
 //! AC-009.14 SpawnOutcome exposes backing/mount remap pair; remap_mount_to_backing path translate
+//!
+//! GATED: Requires FUSE kernel support (Linux/macOS only).
+
+#![cfg(not(target_os = "windows"))]
 
 use sharecli_core::{
     fuse_session_id_for_command_key, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,

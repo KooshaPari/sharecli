@@ -502,6 +502,40 @@ enum Commands {
         #[arg(long)]
         clear: bool,
     },
+    /// Harbor soak harness — long-running CLI stability evaluation
+    Soak {
+        /// Subcommand: run (default) or report
+        #[command(subcommand)]
+        cmd: SoakCmd,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum SoakCmd {
+    /// Run the soak harness (executes scenarios repeatedly)
+    Run {
+        /// Total duration in seconds (overrides config)
+        #[arg(short, long)]
+        duration: Option<u64>,
+
+        /// Interval between scenario runs in seconds (overrides config)
+        #[arg(short, long)]
+        interval: Option<u64>,
+
+        /// Path to soak.yaml config
+        #[arg(short, long, default_value = "soak.yaml")]
+        config: std::path::PathBuf,
+
+        /// Output path for the JSON report
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
+    },
+    /// Display an existing soak report
+    Report {
+        /// Path to the soak report JSON
+        #[arg(short, long, default_value = "soak-report.json")]
+        output: std::path::PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -1089,6 +1123,14 @@ async fn run() -> Result<()> {
                 }
             }
         }
+        Commands::Soak { cmd } => match cmd {
+            SoakCmd::Run { duration, interval, config, output } => {
+                commands::soak::run(*duration, *interval, config, output.as_deref())?;
+            }
+            SoakCmd::Report { output } => {
+                commands::soak::report_cmd(output)?;
+            }
+        },
         Commands::Thermal { cap } => {
             let gov = sharecli_fleet::thermal::ThermalGovernor::new();
             let poll_pool_status = move || {

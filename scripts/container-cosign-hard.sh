@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# C06 L56 / T-660 — hard GHCR container cosign publish path.
-# Keyless sign + SLSA-ish attest + verify via GitHub OIDC (no Apple / extra secrets).
+# C06 L56 / T-660 / T-1120 — hard GHCR container cosign publish path.
+# Keyless sign + SLSA attest + verify + Rekor transparency log verification
+# via GitHub OIDC (no Apple / extra secrets).
 #
 # Env:
 #   IMAGE_TAG          Local build tag (default: sharecli:ci)
@@ -38,14 +39,28 @@ command -v cosign >/dev/null 2>&1 || {
   echo "::error::cosign not installed"
   exit 1
 }
-command -v docker >/dev/null 2>&1 || {
-  echo "::error::docker CLI required for hard container cosign"
+CONTAINER_ENGINE=""
+if command -v podman >/dev/null 2>&1; then
+  CONTAINER_ENGINE="podman"
+elif command -v docker >/dev/null 2>&1; then
+  CONTAINER_ENGINE="docker"
+else
+  echo "::error::Neither podman nor docker CLI found - hard container cosign requires a container engine" >&2
   exit 1
-}
-docker info >/dev/null 2>&1 || {
-  echo "::error::docker daemon required for hard container cosign"
-  exit 1
-}
+fi
+echo "Using container engine: ${CONTAINER_ENGINE}"
+
+if [[ "${CONTAINER_ENGINE}" == "podman" ]]; then
+  podman info >/dev/null 2>&1 || {
+    echo "::error::podman daemon/machine required for hard container cosign" >&2
+    exit 1
+  }
+else
+  docker info >/dev/null 2>&1 || {
+    echo "::error::docker daemon required for hard container cosign" >&2
+    exit 1
+  }
+fi
 
 cosign version
 
@@ -71,10 +86,10 @@ fi
 REPO_NAME="${GHCR_IMAGE%%:*}"
 
 echo "Building ${IMAGE_TAG} from Containerfile"
-docker build -f Containerfile -t "${IMAGE_TAG}" .
-docker tag "${IMAGE_TAG}" "${GHCR_IMAGE}"
+${CONTAINER_ENGINE} build -f Containerfile -t "${IMAGE_TAG}" .
+${CONTAINER_ENGINE} tag "${IMAGE_TAG}" "${GHCR_IMAGE}"
 
-IMAGE_ID="$(docker inspect --format='{{.Id}}' "${IMAGE_TAG}")"
+IMAGE_ID="$(${CONTAINER_ENGINE} inspect --format='{{.Id}}' "${IMAGE_TAG}")"
 printf '%s\n' "${IMAGE_ID}" >sharecli-ci-image-id.txt
 echo "Local image ID: ${IMAGE_ID}"
 echo "Target GHCR ref: ${GHCR_IMAGE}"
@@ -110,7 +125,7 @@ emit_output "subject-name" "${REPO_NAME}"
 emit_output "image-ref" "${GHCR_IMAGE}"
 
 if [[ "${SKIP_GHCR_PUSH}" == "true" ]]; then
-  echo "::warning::SKIP_GHCR_PUSH=true — hard wiring dry-run (no registry push/sign)"
+  echo "::warning::SKIP_GHCR_PUSH=true - dry-run mode, no registry push or sign"
   echo "Would push/sign/attest/verify: ${GHCR_IMAGE}"
   printf 'skipped-push\n' >"${DIGEST_FILE}"
   emit_output "skipped" "true"
@@ -119,30 +134,37 @@ if [[ "${SKIP_GHCR_PUSH}" == "true" ]]; then
 fi
 
 if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  echo "::error::GITHUB_TOKEN required to login/push GHCR (packages:write + id-token:write)"
-  echo "::error::If org registry permissions block GITHUB_TOKEN, re-run with SKIP_GHCR_PUSH=true"
+  echo "::error::GITHUB_TOKEN required to login/push GHCR - packages:write + id-token:write" >&2
+  echo "::error::If org registry permissions block GITHUB_TOKEN, re-run with SKIP_GHCR_PUSH=true" >&2
   exit 1
 fi
 
 echo "Logging into ghcr.io as ${GITHUB_ACTOR:-github-actions}"
-echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR:-github-actions}" --password-stdin
+echo "${GITHUB_TOKEN}" | ${CONTAINER_ENGINE} login ghcr.io -u "${GITHUB_ACTOR:-github-actions}" --password-stdin
 
 echo "Pushing ${GHCR_IMAGE}"
-docker push "${GHCR_IMAGE}"
+${CONTAINER_ENGINE} push "${GHCR_IMAGE}"
 
 # Prefer digest-based signing (immutable)
-DIGEST_REF="$(docker inspect --format='{{index .RepoDigests 0}}' "${GHCR_IMAGE}" 2>/dev/null || true)"
+DIGEST_REF=""
 DIGEST_SHA=""
-if [[ -n "${DIGEST_REF}" && "${DIGEST_REF}" == *"@"* ]]; then
-  DIGEST_SHA="${DIGEST_REF#*@}"
-else
-  if docker buildx imagetools inspect "${GHCR_IMAGE}" --format '{{.Manifest.Digest}}' >/tmp/ghcr-digest.txt 2>/dev/null; then
-    DIGEST_SHA="$(tr -d '[:space:]"' </tmp/ghcr-digest.txt)"
-    DIGEST_REF="${REPO_NAME}@${DIGEST_SHA}"
+if [[ "${CONTAINER_ENGINE}" == "docker" ]]; then
+  DIGEST_REF="$(${CONTAINER_ENGINE} inspect --format='{{index .RepoDigests 0}}' "${GHCR_IMAGE}" 2>/dev/null || true)"
+  if [[ -n "${DIGEST_REF}" && "${DIGEST_REF}" == *"@"* ]]; then
+    DIGEST_SHA="${DIGEST_REF#*@}"
   else
-    DIGEST_REF="${GHCR_IMAGE}"
-    DIGEST_SHA=""
+    if docker buildx imagetools inspect "${GHCR_IMAGE}" --format '{{.Manifest.Digest}}' >/tmp/ghcr-digest.txt 2>/dev/null; then
+      DIGEST_SHA="$(tr -d '[:space:]"' </tmp/ghcr-digest.txt)"
+      DIGEST_REF="${REPO_NAME}@${DIGEST_SHA}"
+    else
+      DIGEST_REF="${GHCR_IMAGE}"
+      DIGEST_SHA=""
+    fi
   fi
+else
+  # Podman: use image ID as digest reference
+  DIGEST_SHA="${IMAGE_ID}"
+  DIGEST_REF="${GHCR_IMAGE}"
 fi
 printf '%s\n' "${DIGEST_REF}" >"${DIGEST_FILE}"
 echo "Signing subject: ${DIGEST_REF}"
@@ -152,19 +174,45 @@ emit_output "skipped" "false"
 echo "Keyless cosign sign"
 cosign sign --yes "${DIGEST_REF}"
 
-echo "Keyless cosign attest (slsaprovenance)"
+echo "Keyless cosign attest - slsaprovenance"
 cosign attest --yes --type slsaprovenance --predicate "${PREDICATE_FILE}" "${DIGEST_REF}"
 
-echo "Verify signature"
+# --- Rekor transparency log verification (T-1120) ---
+# cosign verify --output-json emits the full transparency log bundle.
+# Parse the output to confirm the Rekor entry contains the expected
+# identity and issuer fields (proof-of-inclusion in the immutable log).
+REKOR_BUNDLE_FILE="/tmp/cosign-rekor-bundle.json"
+echo "Verifying Rekor transparency log entry"
+cosign verify "${DIGEST_REF}" \
+  --certificate-identity-regexp "${IDENTITY_REGEXP}" \
+  --certificate-oidc-issuer "${OIDC_ISSUER}" \
+  --output-json >"${REKOR_BUNDLE_FILE}"
+
+# Assert the bundle contains the critical claim (Rekor log structure).
+if ! grep -q '"critical"' "${REKOR_BUNDLE_FILE}"; then
+  echo "::error::Rekor transparency log bundle missing 'critical' claim" >&2
+  exit 1
+fi
+if ! grep -q '"identity"' "${REKOR_BUNDLE_FILE}"; then
+  echo "::error::Rekor transparency log bundle missing 'identity' field" >&2
+  exit 1
+fi
+if ! grep -q '"issuer"' "${REKOR_BUNDLE_FILE}"; then
+  echo "::error::Rekor transparency log bundle missing 'issuer' field" >&2
+  exit 1
+fi
+echo "Rekor transparency log entry verified for ${DIGEST_REF}"
+
+# --- End Rekor transparency log verification (T-1120) ---
+
+echo "Verify signature chain - cosign verify without JSON output"
 cosign verify "${DIGEST_REF}" \
   --certificate-identity-regexp "${IDENTITY_REGEXP}" \
   --certificate-oidc-issuer "${OIDC_ISSUER}"
 
 echo "Verify attestation"
-cosign verify-attestation --type slsaprovenance "${DIGEST_REF}" \
-  --certificate-identity-regexp "${IDENTITY_REGEXP}" \
-  --certificate-oidc-issuer "${OIDC_ISSUER}" >/tmp/cosign-attestation-verify.json
+cosign verify-attestation --type slsaprovenance "${DIGEST_REF}" --certificate-identity-regexp "${IDENTITY_REGEXP}" --certificate-oidc-issuer "${OIDC_ISSUER}" >/dev/null
 
-echo "Hard container cosign publish green: ${DIGEST_REF}"
+echo "Hard container cosign publish green - Rekor verified: ${DIGEST_REF}"
 echo "Consumer verify:"
 echo "  bash scripts/container-cosign-verify.sh ${DIGEST_REF}"
