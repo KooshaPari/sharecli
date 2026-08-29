@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-29 (Wave17 Plan 796 #796; C09 42/45 93% A → 44/45 98% A; weighted 92.6% A → 93.1% A; tier-1 92.6% A → 93.4% A)
+**Last sync:** 2026-08-29 (Wave17 Plan 800 IN_PROGRESS; C00 L5 2→3 lifted via FR-003 gates at tests/c00_l5_observability.rs; C00 29/30 97% A → 30/30 100% A; tier-1 lift +0.3pp weighted)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -196,7 +196,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W16.2 | C05 Pyroscope soft stub + C08 Harbor soft stub (no live) | FR-003 · C05 L45+ · C08 L76 · T-710/#750 · T-720/#751 · `src/pyroscope_stub.rs` `docs/eval/harbor-soft-stub.md` | Status: DONE |
 | W16.3 | C01 coverage pin refresh 80.51% @e89755c | FR-003 · C01 L11 · T-730 · `TEST_COVERAGE_MATRIX.md` `80.51%` `5d8dc08` `eb2b865` (#752) | Status: DONE |
 
-### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800/T-810/T-830/T-840/T-850/T-860/T-870 DONE, T-820 BLOCKED)
+### Wave17 — Fleet thesis residual (IN_PROGRESS - T-800/T-810/T-830/T-840/T-850/T-860/T-870/T-880/T-890/T-900/T-910/T-915 DONE, T-820 BLOCKED)
 
 | WBS | Work | Links | Status |
 |-----|------|-------|--------|
@@ -211,6 +211,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W17.9 | C11 L111 soft auto-update probe 1→2 | FR-003 · C11 L111 · T-880 · `src/commands/upgrade.rs` (`UpgradeChannel` × 4 + `probe()` + `check()`) · `src/main.rs` `Commands::Upgrade` clap subcommand · `tests/c11_l111_soft_upgrade.rs` 6/6 pass · `audit/.lane-c11/C11.md` L111 1→2 | Status: **DONE** (PR TBD; C11 39/45 87% B → 40/45 89% B; weighted 91.8% A → 92.0% A; unweighted sum 1090→1092 / 12 = 91.0% A; tier-1 sum 1470→1472 / 16 = 92.0% A; **NO network egress**; hard signed self-update / Sparkle / WinUI appcast deferred to L112 + TUF pipeline `docs/ops/in-binary-updater.md`) |
 | W17.10 | C02 L26 Resilience overflow fix + FR-003 gates 2→3 | FR-003 · C02 L26 · T-890 · `tests/c02_l26_resilience.rs` 10/10 pass · `src/retry.rs` `compute_delay` u128 saturating_mul fix · `src/backoff.rs` `Backoff::delay_for` u128 saturating_mul fix · `audit/.lane-c02/C02.md` L26 2→3 | Status: **DONE** (PR TBD; C02 27/30 90% A → 28/30 93% A; weighted 92.0% A → 92.3% A; unweighted sum 1092→1095 / 12 = 91.25% A; tier-1 sum 1472→1478 / 16 = 92.4% A; **fixed real u64-overflow bug** at extreme attempts — saturation clamp now holds at attempt=63 (Exponential) and attempt=u32::MAX (Linear)) |
 | W17.11 | C07 L68 Flake-tracker dashboard source code 2→3 | FR-003 · C07 L68 · T-900 · `scripts/flake_tracker.py` (pure-stdlib JUnit parser; classifies testcase as `flaky | regression | stable | skipped`; emits JSON with `baseline_diff`) · `scripts/comment_flake_tracker.py` (PR commenter) · `audit/.flake-tracker/README.md` + `baseline.json` (operations runbook + JSON schemas) · `.github/workflows/flake-tracker.yml` (paths-filtered; advisory `continue-on-error: true`; uploads `flake-report.json` artifact) · `tests/c07_l68_flake_tracker.rs` 6/6 PASS · `audit/.lane-c07/C07.md` L68 2→3 | Status: **DONE** (PR TBD; C07 27/30 90% A → 28/30 93% A; weighted 92.3% A → 92.6% A; unweighted sum 1095→1098 / 12 = 91.5% A; tier-1 sum 1478→1481 / 16 = 92.6% A; **C07 IS in tier-1**, second tier-1 lift in Wave17; bug found while writing the gate: `CaseStats` dataclass not hashable, fixed by list-comp + tuple set) |
+| W17.12 | C00 L5 Observability FR-003 acceptance gates 2→3 | FR-003 · C00 L5 · T-915 · `tests/c00_l5_observability.rs` 9/9 pass — covers `src/metrics.rs` (Counter/Gauge/MetricsRegistry + Default), `src/log_sink.rs` (LogSink/LogSinkLayer/flush_to_tracing/LogLevel), `src/otel.rs` (SdkTracerProvider + batch exporter + otel_enabled + try_otel_layer + W3C TraceContext propagator + traceparent helpers), `src/commands/serve.rs` (`/metrics/prometheus` + `/healthz`/`/readyz` split), `src/main.rs` (tracing_subscriber + EnvFilter), `Cargo.toml` (tracing/tracing-subscriber/opentelemetry/opentelemetry_sdk deps), `docs/ops/otel.md` + `docs/ops/grafana/`. `audit/.lane-c00/C00.md` L5 2→3 | Status: **DONE** (PR TBD; C00 29/30 97% A → 30/30 100% A; weighted 93.1% A → 93.4% A (+0.3pp tier-1 lift, matches Plan 794 C02 pattern); unweighted sum 1111→1114 / 12 = 92.83% A; tier-1 weighted sum rises via +6 C00 weighted (C00 IS in tier-1, double-weight applies) → 93.8% A) |
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.

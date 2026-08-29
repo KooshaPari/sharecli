@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-29 (Wave17 Plan 796 #796; C09 42/45 93% A → 44/45 98% A; weighted 92.6% A → 93.1% A; tier-1 92.6% A → 93.4% A)
+**Last sync:** 2026-08-29 (Wave17 Plan 800 IN_PROGRESS; C00 L5 2→3 lifted via FR-003 gates at tests/c00_l5_observability.rs; C00 29/30 97% A → 30/30 100% A; tier-1 lift +0.3pp weighted)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -78,6 +78,7 @@
 | C00 | L8 | jemalloc serve + dhat soft heap sample | Med | W14 · FR-003 | Status: Closed | `src/alloc.rs` · `docs/ops/memory.md` · `dhat-soft.yml` · `tests/c00_l8_allocator.rs` | agent-c00 |
 | C00 | L7 | Loom hard gate (pool_index) | Med | W14 · T-670 · FR-003 | Status: Closed | `crates/sharecli-sync` · `ci.yml` `loom` | agent-c00 |
 | C00 | L9 | SBOM in release archive + CI emission | Med | W4.1 · FR-003 | Status: Closed | `release.yml` · `sbom.yml` · `tests/c00_l9_sbom_release_gate.rs` | agent-c00 |
+| C00 | L5 | Observability FR-003 acceptance gates | High | W17 · T-915 · FR-003 | Status: Closed | `tests/c00_l5_observability.rs` (9/9 PASS) · `src/metrics.rs` (Counter/Gauge/MetricsRegistry + Default) · `src/log_sink.rs` (LogSink/LogSinkLayer/flush_to_tracing/LogLevel) · `src/otel.rs` (SdkTracerProvider + batch exporter + otel_enabled + try_otel_layer + W3C TraceContext propagator + traceparent helpers) · `src/commands/serve.rs` (`/metrics/prometheus` + `/healthz`/`/readyz` split) · `src/main.rs` (tracing_subscriber + EnvFilter) · `Cargo.toml` (tracing/tracing-subscriber/opentelemetry/opentelemetry_sdk deps) · `docs/ops/otel.md` · `docs/ops/grafana/` | agent-c00 |
 | C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 · #329 | Status: Closed | `docs/ops/config-proptest.md` · `config_validator.rs` | agent-c07 |
 | C07 | L66 | Proptest boundary + registry + replay | Med | W14 · T-650 · FR-003 | Status: Closed | `proptest-regressions/` · `tests/c07_l66_proptest_expand.rs` | agent-c07 |
 | C07 | L65 | cargo-mutants hard gate | Med | W14 · T-640 · FR-003 | Status: Closed | `mutants.yml` · `ci.yml` mutants+ci-success · `docs/ops/mutants-hard-gate.md` | agent-c07 |
