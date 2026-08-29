@@ -48,6 +48,7 @@ pub fn history_path() -> PathBuf {
 }
 
 /// Append a history entry to the JSONL file (idempotent, never panics).
+#[allow(dead_code)]
 pub fn append(entry: &HistoryEntry) {
     append_to(entry, &history_path());
 }

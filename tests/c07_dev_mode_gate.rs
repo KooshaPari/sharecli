@@ -93,7 +93,7 @@ async fn c07_config_watcher_hot_reload_propagates() {
     }
 
     let initial = Config::default();
-    let (tx, mut rx) = watch::channel(initial.clone());
+    let (tx, rx) = watch::channel(initial.clone());
 
     let _watcher = ConfigWatcher::new(config_path.clone(), tx).expect("ConfigWatcher::new");
 
@@ -147,7 +147,7 @@ async fn c07_config_watcher_survives_invalid_toml() {
     }
 
     let initial = Config::default();
-    let (tx, mut rx) = watch::channel(initial.clone());
+    let (tx, rx) = watch::channel(initial.clone());
 
     let _watcher = ConfigWatcher::new(config_path.clone(), tx).expect("ConfigWatcher::new");
 

@@ -20,7 +20,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tempfile::TempDir;
 
 /// C03 / AC-C03.1 — N concurrent Hypervisor runs never corrupt shared cache state.
@@ -32,7 +32,7 @@ async fn c03_concurrent_runs_share_cache_without_corruption() {
     const AGENT_COUNT: usize = 8;
 
     let dir = TempDir::new().expect("tempdir");
-    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let gate: Arc<dyn sharecli_core::ThermalGate> = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
     let hv = Arc::new(Hypervisor::with_thermal_gate(dir.path(), Arc::clone(&gate)));
 
     #[cfg(unix)]
@@ -94,7 +94,7 @@ async fn c03_worktree_isolation_across_concurrent_agents() {
         })
         .collect();
 
-    let gate = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
+    let gate: Arc<dyn sharecli_core::ThermalGate> = Arc::new(FakeThermalGate::new(ThermalDecision::Allow));
     let hv = Arc::new(Hypervisor::with_thermal_gate(root.path(), Arc::clone(&gate)));
 
     let mut handles = Vec::with_capacity(AGENT_COUNT);
