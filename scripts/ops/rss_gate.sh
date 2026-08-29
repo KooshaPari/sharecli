@@ -19,13 +19,13 @@ pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
 
 for _ in $(seq 1 30); do
-  if curl -sf -o /dev/null "$URL" 2>/dev/null; then
+  if curl -sf -o /dev/null "$URL" 2>&1; then
     break
   fi
   echo "Waiting for sharecli health endpoint..." >&2
   sleep 1
 done
-if ! curl -sf -o /dev/null "$URL" 2>/dev/null; then
+if ! curl -sf -o /dev/null "$URL" 2>&1; then
   echo "::error::sharecli health endpoint not responding after 30s" >&2
   exit 1
 fi
