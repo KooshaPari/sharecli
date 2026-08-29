@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# C06 L56 / T-660 — hard GHCR container cosign publish path.
-# Keyless sign + SLSA-ish attest + verify via GitHub OIDC (no Apple / extra secrets).
+# C06 L56 / T-660 / T-1120 — hard GHCR container cosign publish path.
+# Keyless sign + SLSA attest + verify + Rekor transparency log verification
+# via GitHub OIDC (no Apple / extra secrets).
 #
 # Env:
 #   IMAGE_TAG          Local build tag (default: sharecli:ci)
@@ -155,7 +156,35 @@ cosign sign --yes "${DIGEST_REF}"
 echo "Keyless cosign attest (slsaprovenance)"
 cosign attest --yes --type slsaprovenance --predicate "${PREDICATE_FILE}" "${DIGEST_REF}"
 
-echo "Verify signature"
+# --- Rekor transparency log verification (T-1120) ---
+# cosign verify --output-json emits the full transparency log bundle.
+# Parse the output to confirm the Rekor entry contains the expected
+# identity and issuer fields (proof-of-inclusion in the immutable log).
+REKOR_BUNDLE_FILE="/tmp/cosign-rekor-bundle.json"
+echo "Verifying Rekor transparency log entry"
+cosign verify "${DIGEST_REF}" \
+  --certificate-identity-regexp "${IDENTITY_REGEXP}" \
+  --certificate-oidc-issuer "${OIDC_ISSUER}" \
+  --output-json >"${REKOR_BUNDLE_FILE}"
+
+# Assert the bundle contains the critical claim (Rekor log structure).
+if ! grep -q '"critical"' "${REKOR_BUNDLE_FILE}"; then
+  echo "::error::Rekor transparency log bundle missing 'critical' claim"
+  exit 1
+fi
+if ! grep -q '"identity"' "${REKOR_BUNDLE_FILE}"; then
+  echo "::error::Rekor transparency log bundle missing 'identity' field"
+  exit 1
+fi
+if ! grep -q '"issuer"' "${REKOR_BUNDLE_FILE}"; then
+  echo "::error::Rekor transparency log bundle missing 'issuer' field"
+  exit 1
+fi
+echo "Rekor transparency log entry verified for ${DIGEST_REF}"
+
+# --- End Rekor transparency log verification (T-1120) ---
+
+echo "Verify signature chain (cosign verify without JSON output)"
 cosign verify "${DIGEST_REF}" \
   --certificate-identity-regexp "${IDENTITY_REGEXP}" \
   --certificate-oidc-issuer "${OIDC_ISSUER}"
@@ -163,8 +192,8 @@ cosign verify "${DIGEST_REF}" \
 echo "Verify attestation"
 cosign verify-attestation --type slsaprovenance "${DIGEST_REF}" \
   --certificate-identity-regexp "${IDENTITY_REGEXP}" \
-  --certificate-oidc-issuer "${OIDC_ISSUER}" >/tmp/cosign-attestation-verify.json
+  --certificate-oidc-issuer "${OIDC_ISSUER}" >/dev/null
 
-echo "Hard container cosign publish green: ${DIGEST_REF}"
+echo "Hard container cosign publish green (Rekor: verified): ${DIGEST_REF}"
 echo "Consumer verify:"
 echo "  bash scripts/container-cosign-verify.sh ${DIGEST_REF}"

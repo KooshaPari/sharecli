@@ -1,0 +1,47 @@
+# C05 OTel collector config — T-1130 (Wave19 gap remediation)
+#
+# Receives OTLP spans from sharecli, exports to Jaeger (traces),
+# Prometheus (collector self-metrics), and stdout (dev debug).
+#
+# Tailored for the sharecli OTLP/HTTP exporter (opentelemetry-otlp crate,
+# SpanExporter::builder().with_http().build()).
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
+exporters:
+  # ── Jaeger (traces) ──────────────────────────────────────────────────
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # ── Prometheus (collector self-metrics on :8888) ─────────────────────
+  prometheus:
+    endpoint: "0.0.0.0:8888"
+    namespace: sharecli_otel
+
+  # ── Debug (stdout) — dev / CI convenience ────────────────────────────
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/jaeger, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus, debug]

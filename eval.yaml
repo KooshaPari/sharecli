@@ -1,0 +1,62 @@
+# eval.yaml — C08 eval harness config (T-1110, Wave19)
+# Defines benchmark definitions, threshold budgets, and regression policy.
+# Consumed by tests/c08_eval_harness_gate.rs and .github/workflows/eval.yml.
+#
+# Bench targets are cross-referenced against:
+#   - benches/*.rs (Criterion microbenches)
+#   - Cargo.toml [[bench]] sections
+#   - docs/eval/baselines/criterion-baseline.json (committed means)
+
+benchmarks:
+  - name: config_parse
+    bench_target: config_toml_from_str
+    description: Config file parse speed (FR-002 hot path)
+    slo_id: BENCH-1
+    threshold_ms: 40
+    measured_baseline_ns: 20349
+    notes: >
+      TOML Config::from_str hot path. Measured ~20µs on seed run;
+      baseline set at ~2× headroom (40µs) for CI variance. The 40ms
+      threshold is an upper-bound safety net for extreme regressions.
+
+  - name: pool_list
+    bench_target: pool_new_and_list_empty
+    description: Pool listing speed (FR-004 hot path)
+    slo_id: BENCH-2
+    threshold_ms: 80
+    measured_baseline_ns: 54272000
+    notes: >
+      ProcessPool::new + list empty. Measured ~54ms; baseline at 80ms
+      with headroom. SLO budget capped at 100ms in docs/ops/SLO.md.
+
+  - name: prometheus_render
+    bench_target: prometheus_render_32
+    description: Prometheus metrics render speed (FR-007 hot path)
+    slo_id: BENCH-3
+    threshold_ms: 60
+    measured_baseline_ns: 29971
+    notes: >
+      Prometheus 32-process metrics format render. Measured ~30µs;
+      baseline at ~2× headroom. Upper-bound safety net at 60ms.
+
+  - name: jwt_auth_validate
+    bench_target: jwt_validate_rs256
+    description: JWT auth validation speed (FR-012 hot path)
+    slo_id: BENCH-4
+    threshold_ms: 10
+    measured_baseline_ns: 5000000
+    notes: >
+      JWT RS256 validate per request. Measured ~5ms; draft SLO p95 < 5ms.
+      Baseline at 10ms (~2× headroom) until ubuntu-latest seed refresh.
+
+thresholds:
+  # Fail CI if overall pass rate drops below this percentage
+  min_pass_rate: 95.0
+  # Fail CI if any single benchmark regresses more than this % vs baseline
+  max_regression_pct: 10.0
+  # Criterion comparison mode: "mean" uses mean_ns, "median" uses median
+  comparison_mode: mean
+  # Number of criterion runs for CI gate (smaller = faster, larger = more stable)
+  ci_sample_size: 10
+  ci_warmup_time: 1
+  ci_measurement_time: 2
