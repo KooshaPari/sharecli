@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-28 (Wave17 Plans #777 + #778b + #776 attempt 2 + #782 + #793 + **#794** C02 L26 2→3 DONE on overflow fix + FR-003 resilience gates; C02 27/30 90% A → 28/30 93% A; weighted 92.0% A → 92.3% A; tier-1 92.0% A → 92.4% A)
+**Last sync:** 2026-08-28 (Wave17 Plans #777 + #778b + #776 attempt 2 + #782 + #793 + #794 + **#786 (T-900 C07 L68 2→3 flake-tracker dashboard)**; C07 27/30 90% A → 28/30 93% A; C07 IS in tier-1; weighted 92.3% A → 92.6% A; tier-1 92.4% A → 92.6% A)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -81,6 +81,7 @@
 | C07 | L66 | Config proptest roundtrip | Med | W12.2 · T-410 · #329 | Status: Closed | `docs/ops/config-proptest.md` · `config_validator.rs` | agent-c07 |
 | C07 | L66 | Proptest boundary + registry + replay | Med | W14 · T-650 · FR-003 | Status: Closed | `proptest-regressions/` · `tests/c07_l66_proptest_expand.rs` | agent-c07 |
 | C07 | L65 | cargo-mutants hard gate | Med | W14 · T-640 · FR-003 | Status: Closed | `mutants.yml` · `ci.yml` mutants+ci-success · `docs/ops/mutants-hard-gate.md` | agent-c07 |
+| C07 | L68 | Flake-tracker dashboard source code | Med | W17 · T-900 · FR-003 | Status: Closed | `scripts/flake_tracker.py` · `audit/.flake-tracker/README.md` + `baseline.json` · `.github/workflows/flake-tracker.yml` · `tests/c07_l68_flake_tracker.rs` (6/6 PASS) | agent-c07 |
 
 ## C09 accessibility (Wave6)
 

@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-28 (Wave17 Plans #777 + #778b + #776 attempt 2 + #782 + #793 + **#794** C02 L26 2→3 DONE on overflow fix + FR-003 resilience gates; C02 27/30 90% A → 28/30 93% A; weighted 92.0% A → 92.3% A; tier-1 92.0% A → 92.4% A; PR #784)
+**Last sync:** 2026-08-28 (Wave17 Plans #777 + #778b + #776 attempt 2 + #782 + #793 + #794 + **#786 (T-900 C07 L68 2→3 flake-tracker dashboard)**; C07 27/30 90% A → 28/30 93% A; weighted 92.3% A → 92.6% A; tier-1 92.4% A → 92.6% A)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -31,7 +31,7 @@
 | C04 | Security | 87% → **90%** | B → **A** | Wave2 + W10–W14; **Wave17 Plan 776 attempt 2 (T-860)** L34 2→3 | Status: IN_PROGRESS → **DONE** (L34 verified merges shipped; ruleset stale evidence removed) |
 | C05 | Observability (deep) | 87% → **90%** | B → **A** | Wave2 + W11–W14; **Wave17 Plan 782 (T-870)** L49 2→3 Grafana provisioning as code | Status: IN_PROGRESS → **DONE** |
 | C06 | Supply Chain | 90% | A | Wave2 + W6 + W11–W14; **Wave17 Plan 777 L53 2→3 SLSA L3** | Status: DONE |
-| C07 | DX / QEng / Portability | 90% | A | Wave1–2 + W10–W14 | Status: IN_PROGRESS |
+| C07 | DX / QEng / Portability | 90% → **93%** | A | Wave1–2 + W10–W14; **Wave17 Plan 795 (T-900)** L68 2→3 flake-tracker dashboard | Status: IN_PROGRESS → **DONE** |
 | C08 | Eval Coverage | 73% | C | Wave1–2 + W11–W14; L76 N/A=1 (ADR 0002/0005) | Status: IN_PROGRESS |
 | C09 | Accessibility + UX | 93% | A | Wave7 + W9–W14 | Status: IN_PROGRESS |
 | C10 | Visual Identity | 97% | A | Wave1 + W11–W15 | Status: IN_PROGRESS |
@@ -210,6 +210,7 @@ Pred: W11.7←W11.6; Wave12 T-400..T-440 parallel after W11.7.
 | W17.8 | C05 L49 Grafana provisioning as code 2→3 | FR-003 · C05 L49 · T-870 · `docs/ops/grafana/provisioning/{datasources/prometheus.yaml, dashboards/sharecli-providers.yaml, manifests/sharecli-c05-manifest.json}` + 3 dashboards (1 moved + 2 new) + `README.md` runbook + `deferred/org-wide-promotion.md`; `audit/.lane-c05/C05.md` L49 2→3 | Status: **DONE** (PR TBD; C05 26/30 87% B → 27/30 90% A; unweighted 91.5% A → 91.75% A; weighted 91.5% A → 91.8% A; tier-1 stays 91.7% A since C05 not in tier-1; lane-level provisioned; org-wide folder promotion deferred per `docs/ops/grafana/deferred/org-wide-promotion.md`) |
 | W17.9 | C11 L111 soft auto-update probe 1→2 | FR-003 · C11 L111 · T-880 · `src/commands/upgrade.rs` (`UpgradeChannel` × 4 + `probe()` + `check()`) · `src/main.rs` `Commands::Upgrade` clap subcommand · `tests/c11_l111_soft_upgrade.rs` 6/6 pass · `audit/.lane-c11/C11.md` L111 1→2 | Status: **DONE** (PR TBD; C11 39/45 87% B → 40/45 89% B; weighted 91.8% A → 92.0% A; unweighted sum 1090→1092 / 12 = 91.0% A; tier-1 sum 1470→1472 / 16 = 92.0% A; **NO network egress**; hard signed self-update / Sparkle / WinUI appcast deferred to L112 + TUF pipeline `docs/ops/in-binary-updater.md`) |
 | W17.10 | C02 L26 Resilience overflow fix + FR-003 gates 2→3 | FR-003 · C02 L26 · T-890 · `tests/c02_l26_resilience.rs` 10/10 pass · `src/retry.rs` `compute_delay` u128 saturating_mul fix · `src/backoff.rs` `Backoff::delay_for` u128 saturating_mul fix · `audit/.lane-c02/C02.md` L26 2→3 | Status: **DONE** (PR TBD; C02 27/30 90% A → 28/30 93% A; weighted 92.0% A → 92.3% A; unweighted sum 1092→1095 / 12 = 91.25% A; tier-1 sum 1472→1478 / 16 = 92.4% A; **fixed real u64-overflow bug** at extreme attempts — saturation clamp now holds at attempt=63 (Exponential) and attempt=u32::MAX (Linear)) |
+| W17.11 | C07 L68 Flake-tracker dashboard source code 2→3 | FR-003 · C07 L68 · T-900 · `scripts/flake_tracker.py` (pure-stdlib JUnit parser; classifies testcase as `flaky | regression | stable | skipped`; emits JSON with `baseline_diff`) · `scripts/comment_flake_tracker.py` (PR commenter) · `audit/.flake-tracker/README.md` + `baseline.json` (operations runbook + JSON schemas) · `.github/workflows/flake-tracker.yml` (paths-filtered; advisory `continue-on-error: true`; uploads `flake-report.json` artifact) · `tests/c07_l68_flake_tracker.rs` 6/6 PASS · `audit/.lane-c07/C07.md` L68 2→3 | Status: **DONE** (PR TBD; C07 27/30 90% A → 28/30 93% A; weighted 92.3% A → 92.6% A; unweighted sum 1095→1098 / 12 = 91.5% A; tier-1 sum 1478→1481 / 16 = 92.6% A; **C07 IS in tier-1**, second tier-1 lift in Wave17; bug found while writing the gate: `CaseStats` dataclass not hashable, fixed by list-comp + tuple set) |
 ## Sync protocol
 
 1. After merge: update matching `Status:` here + row in `GAP-QA-MATRIX.md`.
