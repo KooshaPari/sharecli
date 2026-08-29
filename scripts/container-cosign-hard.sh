@@ -134,8 +134,8 @@ if [[ "${SKIP_GHCR_PUSH}" == "true" ]]; then
 fi
 
 if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  echo "::error::GITHUB_TOKEN required to login/push GHCR - packages:write + id-token:write"
-  echo "::error::If org registry permissions block GITHUB_TOKEN, re-run with SKIP_GHCR_PUSH=true"
+  echo "::error::GITHUB_TOKEN required to login/push GHCR - packages:write + id-token:write" >&2
+  echo "::error::If org registry permissions block GITHUB_TOKEN, re-run with SKIP_GHCR_PUSH=true" >&2
   exit 1
 fi
 
@@ -194,11 +194,11 @@ if ! grep -q '"critical"' "${REKOR_BUNDLE_FILE}"; then
   exit 1
 fi
 if ! grep -q '"identity"' "${REKOR_BUNDLE_FILE}"; then
-  echo "::error::Rekor transparency log bundle missing 'identity' field"
+  echo "::error::Rekor transparency log bundle missing 'identity' field" >&2
   exit 1
 fi
 if ! grep -q '"issuer"' "${REKOR_BUNDLE_FILE}"; then
-  echo "::error::Rekor transparency log bundle missing 'issuer' field"
+  echo "::error::Rekor transparency log bundle missing 'issuer' field" >&2
   exit 1
 fi
 echo "Rekor transparency log entry verified for ${DIGEST_REF}"

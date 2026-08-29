@@ -19,12 +19,16 @@ pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
 
 for _ in $(seq 1 30); do
-  if curl -sf -o /dev/null "$URL"; then
+  if curl -sf -o /dev/null "$URL" 2>/dev/null; then
     break
   fi
+  echo "Waiting for sharecli health endpoint..." >&2
   sleep 1
 done
-curl -sf -o /dev/null "$URL"
+if ! curl -sf -o /dev/null "$URL" 2>/dev/null; then
+  echo "::error::sharecli health endpoint not responding after 30s" >&2
+  exit 1
+fi
 
 # RSS in KiB from /proc
 rss_kib=$(awk '/VmRSS:/ {print $2}' "/proc/$pid/status")

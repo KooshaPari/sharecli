@@ -94,17 +94,26 @@ jobs:
       - name: Build release binary
         run: cargo build --release
 
-      - name: Sign Windows binary (placeholder)
-        # TODO: Replace with Azure Key Vault signtool invocation once configured.
-        # Set up AzureSignTool or signtool with a certificate from Key Vault:
-        #   dotnet tool install -g AzureSignTool
-        #   AzureSignTool sign \
-        #     -kvu "$AZURE_KEY_VAULT_URL" \
-        #     -kvi "$AZURE_KEY_VAULT_CLIENT_ID" \
-        #     -kvs "$AZURE_KEY_VAULT_CLIENT_SECRET" \
-        #     -kvt "$AZURE_KEY_VAULT_TENANT_ID" \
-        #     -kvc "$AZURE_KEY_VAULT_CERTIFICATE" \
-        #     target/release/sharecli.exe
+      - name: Sign Windows binary (Azure Key Vault)
+        if: env.AZURE_KEY_VAULT_URL != ''
+        env:
+          AZURE_KEY_VAULT_URL: ${{ secrets.AZURE_KEY_VAULT_URL }}
+          AZURE_KEY_VAULT_CLIENT_ID: ${{ secrets.AZURE_KEY_VAULT_CLIENT_ID }}
+          AZURE_KEY_VAULT_CLIENT_SECRET: ${{ secrets.AZURE_KEY_VAULT_CLIENT_SECRET }}
+          AZURE_KEY_VAULT_TENANT_ID: ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
         run: |
-          echo "::notice::Windows Authenticode signing not yet configured (Azure Key Vault TODO). Binary will be unsigned."
-          echo "Placeholder — replace with signtool invocation above once Azure Key Vault is wired."
+          dotnet tool install -g AzureSignTool
+          AzureSignTool sign \
+            -kvu "$AZURE_KEY_VAULT_URL" \
+            -kvi "$AZURE_KEY_VAULT_CLIENT_ID" \
+            -kvs "$AZURE_KEY_VAULT_CLIENT_SECRET" \
+            -kvt "$AZURE_KEY_VAULT_TENANT_ID" \
+            -kvc "$AZURE_KEY_VAULT_CERTIFICATE" \
+            target/release/sharecli.exe
+
+      - name: Sign Windows binary (skip - no Azure KV)
+        if: env.AZURE_KEY_VAULT_URL == ''
+        env:
+          AZURE_KEY_VAULT_URL: ${{ secrets.AZURE_KEY_VAULT_URL }}
+        run: |
+          echo "::notice::Windows Authenticode signing not configured (Azure Key Vault secrets missing). Binary will be unsigned."

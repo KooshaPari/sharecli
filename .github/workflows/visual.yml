@@ -1,5 +1,7 @@
 name: Visual Regression (Hard Gate)
 on: [pull_request]
+permissions:
+  contents: read
 jobs:
   visual:
     runs-on: ubuntu-latest
