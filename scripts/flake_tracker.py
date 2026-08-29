@@ -227,8 +227,11 @@ def build_report(
         if c.failed + c.errored > 0 and not c.flake:
             regressions.append(c)
 
-    executed = sum(c.runs - c.skipped for c in cases)
-    flake_rate = (len(flaky) / executed) if executed else 0.0
+    # Rate denominator: unique *cases*, not attempts. Counting attempts would
+    # depress the rate because retries add to executed without adding to the
+    # set of unique flaky cases. This matches the report schema which is
+    # case-based (per testcase). Numerator: distinct flaky cases.
+    flake_rate = (len(flaky) / len(cases)) if cases else 0.0
 
     return Report(
         generated_at_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),

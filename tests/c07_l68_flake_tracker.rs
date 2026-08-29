@@ -28,11 +28,7 @@ fn workspace_root() -> PathBuf {
 fn python_bin() -> Option<String> {
     // Try "python" first (Windows / cross-platform), then "python3".
     for cand in ["python", "python3"] {
-        if Command::new(cand)
-            .arg("--version")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+        if Command::new(cand).arg("--version").output().map(|o| o.status.success()).unwrap_or(false)
         {
             return Some(cand.to_string());
         }
@@ -208,6 +204,31 @@ fn fr003_flake_tracker_writes_json_report_to_output_path() {
 }
 
 #[test]
+fn fr003_flake_tracker_rate_uses_case_count_not_attempts() {
+    // 1 flaky case (1 pass + 1 fail across 2 attempts) + 1 stable case.
+    // Total cases: 2. Total flaky cases: 1. Expected rate: 1/2 = 0.5.
+    // Pre-fix bug: counted 1 flaky / 3 executed attempts = 0.333...
+    // Post-fix: 1 flaky / 2 cases = 0.5.
+    let Some(py) = python_bin() else {
+        return;
+    };
+    let tmp = env::temp_dir().join(format!("flake-tracker-rate-{}", std::process::id()));
+    fs::create_dir_all(&tmp).unwrap();
+    let junit = tmp.join("junit-rate.xml");
+    let out = tmp.join("rate-report.json");
+    write_junit_flake(&junit);
+    let r = run_tracker(&py, &junit, &out, None, &[]);
+    assert!(r.status.success());
+    let report = read_report(&out);
+    let rate = report["flake_rate"].as_f64().expect("flake_rate must be a number");
+    assert!(
+        (rate - 0.5).abs() < 1e-9,
+        "expected flake_rate = 0.5 (1 flaky case / 2 cases), got {}",
+        rate
+    );
+}
+
+#[test]
 fn fr003_flake_tracker_fail_on_flake_exits_nonzero_on_flake() {
     let Some(py) = python_bin() else {
         return;
@@ -259,10 +280,7 @@ fn fr003_flake_tracker_respects_no_color_env() {
         "stdout contained ANSI escape codes despite NO_COLOR=1: {:?}",
         stdout
     );
-    assert!(
-        stdout.contains("flake_tracker.py"),
-        "summary header missing from stdout"
-    );
+    assert!(stdout.contains("flake_tracker.py"), "summary header missing from stdout");
 }
 
 // Tiny shim so fs::create_dir_all isn't shadowed in the tests above when a

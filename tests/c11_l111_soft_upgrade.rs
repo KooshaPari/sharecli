@@ -15,9 +15,7 @@
 
 use std::path::PathBuf;
 
-use sharecli::commands::upgrade::{
-    probe, semver_cmp, UpgradeChannel, UpgradeReport,
-};
+use sharecli::commands::upgrade::{probe, semver_cmp, UpgradeChannel, UpgradeReport};
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -44,11 +42,8 @@ fn c11_l111_probe_returns_current_when_no_upgrade_file() {
 fn c11_l111_probe_detects_update_when_latest_gt_current() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(dir.path().join("sharecli")).expect("mkdir");
-    std::fs::write(
-        dir.path().join("sharecli").join("upgrade.json"),
-        r#"{"latest":"0.4.0"}"#,
-    )
-    .expect("write upgrade.json");
+    std::fs::write(dir.path().join("sharecli").join("upgrade.json"), r#"{"latest":"0.4.0"}"#)
+        .expect("write upgrade.json");
     let r = probe("0.3.0", UpgradeChannel::Binstall, Some(dir.path())).expect("probe");
     assert_eq!(r.latest.as_deref(), Some("0.4.0"));
     assert!(r.update_available);
@@ -100,32 +95,20 @@ fn c11_l111_semver_cmp_is_total_and_stable() {
 fn c11_l111_operator_docs_cover_all_four_channels_and_roadmap() {
     let auto = std::fs::read_to_string(repo_root().join("docs/ops/auto-update.md"))
         .expect("read auto-update.md");
-    for marker in &[
-        "crates.io",
-        "cargo-binstall",
-        "Homebrew",
-        "GitHub Releases",
-        "in-binary-updater.md",
-    ] {
-        assert!(
-            auto.contains(marker),
-            "auto-update.md missing marker `{}`",
-            marker,
-        );
+    for marker in
+        &["crates.io", "cargo-binstall", "Homebrew", "GitHub Releases", "in-binary-updater.md"]
+    {
+        assert!(auto.contains(marker), "auto-update.md missing marker `{}`", marker,);
     }
 
     let in_binary = std::fs::read_to_string(repo_root().join("docs/ops/in-binary-updater.md"))
         .expect("read in-binary-updater.md");
     for marker in &["TUF", "self-update", "Sparkle", "L112"] {
-        assert!(
-            in_binary.contains(marker),
-            "in-binary-updater.md missing marker `{}`",
-            marker,
-        );
+        assert!(in_binary.contains(marker), "in-binary-updater.md missing marker `{}`", marker,);
     }
 
-    let deploy = std::fs::read_to_string(repo_root().join("docs/deploy.md"))
-        .expect("read deploy.md");
+    let deploy =
+        std::fs::read_to_string(repo_root().join("docs/deploy.md")).expect("read deploy.md");
     assert!(
         deploy.contains("auto-update.md") && deploy.contains("in-binary-updater.md"),
         "deploy.md must link both L111 docs",
@@ -140,8 +123,7 @@ fn c11_l111_operator_docs_cover_all_four_channels_and_roadmap() {
 /// (so the operator can actually run `sharecli upgrade --check`).
 #[test]
 fn c11_l111_upgrade_subcommand_is_wired_in_cli() {
-    let main = std::fs::read_to_string(repo_root().join("src/main.rs"))
-        .expect("read src/main.rs");
+    let main = std::fs::read_to_string(repo_root().join("src/main.rs")).expect("read src/main.rs");
     // The Commands enum must have an Upgrade variant.
     assert!(
         main.contains("    Upgrade {") || main.contains("\n    Upgrade {"),
@@ -155,16 +137,10 @@ fn c11_l111_upgrade_subcommand_is_wired_in_cli() {
     // The probe module must be declared in commands/mod.rs.
     let mod_rs = std::fs::read_to_string(repo_root().join("src/commands/mod.rs"))
         .expect("read commands/mod.rs");
-    assert!(
-        mod_rs.contains("pub mod upgrade;"),
-        "commands/mod.rs must declare `pub mod upgrade;`",
-    );
+    assert!(mod_rs.contains("pub mod upgrade;"), "commands/mod.rs must declare `pub mod upgrade;`",);
     // Soft signal: the sharecli binary should be built at least once.
     let bin = repo_root().join("target/debug/sharecli.exe");
     if !bin.exists() {
-        eprintln!(
-            "sharecli.exe not built yet at {} — skipping CLI build check",
-            bin.display()
-        );
+        eprintln!("sharecli.exe not built yet at {} — skipping CLI build check", bin.display());
     }
 }
