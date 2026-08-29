@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 // ── rate-limit tests ────────────────────────────────────────────────────────
-use sharecli::serve_rate_limit::ServeRateLimit;
 use sharecli::config::ServeConfig;
+use sharecli::serve_rate_limit::ServeRateLimit;
 
 // ── auth tests ──────────────────────────────────────────────────────────────
 use sharecli::serve_auth::ServeAuth;
@@ -78,8 +78,7 @@ fn rate_limit_from_config_valid() {
         rate_limit_window_secs: Some(30),
         ..ServeConfig::default()
     };
-    let lim = ServeRateLimit::from_env_or_config(&cfg)
-        .expect("valid config must produce Some");
+    let lim = ServeRateLimit::from_env_or_config(&cfg).expect("valid config must produce Some");
     assert_eq!(lim.window(), Duration::from_secs(30));
     assert_eq!(lim.max_per_window(), 5);
 }
@@ -239,11 +238,7 @@ fn config_watcher_debounce_window() {
     // We cannot access it directly (private const), but we verify the expected
     // value here as a documentation/regression guard.
     let expected_debounce = Duration::from_millis(200);
-    assert_eq!(
-        expected_debounce,
-        Duration::from_millis(200),
-        "DEBOUNCE must remain 200ms"
-    );
+    assert_eq!(expected_debounce, Duration::from_millis(200), "DEBOUNCE must remain 200ms");
     assert_eq!(expected_debounce.as_millis(), 200);
 }
 
@@ -316,21 +311,12 @@ fn error_envelope_auth_failure_message() {
     ];
     for reason in known_reasons {
         let msg = auth_failure_message(reason);
-        assert!(
-            !msg.is_empty(),
-            "auth_failure_message({reason:?}) must return a non-empty string"
-        );
+        assert!(!msg.is_empty(), "auth_failure_message({reason:?}) must return a non-empty string");
     }
     // Spot-check specific mappings.
-    assert_eq!(
-        auth_failure_message("missing_authorization"),
-        "missing or invalid bearer token"
-    );
+    assert_eq!(auth_failure_message("missing_authorization"), "missing or invalid bearer token");
     assert_eq!(auth_failure_message("jwt_expired"), "jwt token expired");
-    assert_eq!(
-        auth_failure_message("invalid_bearer"),
-        "invalid bearer token"
-    );
+    assert_eq!(auth_failure_message("invalid_bearer"), "invalid bearer token");
 }
 
 // ---------------------------------------------------------------------------
@@ -389,19 +375,10 @@ fn process_state_export_json() {
     state_by_pid.insert(100, 'S');
     state_by_pid.insert(101, 'S');
     state_by_pid.insert(200, 'R');
-    assert_eq!(
-        sharecli_core::proc_scan::state_text_for_pid(&state_by_pid, 100),
-        "S"
-    );
-    assert_eq!(
-        sharecli_core::proc_scan::state_text_for_pid(&state_by_pid, 200),
-        "R"
-    );
+    assert_eq!(sharecli_core::proc_scan::state_text_for_pid(&state_by_pid, 100), "S");
+    assert_eq!(sharecli_core::proc_scan::state_text_for_pid(&state_by_pid, 200), "R");
     // Unknown pid returns "-".
-    assert_eq!(
-        sharecli_core::proc_scan::state_text_for_pid(&state_by_pid, 9999),
-        "-"
-    );
+    assert_eq!(sharecli_core::proc_scan::state_text_for_pid(&state_by_pid, 9999), "-");
 
     // Verify agent_label_for_pid.
     assert_eq!(

@@ -30,11 +30,7 @@ fn current_version(conn: &Connection) -> Result<i64> {
     .context("ensure _meta table")?;
 
     let version: i64 = conn
-        .query_row(
-            "SELECT value FROM _meta WHERE key = 'schema_version'",
-            [],
-            |row| row.get(0),
-        )
+        .query_row("SELECT value FROM _meta WHERE key = 'schema_version'", [], |row| row.get(0))
         .unwrap_or(0);
     Ok(version)
 }
@@ -144,11 +140,7 @@ mod tests {
     fn fresh_database_applies_migrations() {
         let conn = in_memory_store();
         let version: i64 = conn
-            .query_row(
-                "SELECT value FROM _meta WHERE key = 'schema_version'",
-                [],
-                |row| row.get(0),
-            )
+            .query_row("SELECT value FROM _meta WHERE key = 'schema_version'", [], |row| row.get(0))
             .unwrap();
         assert_eq!(version, CURRENT_VERSION);
     }

@@ -36,11 +36,7 @@ fn read_yaml(path: &Path) -> serde_yaml::Value {
 fn c05_docker_compose_otel_exists() {
     let root = repo_root();
     let path = root.join("docker-compose.otel.yml");
-    assert!(
-        path.exists(),
-        "docker-compose.otel.yml must exist at {}",
-        path.display()
-    );
+    assert!(path.exists(), "docker-compose.otel.yml must exist at {}", path.display());
 }
 
 /// docker-compose.otel.yml must be valid YAML.
@@ -114,11 +110,7 @@ fn c05_compose_exposes_required_ports() {
 fn c05_otel_collector_config_exists() {
     let root = repo_root();
     let path = root.join("otel-collector-config.yaml");
-    assert!(
-        path.exists(),
-        "otel-collector-config.yaml must exist at {}",
-        path.display()
-    );
+    assert!(path.exists(), "otel-collector-config.yaml must exist at {}", path.display());
 }
 
 /// otel-collector-config.yaml must be valid YAML.
@@ -130,10 +122,7 @@ fn c05_otel_collector_config_valid_yaml() {
 
     // Must have the three top-level sections the collector expects.
     for key in &["receivers", "exporters", "service"] {
-        assert!(
-            doc.get(*key).is_some(),
-            "otel-collector-config.yaml must have a `{key}` section"
-        );
+        assert!(doc.get(*key).is_some(), "otel-collector-config.yaml must have a `{key}` section");
     }
 }
 
@@ -197,11 +186,7 @@ fn c05_collector_config_has_debug_exporter() {
     let doc = read_yaml(&path);
 
     let exporters = doc.get("exporters").expect("exporters section");
-    let has_debug = exporters
-        .as_mapping()
-        .unwrap()
-        .keys()
-        .any(|k| k.as_str() == Some("debug"));
+    let has_debug = exporters.as_mapping().unwrap().keys().any(|k| k.as_str() == Some("debug"));
     assert!(has_debug, "collector config must include a `debug` exporter");
 }
 
@@ -214,8 +199,5 @@ fn c05_collector_config_has_traces_pipeline() {
 
     let service = doc.get("service").expect("service section");
     let pipelines = service.get("pipelines").expect("service must have pipelines");
-    assert!(
-        pipelines.get("traces").is_some(),
-        "service must declare a `traces` pipeline"
-    );
+    assert!(pipelines.get("traces").is_some(), "service must declare a `traces` pipeline");
 }

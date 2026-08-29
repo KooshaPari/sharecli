@@ -14,12 +14,8 @@
 //! AC-C03.4  FR traceability IDs survive concurrent dispatch (no cross-contamination).
 //! AC-C03.5  Coalesce cache TTL isolation holds across parallel agents.
 
-use sharecli_core::{
-    FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision,
-};
-use sharecli_ipc::{
-    command_key, CachedResult, CoalesceCache, SlotQueue,
-};
+use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision};
+use sharecli_ipc::{command_key, CachedResult, CoalesceCache, SlotQueue};
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -42,12 +38,8 @@ async fn c03_concurrent_runs_share_cache_without_corruption() {
     #[cfg(unix)]
     let argv = vec!["echo".to_string(), "c03-scale".to_string()];
     #[cfg(windows)]
-    let argv = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "c03-scale".to_string(),
-    ];
+    let argv =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "c03-scale".to_string()];
 
     let mut handles = Vec::with_capacity(AGENT_COUNT);
     for _ in 0..AGENT_COUNT {
@@ -55,14 +47,9 @@ async fn c03_concurrent_runs_share_cache_without_corruption() {
         let argv = argv.clone();
         let cwd = dir.path().to_path_buf();
         handles.push(tokio::spawn(async move {
-            hv.run(SpawnRequest {
-                argv,
-                cwd,
-                env: vec![],
-                queue_priority: QueuePriority::Normal,
-            })
-            .await
-            .expect("agent run must succeed")
+            hv.run(SpawnRequest { argv, cwd, env: vec![], queue_priority: QueuePriority::Normal })
+                .await
+                .expect("agent run must succeed")
         }));
     }
 
@@ -117,12 +104,8 @@ async fn c03_worktree_isolation_across_concurrent_agents() {
         #[cfg(unix)]
         let argv = vec!["echo".to_string(), format!("agent-{i}")];
         #[cfg(windows)]
-        let argv = vec![
-            "cmd".to_string(),
-            "/C".to_string(),
-            "echo".to_string(),
-            format!("agent-{i}"),
-        ];
+        let argv =
+            vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), format!("agent-{i}")];
         handles.push(tokio::spawn(async move {
             hv.run(SpawnRequest {
                 argv,
@@ -162,12 +145,8 @@ async fn c03_worktree_isolation_across_concurrent_agents() {
     #[cfg(unix)]
     let argv_ref = vec!["echo".to_string(), "agent-0".to_string()];
     #[cfg(windows)]
-    let argv_ref = vec![
-        "cmd".to_string(),
-        "/C".to_string(),
-        "echo".to_string(),
-        "agent-0".to_string(),
-    ];
+    let argv_ref =
+        vec!["cmd".to_string(), "/C".to_string(), "echo".to_string(), "agent-0".to_string()];
     let key_a = command_key(&argv_ref, &worktrees[0], &[]);
     let key_b = command_key(&argv_ref, &worktrees[1], &[]);
     assert_ne!(key_a, key_b, "AC-C03.2: different worktrees MUST produce different command_keys");
@@ -254,10 +233,7 @@ fn c03_fr_traceability_ids_survive_concurrent_dispatch() {
             ("SESSION_ID".into(), format!("sess-{i}")),
         ];
         let key = command_key(&argv, cwd, &env);
-        assert_eq!(
-            key, keys[i],
-            "AC-C03.4: command_key for agent {i} MUST be stable across calls"
-        );
+        assert_eq!(key, keys[i], "AC-C03.4: command_key for agent {i} MUST be stable across calls");
     }
 }
 

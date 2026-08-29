@@ -10,8 +10,7 @@
 // ---------------------------------------------------------------------------
 
 /// A valid W3C `traceparent` header value.
-const VALID_TRACEPARENT: &str =
-    "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+const VALID_TRACEPARENT: &str = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
 
 /// Trace ID component (32 hex chars).
 const TRACE_ID: &str = "4bf92f3577b34da6a3ce929d0e0e4736";
@@ -46,26 +45,16 @@ fn assert_hex_segment(segment: &str, expected_len: usize, label: &str) {
 ///
 /// Returns `Ok((version, trace_id, parent_id, trace_flags))` or
 /// `Err(description)`.
-fn parse_traceparent(
-    header: &str,
-) -> Result<(&str, &str, &str, &str), String> {
+fn parse_traceparent(header: &str) -> Result<(&str, &str, &str, &str), String> {
     let parts: Vec<&str> = header.split('-').collect();
     if parts.len() != 4 {
-        return Err(format!(
-            "traceparent must have 4 dash-separated parts; got {}",
-            parts.len()
-        ));
+        return Err(format!("traceparent must have 4 dash-separated parts; got {}", parts.len()));
     }
     Ok((parts[0], parts[1], parts[2], parts[3]))
 }
 
 /// Build a `traceparent` string from its four components.
-fn build_traceparent(
-    version: &str,
-    trace_id: &str,
-    parent_id: &str,
-    trace_flags: &str,
-) -> String {
+fn build_traceparent(version: &str, trace_id: &str, parent_id: &str, trace_flags: &str) -> String {
     format!("{version}-{trace_id}-{parent_id}-{trace_flags}")
 }
 
@@ -111,14 +100,8 @@ fn traceparent_header_format() {
     assert_eq!(rebuilt, VALID_TRACEPARENT);
 
     // Reject headers with the wrong number of segments.
-    assert!(
-        parse_traceparent("00-aaa-bbb").is_err(),
-        "3-segment header must be rejected"
-    );
-    assert!(
-        parse_traceparent("00-aaa-bbb-ccc-ddd").is_err(),
-        "5-segment header must be rejected"
-    );
+    assert!(parse_traceparent("00-aaa-bbb").is_err(), "3-segment header must be rejected");
+    assert!(parse_traceparent("00-aaa-bbb-ccc-ddd").is_err(), "5-segment header must be rejected");
 
     // Reject a header whose version is not `"00"`.
     let bad_version = "01-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
@@ -189,17 +172,15 @@ fn trace_flags_is_2_hex_chars() {
     // Too short (1 char) — validation must reject.
     let short_flags = "0";
     assert_eq!(short_flags.len(), 1);
-    let result = std::panic::catch_unwind(|| {
-        assert_hex_segment(short_flags, 2, "trace_flags (too short)")
-    });
+    let result =
+        std::panic::catch_unwind(|| assert_hex_segment(short_flags, 2, "trace_flags (too short)"));
     assert!(result.is_err(), "short trace_flags must be rejected");
 
     // Too long (3 chars) — validation must reject.
     let long_flags = "010";
     assert_eq!(long_flags.len(), 3);
-    let result = std::panic::catch_unwind(|| {
-        assert_hex_segment(long_flags, 2, "trace_flags (too long)")
-    });
+    let result =
+        std::panic::catch_unwind(|| assert_hex_segment(long_flags, 2, "trace_flags (too long)"));
     assert!(result.is_err(), "long trace_flags must be rejected");
 }
 
@@ -211,8 +192,8 @@ fn traceparent_injection_preserves_context() {
 
     inject_traceparent(&mut headers, VALID_TRACEPARENT);
 
-    let extracted = extract_traceparent(&headers)
-        .expect("traceparent must be present after injection");
+    let extracted =
+        extract_traceparent(&headers).expect("traceparent must be present after injection");
     assert_eq!(
         extracted, VALID_TRACEPARENT,
         "injected traceparent must survive extraction round-trip"
@@ -240,18 +221,14 @@ fn ipc_trace_context_propagation() {
     let wire = serde_json::to_string(&envelope).expect("serialize IPC envelope");
 
     // --- Deserialize (receiver side) ------------------------------------
-    let decoded: serde_json::Value =
-        serde_json::from_str(&wire).expect("deserialize IPC envelope");
+    let decoded: serde_json::Value = serde_json::from_str(&wire).expect("deserialize IPC envelope");
 
     let recovered = decoded
         .get("traceparent")
         .and_then(|v| v.as_str())
         .expect("traceparent must be present in decoded envelope");
 
-    assert_eq!(
-        recovered, VALID_TRACEPARENT,
-        "trace context must survive IPC JSON round-trip"
-    );
+    assert_eq!(recovered, VALID_TRACEPARENT, "trace context must survive IPC JSON round-trip");
 
     // Verify the three sub-components are still individually valid.
     let (ver, tid, pid, flags) =
@@ -278,33 +255,26 @@ fn tray_trace_context_passthrough() {
     }
 
     // The forwarded value must be identical.
-    let forwarded = extract_traceparent(&outgoing)
-        .expect("traceparent must be forwarded by tray");
-    assert_eq!(
-        forwarded, VALID_TRACEPARENT,
-        "tray must pass trace context through unchanged"
-    );
+    let forwarded = extract_traceparent(&outgoing).expect("traceparent must be forwarded by tray");
+    assert_eq!(forwarded, VALID_TRACEPARENT, "tray must pass trace context through unchanged");
 
     // --- Multi-hop scenario: operator → tray → IPC ---------------------
     // Build a second-generation traceparent to simulate a child span.
     let child_trace_id = TRACE_ID;
     let child_parent_id = "a1b2c3d4e5f6a7b8";
     let child_flags = "01";
-    let child_traceparent =
-        build_traceparent("00", child_trace_id, child_parent_id, child_flags);
+    let child_traceparent = build_traceparent("00", child_trace_id, child_parent_id, child_flags);
 
     // Replace the original traceparent with the child span.
     outgoing.pop();
     inject_traceparent(&mut outgoing, &child_traceparent);
 
     // Extract should now return the child span.
-    let final_value = extract_traceparent(&outgoing)
-        .expect("child traceparent must be present");
+    let final_value = extract_traceparent(&outgoing).expect("child traceparent must be present");
     assert_eq!(final_value, child_traceparent);
 
     // Validate the full structure of the propagated child span.
-    let (v, tid, pid, fl) =
-        parse_traceparent(&final_value).expect("child traceparent must parse");
+    let (v, tid, pid, fl) = parse_traceparent(&final_value).expect("child traceparent must parse");
     assert_eq!(v, "00");
     assert_eq!(tid, child_trace_id);
     assert_eq!(pid, child_parent_id);

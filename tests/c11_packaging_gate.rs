@@ -29,20 +29,12 @@ fn packaging_workflow_exists() {
 #[test]
 fn dmg_layout_script_exists() {
     let path = repo_root().join("scripts/build_dmg_layout.sh");
-    assert!(
-        path.exists(),
-        "scripts/build_dmg_layout.sh must exist (checked at {:?})",
-        path
-    );
+    assert!(path.exists(), "scripts/build_dmg_layout.sh must exist (checked at {:?})", path);
 }
 
 /// FR-001 / C11 L108 — DEB layout script exists for building Linux .deb packages.
 #[test]
 fn deb_layout_script_exists() {
     let path = repo_root().join("scripts/build_deb.sh");
-    assert!(
-        path.exists(),
-        "scripts/build_deb.sh must exist (checked at {:?})",
-        path
-    );
+    assert!(path.exists(), "scripts/build_deb.sh must exist (checked at {:?})", path);
 }

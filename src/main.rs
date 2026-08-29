@@ -1127,12 +1127,7 @@ async fn run() -> Result<()> {
         }
         Commands::Soak { cmd } => match cmd {
             SoakCmd::Run { duration, interval, config, output } => {
-                commands::soak::run(
-                    *duration,
-                    *interval,
-                    config,
-                    output.as_deref(),
-                )?;
+                commands::soak::run(*duration, *interval, config, output.as_deref())?;
             }
             SoakCmd::Report { output } => {
                 commands::soak::report_cmd(output)?;

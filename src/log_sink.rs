@@ -127,11 +127,8 @@ impl<S: Subscriber> Layer<S> for LogSinkLayer {
         }
         let mut visitor = MessageVisitor(String::new());
         event.record(&mut visitor);
-        let message = if visitor.0.is_empty() {
-            format!("{}", event.metadata().target())
-        } else {
-            visitor.0
-        };
+        let message =
+            if visitor.0.is_empty() { format!("{}", event.metadata().target()) } else { visitor.0 };
         self.sink.write(level, message);
     }
 }

@@ -26,12 +26,8 @@ const KNOWN_BENCH_TARGETS: &[&str] = &[
 ];
 
 /// Known bench config names from eval.yaml benchmarks[].name.
-const KNOWN_BENCH_NAMES: &[&str] = &[
-    "config_parse",
-    "pool_list",
-    "prometheus_render",
-    "jwt_auth_validate",
-];
+const KNOWN_BENCH_NAMES: &[&str] =
+    &["config_parse", "pool_list", "prometheus_render", "jwt_auth_validate"];
 
 /// Maximum acceptable threshold in milliseconds.
 /// Any benchmark threshold above this is considered absurdly high.
@@ -155,22 +151,14 @@ fn extract_threshold_ms(content: &str) -> Vec<u64> {
 
 /// Parse a float from a YAML simple key:value line.
 fn yaml_get_f64(content: &str, key: &str) -> Option<f64> {
-    yaml_get_simple(content, key).and_then(|v| {
-        v.trim_matches('"')
-            .trim_matches('\'')
-            .parse::<f64>()
-            .ok()
-    })
+    yaml_get_simple(content, key)
+        .and_then(|v| v.trim_matches('"').trim_matches('\'').parse::<f64>().ok())
 }
 
 /// Parse a u64 from a YAML simple key:value line.
 fn yaml_get_u64(content: &str, key: &str) -> Option<u64> {
-    yaml_get_simple(content, key).and_then(|v| {
-        v.trim_matches('"')
-            .trim_matches('\'')
-            .parse::<u64>()
-            .ok()
-    })
+    yaml_get_simple(content, key)
+        .and_then(|v| v.trim_matches('"').trim_matches('\'').parse::<u64>().ok())
 }
 
 // ---------------------------------------------------------------------------
@@ -183,10 +171,7 @@ fn eval_yaml_exists() {
     let path = Path::new("eval.yaml");
     assert!(path.exists(), "eval.yaml must exist at repo root (T-1110)");
     let content = fs::read_to_string(path).expect("eval.yaml must be readable");
-    assert!(
-        !content.trim().is_empty(),
-        "eval.yaml must not be empty"
-    );
+    assert!(!content.trim().is_empty(), "eval.yaml must not be empty");
 }
 
 /// Assert that eval.yaml contains all expected benchmark names.
@@ -210,10 +195,7 @@ fn eval_yaml_targets_match_actual_bench() {
     let content = fs::read_to_string("eval.yaml").expect("eval.yaml readable");
     let targets = extract_bench_targets(&content);
 
-    assert!(
-        !targets.is_empty(),
-        "eval.yaml must define bench_target for each benchmark"
-    );
+    assert!(!targets.is_empty(), "eval.yaml must define bench_target for each benchmark");
 
     for target in &targets {
         assert!(
@@ -294,26 +276,17 @@ fn eval_yaml_ci_params_reasonable() {
     let sample_size = yaml_get_u64(&content, "ci_sample_size");
     assert!(sample_size.is_some(), "ci_sample_size must be defined");
     let ss = sample_size.unwrap();
-    assert!(
-        ss >= 3 && ss <= 1000,
-        "ci_sample_size ({ss}) must be in [3, 1000]"
-    );
+    assert!(ss >= 3 && ss <= 1000, "ci_sample_size ({ss}) must be in [3, 1000]");
 
     let warmup = yaml_get_u64(&content, "ci_warmup_time");
     assert!(warmup.is_some(), "ci_warmup_time must be defined");
     let wu = warmup.unwrap();
-    assert!(
-        wu <= 30,
-        "ci_warmup_time ({wu}s) must be <= 30s"
-    );
+    assert!(wu <= 30, "ci_warmup_time ({wu}s) must be <= 30s");
 
     let measurement = yaml_get_u64(&content, "ci_measurement_time");
     assert!(measurement.is_some(), "ci_measurement_time must be defined");
     let mt = measurement.unwrap();
-    assert!(
-        mt >= 1 && mt <= 60,
-        "ci_measurement_time ({mt}s) must be in [1, 60]"
-    );
+    assert!(mt >= 1 && mt <= 60, "ci_measurement_time ({mt}s) must be in [1, 60]");
 }
 
 /// Verify regression detection logic: a value exceeding threshold is flagged.
@@ -360,18 +333,12 @@ fn pass_rate_calculation() {
     let pass_rate = (passed as f64 / total as f64) * 100.0;
     let min_pass_rate = 95.0;
 
-    assert!(
-        pass_rate >= min_pass_rate,
-        "19/20 (95%) should meet 95% threshold"
-    );
+    assert!(pass_rate >= min_pass_rate, "19/20 (95%) should meet 95% threshold");
 
     // 2 fail
     let passed2: u64 = 18;
     let pass_rate2 = (passed2 as f64 / total as f64) * 100.0;
-    assert!(
-        pass_rate2 < min_pass_rate,
-        "18/20 (90%) should NOT meet 95% threshold"
-    );
+    assert!(pass_rate2 < min_pass_rate, "18/20 (90%) should NOT meet 95% threshold");
 }
 
 /// Verify eval.yaml contains the required sections.
@@ -379,22 +346,13 @@ fn pass_rate_calculation() {
 fn eval_yaml_structure() {
     let content = fs::read_to_string("eval.yaml").expect("eval.yaml readable");
 
-    assert!(
-        content.contains("benchmarks:"),
-        "eval.yaml must contain 'benchmarks:' section"
-    );
-    assert!(
-        content.contains("thresholds:"),
-        "eval.yaml must contain 'thresholds:' section"
-    );
+    assert!(content.contains("benchmarks:"), "eval.yaml must contain 'benchmarks:' section");
+    assert!(content.contains("thresholds:"), "eval.yaml must contain 'thresholds:' section");
     assert!(
         content.contains("max_regression_pct:"),
         "eval.yaml thresholds must define max_regression_pct"
     );
-    assert!(
-        content.contains("min_pass_rate:"),
-        "eval.yaml thresholds must define min_pass_rate"
-    );
+    assert!(content.contains("min_pass_rate:"), "eval.yaml thresholds must define min_pass_rate");
 }
 
 /// Verify eval.yaml schema_version or documentation header exists.
@@ -403,19 +361,10 @@ fn eval_yaml_documentation() {
     let content = fs::read_to_string("eval.yaml").expect("eval.yaml readable");
 
     // Must have comment header explaining purpose
-    assert!(
-        content.contains("C08"),
-        "eval.yaml must reference C08 in comments"
-    );
-    assert!(
-        content.contains("T-1110"),
-        "eval.yaml must reference T-1110 task ID"
-    );
+    assert!(content.contains("C08"), "eval.yaml must reference C08 in comments");
+    assert!(content.contains("T-1110"), "eval.yaml must reference T-1110 task ID");
     // Must document the bench targets it references
     for target in KNOWN_BENCH_TARGETS {
-        assert!(
-            content.contains(target),
-            "eval.yaml must document bench_target '{target}'"
-        );
+        assert!(content.contains(target), "eval.yaml must document bench_target '{target}'");
     }
 }

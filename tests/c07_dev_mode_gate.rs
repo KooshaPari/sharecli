@@ -37,10 +37,7 @@ fn c07_serve_subcommand_parses() {
         .output()
         .expect("failed to run sharecli --help");
     let help = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        help.contains("serve"),
-        "AC-C07.1: sharecli --help MUST list the `serve` subcommand"
-    );
+    assert!(help.contains("serve"), "AC-C07.1: sharecli --help MUST list the `serve` subcommand");
     assert!(
         help.contains("HTTP") || help.contains("WebSocket") || help.contains("dashboard"),
         "AC-C07.1: serve description MUST mention HTTP/WebSocket/dashboard"
@@ -57,24 +54,17 @@ fn c07_serve_subcommand_parses() {
 /// This mirrors what `sharecli serve --bind 127.0.0.1:0` does internally.
 #[tokio::test]
 async fn c07_dev_mode_binds_local_listener() {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("bind to random port");
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("bind to random port");
     let addr = listener.local_addr().expect("local_addr");
     assert!(
         addr.ip().is_loopback(),
         "AC-C07.2: dev mode MUST bind to loopback (127.0.0.1), got {}",
         addr.ip()
     );
-    assert!(
-        addr.port() > 0,
-        "AC-C07.2: OS-assigned port MUST be > 0"
-    );
+    assert!(addr.port() > 0, "AC-C07.2: OS-assigned port MUST be > 0");
 
     // Verify the port is actually connectable.
-    let stream = tokio::net::TcpStream::connect(addr)
-        .await
-        .expect("connect to dev listener");
+    let stream = tokio::net::TcpStream::connect(addr).await.expect("connect to dev listener");
     drop(stream);
 }
 
@@ -105,8 +95,7 @@ async fn c07_config_watcher_hot_reload_propagates() {
     let initial = Config::default();
     let (tx, mut rx) = watch::channel(initial.clone());
 
-    let _watcher = ConfigWatcher::new(config_path.clone(), tx)
-        .expect("ConfigWatcher::new");
+    let _watcher = ConfigWatcher::new(config_path.clone(), tx).expect("ConfigWatcher::new");
 
     // Give the OS watcher a moment to register.
     tokio::time::sleep(Duration::from_millis(300)).await;
@@ -160,8 +149,7 @@ async fn c07_config_watcher_survives_invalid_toml() {
     let initial = Config::default();
     let (tx, mut rx) = watch::channel(initial.clone());
 
-    let _watcher = ConfigWatcher::new(config_path.clone(), tx)
-        .expect("ConfigWatcher::new");
+    let _watcher = ConfigWatcher::new(config_path.clone(), tx).expect("ConfigWatcher::new");
 
     tokio::time::sleep(Duration::from_millis(300)).await;
 
@@ -223,8 +211,8 @@ fn c07_dashboard_html_contains_expected_markers() {
 /// it responds with HTTP 200 and a JSON body.
 #[tokio::test]
 async fn c07_healthz_returns_200_json() {
-    use axum::Router;
     use axum::routing::get;
+    use axum::Router;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     async fn mock_healthz() -> axum::Json<serde_json::Value> {
