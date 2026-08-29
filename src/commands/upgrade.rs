@@ -170,10 +170,9 @@ fn default_config_dir() -> PathBuf {
 }
 
 fn read_latest_from(path: &Path) -> Result<String> {
-    let raw = std::fs::read_to_string(path)
-        .with_context(|| format!("read {}", path.display()))?;
-    let parsed: serde_json::Value = serde_json::from_str(&raw)
-        .with_context(|| format!("parse {} as JSON", path.display()))?;
+    let raw = std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&raw).with_context(|| format!("parse {} as JSON", path.display()))?;
     let latest = parsed
         .get("latest")
         .and_then(|v| v.as_str())
@@ -192,8 +191,7 @@ pub fn check(channel_name: Option<&str>) -> Result<()> {
     };
     let current = env!("CARGO_PKG_VERSION");
     let report = probe(current, channel, None)?;
-    let json = serde_json::to_string_pretty(&report)
-        .context("serialize upgrade report")?;
+    let json = serde_json::to_string_pretty(&report).context("serialize upgrade report")?;
     println!("{}", json);
     if report.update_available {
         std::process::exit(0);
@@ -228,11 +226,8 @@ mod tests {
     fn probe_marks_update_available_when_latest_gt_current() {
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(dir.path().join("sharecli")).expect("mkdir");
-        std::fs::write(
-            dir.path().join("sharecli").join("upgrade.json"),
-            r#"{"latest":"0.4.0"}"#,
-        )
-        .expect("write upgrade.json");
+        std::fs::write(dir.path().join("sharecli").join("upgrade.json"), r#"{"latest":"0.4.0"}"#)
+            .expect("write upgrade.json");
         let r = probe("0.3.0", UpgradeChannel::Binstall, Some(dir.path())).expect("probe");
         assert_eq!(r.latest.as_deref(), Some("0.4.0"));
         assert!(r.update_available);

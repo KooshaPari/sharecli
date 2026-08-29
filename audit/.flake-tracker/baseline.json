@@ -1,0 +1,7 @@
+{
+  "$schema": "./README.md",
+  "version": 1,
+  "generated_at_utc": "2026-08-28T00:00:00+00:00",
+  "comment": "Known/accepted flakes (C07/L68 score-3 evidence). Tests listed here are explicitly tracked; tests not in this list that show up in flake-report.json are 'introduced' and require triage per docs/testing/flake-policy.md.",
+  "flaky_cases": []
+}
