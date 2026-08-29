@@ -37,7 +37,7 @@ jobs:
       - name: Install cargo-fuzz
         run: cargo install --locked cargo-fuzz
       - name: Install Zig (mlugg/zig-build transitive dep)
-        uses: mlugg/setup-zig@e75ad69909e0b3ab219432619c3f56f8e5632f80 # v2.0.0
+        uses: mlugg/setup-zig@aa9ad5c14eb3452e235a441c4f9a8e89f20d97bd # v2.0.0
         with:
           version: 0.14.1
       - name: Fuzz ${{ matrix.target }} (60s)
