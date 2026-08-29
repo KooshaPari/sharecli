@@ -87,7 +87,7 @@ jobs:
       - name: Package MSI with WiX
         run: |
           echo "::warning::WiX toolset not yet installed — MSI packaging is a TODO placeholder"
-          echo "sharecli-msi payload staged at sharecli-msi/" 
+          echo "sharecli-msi payload staged at sharecli-msi/"
           dir sharecli-msi\
           if (Get-Command cargo-wix -ErrorAction SilentlyContinue) {
             cargo wix --no-build --output sharecli.msi -p sharecli
