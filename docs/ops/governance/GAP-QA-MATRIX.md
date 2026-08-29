@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-28 (Wave17 Plans #777 + #778b + #776 attempt 2 + #782 + #793 + #794 + **#786 (T-900 C07 L68 2→3 flake-tracker dashboard)**; C07 27/30 90% A → 28/30 93% A; C07 IS in tier-1; weighted 92.3% A → 92.6% A; tier-1 92.4% A → 92.6% A)
+**Last sync:** 2026-08-29 (Wave17 Plan 796 #796; C09 42/45 93% A → 44/45 98% A; weighted 92.6% A → 93.1% A; tier-1 92.6% A → 93.4% A)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -97,6 +97,8 @@
 | C09 | L81.4 | Screen-reader procedure + automated evidence | Med | W9.3 · FR-004 NFR | Status: Closed | `docs/a11y/sr-pass-evidence.md` · `docs/a11y/sr-checklist.md` · `tests/a11y/` | agent-c09 |
 | C09 | L81.4 | Live VoiceOver/NVDA per-release checkbox | Low | W9.3 soft · FR-004 NFR | Status: READY | release checklist AT notes | agent-c09 |
 | C09 | L81.11 | Responsive TUI + viewport e2e | Low | W10.2 | Status: Closed | `playwright-soft.yml` · `docs/a11y/playwright-viewports.md` | agent-c09 |
+| C09 | L81.12 | Recognition Over Recall (history command) | Med | Wave17 Plan 796 · T-910 · FR-003 | Status: Closed | `src/commands/history.rs` (JSONL-backed: append_to + read_recent + clear + format_entry; XDG_STATE_HOME) + `src/main.rs:491-504` (Commands::History) + `tests/c09_l81_recognition_cta.rs` 5/5 history gates | agent-c09 |
+| C09 | L81.15 | CTA token system (primary/secondary) | Med | Wave17 Plan 796 · T-910 · FR-003 | Status: Closed | `assets/tokens.css:11-15` (CTA tokens dark+light+media) + `src/dashboard.html:334-356` (.cta-primary/.cta-secondary classes) + `tests/c09_l81_recognition_cta.rs` 5/5 CTA gates | agent-c09 |
 
 ## Update recipe
 

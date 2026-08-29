@@ -487,6 +487,21 @@ enum Commands {
         #[arg(long, default_value = "crates-io")]
         channel: String,
     },
+
+    /// Show recent CLI invocation history (C09 L81.12)
+    History {
+        /// Maximum number of entries to display
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+
+        /// Output as machine-readable JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Clear all history entries
+        #[arg(long)]
+        clear: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -1055,6 +1070,27 @@ async fn run() -> Result<()> {
         }
         Commands::Upgrade { check: _, channel } => {
             commands::upgrade::check(Some(channel.as_str()))?;
+        }
+        Commands::History { limit, json, clear } => {
+            let path = commands::history::history_path();
+            if *clear {
+                commands::history::clear(&path)?;
+                eprintln!("History cleared.");
+            } else {
+                let entries = commands::history::read_recent(&path, *limit)?;
+                if entries.is_empty() {
+                    eprintln!("No history entries. CLI invocations are recorded automatically.");
+                } else if *json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&entries).unwrap_or_default()
+                    );
+                } else {
+                    for entry in &entries {
+                        println!("{}", commands::history::format_entry(entry));
+                    }
+                }
+            }
         }
         Commands::Thermal { cap } => {
             let gov = sharecli_fleet::thermal::ThermalGovernor::new();

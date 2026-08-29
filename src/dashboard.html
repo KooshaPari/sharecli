@@ -331,6 +331,29 @@
     thead th { padding: 6px 8px; }
     tbody td { padding: 5px 8px; }
   }
+  /* CTA token system (C09 L81.15) — primary/secondary action buttons */
+  .cta-primary {
+    background: var(--bb2-cta-primary);
+    color: var(--bb2-cta-primary-text);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity var(--motion-duration-fast, 150ms) var(--motion-ease);
+  }
+  .cta-primary:hover { opacity: 0.85; }
+  .cta-secondary {
+    background: var(--bb2-cta-secondary);
+    color: var(--bb2-cta-secondary-text);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity var(--motion-duration-fast, 150ms) var(--motion-ease);
+  }
+  .cta-secondary:hover { opacity: 0.85; }
 </style>
 </head>
 <body>
