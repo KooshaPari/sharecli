@@ -23,8 +23,7 @@ use std::path::Path;
 
 fn read_repo_file(rel: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("read {}: {}", path.display(), e))
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {}", path.display(), e))
 }
 
 #[test]
@@ -41,49 +40,25 @@ fn fr003_c02_l22_crypto_keys_doc_is_committed_not_soft() {
 #[test]
 fn fr003_c02_l22_crypto_keys_doc_documents_threat_surface() {
     let doc = read_repo_file("docs/ops/crypto-keys.md");
-    assert!(
-        doc.contains("Threat surface"),
-        "crypto-keys.md must include a Threat surface section"
-    );
+    assert!(doc.contains("Threat surface"), "crypto-keys.md must include a Threat surface section");
     // Product secret surfaces
-    assert!(
-        doc.contains("SHARECLI_SERVE_TOKEN"),
-        "crypto-keys.md must name SHARECLI_SERVE_TOKEN"
-    );
-    assert!(
-        doc.contains("JWKS"),
-        "crypto-keys.md must name JWKS for JWT path"
-    );
+    assert!(doc.contains("SHARECLI_SERVE_TOKEN"), "crypto-keys.md must name SHARECLI_SERVE_TOKEN");
+    assert!(doc.contains("JWKS"), "crypto-keys.md must name JWKS for JWT path");
     // JSONL stores must be flagged as no-secret surfaces
     assert!(
         doc.contains("Audit") && doc.contains("JSONL"),
         "crypto-keys.md must call out the audit JSONL surface"
     );
-    assert!(
-        doc.contains("history"),
-        "crypto-keys.md must call out the history JSONL surface"
-    );
+    assert!(doc.contains("history"), "crypto-keys.md must call out the history JSONL surface");
 }
 
 #[test]
 fn fr003_c02_l22_crypto_keys_doc_documents_key_lifecycle() {
     let doc = read_repo_file("docs/ops/crypto-keys.md");
-    assert!(
-        doc.contains("Key lifecycle"),
-        "crypto-keys.md must include a Key lifecycle section"
-    );
+    assert!(doc.contains("Key lifecycle"), "crypto-keys.md must include a Key lifecycle section");
     let lower = doc.to_lowercase();
-    for stage in [
-        "provisioning",
-        "storage",
-        "rotation",
-        "disposal",
-    ] {
-        assert!(
-            lower.contains(stage),
-            "crypto-keys.md lifecycle section must mention {}",
-            stage
-        );
+    for stage in ["provisioning", "storage", "rotation", "disposal"] {
+        assert!(lower.contains(stage), "crypto-keys.md lifecycle section must mention {}", stage);
     }
 }
 
@@ -95,14 +70,8 @@ fn fr003_c02_l22_crypto_keys_doc_enumerates_algorithm_inventory() {
         "crypto-keys.md must include an Algorithm inventory section"
     );
     // Product crypto
-    assert!(
-        doc.contains("SHA-256"),
-        "crypto-keys.md must call out SHA-256 as product crypto"
-    );
-    assert!(
-        doc.contains("RS256"),
-        "crypto-keys.md must call out RS256 for JWT"
-    );
+    assert!(doc.contains("SHA-256"), "crypto-keys.md must call out SHA-256 as product crypto");
+    assert!(doc.contains("RS256"), "crypto-keys.md must call out RS256 for JWT");
     // Non-product helpers must be explicitly listed
     for helper in ["xxtea", "hkdf", "chacha20", "x509_chain", "pem_decode"] {
         assert!(
@@ -138,18 +107,9 @@ fn fr003_c02_l22_crypto_keys_doc_declares_kms_out_of_scope() {
 #[test]
 fn fr003_c02_l22_crypto_keys_doc_cross_references_threat_model_and_auth() {
     let doc = read_repo_file("docs/ops/crypto-keys.md");
-    assert!(
-        doc.contains("THREAT_MODEL.md"),
-        "crypto-keys.md must cross-reference THREAT_MODEL.md"
-    );
-    assert!(
-        doc.contains("AUTH.md"),
-        "crypto-keys.md must cross-reference AUTH.md"
-    );
-    assert!(
-        doc.contains("secrets.md"),
-        "crypto-keys.md must cross-reference secrets.md"
-    );
+    assert!(doc.contains("THREAT_MODEL.md"), "crypto-keys.md must cross-reference THREAT_MODEL.md");
+    assert!(doc.contains("AUTH.md"), "crypto-keys.md must cross-reference AUTH.md");
+    assert!(doc.contains("secrets.md"), "crypto-keys.md must cross-reference secrets.md");
     assert!(
         doc.contains("privacy-tenant.md"),
         "crypto-keys.md must cross-reference privacy-tenant.md"
@@ -163,33 +123,23 @@ fn fr003_c02_l22_serve_auth_uses_sha2_crate_for_token_digest() {
         src.contains("use sha2") || src.contains("sha2::"),
         "src/serve_auth.rs must use the sha2 crate for token digest"
     );
-    assert!(
-        src.contains("Sha256"),
-        "src/serve_auth.rs must name Sha256 explicitly"
-    );
+    assert!(src.contains("Sha256"), "src/serve_auth.rs must name Sha256 explicitly");
 }
 
 #[test]
 fn fr003_c02_l22_cargo_toml_declares_sha2_no_product_toy_crypto() {
     let cargo = read_repo_file("Cargo.toml");
-    assert!(
-        cargo.contains("sha2"),
-        "Cargo.toml must declare sha2 (used by serve_auth)"
-    );
+    assert!(cargo.contains("sha2"), "Cargo.toml must declare sha2 (used by serve_auth)");
     // Toy crypto should not be promoted to a product surface.
     // We don't forbid them existing in optional features, but the
     // default `cargo build` must not link them.
     // The simplest invariant: no `xxtea =` in [dependencies].
     assert!(
-        !cargo
-            .lines()
-            .any(|l| l.trim_start().starts_with("xxtea =")),
+        !cargo.lines().any(|l| l.trim_start().starts_with("xxtea =")),
         "Cargo.toml must not promote xxtea into [dependencies] (toy crypto)"
     );
     assert!(
-        !cargo
-            .lines()
-            .any(|l| l.trim_start().starts_with("chacha20 =")),
+        !cargo.lines().any(|l| l.trim_start().starts_with("chacha20 =")),
         "Cargo.toml must not promote chacha20 into [dependencies]"
     );
 }
