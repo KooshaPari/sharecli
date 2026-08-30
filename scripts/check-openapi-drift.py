@@ -17,8 +17,9 @@ import sys
 from pathlib import Path
 
 ROUTE_RE = re.compile(r"""\.route\(\s*["']([^"']+)["']""")
-# OpenAPI path keys at indent 2 under `paths:` (e.g. `  /healthz:`).
-PATH_KEY_RE = re.compile(r"^  (/[^:\s]*):\s*$", re.MULTILINE)
+# OpenAPI path keys at indent 2 under `paths:` (e.g. `  /healthz:` or
+# `  /assets/dashboard/ui/{*path}:` — braces allowed).
+PATH_KEY_RE = re.compile(r"^  (/[^:\s][^:\n]*?):\s*$", re.MULTILINE)
 
 
 def extract_routes(serve_rs: Path) -> set[str]:
