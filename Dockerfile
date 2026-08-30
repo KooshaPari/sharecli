@@ -10,8 +10,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends xz-utils ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
  && curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" \
-    | tar -xJ -C /opt \
- && ln -s /opt/zig-linux-x86_64-${ZIG_VERSION}/zig /usr/local/bin/zig
+    | tar -xJ -C "/opt" \
+ && ln -s "/opt/zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/zig
 RUN groupadd -r sharecli && useradd -r -g sharecli -m sharecli
 WORKDIR /app
 COPY . .

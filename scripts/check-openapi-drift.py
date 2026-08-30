@@ -30,10 +30,23 @@ def extract_routes(serve_rs: Path) -> set[str]:
 def extract_openapi_paths(openapi: Path) -> set[str]:
     text = openapi.read_text(encoding="utf-8")
     # Prefer a small dedicated parse over PyYAML dependency.
-    paths_block = re.search(r"^paths:\n((?:.*\n)*?)(?=^components:|\Z)", text, re.MULTILINE)
-    if not paths_block:
-        raise SystemExit(f"no paths: block in {openapi}")
-    return set(PATH_KEY_RE.findall(paths_block.group(1)))
+    paths_lines: list[str] = []
+    in_paths = False
+    for line in text.splitlines():
+        if line.startswith("paths:"):
+            in_paths = True
+            continue
+        if in_paths:
+            # Stop at the next top-level YAML key (no leading whitespace).
+            if line and not line.startswith(" "):
+                break
+            # Only top-level path keys are exactly 2 spaces indent.
+            if line.startswith("  ") and not line.startswith("    "):
+                stripped = line.strip()
+                if stripped.endswith(":"):
+                    # Drop the trailing ":" to match axum route strings.
+                    paths_lines.append(stripped[:-1])
+    return set(paths_lines)
 
 
 def main() -> int:
