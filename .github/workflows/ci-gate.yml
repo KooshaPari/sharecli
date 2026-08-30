@@ -40,7 +40,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1e7d3c5b6f9dabcef5b1638489b87b9bfb8e9d30
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: nightly-2025-01-01
           components: rustfmt, clippy
