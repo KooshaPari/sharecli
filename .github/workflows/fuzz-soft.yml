@@ -33,3 +33,23 @@ jobs:
         run: cargo install --locked cargo-fuzz
       - name: Fuzz ${{ matrix.target }} (300s)
         run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=300
+
+      - name: Upload crash artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-${{ matrix.target }}-artifacts
+          path: |
+            fuzz/artifacts/${{ matrix.target }}/
+            fuzz/corpus/${{ matrix.target }}/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload corpus seeds
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-${{ matrix.target }}-corpus
+          path: fuzz/corpus/${{ matrix.target }}/
+          retention-days: 30
+          if-no-files-found: ignore

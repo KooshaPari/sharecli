@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-30 (Wave17 Plan 802 C02 L22 Crypto & key management lift pending — Pin will move to `<new-sha>`; Wave17 Plan 801 DONE post #800 W17.13 C02 L24 Privacy & tenancy FR-003 gates accepted @ `f9cbe52`; Wave17 Plan 800 DONE post #797 W17.12 C00 L5 Observability FR-003 gates accepted @ `6dee96f`; C02 L22 score 2→3 via crypto-keys.md commit + 9/9 FR-003 gates in `tests/c02_l22_crypto_keys.rs`)
+**Last sync:** 2026-08-30 (Wave17 Plan 803 C07 L67 Fuzz harness 2→3 DONE; Plan 802 C02 L22 Crypto DONE; Plan 801 C02 L24 Privacy DONE; Plan 800 C00 L5 Observability DONE)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 

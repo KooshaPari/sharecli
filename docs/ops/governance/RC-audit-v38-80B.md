@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91.9% tier-1)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)
-**Pin commit:** `<new-sha>` (main post Plan 802 Wave17 C02 L22 Crypto & key management lift)
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **93.9% A**, unweighted **93.42% A**, tier-1 **94.2% A** (C02 IS in tier-1; tier-1 weighted sum rises via +6 C02 contribution at 97→100, double-weight applies).
+**Pin commit:** `4ddcacd` (main post Plan 803 Wave17 C07 L67 Fuzz harness lift)
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **94.7% A**, unweighted **93.75% A**, tier-1 **94.7% A** (C07 IS in tier-1; fifth tier-1 lift via C07 L67 2→3). Post Wave17 Plans 794/800/801/802/803.
 
 ## RC scope (what shipped Jul 14–19)
 
