@@ -42,7 +42,7 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: nightly-2025-01-01
+          toolchain: nightly
           components: rustfmt, clippy
       - name: Format (rustfmt)
         run: cargo +nightly fmt --all -- --check
