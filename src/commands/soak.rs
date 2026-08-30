@@ -498,7 +498,8 @@ mod tests {
     #[test]
     fn percentile_p50() {
         let data: Vec<u64> = (1..=100).collect();
-        assert_eq!(percentile(&data, 50), 50);
+        // idx = round(0.5 * 99) = 50; data[50] = 51
+        assert_eq!(percentile(&data, 50), 51);
     }
 
     #[test]
