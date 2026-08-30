@@ -1,10 +1,10 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-30 (post-<new-sha> Plan 802 Wave17 C02 L22 Crypto & key management FR-003 gates merge)
+**Date:** 2026-08-30 (post-c1720fd Plan 802 Wave17 C02 L22 Crypto & key management FR-003 gates merge)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `<new-sha>` (Plan 802 — C02 L22 Crypto & key management FR-003 acceptance gates lifted score 2→3; C02 cluster 29/30 97% A → 30/30 100% A; weighted 93.6% A → 93.9% A; unweighted 93.17% A → 93.42% A; tier-1 93.9% A → 94.2% A (C02 IS in tier-1; +6 weighted from C02 97→100 = +3 × 2 double-weight). PR <new> = C02 L22 score 2→3 via 9/9 FR-003 acceptance gates in `tests/c02_l22_crypto_keys.rs` + `docs/ops/crypto-keys.md` updated with explicit threat surface (Bearer/JWT/audit JSONL/history JSONL) + key lifecycle (provisioning, storage, rotation, disposal) + algorithm inventory (SHA-256 product + RS256 product + xxtea/hkdf/chacha20/x509_chain/pem_decode non-product) + KMS/Key Vault/hardware-key out-of-scope declarations + cross-references to THREAT_MODEL.md/AUTH.md/secrets.md/privacy-tenant.md. **No invented percentages** — all scores recomputed from sum deltas.).
+**Commit audited:** `c1720fd` (Plan 802 — C02 L22 Crypto & key management FR-003 gates 2→3; C02 30/30 100% A; weighted 93.9% A; unweighted 93.42% A; tier-1 94.2% A). PR #802.
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
@@ -29,7 +29,6 @@
 
 ## Overall
 
-**Weighted overall score:** 93.6% · **Overall grade:** A
 **Weighted overall score:** 93.9% · **Overall grade:** A
 
 (Unweighted mean of cluster pcts: (100+93+93+100+90+90+100+98+73+98+97+89)/12 = 1121/12 = **93.42% A**.)
