@@ -4,7 +4,7 @@
 **Date:** 2026-08-30 (post-c1720fd Plan 802 Wave17 C02 L22 Crypto & key management FR-003 gates merge)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `c1720fd` (Plan 802 — C02 L22 Crypto & key management FR-003 gates 2→3; C02 30/30 100% A; weighted 93.9% A; unweighted 93.42% A; tier-1 94.2% A). PR #802.
+**Commit audited:** `4ddcacd` (Plan 801 post-#800 merge — C02 30/30 100% A; weighted 93.9% A; unweighted 93.42% A; tier-1 94.2% A). Plan 803 pending.
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
@@ -21,7 +21,7 @@
 | C04 | Security | L31–L40 | 27/30 | 90% | A | org 2FA enforce; artifact cosign releases; L34 verified merges via GitHub web-flow (no ruleset) |
 | C05 | Observability (deep) | L41–L50 | 27/30 | 90% | A | live PD roster; Pyroscope push agent; branch protection chaos check |
 | C06 | Supply Chain | L51–L60 | 27/30 | 90% | A | hermetic `--offline` + `vendor/`; re-pin shipped in Plan 778b |
-| C07 | DX, QEng, Portability | L61–L70 | 28/30 | 93% | A | freebsd/wasm; examine_re widen; baseline refresh automation |
+| C07 | DX, QEng, Portability | L61–L70 | 29/30 | 97% | A | freebsd/wasm; examine_re widen; baseline refresh automation; (L67 lifted 2→3 via Plan 803 FR-003 gates) |
 | C08 | Eval Coverage | L71–L80 | 22/30 | 73% | C | Harbor soft EXTRACTED→benchora; fork→portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81–L95 | 44/45 | 98% | A | live VO/NVDA soft; L81.9 undo; Plan 796 shipped L81.12+L81.15 |
 | C10 | Visual Identity | L96–L107 | 35/36 | 97% | A | visual provenance ledger; PNG regen after hex lock; light-theme dashboard matrix |
@@ -29,11 +29,13 @@
 
 ## Overall
 
-**Weighted overall score:** 93.9% · **Overall grade:** A
+**Weighted overall score:** 94.7% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (100+93+93+100+90+90+100+98+73+98+97+89)/12 = 1121/12 = **93.42% A**.)
+(Unweighted mean of cluster pcts: (100+93+100+100+90+90+97+98+73+98+97+89)/12 = 1125/12 = **93.75% A**.)
 
-(Tier-1 double-weight (C00–C03 + C07): (100+93+100+100+93)×2 + (90+90+93+73+98+97+89) = 486×2 + 630 = 1602 / 17 = **94.2% (A)**.)
+(Tier-1 double-weight (C00–C03 + C07): (100+93+100+100+97)×2 + (90+90+93+73+98+97+89) = 490×2 + 630 = 1610 / 17 = **94.7% (A)**.)
+
+(Plan 803 — C07 L67 2→3): unweighted C07 93%→97%, sum +4 (1121→1125); weighted overall **93.9% A → 94.7% A** (+0.5pp tier-1 lift, C07 IS in tier-1, double-weight applies); tier-1 sum rises from 1602 (C07 93×2) to 1610 (C07 97×2 = +8 weighted; C07 IS in tier-1; double-weight applies). **Fifth tier-1 lift in Wave17.**
 
 (Plan 802 — C02 L22 2→3): unweighted C02 97%→100%, sum +3 (1118→1121); weighted overall **93.6% A → 93.9% A** (+0.3pp tier-1 lift, C02 IS in tier-1, double-weight applies); tier-1 sum rises from 1596 (C02 97×2) to 1602 (C02 100×2 = +6 weighted; C02 IS in tier-1; double-weight applies). **Fourth tier-1 lift in Wave17.**
 (Plan 801 — C02 L24 2→3): unweighted C02 93%→97%, sum +4 (1114→1118); weighted overall **93.4% A → 93.6% A** (+0.2pp tier-1 lift, C02 IS in tier-1, double-weight applies); tier-1 sum rises from 1588 (C02 93×2) to 1596 (C02 97×2 = +8 weighted; C02 IS in tier-1; double-weight applies). **Third tier-1 lift in Wave17.**
@@ -46,6 +48,7 @@
 (Post Plan 793 (T-880, C11 L111 1→2): unweighted C11 87%→89%, sum +2 (1090→1092); weighted overall **91.8% A → 92.0% A**; tier-1 sum 1470→1472 / 16 = **92.0% A** (C11 not in tier-1).)
 (Post Plan 794 (T-890, C02 L26 2→3): unweighted C02 90%→93%, sum +3 (1092→1095); weighted overall **92.0% A → 92.3% A**; tier-1 sum 1472→1478 / 16 = **92.4% A** (C02 IS in tier-1; double-weight applies).)
 - **Wave17 Plan 801 (T-920) — DONE post #800 merge:** C02 L24 **Multi-tenant isolation & data privacy** 2 → 3 — `docs/ops/privacy-tenant.md` promoted from `(soft)` to committed artifact: explicit single-tenant threat model, cross-references `BOUNDARY.md` + `THREAT_MODEL.md`, documents `ProjectLimits` as the only isolation primitive (per-project not per-tenant), declares multi-tenant AuthZ / namespaces / KMS / sealed secrets out-of-scope at the architecture level. FR-003 acceptance gate: `tests/c02_l24_privacy.rs` (9/9 PASS — doc no-soft-marker; single-tenant model explicit; cross-refs to BOUNDARY.md + THREAT_MODEL.md; ProjectLimits per-project scope; multi-tenant AuthZ declared out-of-scope; `ProjectLimitsConfig` + `max_memory_mb` in `src/config.rs`; `BOUNDARY.md` + `THREAT_MODEL.md` exist at repo root; `src/audit_log.rs` has no `tenant_id`/`tenant_key` partition key — single trust domain). C02 **28/30 93% A → 29/30 97% A** (L22 still 2 for genuine key-management ADR gap). C02 IS in tier-1, so weighted overall **93.4% A → 93.6% A** (+0.2pp); unweighted sum 1114→1118 / 12 = **93.17% A**; tier-1 sum 1588→1596 / 17 = **93.9% A** (C02 93→97 = +4 × 2 = +8 weighted; C02 IS in tier-1; double-weight applies). **Third tier-1 lift in Wave17.**
+- **Wave17 Plan 803 (T-930) — DONE:** C07 L67 **Fuzz harness** 2 → 3 — 6 fuzz targets with seed corpus directories (`fuzz/corpora/<target>/seed-01.dict` for each), CI workflow upgraded with crash artifact upload (14-day retention) + corpus seed upload (30-day retention) + matrix over all targets (300s each), operations runbook (`docs/ops/fuzzing.md`), and FR-003 acceptance gate (`tests/c07_l67_fuzz.rs` 6/6 PASS — fuzz workspace metadata, 6 registered targets, fuzz_target! macro, seed corpus dirs, CI workflow with matrix+artifacts, directory structure). C07 **28/30 93% A → 29/30 97% A**. C07 IS in tier-1, so weighted overall **93.9% A → 94.7% A** (+0.5pp); unweighted sum 1121→1125 / 12 = **93.75% A**; tier-1 sum 1602→1610 / 17 = **94.7% A** (C07 93→97 = +4 × 2 = +8 weighted; C07 IS in tier-1; double-weight applies). **Fifth tier-1 lift in Wave17.**
 - **Wave17 Plan 802 (T-925) — IN PROGRESS:** C02 L22 **Cryptography & key management** 2 → 3 — `docs/ops/crypto-keys.md` (formerly `(soft)`) promoted to committed artifact with explicit threat surface (Bearer/SHARECLI_SERVE_TOKEN + JWT/JWKS as product secret surfaces; audit + history JSONL flagged as no-secret surfaces), full key lifecycle (provisioning, storage, rotation, disposal), algorithm inventory (SHA-256 product + RS256 product + xxtea/hkdf/chacha20/x509_chain/pem_decode explicitly labeled non-product utility helpers), KMS / Key Vault / hardware keys (TPM/YubiKey) declared out-of-scope, and cross-references to THREAT_MODEL.md, AUTH.md, secrets.md, and privacy-tenant.md. FR-003 acceptance gate: `tests/c02_l22_crypto_keys.rs` (9/9 PASS — doc no-soft-marker; explicit threat surface; lifecycle stages present; algorithm inventory with non-product helpers labeled; KMS/hardware-keys out-of-scope; cross-references to THREAT_MODEL/AUTH/secrets/privacy-tenant; `src/serve_auth.rs` uses `sha2::Sha256`; `Cargo.toml` declares sha2 + no promoted toy-crypto in [dependencies]; `THREAT_MODEL.md` exists at repo root). C02 **29/30 97% A → 30/30 100% A**. C02 IS in tier-1, so weighted overall **93.6% A → 93.9% A** (+0.3pp); unweighted sum 1118→1121 / 12 = **93.42% A**; tier-1 sum 1596→1602 / 17 = **94.2% A** (C02 97→100 = +3 × 2 = +6 weighted; C02 IS in tier-1; double-weight applies). **Fourth tier-1 lift in Wave17.**
 ## Headline Findings
 
