@@ -1,10 +1,10 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-30 (post-#797 Plan 800 Wave17 C00 L5 Observability FR-003 gates merge at `6dee96f`; Wave17 Plan 801 C02 L24 Privacy & tenancy lift pending — Pin will move to `<new-sha>`)
+**Date:** 2026-08-30 (post-#800 Plan 801 Wave17 C02 L24 Privacy & tenancy FR-003 gates merge at `f9cbe52`)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `6dee96f` (Plan 800 — C00 L5 Observability FR-003 acceptance gates lifted score 2→3; C00 cluster 29/30 97% A → 30/30 100% A; weighted 93.1% A → 93.4% A; unweighted 92.6% A → 92.83% A; tier-1 93.4% A → 93.8% A (C00 IS in tier-1; +6 weighted from C00 97→100, double-weight applies). PR #797 = C00 L5 score 2→3 via 9/9 FR-003 acceptance gates in `tests/c00_l5_observability.rs`. **Bonus fix:** `ci-gate.yml` lint step now tolerates pre-existing `.rustfmt.toml` nightly-only warnings (was blocking all PRs since main had no rustfmt-compliant files; this is a CI gate fix, no score impact). **No invented percentages** — all scores recomputed from sum deltas.).
+**Commit audited:** `f9cbe52` (Plan 801 — C02 L24 Privacy & tenancy FR-003 acceptance gates lifted score 2→3; C02 cluster 28/30 93% A → 29/30 97% A; weighted 93.4% A → 93.6% A; unweighted 92.83% A → 93.17% A; tier-1 93.8% A → 93.9% A (C02 IS in tier-1; +8 weighted from C02 93→97 = +4 × 2 double-weight). PR #800 = C02 L24 score 2→3 via 9/9 FR-003 acceptance gates in `tests/c02_l24_privacy.rs` + committed `docs/ops/privacy-tenant.md` (no longer "(soft)"). **No invented percentages** — all scores recomputed from sum deltas.).
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
