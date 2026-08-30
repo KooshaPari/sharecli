@@ -23,8 +23,7 @@ fn repo_root() -> PathBuf {
 }
 
 fn read(path: &str) -> String {
-    fs::read_to_string(repo_root().join(path))
-        .unwrap_or_else(|e| panic!("read {}: {}", path, e))
+    fs::read_to_string(repo_root().join(path)).unwrap_or_else(|e| panic!("read {}: {}", path, e))
 }
 
 #[test]
@@ -79,10 +78,7 @@ fn fr003_c02_l24_privacy_doc_cross_references_boundary_and_threat_model() {
 fn fr003_c02_l24_privacy_doc_documents_project_limits_as_only_primitive() {
     let doc = read("docs/ops/privacy-tenant.md");
     let lower = doc.to_lowercase();
-    assert!(
-        lower.contains("projectlimits"),
-        "privacy-tenant.md does not reference ProjectLimits"
-    );
+    assert!(lower.contains("projectlimits"), "privacy-tenant.md does not reference ProjectLimits");
     assert!(
         lower.contains("per-project") || lower.contains("per project"),
         "privacy-tenant.md does not clarify ProjectLimits is per-project not per-tenant"
@@ -123,10 +119,7 @@ fn fr003_c02_l24_project_limits_primitive_in_src_config() {
         config.contains("max_memory_mb"),
         "src/config.rs ProjectLimitsConfig missing max_memory_mb field"
     );
-    assert!(
-        config.contains("project_limits"),
-        "src/config.rs missing project_limits field"
-    );
+    assert!(config.contains("project_limits"), "src/config.rs missing project_limits field");
 }
 
 #[test]
