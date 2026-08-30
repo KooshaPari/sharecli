@@ -50,6 +50,7 @@ jobs:
         # diffs exist. Suppress the warnings; only fail on real 'Diff in' lines.
         # Long-term fix: pin lint job to nightly (separate PR).
         run: |
+          set +e
           cargo fmt --all -- --check > /tmp/fmt.log 2>/dev/null || true
           if grep -q '^Diff in ' /tmp/fmt.log; then
             cargo fmt --all -- --check > /tmp/fmt.log 2>&1
