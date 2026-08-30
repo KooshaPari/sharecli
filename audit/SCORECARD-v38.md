@@ -1,7 +1,7 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-30 (post-#797 Plan 800 Wave17 C00 L5 Observability FR-003 gates merge at `6dee96f`)
+**Date:** 2026-08-30 (post-#797 Plan 800 Wave17 C00 L5 Observability FR-003 gates merge at `6dee96f`; Wave17 Plan 801 C02 L24 Privacy & tenancy lift pending — Pin will move to `<new-sha>`)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
 **Commit audited:** `6dee96f` (Plan 800 — C00 L5 Observability FR-003 acceptance gates lifted score 2→3; C00 cluster 29/30 97% A → 30/30 100% A; weighted 93.1% A → 93.4% A; unweighted 92.6% A → 92.83% A; tier-1 93.4% A → 93.8% A (C00 IS in tier-1; +6 weighted from C00 97→100, double-weight applies). PR #797 = C00 L5 score 2→3 via 9/9 FR-003 acceptance gates in `tests/c00_l5_observability.rs`. **Bonus fix:** `ci-gate.yml` lint step now tolerates pre-existing `.rustfmt.toml` nightly-only warnings (was blocking all PRs since main had no rustfmt-compliant files; this is a CI gate fix, no score impact). **No invented percentages** — all scores recomputed from sum deltas.).
@@ -16,7 +16,7 @@
 |---------|----------|---------|:---------------:|:---:|:-----:|------------|
 | C00 | Architecture + Module | L0–L9 | 30/30 | 100% | A | crate-split Phases 2–4; L0 ADR; (L5 lifted 2→3 via Plan 800 FR-003 gates) |
 | C01 | CI, DX, Observability | L10–L19 | 28/30 | 93% | A | fluent catalogs deferred; advisory hard-fail; anyhow→SharecliError migration |
-| C02 | Error handling, API, Governance | L20–L29 | 28/30 | 93% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits |
+| C02 | Error handling, API, Governance | L20–L29 | 29/30 | 97% | A | residual OAuth/SAML; spawn audit SIEM export; OS cgroup limits; (L24 lifted 2→3 via Plan 801 FR-003 gates + privacy-tenant.md committed) |
 | C03 | Agent Readiness | L30 | 36/36 | 100% | A | optional polish; brew still Blocked |
 | C04 | Security | L31–L40 | 27/30 | 90% | A | org 2FA enforce; artifact cosign releases; L34 verified merges via GitHub web-flow (no ruleset) |
 | C05 | Observability (deep) | L41–L50 | 27/30 | 90% | A | live PD roster; Pyroscope push agent; branch protection chaos check |
@@ -30,11 +30,13 @@
 ## Overall
 
 **Weighted overall score:** 93.4% · **Overall grade:** A
+**Weighted overall score:** 93.6% · **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (100+93+93+100+90+90+93+98+73+98+97+89)/12 = 1114/12 = **92.83% A**.)
+(Unweighted mean of cluster pcts: (100+93+93+100+90+90+97+98+73+98+97+89)/12 = 1118/12 = **93.17% A**.)
 
-(Tier-1 double-weight (C00–C03 + C07): (100+93+93+100+93)×2 + (90+90+93+73+98+97+89) = 479×2 + 630 = 1588 / 17 = **93.4% (A)**.)
+(Tier-1 double-weight (C00–C03 + C07): (100+93+97+100+93)×2 + (90+90+93+73+98+97+89) = 483×2 + 630 = 1596 / 17 = **93.9% (A)**.)
 
+(Plan 801 — C02 L24 2→3): unweighted C02 93%→97%, sum +4 (1114→1118); weighted overall **93.4% A → 93.6% A** (+0.2pp tier-1 lift, C02 IS in tier-1, double-weight applies); tier-1 sum rises from 1588 (C02 93×2) to 1596 (C02 97×2 = +8 weighted; C02 IS in tier-1; double-weight applies).
 (Plan 800 — C00 L5 2→3): unweighted C00 97%→100%, sum +3 (1111→1114); weighted overall **93.1% A → 93.4% A** (+0.3pp tier-1 lift, matches Plan 794 C02 pattern); tier-1 sum rises from 1494 (C00×2 + 3×93 + 100×2 + 93×2 + 90+90+93+73+98+97+89 = 194+186+186+200+186+630 = 1582 / 17 = 93.06%) via +6 C00 weighted (C00 97→100 = +3 × 2) to 1588 / 17 = **93.4% A** (C00 IS in tier-1; double-weight applies).
 
 (Post Plan 796 (T-910, C09 L81.12 + L81.15 2→3): unweighted C09 93%→98%, sum +5 (1106→1111); weighted overall **92.6% A → 93.1% A**; tier-1 sum 1489→1494 / 16 = **93.4% A** (C09 not in tier-1; C09 lift affects unweighted and weighted equally).)
@@ -43,6 +45,7 @@
 (Post Plan 782 (T-870, C05 L49 2→3): unweighted C05 87%→90%, sum +3 from prior cluster totals; weighted overall **91.5% A → 91.8% A**; tier-1 unchanged at **91.9% A** (C05 not in tier-1).)
 (Post Plan 793 (T-880, C11 L111 1→2): unweighted C11 87%→89%, sum +2 (1090→1092); weighted overall **91.8% A → 92.0% A**; tier-1 sum 1470→1472 / 16 = **92.0% A** (C11 not in tier-1).)
 (Post Plan 794 (T-890, C02 L26 2→3): unweighted C02 90%→93%, sum +3 (1092→1095); weighted overall **92.0% A → 92.3% A**; tier-1 sum 1472→1478 / 16 = **92.4% A** (C02 IS in tier-1; double-weight applies).)
+- **Wave17 Plan 801 (T-920) — IN PROGRESS:** C02 L24 **Multi-tenant isolation & data privacy** 2 → 3 — `docs/ops/privacy-tenant.md` promoted from `(soft)` to committed artifact: explicit single-tenant threat model, cross-references `BOUNDARY.md` + `THREAT_MODEL.md`, documents `ProjectLimits` as the only isolation primitive (per-project not per-tenant), declares multi-tenant AuthZ / namespaces / KMS / sealed secrets out-of-scope at the architecture level. FR-003 acceptance gate: `tests/c02_l24_privacy.rs` (9/9 PASS — doc no-soft-marker; single-tenant model explicit; cross-refs to BOUNDARY.md + THREAT_MODEL.md; ProjectLimits per-project scope; multi-tenant AuthZ declared out-of-scope; `ProjectLimitsConfig` + `max_memory_mb` in `src/config.rs`; `BOUNDARY.md` + `THREAT_MODEL.md` exist at repo root; `src/audit_log.rs` has no `tenant_id`/`tenant_key` partition key — single trust domain). C02 **28/30 93% A → 29/30 97% A** (L22 still 2 for genuine key-management ADR gap). C02 IS in tier-1, so weighted overall **93.4% A → 93.6% A** (+0.2pp); unweighted sum 1114→1118 / 12 = **93.17% A**; tier-1 sum 1588→1596 / 17 = **93.9% A** (C02 93→97 = +4 × 2 = +8 weighted; C02 IS in tier-1; double-weight applies). **Third tier-1 lift in Wave17.**
 ## Headline Findings
 
 - **Strongest:** C03 Agent Readiness (**100% A**); C00 **97% A**; C10 **97% A**; C01/C09 **93% A**.

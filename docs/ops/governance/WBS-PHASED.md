@@ -6,7 +6,7 @@
 **DAG:** [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · **RC:** [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **FRs:** [`FUNCTIONAL_REQUIREMENTS.md`](https://github.com/KooshaPari/sharecli/blob/main/FUNCTIONAL_REQUIREMENTS.md)  
 **Machine tokens:** `Status: DONE` | `READY` | `BLOCKED` | `IN_PROGRESS`  
-**Last sync:** 2026-08-29 (Wave17 Plan 800 IN_PROGRESS; C00 L5 2→3 lifted via FR-003 gates at tests/c00_l5_observability.rs; C00 29/30 97% A → 30/30 100% A; tier-1 lift +0.3pp weighted)
+**Last sync:** 2026-08-30 (Wave17 Plan 801 C02 L24 Privacy & tenancy lift pending — Pin will move to `<new-sha>`; Wave17 Plan 800 DONE post #797 W17.12 C00 L5 Observability FR-003 gates accepted @ `6dee96f`; W17.11 (T-900) C07 L68 Flake-tracker DONE post #786)
 
 > Agents: flip only the `Status:` token and Evidence cell; keep ID columns stable.
 
@@ -26,7 +26,7 @@
 |---------|-------|:---:|:-----:|--------------|--------|
 | C00 | Architecture + Module | 97% | A | Wave2 + W11–W14 | Status: DONE |
 | C01 | CI / DX / Obs | 93% | A | Wave1–2 + W10–W14 | Status: IN_PROGRESS |
-| C02 | Error / API / Governance | 90% → **93%** | A | Wave2 + W5 + W11–W14; **Wave17 Plan 794 (T-890)** L26 2→3 resilience overflow fix + FR-003 gates | Status: IN_PROGRESS → **DONE** |
+| C02 | Error / API / Governance | 93% → **97%** | A | Wave2 + W5 + W11–W14; **Wave17 Plan 794 (T-890)** L26 2→3 resilience overflow fix + FR-003 gates; **Wave17 Plan 801 (T-920)** L24 2→3 privacy-tenant.md committed + FR-003 gates | Status: IN_PROGRESS → **DONE** |
 | C03 | Agent Readiness | 100% | A | Wave1 + Wave3 + W11–W14 | Status: DONE |
 | C04 | Security | 87% → **90%** | B → **A** | Wave2 + W10–W14; **Wave17 Plan 776 attempt 2 (T-860)** L34 2→3 | Status: IN_PROGRESS → **DONE** (L34 verified merges shipped; ruleset stale evidence removed) |
 | C05 | Observability (deep) | 87% → **90%** | B → **A** | Wave2 + W11–W14; **Wave17 Plan 782 (T-870)** L49 2→3 Grafana provisioning as code | Status: IN_PROGRESS → **DONE** |
