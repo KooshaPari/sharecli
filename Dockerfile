@@ -11,6 +11,6 @@ RUN cargo build --locked --release 2>&1 | tail -10 || true
 
 FROM debian:bookworm-slim
 RUN groupadd -r sharecli && useradd -r -g sharecli -m sharecli
-COPY --from=builder --chown=sharecli:sharecli /app/target/release/sharecli /usr/local/bin/sharecli
+COPY --from=builder --chown=sharecli:sharecli --chmod=555 /app/target/release/sharecli /usr/local/bin/sharecli
 USER sharecli
 CMD ["sharecli"]
