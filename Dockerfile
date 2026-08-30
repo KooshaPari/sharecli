@@ -7,7 +7,7 @@ FROM rust:1.85-slim AS builder
 # Install Zig 0.14.1 (pinned) — required by spawn-core-sys build script.
 ARG ZIG_VERSION=0.14.1
 RUN apt-get update \
- && apt-get install -y --no-install-recommends xz-utils ca-certificates \
+ && apt-get install -y --no-install-recommends curl xz-utils ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
  && (curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" \
     | tar -xJ -C "/opt" \
