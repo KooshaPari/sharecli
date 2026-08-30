@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91.9% tier-1)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)
-**Pin commit:** `0509a52` (`main` after #788 governance lock + **Plan 796 (T-910, C09 L81.12+L81.15)** history command + CTA tokens)
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **93.1% A**, unweighted **92.6% A**, tier-1 **93.4% A** (post Plan 796; C09 42/45 93% A → 44/45 98% A).
+**Pin commit:** `4ee0f9b` (main post #796 backlog-sweep governance lock)
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **93.4% A**, unweighted **92.83% A**, tier-1 **93.8% A** (post Plan 800 IN_PROGRESS; C00 29/30 97% A → 30/30 100% A; C00 IS in tier-1; tier-1 weighted sum rises via +6 C00 contribution).
 
 ## RC scope (what shipped Jul 14–19)
 
