@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-30 (Wave17 Plan 801 C02 L24 Privacy & tenancy lift pending — Pin will move to `<new-sha>`; Wave17 Plan 800 DONE post #797 W17.12 C00 L5 Observability FR-003 gates accepted @ `6dee96f`; C02 L24 score 2→3 via privacy-tenant.md commit + 9/9 FR-003 gates in `tests/c02_l24_privacy.rs`)
+**Last sync:** 2026-08-30 (Wave17 Plan 802 C02 L22 Crypto & key management lift pending — Pin will move to `<new-sha>`; Wave17 Plan 801 DONE post #800 W17.13 C02 L24 Privacy & tenancy FR-003 gates accepted @ `f9cbe52`; Wave17 Plan 800 DONE post #797 W17.12 C00 L5 Observability FR-003 gates accepted @ `6dee96f`; C02 L22 score 2→3 via crypto-keys.md commit + 9/9 FR-003 gates in `tests/c02_l22_crypto_keys.rs`)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
@@ -59,6 +59,8 @@
 | C02 | L21 | Federated IdP (beyond Bearer) | High | W5.1 | Status: Closed | `src/serve_auth.rs` + `docs/ops/AUTH.md` + `tests/fr012_serve_jwt_auth.rs` | maintainer |
 | C02 | L23 | Audit retention + rotation | Med | W5.2 | Status: Closed | `src/audit_log.rs` + `docs/ops/AUTH.md` | maintainer |
 | C02 | L27 | AuthN/HTTP burn alerts | Med | W5.2 | Status: Closed | `docs/ops/alertmanager/sharecli.yml` + `src/http_red.rs` | maintainer |
+| C02 | L22 | Crypto & key management FR-003 gates + lifecycle doc | Med | Wave17 Plan 802 · T-925 · FR-003 | Status: Closed | `docs/ops/crypto-keys.md` (committed, no (soft) marker) — threat surface (Bearer/JWT/audit JSONL/history JSONL) + key lifecycle (provisioning/storage/rotation/disposal) + algorithm inventory (SHA-256 product + RS256 product + xxtea/hkdf/chacha20/x509_chain/pem_decode non-product) + KMS/Key Vault/hardware-key out-of-scope + cross-refs THREAT_MODEL/AUTH/secrets/privacy-tenant · `tests/c02_l22_crypto_keys.rs` 9/9 PASS · `src/serve_auth.rs:326-327` SHA-256 token digest · `Cargo.toml` declares sha2 | agent-c02 |
+| C02 | L24 | Multi-tenant isolation & data privacy FR-003 gates | Med | Wave17 Plan 801 · T-920 · FR-003 | Status: Closed | `docs/ops/privacy-tenant.md` (committed) — single-tenant threat model + cross-refs BOUNDARY.md/THREAT_MODEL.md + ProjectLimits only isolation primitive + multi-tenant AuthZ declared out-of-scope · `tests/c02_l24_privacy.rs` 9/9 PASS · `src/config.rs` ProjectLimitsConfig + max_memory_mb | agent-c02 |
 | C08 | L76 | Harbor Phase 3 soak evidence plan | Med | W12.5 · T-440 · #326 | Status: EXTRACTED / N/A (sharecli) | Destination: `phenotype-tooling/crates/benchora/harbor-soft` · `portage-temp` · ADR 0005 | agent-c08 |
 | C08 | L76 | Harbor Phase 3 soak execution scaffold | Med | W13.3 · T-520 · #333 | Status: EXTRACTED / N/A (sharecli) | Destination: benchora `harbor-soft` · `KooshaPari/portage-temp` | agent-c08 |
 | C08 | L76 | Seven-day Harbor soak log completion | Med | W14.2 · T-675 | Status: EXTRACTED / N/A (sharecli) | Tracked in benchora/`portage-temp` — not sharecli `main` | agent-c08 |

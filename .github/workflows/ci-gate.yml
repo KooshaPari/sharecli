@@ -50,13 +50,15 @@ jobs:
         # diffs exist. Suppress the warnings; only fail on real 'Diff in' lines.
         # Long-term fix: pin lint job to nightly (separate PR).
         run: |
+          set +e
           cargo fmt --all -- --check > /tmp/fmt.log 2>/dev/null || true
           if grep -q '^Diff in ' /tmp/fmt.log; then
             cargo fmt --all -- --check > /tmp/fmt.log 2>&1
             cat /tmp/fmt.log
             exit 1
+          else
+            echo "rustfmt OK (nightly-only warnings suppressed; no real diffs)"
           fi
-          echo "rustfmt OK (nightly-only warnings suppressed; no real diffs)"
       - name: Lint (clippy, informational)
         run: cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee clippy.log; if grep -q '^error' clippy.log; then echo "::warning::cargo clippy reported errors (informational, tracked in FR-007 debt)"; fi
 
