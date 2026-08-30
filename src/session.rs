@@ -11,7 +11,9 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
+#[cfg(unix)]
+use std::sync::atomic::Ordering;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZmxCommand {
@@ -194,6 +196,7 @@ impl SurfaceSubscription {
     }
 }
 
+#[cfg(unix)]
 static REQUEST_ID: AtomicU64 = AtomicU64::new(1);
 
 impl GhosttyControlClient {
