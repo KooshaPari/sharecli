@@ -16,6 +16,10 @@
 //!   - Brew       — `brew upgrade sharecli` / `brew install --HEAD sharecli`
 //!   - GhReleases — `curl -L https://github.com/KooshaPari/sharecli/releases/latest`
 
+// All public functions in this module are dispatched via the CLI subcommand
+// enum, so the compiler sees them as unused. Suppress the warning.
+#![allow(dead_code)]
+
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, bail, Context, Result};

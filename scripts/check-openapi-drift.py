@@ -17,9 +17,9 @@ import sys
 from pathlib import Path
 
 ROUTE_RE = re.compile(r"""\.route\(\s*["']([^"']+)["']""")
-# OpenAPI path keys at indent 2 under `paths:` (e.g. `  /healthz:` or
-# `  /assets/dashboard/ui/{*path}:` — braces allowed).
-PATH_KEY_RE = re.compile(r"^  (/[^:\s][^:\n]*?):\s*$", re.MULTILINE)
+# OpenAPI path keys at indent 2 under `paths:` (e.g. `  /healthz:`,
+# `  /:` or `  /assets/dashboard/ui/{*path}:` — braces allowed).
+PATH_KEY_RE = re.compile(r"^  (/[^:\s]*):\s*$", re.MULTILINE)
 
 
 def extract_routes(serve_rs: Path) -> set[str]:
@@ -30,10 +30,10 @@ def extract_routes(serve_rs: Path) -> set[str]:
 def extract_openapi_paths(openapi: Path) -> set[str]:
     text = openapi.read_text(encoding="utf-8")
     # Prefer a small dedicated parse over PyYAML dependency.
-    paths_block = re.search(r"^paths:\n(.*?)(?=(?:^components:|$))", text, re.MULTILINE | re.DOTALL)
+    paths_block = re.search(r"^paths:\n((?:.*\n)*?)(?=^components:|\Z)", text, re.MULTILINE)
     if not paths_block:
         raise SystemExit(f"no paths: block in {openapi}")
-    return set(PATH_KEY_RE.findall(paths_block.group(0)))
+    return set(PATH_KEY_RE.findall(paths_block.group(1)))
 
 
 def main() -> int:

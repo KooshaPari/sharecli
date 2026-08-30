@@ -1,13 +1,21 @@
 # Dockerfile — see ADR-010 for hardening roadmap.
 # Smoke image to verify Container Scan gate.
 # Uses .dockerignore to exclude sensitive data (addresses SonarCloud CRITICAL).
-# Does NOT install Zig, so `cargo build --release` will fail if any crate
-# pulls in spawn-core-sys (Zig shim).
+# Installs Zig 0.14.1 in the builder stage so spawn-core-sys (used by some
+# workspace crates) can compile its Zig shim.
 FROM rust:1.85-slim AS builder
+# Install Zig 0.14.1 (pinned) — required by spawn-core-sys build script.
+ARG ZIG_VERSION=0.14.1
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends xz-utils ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" \
+    | tar -xJ -C /opt \
+ && ln -s /opt/zig-linux-x86_64-${ZIG_VERSION}/zig /usr/local/bin/zig
 RUN groupadd -r sharecli && useradd -r -g sharecli -m sharecli
 WORKDIR /app
 COPY . .
-RUN cargo build --locked --release 2>&1 | tail -10 || true
+RUN cargo build --locked --release
 
 FROM debian:bookworm-slim
 RUN groupadd -r sharecli && useradd -r -g sharecli -m sharecli
