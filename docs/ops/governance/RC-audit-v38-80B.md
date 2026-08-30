@@ -1,8 +1,8 @@
 # Release Candidate — audit-v38 grade A (~91.9% tier-1)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)
-**Pin commit:** `4ee0f9b` (main post #796 backlog-sweep governance lock)
-**Scorecard:** `audit/SCORECARD-v38.md` — weighted **93.4% A**, unweighted **92.83% A**, tier-1 **93.8% A** (post Plan 800 IN_PROGRESS; C00 29/30 97% A → 30/30 100% A; C00 IS in tier-1; tier-1 weighted sum rises via +6 C00 contribution).
+**Pin commit:** `6dee96f` (main post #799 Wave17 Plan 800 governance lock; Wave17 Plan 801 C02 L24 Privacy & tenancy lift pending — Pin will move to `<new-sha>`)
+**Scorecard:** `audit/SCORECARD-v38.md` — weighted **93.6% A** (pending Plan 801 ship), unweighted **93.17% A**, tier-1 **93.9% A** (C02 IS in tier-1; tier-1 weighted sum rises via +8 C02 contribution at 93→97, double-weight applies).
 
 ## RC scope (what shipped Jul 14–19)
 
@@ -27,7 +27,7 @@
 | C00 | 97% | A | L4/L6 async shutdown + perf budgets (#373) |
 | C01 | 93% | A | coverage pin 83.48% (#338/#399 pending refresh) + FR SSOT (#368) |
 | C09/C10 | 98–97% | A | keyboard/Vale/FAQ + skeleton loading states + **Wave17 Plan 796 (T-910)**: L81.12 2→3 history command + L81.15 2→3 CTA tokens |
-| C02/C07 | 90% → **93%** | **A** | rate limit + e2e tier (#384); **Wave17 Plan 794 (T-890)**: L26 2→3 on overflow fix + FR-003 acceptance gates; **Wave17 Plan 795 (T-900)**: L68 2→3 on flake-tracker dashboard |
+| C02/C07 | 93% → **97%** | **A** | rate limit + e2e tier (#384); **Wave17 Plan 794 (T-890)**: L26 2→3 on overflow fix + FR-003 acceptance gates; **Wave17 Plan 795 (T-900)**: L68 2→3 on flake-tracker dashboard; **Wave17 Plan 801 (T-920)**: C02 L24 2→3 privacy-tenant.md committed + FR-003 acceptance gates |
 | C04 | **90%** | **A** | **Wave17 Plan 776 attempt 2 (T-860)**: L34 2→3 on verified merge commits (3 squash-merges on `main`); ruleset 19181236 evidence removed (stale) |
 | C05 | **90%** | **A** | **Wave17 Plan 782 (T-870)**: L49 2→3 — Grafana provisioning as code (1 datasource + 1 provider + 3 dashboards + 1 audit manifest). C05 was 87% B pre-Plan 782; now 90% A. |
 | C11 | **89%** | **B** | **Wave17 Plan 793 (T-880)**: L111 1→2 — soft auto-update probe (`src/commands/upgrade.rs` + `Commands::Upgrade` + 6 FR-003 tests, no network egress, no install path). C11 was 87% B pre-Plan 793; now 89% B. L112 codesign/notarize still Blocked on org secrets. |

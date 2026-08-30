@@ -46,20 +46,17 @@ jobs:
           components: rustfmt, clippy
       - name: Format (rustfmt)
         # .rustfmt.toml uses nightly-only features (group_imports, indent_style).
-        # On stable rustfmt these cause warnings + exit 1 even with no actual
-        # diffs. Tolerate the warnings; still report real diffs via grep.
+        # On stable rustfmt these emit warnings and exit 1 even when no actual
+        # diffs exist. Suppress the warnings; only fail on real 'Diff in' lines.
         # Long-term fix: pin lint job to nightly (separate PR).
         run: |
-          set +e
-          cargo fmt --all -- --check > /tmp/fmt.log 2>&1
-          rc=$?
-          set -e
-          # Filter out the nightly-only warnings; only fail on real diffs.
-          if grep -q "^Diff in " /tmp/fmt.log; then
+          cargo fmt --all -- --check > /tmp/fmt.log 2>/dev/null || true
+          if grep -q '^Diff in ' /tmp/fmt.log; then
+            cargo fmt --all -- --check > /tmp/fmt.log 2>&1
             cat /tmp/fmt.log
             exit 1
           fi
-          echo "rustfmt OK (pre-existing nightly-only warnings ignored; no real diffs)"
+          echo "rustfmt OK (nightly-only warnings suppressed; no real diffs)"
       - name: Lint (clippy, informational)
         run: cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee clippy.log; if grep -q '^error' clippy.log; then echo "::warning::cargo clippy reported errors (informational, tracked in FR-007 debt)"; fi
 

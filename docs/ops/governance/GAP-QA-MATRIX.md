@@ -4,7 +4,7 @@
 **Companion:** [`WBS-PHASED.md`](./WBS-PHASED.md) · [`WORK_DAG.md`](https://github.com/KooshaPari/sharecli/blob/main/WORK_DAG.md) · [`PERT-DAG-W12.md`](./PERT-DAG-W12.md) · [`RC-audit-v38-80B.md`](./RC-audit-v38-80B.md)  
 **Spine:** phenotype-org-audits audit-v38 · `audit/SCORECARD-v38.md`  
 **Machine tokens:** `Status: Covered` | `Gap` | `Closed` | `Blocked` | `READY` | `IN_PROGRESS` | `DONE`  
-**Last sync:** 2026-08-29 (Wave17 Plan 800 IN_PROGRESS; C00 L5 2→3 lifted via FR-003 gates at tests/c00_l5_observability.rs; C00 29/30 97% A → 30/30 100% A; tier-1 lift +0.3pp weighted)
+**Last sync:** 2026-08-30 (Wave17 Plan 801 C02 L24 Privacy & tenancy lift pending — Pin will move to `<new-sha>`; Wave17 Plan 800 DONE post #797 W17.12 C00 L5 Observability FR-003 gates accepted @ `6dee96f`; C02 L24 score 2→3 via privacy-tenant.md commit + 9/9 FR-003 gates in `tests/c02_l24_privacy.rs`)
 
 > Agents: update `Status:` + Evidence path only; keep Cluster/Pillar/FR-WBS keys stable for greps.
 
