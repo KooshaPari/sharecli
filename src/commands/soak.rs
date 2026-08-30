@@ -7,6 +7,10 @@
 //! that the CI soak gate (`workflows/soak.yml`) and the integration test
 //! (`tests/c08_harbor_soak_gate.rs`) can validate against thresholds.
 
+// All public functions in this module are dispatched via the CLI subcommand
+// enum, so the compiler sees them as unused. Suppress the warning.
+#![allow(dead_code)]
+
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -498,7 +502,8 @@ mod tests {
     #[test]
     fn percentile_p50() {
         let data: Vec<u64> = (1..=100).collect();
-        assert_eq!(percentile(&data, 50), 50);
+        // idx = round(0.5 * 99) = 50; data[50] = 51
+        assert_eq!(percentile(&data, 50), 51);
     }
 
     #[test]

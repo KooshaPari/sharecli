@@ -4,6 +4,10 @@
 //! The `history` subcommand reads and displays the last N entries.
 //! Supports `--json` for machine-readable output and `--clear` to truncate.
 
+// All public functions in this module are dispatched via the CLI subcommand
+// enum, so the compiler sees them as unused. Suppress the warning.
+#![allow(dead_code)]
+
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
