@@ -1,10 +1,10 @@
 # audit-v38 Scorecard — sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-29 (post-#795 backlog sweep merge at `4ee0f9b`)
+**Date:** 2026-08-30 (post-#797 Plan 800 Wave17 C00 L5 Observability FR-003 gates merge at `6dee96f`)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00–C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `4ee0f9b` (Wave18 backlog sweep + post-#787 governance lock — PR #767 (winfsp bump), #768 (session recovery freshness), #770 (mutants provenance no-op), #787 (Wave18 gap remediation: src/commands/upgrade.rs + src/commands/soak.rs + src/bin/soak.rs + tests/soak_basic.rs + src/commands/forgecode.rs + fr008/fr009 Windows cfg-gate fixes + c03/c07 type-coerce fixes + actionlint-clean .github/workflows/soak.yml), #791/#793/#795 (deps + version-accessibility). **No score changes** — Wave17 final remains locked: weighted **93.1% A** · unweighted **92.6% A** · tier-1 **93.4% A**.)
+**Commit audited:** `6dee96f` (Plan 800 — C00 L5 Observability FR-003 acceptance gates lifted score 2→3; C00 cluster 29/30 97% A → 30/30 100% A; weighted 93.1% A → 93.4% A; unweighted 92.6% A → 92.83% A; tier-1 93.4% A → 93.8% A (C00 IS in tier-1; +6 weighted from C00 97→100, double-weight applies). PR #797 = C00 L5 score 2→3 via 9/9 FR-003 acceptance gates in `tests/c00_l5_observability.rs`. **Bonus fix:** `ci-gate.yml` lint step now tolerates pre-existing `.rustfmt.toml` nightly-only warnings (was blocking all PRs since main had no rustfmt-compliant files; this is a CI gate fix, no score impact). **No invented percentages** — all scores recomputed from sum deltas.).
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars × 3). Grade: A≥90% · B≥75% · C≥60% · D≥40% · F<40%.
