@@ -1,4 +1,5 @@
-# Keep fuse-smoke image builds lean (AC-009.22).
+# .dockerignore — exclude sensitive files from Docker build context
+# Addresses SonarCloud CRITICAL: "Copying recursively might inadvertently add sensitive data"
 .git
 **/.git
 **/target
@@ -8,8 +9,47 @@
 **/.venv
 **/dist
 **/.archive
-docs/sessions
-recovery
+
+# Exclude CI/CD, governance, and docs (not needed for build)
+.github
+scripts/
+tests/
+docs/
+audit/
+contrib/
+desktop/
+lib/
+preserved/
+*.md
+!README.md
+
+# Exclude config, secrets, and build artifacts (but keep Cargo.toml/Cargo.lock)
+*.json
+*.yaml
+*.yml
+*.sh
+*.py
+*.js
+*.mjs
+*.ts
+*.tsx
+*.html
+*.css
+*.png
+*.svg
+*.ico
+*.plist
+*.pem
+*.key
+*.crt
+*.p12
+*.env
+*.env.*
+Dockerfile
+.dockerignore
+LICENSE
 *.dmg
 *.zip
 *.tar.gz
+docs/sessions
+recovery
