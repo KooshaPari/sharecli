@@ -459,9 +459,10 @@ enum Commands {
         json: bool,
     },
 
-    /// Print version + Backbone-2 ASCII splash
-    Version,
+    /// Undo / restore model (C09 L81.9): inspect or replay the
 
+    /// Print the sharecli version
+    Version,
     /// Print uninstall guidance and optionally purge local config/state
     Uninstall {
         /// Delete config/state directories (requires explicit consent)
@@ -471,6 +472,28 @@ enum Commands {
         /// List paths that would be removed without deleting
         #[arg(long)]
         dry_run: bool,
+    },
+    /// Undo / restore model (C09 L81.9): inspect or replay the
+    /// operations journal recorded at $XDG_STATE_HOME/sharecli/operations.jsonl
+    Undo {
+        /// Maximum number of journal entries to display
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+
+        /// Emit the journal as JSONL instead of human-readable text
+        #[arg(long)]
+        json: bool,
+
+        /// Print the restore plan for an entry without executing it (C09 L81.9)
+        #[arg(long)]
+        restore: bool,
+
+        /// Restore a specific operation by its journal id (C09 L81.9).
+        /// When --restore is true and --id is set, the operation plan is
+        /// printed; the actual restore executor is an out-of-scope operator
+        /// action documented in docs/ops/undo-model.md.
+        #[arg(long)]
+        id: Option<String>,
     },
 }
 
@@ -1130,6 +1153,9 @@ async fn run() -> Result<()> {
         Commands::Man { install } => cli_man(*install)?,
         Commands::Util { cmd } => cmd.run()?,
         Commands::List { json } => cli_list(*json)?,
+        Commands::Undo { limit, json, restore, id } => {
+            commands::undo::run(*limit, *json, *restore, id.clone())?
+        }
         Commands::Version => cli_version()?,
         Commands::Uninstall { purge_data, dry_run } => {
             commands::uninstall::run(*purge_data, *dry_run)?

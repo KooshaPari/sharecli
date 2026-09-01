@@ -8,6 +8,7 @@ pub mod proc;
 pub mod report;
 pub mod serve;
 pub mod soak;
+pub mod undo;
 pub mod uninstall;
 pub mod upgrade;
 use std::io::Write;

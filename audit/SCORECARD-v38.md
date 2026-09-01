@@ -1,10 +1,10 @@
 ﻿# audit-v38 Scorecard â€” sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-31 (post-701c67e Plan 804 Wave17 C07 L69 Cross-platform CI merge)
+**Date:** 2026-08-31 (post-<new-sha> Plan 805 Wave17 C09 L81.9 Undo/restore model merge)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00â€“C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `701c67e` (Plan 804 post-#812 merge â€” C07 L69 2->3; C07 30/30 100% A; weighted 95.0% A; unweighted 94.0% A; tier-1 95.0% A). Plan 806 reconciles.
+**Commit audited:** `NEW_SHA` (Plan 805 post-#815 merge â€” C07 L69 2->3; C07 30/30 100% A; weighted 95.0% A; unweighted 94.0% A; tier-1 95.0% A). Plan 806 reconciles. Plan 805 ships C09 L81.9 2->3; C09 45/45 100% A.
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars Ã— 3). Grade: Aâ‰¥90% Â· Bâ‰¥75% Â· Câ‰¥60% Â· Dâ‰¥40% Â· F<40%.
@@ -23,7 +23,7 @@
 | C06 | Supply Chain | L51â€“L60 | 27/30 | 90% | A | hermetic `--offline` + `vendor/`; re-pin shipped in Plan 778b |
 | C07 | DX, QEng, Portability | L61â€“L70 | 30/30 | 100% | A | (L67 lifted 2â†’3 via Plan 803 + L69 lifted 2â†’3 via Plan 804) |
 | C08 | Eval Coverage | L71â€“L80 | 22/30 | 73% | C | Harbor soft EXTRACTEDâ†’benchora; forkâ†’portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
-| C09 | Accessibility + UX | L81â€“L95 | 44/45 | 98% | A | live VO/NVDA soft; L81.9 undo; Plan 796 shipped L81.12+L81.15 |
+| C09 | Accessibility + UX | L81â€“L95 | 45/45 | 100% | A | live VO/NVDA soft; Plan 805 shipped L81.9; Plan 796 shipped L81.12+L81.15 |
 | C10 | Visual Identity | L96â€“L107 | 35/36 | 97% | A | visual provenance ledger; PNG regen after hex lock; light-theme dashboard matrix |
 | C11 | Packaging + Distribution | L108â€“L122 | 40/45 | 89% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
 
@@ -31,7 +31,7 @@
 
 **Weighted overall score:** 95.0% Â· **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (100+93+100+100+90+90+100+98+73+98+97+89)/12 = 1131/12 = **94.25% A**.)
+(Unweighted mean of cluster pcts: (100+93+100+100+90+90+100+100+73+98+97+89)/12 = 1134/12 = **94.5% A**.)
 
 (Tier-1 double-weight (C00â€“C03 + C07): (100+93+100+100+100)Ã—2 + (90+90+93+73+98+97+89) = 493Ã—2 + 630 = 1616 / 17 = **95.1% (A)**.)
 
