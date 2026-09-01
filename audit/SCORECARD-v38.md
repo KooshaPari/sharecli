@@ -1,7 +1,7 @@
 ﻿# audit-v38 Scorecard â€” sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-31 (post-<new-sha> Plan 805 Wave17 C09 L81.9 Undo/restore model merge)
+**Date:** 2026-08-31 (post-de8c2e2 Plan 805 Wave17 C09 L81.9 Undo/restore model merge)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00â€“C11); T-200 FR-002 + threat/release lifts
 **Commit audited:** `NEW_SHA` (Plan 805 post-#815 merge â€” C07 L69 2->3; C07 30/30 100% A; weighted 95.0% A; unweighted 94.0% A; tier-1 95.0% A). Plan 806 reconciles. Plan 805 ships C09 L81.9 2->3; C09 45/45 100% A.
