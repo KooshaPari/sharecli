@@ -1,4 +1,4 @@
-# sharecli Work DAG
+﻿# sharecli Work DAG
 
 Atomic, FR-linked tasks agents can claim independently (effort ≤ M ≈ 4h).
 
