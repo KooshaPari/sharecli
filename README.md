@@ -11,6 +11,8 @@
 </p>
 <p align="center"><sub>Backbone-2 graphite palette · brand SVG ships in `sharecli-iconset` worktree (Backbone-2 source-of-truth) · <a href="docs/assets/identity/">visual identity demo</a></sub></p>
 
+[![AI slop inside](https://sladge.net/badge.svg)](https://sladge.net) [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/KooshaPari/sharecli/total)](https://github.com/KooshaPari/sharecli/releases)
+
 ---
 
 `sharecli` is an **OS/kernel-adjacent agent runtime** for hosts running many
