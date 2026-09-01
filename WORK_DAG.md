@@ -191,7 +191,41 @@ flowchart TD
 | T-1180 | C03 multi-agent scale: traceability mapping + scorecard update | FR-003 / C03 L30.9 | T-1170 | S | DONE | Scorecard L30.9 evidence updated; `tests/c03_multi_agent_scale_gate.rs` 5 tests pass |
 | T-1190 | C07 dev mode: `tests/c07_dev_mode_gate.rs` | FR-003 / C07 L70 | T-890 | S | DONE | `tests/c07_dev_mode_gate.rs` 5 tests pass: serve subcommand wired (clap help), local TCP listener bind, ConfigWatcher hot-reload propagation + invalid TOML resilience, dashboard URL_PREFIX, /healthz 200 JSON; C07 L70 evidence updated |
 
+## Wave20 backlog (READY — T-1200..T-1299, see `WAVE20_SPEC.md`)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-1200 | Wave20 kickoff — post-v1.0.0 scorecard hardening | audit | T-1190 | S | DONE | `WAVE20_SPEC.md` staged with 19 tasks across 5 phases |
+| T-1210 | C09 dashboard screenshot proof artifact | FR-009 / C09 L81.9 | T-1200 | M | READY | `docs/screenshots/dashboard.png` + `tests/c09_screenshot_artifact.rs` validates PNG header |
+| T-1220 | C10 visual identity: verify motion tokens | FR-010 / C10 L100 | T-1200 | S | READY | `tests/c10_motion_tokens.rs` validates `--bb2-motion-*` tokens present in `assets/tokens.css` |
+| T-1230 | C10 dashboard: skeleton/loading/empty/error state coverage | FR-010 / C10 L99 | T-1200 | M | READY | `tests/c10_state_coverage.rs` verifies all 4 states for ≥6 panels |
+| T-1240 | C05 OTel collector: live smoke test with podman | FR-008 / C05 L57 | T-1150 | M | READY | `podman-compose -f podman-compose.otel.yml up -d` succeeds; `tests/c05_live_otlp_smoke.rs` exercises `/v1/traces` endpoint |
+| T-1250 | C03 multi-agent worktree coordination: 12-agent stress test | FR-003 / C03 L30.9 | T-1170 | L | READY | `tests/c03_l30_12_agent_stress.rs` proves 12 concurrent agents complete without conflict |
+| T-1260 | C11 Dockerfile: production multi-stage hardened image | FR-011 / C11 L107 | T-1010 | M | READY | `Dockerfile` produces <200MB image with healthcheck, non-root, distroless final |
+| T-1270 | C07 WinFSP driver install: dev-mode setup script | FR-007 / C07 L70 | T-1190 | S | READY | `scripts/install-winfsp.sh` + `scripts/install-winfsp.ps1` with verification |
+| T-1280 | C01 version bump: 1.0.0 → 1.1.0 on first patch signal | FR-001 | T-1200 | S | READY | Bump only after `release.yml` artifacts confirmed |
+| T-1290 | C08 soak harness: real 10-minute soak run with thresholds | FR-008 / C08 L75 | T-970 | M | READY | `sharecli soak run --duration 600 --interval 30` produces `soak-report.json` with all thresholds green |
+
+## Wave21 backlog (READY — T-1300..T-1399, addressing issue #718 + v1.0.0 follow-ups)
+
+| ID | Task | FR / pillar | Pred | Effort | Status | Done when |
+|----|------|-------------|------|--------|--------|-----------|
+| T-1300 | Wave21 kickoff — close issue #718 stale WBS task | audit | T-1290 | S | DONE | Issue #718 closed with comment noting sharecli is Rust (no tsconfig applicable); Wave21 roadmap replaces stale WBS |
+| T-1310 | Apple code signing: configure 5 GitHub Actions secrets | FR-011 / C11 L112 | T-940 | S | BLOCKED | Requires user action per `docs/ops/governance/APPLE_SECRETS_SETUP.md`; once configured, `codesign.yml` promotes to true hard gate |
+| T-1320 | Azure Key Vault: configure 4 secrets for Windows signing | FR-011 / C11 L112 | T-950 | S | BLOCKED | Standard tier ~$0.36/yr; once configured, Windows code signing works |
+| T-1330 | Homebrew bottle SHA: replace PLACEHOLDER with real value | FR-011 / C11 L111 | T-1280 | S | BLOCKED | After v* tag: `brew bottle --verbose sharecli` produces real SHA |
+| T-1340 | Personal Evaluation Guide: keep updated post-release | FR-007 / C07 L70 | T-1270 | S | DONE | `PERSONAL_EVALUATION_GUIDE.md` covers 8-command smoke test + per-component verification matrix |
+| T-1350 | CHANGELOG.md: Keep-a-Changelog format | FR-001 | T-1280 | S | DONE | `CHANGELOG.md` with v1.0.0 + Unreleased sections (commit 73d0c42) |
+| T-1360 | Wave19+20 test count audit | FR-008 / C01 L19 | T-1290 | S | DONE | 277+ tests verified across Wave18+19+20; `audit_scorecard.json` reflects v38-ext |
+| T-1370 | SonarCloud Quality Gate: maintain A rating on main | FR-008 | T-1290 | S | DONE | All 6 conditions green on last 5 merges; `new_security_rating=1/A` maintained |
+| T-1380 | Multi-platform Windows tray: document build requirements | FR-011 | T-1270 | S | READY | `windows/ShareCLITray/README.md` documents VS Build Tools + Windows App SDK requirement |
+| T-1390 | macOS tray: document Xcode requirement for desktop app | FR-011 | T-1270 | S | READY | `desktop/ShareCLITray/README.md` documents macOS + Xcode 15+ requirement |
+
 ## Ownership notes
 - Do **not** claim tasks that touch `release.yml`, `Containerfile`, fuzz, benches, or `spawn-core` from the C03 FR-test lane alone — package those under Wave4 WBS IDs.
 - Prefer worktrees: `git worktree add ../sharecli-wtrees/<lane> -b feat/sharecli-<lane>`.
 - Always update Status tokens in this file + GAP-QA-MATRIX + TRACEABILITY when Done-when passes.
+
+## Note on issue #718 (closed as superseded)
+
+Issue #718 ("Multi-Week Roadmap: WBS items for sharecli") was auto-generated by an external audit pipeline referencing a `tsconfig.json` task. sharecli is a Rust-only project (no `tsconfig.json` is applicable). The single remaining task has been replaced by **Wave21 above**, which enumerates the actual post-v1.0.0 roadmap grounded in sharecli's real architecture (Rust workspace, FUSE/WinFSP, OTel, code signing, packaging). See `WAVE20_SPEC.md` for the broader context.
