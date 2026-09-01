@@ -1,4 +1,4 @@
-# Release Candidate — audit-v38 grade A (~91.9% tier-1)
+﻿# Release Candidate — audit-v38 grade A (~91.9% tier-1)
 
 **Status:** SOFT RC (evidence stack; not a product GA claim)
 **Pin commit:** `4ddcacd` (main post Plan 803 Wave17 C07 L67 Fuzz harness lift)
