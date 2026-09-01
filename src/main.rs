@@ -70,7 +70,7 @@ use runtime::ProcessPool;
     name = "sharecli",
     bin_name = "sharecli",
     about = "Shared CLI process manager for multi-project agent orchestration",
-    version = "0.1.0",
+    version = env!("CARGO_PKG_VERSION"),
     after_long_help = "Accessibility (C09): docs/a11y/README.md — NO_COLOR/TERM=dumb degrade ANSI color; \
 FR-004 status via `sharecli status` and GET /health. Degraded-mode notes: docs/a11y/status-and-recovery.md\n\
 Help & FAQ (C09 L81.13): docs/faq.md — top troubleshooting answers; `man sharecli` after `just man`."
@@ -1035,14 +1035,36 @@ async fn run() -> Result<()> {
         }
         Commands::Thermal { cap } => {
             let gov = sharecli_fleet::thermal::ThermalGovernor::new();
-            let poll_pool_status = move || {
-                let handle = tokio::runtime::Handle::current();
-                handle.block_on(async {
-                    let pool = crate::commands::build_pool_json().await.ok().map(Into::into);
-                    let status = crate::commands::build_status_json().await.ok().map(Into::into);
-                    (pool, status)
-                })
-            };
+            // Drive pool/status polling from the main tokio runtime via a
+            // channel. `Handle::current().block_on(...)` and
+            // `Runtime::block_on(...)` both panic when the calling thread is
+            // already inside another tokio runtime. We avoid that by
+            // dispatching the work to the existing runtime and synchronizing
+            // via a std::sync::mpsc::channel.
+            type PoolPanel = sharecli_fleet::PoolOperatorPanel;
+            type StatusPanel = sharecli_fleet::StatusOperatorPanel;
+            let (tx, rx) = std::sync::mpsc::channel::<(Option<PoolPanel>, Option<StatusPanel>)>();
+            let pool_handle = tokio::runtime::Handle::current();
+            std::thread::spawn(move || {
+                loop {
+                    let (pool, status) = pool_handle.block_on(async {
+                        let pool_panel = crate::commands::build_pool_json()
+                            .await
+                            .ok()
+                            .map(Into::into);
+                        let status_panel = crate::commands::build_status_json()
+                            .await
+                            .ok()
+                            .map(Into::into);
+                        (pool_panel, status_panel)
+                    });
+                    if tx.send((pool, status)).is_err() {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(250));
+                }
+            });
+            let poll_pool_status = move || rx.recv().unwrap_or((None, None));
             thermal_tui::run_with_pool_status(&gov, *cap, Some(Box::new(poll_pool_status)))?;
         }
         Commands::Fleet { cmd } => match cmd {
