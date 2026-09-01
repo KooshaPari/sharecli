@@ -1,10 +1,10 @@
 ﻿# audit-v38 Scorecard â€” sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-31 (post-2676dab Plan 804 Wave17 C07 L69 Cross-platform CI merge)
+**Date:** 2026-08-31 (post-701c67e Plan 804 Wave17 C07 L69 Cross-platform CI merge)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00â€“C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `2676dab` (Plan 804 post-#807 merge â€” C02 30/30 100% A; weighted 95.0% A; unweighted 94.5% A; tier-1 95.0% A). Plan 804 DONE.
+**Commit audited:** `701c67e` (Plan 804 post-#812 merge â€” C07 L69 2->3; C07 30/30 100% A; weighted 95.0% A; unweighted 94.0% A; tier-1 95.0% A). Plan 806 reconciles.
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars Ã— 3). Grade: Aâ‰¥90% Â· Bâ‰¥75% Â· Câ‰¥60% Â· Dâ‰¥40% Â· F<40%.
@@ -21,7 +21,7 @@
 | C04 | Security | L31â€“L40 | 27/30 | 90% | A | org 2FA enforce; artifact cosign releases; L34 verified merges via GitHub web-flow (no ruleset) |
 | C05 | Observability (deep) | L41â€“L50 | 27/30 | 90% | A | live PD roster; Pyroscope push agent; branch protection chaos check |
 | C06 | Supply Chain | L51â€“L60 | 27/30 | 90% | A | hermetic `--offline` + `vendor/`; re-pin shipped in Plan 778b |
-| C07 | DX, QEng, Portability | L61â€“L70 | 29/30 | 97% | A | freebsd/wasm; examine_re widen; baseline refresh automation; (L67 lifted 2â†’3 via Plan 803 FR-003 gates) |
+| C07 | DX, QEng, Portability | L61â€“L70 | 30/30 | 100% | A | (L67 lifted 2â†’3 via Plan 803 + L69 lifted 2â†’3 via Plan 804) |
 | C08 | Eval Coverage | L71â€“L80 | 22/30 | 73% | C | Harbor soft EXTRACTEDâ†’benchora; forkâ†’portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81â€“L95 | 44/45 | 98% | A | live VO/NVDA soft; L81.9 undo; Plan 796 shipped L81.12+L81.15 |
 | C10 | Visual Identity | L96â€“L107 | 35/36 | 97% | A | visual provenance ledger; PNG regen after hex lock; light-theme dashboard matrix |
@@ -31,9 +31,9 @@
 
 **Weighted overall score:** 95.0% Â· **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (100+93+100+100+90+90+97+98+73+98+97+89)/12 = 1125/12 = **93.75% A**.)
+(Unweighted mean of cluster pcts: (100+93+100+100+90+90+100+98+73+98+97+89)/12 = 1131/12 = **94.25% A**.)
 
-(Tier-1 double-weight (C00â€“C03 + C07): (100+93+100+100+97)Ã—2 + (90+90+93+73+98+97+89) = 490Ã—2 + 630 = 1610 / 17 = **95.0% (A)**.)
+(Tier-1 double-weight (C00â€“C03 + C07): (100+93+100+100+100)Ã—2 + (90+90+93+73+98+97+89) = 493Ã—2 + 630 = 1616 / 17 = **95.1% (A)**.)
 
 (Plan 803 â€” C07 L67 2â†’3): unweighted C07 93%â†’97%, sum +4 (1121â†’1125); weighted overall **93.9% A â†’ 95.0% A** (+0.5pp tier-1 lift, C07 IS in tier-1, double-weight applies); tier-1 sum rises from 1602 (C07 93Ã—2) to 1610 (C07 97Ã—2 = +8 weighted; C07 IS in tier-1; double-weight applies). **Fifth tier-1 lift in Wave17.**
 
