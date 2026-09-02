@@ -76,14 +76,13 @@ pub use session_registry::smoke_fuser_config;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use session_registry::smoke_fuser_config_for_backend;
 pub use session_registry::{FuseMountInfo, FuseMountOptions, FuseSessionRegistry};
+#[cfg(windows)]
+pub use winfsp_mount::winfsp_installed;
 pub use write_serialize::{WriteSerialize, WriteSerializeError};
 pub use write_serialize_meters::{
     global_write_serialize_meters, record_commit, record_discard, record_passthrough_write,
     record_stage, WriteSerializeMeters,
 };
-
-#[cfg(windows)]
-pub use winfsp_mount::winfsp_installed;
 
 /// Construction options for [`InterceptFs`] (Feb `harness-fuse` mount flags).
 #[derive(Debug, Clone)]

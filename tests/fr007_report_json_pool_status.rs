@@ -123,11 +123,12 @@ fn fr007_report_json_pool_status_stderr_silent() {
 /// FR-007 / AC-007.73 — serialized FleetReportJson preserves operator key order.
 #[test]
 fn fr007_report_json_pool_status_serializes_fields() {
+    use std::collections::HashMap;
+
     use sharecli::commands::report::FleetReportJson;
     use sharecli::commands::{PoolJson, StatusJson};
     use sharecli::monitoring::HostResourceWatchJson;
     use sharecli_fleet::GateStatusSnapshot;
-    use std::collections::HashMap;
 
     let gate = GateStatusSnapshot {
         thermal_pressure: "GREEN".into(),

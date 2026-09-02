@@ -49,8 +49,9 @@ fn canonical_dir(path: &Path) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     /// FR-008 / AC-008.20 — semantic normalize maps `.` to project-root token.
     #[test]

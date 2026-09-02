@@ -1,7 +1,8 @@
 //! Harness/session evidence resolution without shell evaluation.
 
-use crate::{AgentSession, ResolutionConfidence};
 use std::path::{Path, PathBuf};
+
+use crate::{AgentSession, ResolutionConfidence};
 
 /// Evidence source used to resolve a harness session identifier.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

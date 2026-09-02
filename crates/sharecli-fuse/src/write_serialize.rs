@@ -201,11 +201,13 @@ fn libc_exdev() -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Barrier;
     use std::thread;
     use std::time::Duration;
+
     use tempfile::TempDir;
+
+    use super::*;
 
     /// FR-009 / AC-009.5 — stage → commit promotes; stage → discard leaves backing.
     #[test]

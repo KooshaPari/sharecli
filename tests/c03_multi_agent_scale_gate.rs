@@ -14,13 +14,14 @@
 //! AC-C03.4  FR traceability IDs survive concurrent dispatch (no cross-contamination).
 //! AC-C03.5  Coalesce cache TTL isolation holds across parallel agents.
 
-use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision};
-use sharecli_ipc::{command_key, CachedResult, CoalesceCache, SlotQueue};
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+
+use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision};
+use sharecli_ipc::{command_key, CachedResult, CoalesceCache, SlotQueue};
 use tempfile::TempDir;
 
 /// C03 / AC-C03.1 — N concurrent Hypervisor runs never corrupt shared cache state.

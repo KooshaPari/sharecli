@@ -261,8 +261,9 @@ fn tempfile_in_parent(output: &Path, ours: &Path) -> std::io::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     /// FR-010 / AC-010.7 — clean three-way merge via git merge-file fallback.
     #[test]

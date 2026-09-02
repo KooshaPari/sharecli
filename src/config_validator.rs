@@ -230,9 +230,10 @@ fn validate_defaults(
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use super::*;
     use crate::config::{Config, DefaultHarnessConfig, PortConfig};
-    use proptest::prelude::*;
 
     fn valid_config() -> Config {
         Config::default()

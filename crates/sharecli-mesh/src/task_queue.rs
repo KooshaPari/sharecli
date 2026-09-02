@@ -240,9 +240,10 @@ impl MaildirQueue {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn enqueue_claim_ack_lifecycle() {

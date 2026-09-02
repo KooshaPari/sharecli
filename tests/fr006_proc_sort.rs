@@ -4,6 +4,7 @@
 //! AC-006.19 `--sort rss|fd|pid` orders inventory rows and tree root forests
 //! AC-006.36 `--sort state` orders by process state letter with PID tie-break
 
+use std::collections::HashMap;
 use std::process::Command;
 
 use sharecli::commands::proc::{sort_agent_forests, sort_watched_agents, ProcSort};
@@ -11,7 +12,6 @@ use sharecli_fleet::{
     proc_scan::{AgentTreeNode, DetectedAgent},
     AgentResourceSample, DetectedAgentWatch,
 };
-use std::collections::HashMap;
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))

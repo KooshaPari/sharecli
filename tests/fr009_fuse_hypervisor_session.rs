@@ -9,6 +9,9 @@
 
 #![cfg(not(target_os = "windows"))]
 
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
 use sharecli_core::{
     fuse_session_id_for_command_key, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,
     ThermalDecision,
@@ -17,8 +20,6 @@ use sharecli_fuse::remap_mount_to_backing;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use sharecli_fuse::{read_provenance, InterceptFs};
 use sharecli_ipc::command_key;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use tempfile::TempDir;
 
 /// FR-009 / AC-009.12 — coalesce key maps to FUSE session id stamped on writes.

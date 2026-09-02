@@ -7,15 +7,13 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use sharecli_fleet::thermal::ThermalGovernor;
+pub use sharecli_fleet::{build_agent_state_map, build_forest_state_map, state_text_for_pid};
 use sharecli_fleet::{
     build_host_agent_forests, format_gate_status_from_snapshot, format_gate_status_section,
     format_rss_bytes, gate_status_snapshot, lookup_proc, match_known_agent, parse_rss_bytes,
     scan_host_agents, walk_agent_ancestors, watch_detected_agents, AgentResourceSample,
     AgentTreeNode, DetectedAgentWatch, HostProcSource, ProcSource, ThermalLevel,
 };
-
-pub use sharecli_fleet::{build_agent_state_map, build_forest_state_map, state_text_for_pid};
-
 use tokio::time::sleep;
 
 use crate::monitoring::HostResourceWatchJson;
@@ -1612,9 +1610,10 @@ fn host_agent_inventory_from_source(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use sharecli_fleet::collect_forest_pids;
     use sharecli_fleet::proc_scan::{DetectedAgent, FakeProcSource, ProcSnapshot};
+
+    use super::*;
 
     #[test]
     fn agent_row_from_watch_formats_rss() {

@@ -38,13 +38,14 @@ pub fn run_status(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use std::path::Path;
     use std::sync::Arc;
+
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
     use tempfile::TempDir;
 
     use super::super::hypervisor_lane::config_from_rule_opts;
+    use super::*;
 
     fn allow_hypervisor(dir: &Path, opts: &RuleOpts) -> Hypervisor {
         Hypervisor::from_config_with_gate(

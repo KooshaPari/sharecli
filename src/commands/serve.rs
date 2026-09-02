@@ -5,6 +5,7 @@
 //! WS   /ws       -- streams periodic ProcessSummary snapshots as JSON,
 //!                   plus thermal pressure events when pressure changes.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -23,13 +24,12 @@ use axum::{
     routing::get,
     Router,
 };
-use std::collections::HashMap;
-
 use serde::Serialize;
 use serde_json::json;
 use sharecli_fleet::thermal::{ThermalGovernor, ThermalLevel};
 use sharecli_fleet::GateStatusSnapshot;
 use tokio::sync::{broadcast, watch, RwLock};
+use tokio_util::sync::CancellationToken;
 use tracing::{info, instrument, warn, Instrument};
 
 use crate::audit_log;
@@ -49,7 +49,6 @@ use crate::serve_auth::{self, ServeAuth};
 use crate::serve_lock::{decide, probe, Decision, OnConflict, ServeState};
 use crate::serve_rate_limit::{is_probe_path, ServeRateLimit, ServeRateLimitState};
 use crate::shutdown::serve_shutdown_signal;
-use tokio_util::sync::CancellationToken;
 
 // ---------------------------------------------------------------------------
 // Pressure parsing (pure; tested without I/O)

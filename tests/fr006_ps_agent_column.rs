@@ -4,8 +4,9 @@
 //! AC-006.7 ps table includes AGENT from proc_scan ancestor walk
 //! AC-006.8 ps --all lists host-detected agent processes
 
-use sharecli_core::{agent_label_for_pid, scan_agents, FakeProcSource, ProcSnapshot};
 use std::process::Command;
+
+use sharecli_core::{agent_label_for_pid, scan_agents, FakeProcSource, ProcSnapshot};
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sharecli"))

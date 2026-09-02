@@ -7,10 +7,11 @@
 //! - serializes through Hypervisor's SlotQueue under concurrent load
 //! - stays isolated from a seeded coalesce cache hit on a read-only twin
 
-use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use sharecli_core::{FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision};
 use tempfile::TempDir;
 
 fn allow_hv(root: &Path) -> Hypervisor {

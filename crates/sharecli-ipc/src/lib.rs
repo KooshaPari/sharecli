@@ -38,20 +38,6 @@ pub mod semantic;
 pub mod serve_lock;
 pub mod ws_client;
 
-pub use cache_key::{command_key, command_key_with_mode, CacheKeyMode};
-pub use nocache::{
-    has_nocache_arg, parse_nocache_args_csv, should_bypass_coalesce, DEFAULT_NOCACHE_ARGS,
-};
-pub use queue::{
-    resolve_operator_queue_priority, PriorityQueue, QueuePriority, SlotQueue, QUEUE_PRIORITY_ENV,
-};
-pub use semantic::semantic_normalize_argv;
-pub use sharecli_fleet::{
-    global_coalesce_meters, global_slot_queue_meters, record_coalesce_hit_kind,
-    record_coalesce_lookup_hit, record_nocache_run, record_slot_acquire, record_slot_timeout,
-    record_slot_wait, CoalesceHitKind, CoalesceMeters, SlotQueueMeters,
-};
-
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -59,8 +45,21 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use anyhow::{Context, Result};
+pub use cache_key::{command_key, command_key_with_mode, CacheKeyMode};
 use fs2::FileExt;
+pub use nocache::{
+    has_nocache_arg, parse_nocache_args_csv, should_bypass_coalesce, DEFAULT_NOCACHE_ARGS,
+};
+pub use queue::{
+    resolve_operator_queue_priority, PriorityQueue, QueuePriority, SlotQueue, QUEUE_PRIORITY_ENV,
+};
+pub use semantic::semantic_normalize_argv;
 use serde::{Deserialize, Serialize};
+pub use sharecli_fleet::{
+    global_coalesce_meters, global_slot_queue_meters, record_coalesce_hit_kind,
+    record_coalesce_lookup_hit, record_nocache_run, record_slot_acquire, record_slot_timeout,
+    record_slot_wait, CoalesceHitKind, CoalesceMeters, SlotQueueMeters,
+};
 
 // ---------------------------------------------------------------------------
 // CommandKey

@@ -80,10 +80,11 @@ fn count_queue_files(directory: &Path) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::MaildirQueue;
     use serde_json::json;
     use tempfile::TempDir;
+
+    use super::*;
+    use crate::MaildirQueue;
 
     #[test]
     fn probe_absent_path_is_none() {

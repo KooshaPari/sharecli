@@ -14,6 +14,13 @@
 //! AC-008.14 SlotQueue Critical dequeues before Normal under contention (Hypervisor nocache)
 //! (Mesh membership ACs live under FR-010.)
 
+use std::fs;
+use std::path::Path;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
+
 use sharecli_core::{
     FakeThermalGate, Hypervisor, HypervisorConfig, QueuePriority, SpawnRequest, ThermalDecision,
     THERMAL_MAX_RETRIES,
@@ -22,12 +29,6 @@ use sharecli_ipc::{
     command_key, has_nocache_arg, should_bypass_coalesce, CacheKeyMode, CachedResult,
     CoalesceCache, SlotQueue, DEFAULT_NOCACHE_ARGS,
 };
-use std::fs;
-use std::path::Path;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
 /// FR-008 / AC-008.1 — identical argv/cwd/env → same key; different argv → different.

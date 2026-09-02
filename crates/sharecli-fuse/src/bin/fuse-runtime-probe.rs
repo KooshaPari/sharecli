@@ -4,8 +4,9 @@
 //! prompts for privilege. It reports the deterministic KEXT -> FSKit ->
 //! non-FUSE selection used by ShareCLI.
 
-use sharecli_fuse::probe_runtime;
 use std::path::PathBuf;
+
+use sharecli_fuse::probe_runtime;
 
 fn main() {
     let mountpoint = std::env::args_os()

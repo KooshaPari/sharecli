@@ -19,6 +19,7 @@
 #![cfg(not(target_os = "windows"))]
 
 use std::path::{Path, PathBuf};
+
 use tempfile::TempDir;
 
 /// FR-009 / AC-009.1 — construct InterceptFs without mounting.
@@ -56,8 +57,9 @@ fn fr009_mount_api_is_exported() {
 /// FR-009 / AC-009.3 — inode map resolves nested parents without a mount.
 #[test]
 fn fr009_inode_map_path_resolution() {
-    use sharecli_fuse::{InodeMap, ROOT_INO};
     use std::ffi::OsStr;
+
+    use sharecli_fuse::{InodeMap, ROOT_INO};
 
     let mut map = InodeMap::new();
     assert_eq!(map.resolve(ROOT_INO), Some(Path::new("")));
@@ -98,8 +100,9 @@ fn fr009_read_coalesce_hit_miss_meters() {
 /// FR-009 / AC-009.4 — ReadContentCache unit surface (all platforms).
 #[test]
 fn fr009_read_content_cache_direct() {
-    use sharecli_fuse::ReadContentCache;
     use std::io::Write;
+
+    use sharecli_fuse::ReadContentCache;
     use tempfile::NamedTempFile;
 
     let mut tmp = NamedTempFile::new().expect("tmp");
@@ -116,9 +119,10 @@ fn fr009_read_content_cache_direct() {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn fr009_write_passthrough_and_cow_commit_discard() {
-    use sharecli_fuse::WriteSerializeError;
     use std::fs;
     use std::io::Write;
+
+    use sharecli_fuse::WriteSerializeError;
 
     let dir = TempDir::new().expect("tempdir");
     let file = dir.path().join("rw.txt");
@@ -155,9 +159,10 @@ fn fr009_write_passthrough_and_cow_commit_discard() {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn fr009_write_provenance_xattrs() {
-    use sharecli_fuse::read_provenance;
     use std::fs;
     use std::io::Write;
+
+    use sharecli_fuse::read_provenance;
 
     let dir = TempDir::new().expect("tempdir");
     let file = dir.path().join("prov.txt");
@@ -241,8 +246,9 @@ fn fr009_create_rel_provenance_and_neg_invalidate() {
 /// FR-009 / AC-009.7 — NegativeDentryCache unit surface (all platforms).
 #[test]
 fn fr009_negative_dentry_cache_direct() {
-    use sharecli_fuse::NegativeDentryCache;
     use std::time::Duration;
+
+    use sharecli_fuse::NegativeDentryCache;
 
     let mut cache = NegativeDentryCache::with_ttl(Duration::from_secs(30));
     let rel = PathBuf::from("ghost");
@@ -293,8 +299,9 @@ fn fr009_global_neg_dentry_meters() {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn fr009_global_write_serialize_meters() {
-    use sharecli_fuse::{global_write_serialize_meters, InterceptFs};
     use std::fs;
+
+    use sharecli_fuse::{global_write_serialize_meters, InterceptFs};
 
     let before = global_write_serialize_meters();
     let dir = TempDir::new().expect("tempdir");
