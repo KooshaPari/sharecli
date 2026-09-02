@@ -155,9 +155,11 @@ fn map_attr_err(err: std::io::Error) -> std::io::Error {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn annotate_and_read_round_trip() {

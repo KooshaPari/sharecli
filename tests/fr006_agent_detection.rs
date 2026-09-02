@@ -5,11 +5,12 @@
 //! AC-006.2 unknown processes do not match
 //! AC-006.3 Hypervisor runs argv as-is (no vendor-bin wrap)
 
+use std::sync::Arc;
+
 use sharecli_core::{
     match_known_agent, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision,
     KNOWN_AGENT_FAMILIES,
 };
-use std::sync::Arc;
 use tempfile::TempDir;
 
 /// FR-006 / AC-006.1 — known agent names and path basenames resolve to families.

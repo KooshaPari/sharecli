@@ -4,8 +4,9 @@
 //! re-exported from `sharecli::monitoring` for ProcessStats enrichment.
 //! Per-agent PID sampling supports thermal TUI and `ps --all` (FR-006 / FR-007).
 
-use crate::proc_scan::{scan_host_agents, DetectedAgent};
 use anyhow::{Context, Result};
+
+use crate::proc_scan::{scan_host_agents, DetectedAgent};
 
 /// Point-in-time CPU/MEM/Net/FD resource watch sample (FR-007).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

@@ -1,12 +1,14 @@
 //! Capability-aware surface discovery and durable observation recording.
 
+use std::collections::HashMap;
+use std::path::Path;
+
+use anyhow::{Context, Result};
+
 use crate::{
     resolve_session, AgentSession, ObservationKind, SessionObservation, SessionStore,
     SurfaceAdapter, SurfaceCapabilities, SurfaceRecord,
 };
-use anyhow::{Context, Result};
-use std::collections::HashMap;
-use std::path::Path;
 
 /// Optional state-file lookup used to corroborate process argv evidence.
 pub trait SessionStateProvider: Send + Sync {

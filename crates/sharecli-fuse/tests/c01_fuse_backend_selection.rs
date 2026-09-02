@@ -40,10 +40,10 @@ use std::fs;
 #[cfg(target_os = "macos")]
 use std::path::Path;
 use std::sync::Mutex;
-#[cfg(target_os = "macos")]
-use tempfile::TempDir;
 
 use sharecli_fuse::{select_backend, FuseBackend};
+#[cfg(target_os = "macos")]
+use tempfile::TempDir;
 
 /// Serialize env-var-mutating tests so the `SHARECLI_FUSE_BACKEND` slot
 /// never carries state across tests. (Different env var keys can run in

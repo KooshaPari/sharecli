@@ -1,8 +1,9 @@
 //! `fuse-smoke` CLI — OS×arch privileged FUSE mount-smoke matrix (AC-009.22+).
 
+use std::process::ExitCode;
+
 use clap::Parser;
 use fuse_smoke_runner::{default_cells_for_host, run_matrix, CellId};
-use std::process::ExitCode;
 
 #[derive(Debug, Parser)]
 #[command(

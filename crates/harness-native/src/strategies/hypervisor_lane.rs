@@ -57,10 +57,12 @@ pub fn spawn_request(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use sharecli_core::{FakeThermalGate, ThermalDecision};
     use std::sync::Arc;
+
+    use sharecli_core::{FakeThermalGate, ThermalDecision};
     use tempfile::TempDir;
+
+    use super::*;
 
     /// FR-008 / AC-008.17 — rules.conf ttl/debounce/max_concurrent map into HypervisorConfig.
     #[test]

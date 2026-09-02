@@ -112,10 +112,11 @@ fn fr007_report_json_stderr_silent() {
 /// FR-007 / AC-007.40 — serialized report JSON envelope preserves gate → host_watch key order.
 #[test]
 fn fr007_report_json_gate_order_serializes_fields() {
+    use std::collections::HashMap;
+
     use sharecli::commands::report::FleetReportJson;
     use sharecli::monitoring::HostResourceWatchJson;
     use sharecli_fleet::GateStatusSnapshot;
-    use std::collections::HashMap;
 
     let envelope = FleetReportJson {
         timestamp: 1,

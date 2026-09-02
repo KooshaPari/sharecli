@@ -3,9 +3,10 @@
 //! Every selected cell either runs privileged smoke or fails with a structured
 //! [`FailReason`] — never a silent skip when the cell is requested.
 
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
 
 /// Structured loud-fail / skip reason codes for matrix cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

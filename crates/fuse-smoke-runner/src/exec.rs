@@ -1,10 +1,12 @@
 //! Host probes and cell executors for the FUSE smoke matrix.
 
-use crate::matrix::{find_repo_root, CellId, CellResult, FailReason, MatrixReport};
-use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
+
+use anyhow::{bail, Context, Result};
+
+use crate::matrix::{find_repo_root, CellId, CellResult, FailReason, MatrixReport};
 
 fn host_os() -> &'static str {
     if cfg!(target_os = "linux") {

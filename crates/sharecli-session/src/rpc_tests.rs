@@ -1,7 +1,9 @@
+use std::sync::Mutex;
+
+use serde_json::json;
+
 use super::*;
 use crate::SurfaceCapabilities;
-use serde_json::json;
-use std::sync::Mutex;
 
 #[derive(Default)]
 struct RecordingControl {

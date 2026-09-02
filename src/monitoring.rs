@@ -9,14 +9,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use tracing::warn;
-
-use crate::config;
-
 pub use sharecli_fleet::{
     sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes,
     ResourceWatchSample,
 };
+use tracing::warn;
+
+use crate::config;
 
 /// JSON surface for live host [`ResourceWatchSample`] (FR-007 / AC-007.13).
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]

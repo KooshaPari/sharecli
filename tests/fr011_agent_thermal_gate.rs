@@ -3,13 +3,14 @@
 //!
 //! AC-011.4 Hypervisor escalates spawn gate when proc-scan agent count exceeds thresholds.
 
+use std::sync::Arc;
+
 use sharecli_core::{
     AgentAwareThermalGate, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,
     ThermalDecision, THERMAL_MAX_RETRIES,
 };
 use sharecli_fleet::agent_contention::{effective_gate_decision, AgentContentionThresholds};
 use sharecli_fleet::thermal::ThermalLevel;
-use std::sync::Arc;
 use tempfile::TempDir;
 
 /// FR-011 / AC-011.4 — agent refuse tier maps to Hypervisor Refuse (integration).

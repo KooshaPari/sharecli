@@ -101,8 +101,7 @@ pub fn read_recent(path: &Path, limit: usize) -> Result<Vec<OperationRecord>> {
     if !path.exists() {
         return Ok(Vec::new());
     }
-    let file = File::open(path)
-        .with_context(|| format!("open journal {}", path.display()))?;
+    let file = File::open(path).with_context(|| format!("open journal {}", path.display()))?;
     let reader = BufReader::new(file);
     let mut out: Vec<OperationRecord> = Vec::new();
     for line in reader.lines() {
@@ -218,8 +217,9 @@ pub fn run(limit: usize, json: bool, restore: bool, id: Option<String>) -> Resul
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::env;
+
+    use super::*;
 
     fn tmp_path(name: &str) -> PathBuf {
         let mut p = env::temp_dir();

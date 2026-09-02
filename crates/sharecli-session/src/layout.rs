@@ -1,10 +1,12 @@
 //! Durable terminal layout snapshots and restore reports.
 
-use crate::SessionStore;
+use std::collections::HashSet;
+
 use anyhow::{Context, Result};
 use rusqlite::{params, OptionalExtension, TransactionBehavior};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+
+use crate::SessionStore;
 
 /// Direction in which a terminal surface is split.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]

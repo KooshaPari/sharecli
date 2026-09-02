@@ -30,8 +30,8 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  lint:
-    name: lint
+  ci-lint:
+    name: ci / lint
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -60,8 +60,8 @@ jobs:
       - name: Lint (clippy, informational)
         run: cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee clippy.log; if grep -q '^error' clippy.log; then echo "::warning::cargo clippy reported errors (informational, tracked in FR-007 debt)"; fi
 
-  test:
-    name: test
+  ci-test:
+    name: ci / test
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

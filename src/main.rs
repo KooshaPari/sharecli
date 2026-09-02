@@ -2,7 +2,8 @@
 mod alloc;
 mod plugins;
 
-use crate::error::SharecliError;
+use std::io::Write;
+
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
@@ -12,7 +13,8 @@ use sharecli_session::{
     SidecarStateProvider, SurfaceObservationScanner, DEFAULT_RECOVERY_MAX_AGE_SECONDS,
 };
 use sharecli_thermal_tui as thermal_tui;
-use std::io::Write;
+
+use crate::error::SharecliError;
 
 mod apfs_uuid;
 mod audit_log;
@@ -1068,24 +1070,17 @@ async fn run() -> Result<()> {
             type StatusPanel = sharecli_fleet::StatusOperatorPanel;
             let (tx, rx) = std::sync::mpsc::channel::<(Option<PoolPanel>, Option<StatusPanel>)>();
             let pool_handle = tokio::runtime::Handle::current();
-            std::thread::spawn(move || {
-                loop {
-                    let (pool, status) = pool_handle.block_on(async {
-                        let pool_panel = crate::commands::build_pool_json()
-                            .await
-                            .ok()
-                            .map(Into::into);
-                        let status_panel = crate::commands::build_status_json()
-                            .await
-                            .ok()
-                            .map(Into::into);
-                        (pool_panel, status_panel)
-                    });
-                    if tx.send((pool, status)).is_err() {
-                        break;
-                    }
-                    std::thread::sleep(std::time::Duration::from_millis(250));
+            std::thread::spawn(move || loop {
+                let (pool, status) = pool_handle.block_on(async {
+                    let pool_panel = crate::commands::build_pool_json().await.ok().map(Into::into);
+                    let status_panel =
+                        crate::commands::build_status_json().await.ok().map(Into::into);
+                    (pool_panel, status_panel)
+                });
+                if tx.send((pool, status)).is_err() {
+                    break;
                 }
+                std::thread::sleep(std::time::Duration::from_millis(250));
             });
             let poll_pool_status = move || rx.recv().unwrap_or((None, None));
             thermal_tui::run_with_pool_status(&gov, *cap, Some(Box::new(poll_pool_status)))?;
@@ -1434,9 +1429,10 @@ fn write_json_file(path: &std::path::Path, contents: &str) -> Result<()> {
 
 /// `sharecli man` — emit sharecli(1) via clap_mangen (C09 L81.13).
 fn cli_man(install: bool) -> Result<()> {
+    use std::io::Write;
+
     use clap::CommandFactory;
     use clap_mangen::Man;
-    use std::io::Write;
 
     let man = Man::new(Cli::command());
     let mut buffer: Vec<u8> = Vec::new();

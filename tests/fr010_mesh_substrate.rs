@@ -12,12 +12,13 @@
 //! AC-010.9 MaildirQueue::status counts ready / in_flight / pending
 //! AC-010.10 MaildirQueue::reclaim_owner returns cur→new for matching owner
 
-use serde_json::json;
-use sharecli_fleet::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
-use sharecli_mesh::{MaildirQueue, SmartMerger, WorktreePool, WorktreePoolError};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+
+use serde_json::json;
+use sharecli_fleet::{DeviceRecord, FleetRegistry, DEFAULT_SUBJECT_PREFIX};
+use sharecli_mesh::{MaildirQueue, SmartMerger, WorktreePool, WorktreePoolError};
 use tempfile::TempDir;
 
 const GIT_LOCAL_ENV_VARS: &[&str] = &[

@@ -214,8 +214,9 @@ fn git_command(cwd: &Path) -> Command {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     fn init_repo(dir: &Path) {
         git(dir, &["init"]).expect("init");

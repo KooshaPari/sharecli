@@ -37,17 +37,18 @@ pub fn run(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
-    use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
     use std::path::Path;
     use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
+
+    use sharecli_core::{FakeThermalGate, Hypervisor, ThermalDecision};
+    use sharecli_ipc::{command_key, CachedResult, CoalesceCache};
     use tempfile::TempDir;
 
     use super::super::hypervisor_lane::{config_from_rule_opts, hypervisor_cache_root};
+    use super::*;
 
     fn allow_hypervisor(dir: &Path, opts: &RuleOpts) -> Hypervisor {
         Hypervisor::from_config_with_gate(

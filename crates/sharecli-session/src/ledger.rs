@@ -1,7 +1,8 @@
 //! Durable observation records for terminal surfaces and agent sessions.
 
-use crate::{AgentSession, SurfaceRecord};
 use serde::{Deserialize, Serialize};
+
+use crate::{AgentSession, SurfaceRecord};
 
 /// Capabilities advertised by a terminal surface adapter.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -48,12 +49,13 @@ impl SessionObservation {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{AgentSession, ProcessEvidence, ResolutionConfidence, SessionState, SessionStore};
     use std::{
         path::PathBuf,
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    use super::*;
+    use crate::{AgentSession, ProcessEvidence, ResolutionConfidence, SessionState, SessionStore};
 
     fn surface(id: &str) -> SurfaceRecord {
         SurfaceRecord {

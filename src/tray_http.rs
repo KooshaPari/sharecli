@@ -82,13 +82,14 @@ pub fn inject_dashboard_traceparent(html: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::otel::TEST_ENV_LOCK;
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
+
+    use super::*;
+    use crate::otel::TEST_ENV_LOCK;
 
     #[test]
     fn inject_dashboard_traceparent_adds_data_attribute() {
