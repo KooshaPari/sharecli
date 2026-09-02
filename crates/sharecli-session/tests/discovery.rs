@@ -1,3 +1,4 @@
+// FR:003 — Agent session discovery test suite
 use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::{anyhow, Result};

@@ -1,6 +1,6 @@
-//! C09 L81.9 Undo / restore model — FR-003 acceptance gates.
+//! C09 L81.9 Undo / restore model — FR:003 acceptance gates.
 //!
-//! Traces to FR-003 (coverage/traceability, Wave17 thesis residual).
+//! Traces to FR:003 (coverage/traceability, Wave17 thesis residual).
 //!
 //! Asserts every surface in the C09 L81.9 evidence stack:
 //! 1. CLI subcommand surface (`Commands::Undo`)

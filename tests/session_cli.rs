@@ -1,3 +1,4 @@
+// FR:003 — Session CLI integration tests (list, layout-save, layout-list)
 use std::process::Command;
 
 use tempfile::TempDir;

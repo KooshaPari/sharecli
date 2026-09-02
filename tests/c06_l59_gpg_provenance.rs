@@ -1,4 +1,4 @@
-//! FR-003 acceptance gates for **C06 L59** (Source code provenance).
+//! FR:003 acceptance gates for **C06 L59** (Source code provenance).
 //!
 //! Verifies the actual on-disk state of the Forge Bot GPG key (used by
 //! `sharecli` automation to author signed commits) and asserts that the
