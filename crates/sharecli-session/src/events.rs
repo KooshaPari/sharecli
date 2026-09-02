@@ -1,9 +1,10 @@
 //! Bounded, sequenced surface events for live terminal I/O.
 
-use base64::Engine;
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
+
+use base64::Engine;
+use serde::{Deserialize, Serialize};
 
 pub const MAX_EVENT_CHUNK_BYTES: usize = 64 * 1024;
 pub const MAX_EVENT_QUEUE_CAPACITY: usize = 256;

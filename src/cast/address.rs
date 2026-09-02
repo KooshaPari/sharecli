@@ -182,8 +182,9 @@ fn is_valid_machine(s: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     #[test]
     fn is_valid_machine_accepts_typical_names() {

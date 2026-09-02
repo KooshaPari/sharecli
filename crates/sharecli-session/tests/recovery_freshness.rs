@@ -1,11 +1,12 @@
 //! FR:011 / C10 - automatic recovery uses only fresh, latest surface evidence.
 
+use std::path::PathBuf;
+
 use chrono::{Duration, Utc};
 use sharecli_session::{
     AgentSession, ObservationKind, SessionObservation, SessionService, SessionStore,
     SurfaceCapabilities, SurfaceRecord,
 };
-use std::path::PathBuf;
 
 fn observation(
     surface_id: &str,

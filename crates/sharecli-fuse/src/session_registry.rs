@@ -4,16 +4,13 @@
 //! operator commands can call [`InterceptFs::commit_rel`] / [`discard_rel`] on
 //! staged CoW without redesigning the hypervisor overlay.
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::sync::Arc;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
 };
-
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-use std::sync::Arc;
-
-use crate::InterceptFsOptions;
 
 #[cfg(target_os = "linux")]
 use fuser::SessionACL;
@@ -24,6 +21,7 @@ use fuser::{BackgroundSession, Config, MountOption};
 use crate::platform::{InterceptFs, SharedInterceptFs};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::FuseBackend;
+use crate::InterceptFsOptions;
 
 /// Default [`fuser`] mount [`Config`] for sharecli-fuse sessions.
 ///
@@ -581,9 +579,10 @@ impl MountContext for std::io::Result<()> {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[cfg(test)]
 mod default_mount_options_tests {
+    use fuser::{MountOption, SessionACL};
+
     use super::{default_fuser_config, session_mount_options, smoke_fuser_config_for_backend};
     use crate::FuseBackend;
-    use fuser::{MountOption, SessionACL};
 
     #[test]
     fn session_mount_options_pins_session_id() {
@@ -654,9 +653,10 @@ mod default_mount_options_tests {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[cfg(test)]
 mod registry_no_mount_tests {
+    use tempfile::TempDir;
+
     use super::*;
     use crate::InterceptFsOptions;
-    use tempfile::TempDir;
 
     fn fresh_fs(backing: &Path, session_id: &str) -> Arc<InterceptFs> {
         Arc::new(InterceptFs::with_options(

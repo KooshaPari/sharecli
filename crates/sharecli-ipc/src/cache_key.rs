@@ -122,8 +122,9 @@ mod hex {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
+
+    use super::*;
 
     /// FR-008 / AC-008.19 — Args mode ignores cwd/env dimensions.
     #[test]

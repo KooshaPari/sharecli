@@ -98,8 +98,9 @@ fn remove_path(path: &Path) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
+    use super::*;
 
     // FR-003 — uninstall path resolution for C11 L121.
     #[test]

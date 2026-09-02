@@ -10,8 +10,9 @@
 
 #![cfg(not(target_os = "windows"))]
 
-use sharecli_fuse::{annotate_write_at, read_provenance};
 use std::process::Command;
+
+use sharecli_fuse::{annotate_write_at, read_provenance};
 use tempfile::TempDir;
 
 fn bin() -> Command {

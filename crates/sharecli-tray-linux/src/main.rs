@@ -23,7 +23,6 @@ fn main() {
 #[cfg(target_os = "linux")]
 mod linux {
     use ksni::blocking::{Handle, TrayMethods};
-
     use sharecli_tray_linux::ipc;
     use sharecli_tray_linux::operator_display;
     use sharecli_tray_linux::poll::tray_poll_interval;

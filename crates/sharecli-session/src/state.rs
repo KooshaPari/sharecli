@@ -1,10 +1,12 @@
 //! Explicit launch-time state evidence for harness session recovery.
 
-use crate::{SessionStateProvider, SurfaceRecord};
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+
+use crate::{SessionStateProvider, SurfaceRecord};
 
 /// One deliberate surface-to-harness mapping written by a launcher or wrapper.
 ///

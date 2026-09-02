@@ -271,10 +271,12 @@ pub type PriorityQueue = SlotQueue;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
     use std::sync::{Arc, Mutex};
+
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn priority_parse() {

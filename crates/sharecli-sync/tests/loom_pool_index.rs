@@ -1,4 +1,4 @@
-//! C00 L7 — loom model of ProcessPool pid registry (FR-003 · T-670).
+//! C00 L7 — loom model of ProcessPool pid registry (FR:003 · T-670).
 
 #![cfg(loom)]
 
@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use loom::model;
 use loom::thread;
-
 use sharecli_sync::{PoolIndex, RelaxedCounter};
 
 #[test]

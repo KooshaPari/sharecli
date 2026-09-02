@@ -181,10 +181,12 @@ impl CowMountHandle {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
+    use tempfile::TempDir;
+
     use super::*;
     use crate::InterceptFsOptions;
-    use std::fs;
-    use tempfile::TempDir;
 
     #[test]
     fn ac_009_27_cow_handle_stage_commit_round_trip() {

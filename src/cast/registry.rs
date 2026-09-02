@@ -129,9 +129,10 @@ fn validate_name(name: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use proptest::prelude::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn validate_name_accepts_typical() {

@@ -5,12 +5,13 @@
 //! AC-011.2 FakeThermalGate stable decisions
 //! AC-011.3 Hypervisor Refuse → thermally throttled (see also AC-008.3)
 
+use std::sync::Arc;
+
 use sharecli_core::{
     FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision, ThermalGate,
     THERMAL_MAX_RETRIES,
 };
 use sharecli_fleet::{ThermalGovernor, ThermalLevel};
-use std::sync::Arc;
 use tempfile::TempDir;
 
 /// FR-011 / AC-011.1 — mock governor returns configured level.

@@ -1,5 +1,7 @@
-use sharecli_session::{LayoutAxis, LayoutNode, LayoutSnapshot, SessionStore};
+// FR:003 — Session layout round-trip + validation tests
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use sharecli_session::{LayoutAxis, LayoutNode, LayoutSnapshot, SessionStore};
 
 fn snapshot() -> LayoutSnapshot {
     LayoutSnapshot {

@@ -198,9 +198,11 @@ impl AgentCowStore {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     /// FR-009 / AC-009.19 — two agents stage the same path independently; commit one leaves the other.
     #[test]
