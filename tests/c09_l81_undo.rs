@@ -25,10 +25,7 @@ fn fr003_c09_l81_undo_subcommand_is_present_in_commands_enum() {
     // Read src/main.rs as text and assert that the `Commands::Undo {` variant exists.
     let main_rs = workspace_root().join("src/main.rs");
     let text = std::fs::read_to_string(&main_rs).expect("src/main.rs must be readable");
-    assert!(
-        text.contains("Commands::Undo {"),
-        "expected Commands::Undo variant in src/main.rs (C09 L81.9 Plan 805)"
-    );
+    assert!(text.contains("Commands::Undo {"), "expected Commands::Undo variant in src/main.rs (C09 L81.9 Plan 805)");
 }
 
 /// fr003_c09_l81_undo_module_declared_in_commands_mod
@@ -36,10 +33,7 @@ fn fr003_c09_l81_undo_subcommand_is_present_in_commands_enum() {
 fn fr003_c09_l81_undo_module_declared_in_commands_mod() {
     let mod_rs = workspace_root().join("src/commands/mod.rs");
     let text = std::fs::read_to_string(&mod_rs).expect("src/commands/mod.rs must be readable");
-    assert!(
-        text.contains("pub mod undo;"),
-        "expected 'pub mod undo;' declaration in src/commands/mod.rs"
-    );
+    assert!(text.contains("pub mod undo;"), "expected 'pub mod undo;' declaration in src/commands/mod.rs");
 }
 
 /// fr003_c09_l81_undo_doc_has_required_sections
@@ -57,10 +51,7 @@ fn fr003_c09_l81_undo_doc_has_required_sections() {
         "## Verification",
     ];
     for section in required {
-        assert!(
-            text.contains(section),
-            "docs/ops/undo-model.md must contain section '{}'", section
-        );
+        assert!(text.contains(section), "docs/ops/undo-model.md must contain section '{}'", section);
     }
 }
 
@@ -71,18 +62,9 @@ fn fr003_c09_l81_undo_journal_path_xdg_or_home() {
     // fall back to $HOME/.local/state on unix, and to %LOCALAPPDATA% on Windows.
     let undo_rs = workspace_root().join("src/commands/undo.rs");
     let text = std::fs::read_to_string(&undo_rs).expect("src/commands/undo.rs must be readable");
-    assert!(
-        text.contains("XDG_STATE_HOME") || text.contains("xdg_state_home"),
-        "undo.rs must reference XDG_STATE_HOME"
-    );
-    assert!(
-        text.contains(".local/state") || text.contains("LOCALAPPDATA"),
-        "undo.rs must fall back to a default state directory"
-    );
-    assert!(
-        text.contains("operations.jsonl"),
-        "undo.rs must use operations.jsonl as the file name"
-    );
+    assert!(text.contains("XDG_STATE_HOME") || text.contains("xdg_state_home"), "undo.rs must reference XDG_STATE_HOME");
+    assert!(text.contains(".local/state") || text.contains("LOCALAPPDATA"), "undo.rs must fall back to a default state directory");
+    assert!(text.contains("operations.jsonl"), "undo.rs must use operations.jsonl as the file name");
 }
 
 /// fr003_c09_l81_undo_jsonl_schema_includes_required_fields
@@ -99,15 +81,9 @@ fn fr003_c09_l81_undo_jsonl_schema_includes_required_fields() {
         "note",
     ];
     for field in required_fields {
-        assert!(
-            text.contains(field),
-            "OperationRecord schema must include field '{}'", field
-        );
+        assert!(text.contains(field), "OperationRecord schema must include field '{}'", field);
     }
-    assert!(
-        text.contains("pub enum Severity") || text.contains("severity"),
-        "undo.rs must define a Severity enum"
-    );
+    assert!(text.contains("pub enum Severity") || text.contains("severity"), "undo.rs must define a Severity enum");
 }
 
 /// fr003_c09_l81_undo_handlers_present
@@ -116,20 +92,8 @@ fn fr003_c09_l81_undo_handlers_present() {
     // The run() function must accept the four CLI args + return Result.
     let undo_rs = workspace_root().join("src/commands/undo.rs");
     let text = std::fs::read_to_string(&undo_rs).expect("src/commands/undo.rs must be readable");
-    assert!(
-        text.contains("pub fn run"),
-        "undo.rs must export pub fn run"
-    );
-    assert!(
-        text.contains("limit: usize")
-            || text.contains("limit: ")
-    );
-    assert!(
-        text.contains("json: bool")
-            || text.contains("json: ")
-    );
-    assert!(
-        text.contains("restore: bool")
-            || text.contains("restore: ")
-    );
+    assert!(text.contains("pub fn run"), "undo.rs must export pub fn run");
+    assert!(text.contains("limit: usize") || text.contains("limit: "));
+    assert!(text.contains("json: bool") || text.contains("json: "));
+    assert!(text.contains("restore: bool") || text.contains("restore: "));
 }
