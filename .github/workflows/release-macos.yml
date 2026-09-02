@@ -1,0 +1,44 @@
+name: Release macOS (ShareCLITray)
+
+# Calls the reusable workflow at kooshapari/phenotype-fleet-ops.
+# Self-hosted runners only (zero billed minutes).
+# All Apple Developer secrets live in Infisical project 8efe392e-56a6-4c3c-89f9-8141183dd7e8.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+concurrency:
+  group: macos-release-sharecli-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: Build, sign, notarize ShareCLITray
+    uses: kooshapari/phenotype-fleet-ops/.github/workflows/macos-release.yml@main
+    with:
+      app-name: ShareCLITray
+      app-bundle-id: com.phenotype.sharecli.tray
+      build-cmd: |
+          cargo build -p sharecli-ffi --release --locked --target aarch64-apple-darwin
+          export LIBRARY_PATH="${{ github.workspace }}/target/aarch64-apple-darwin/release:${LIBRARY_PATH:-}"
+          (cd desktop/ShareCLITray && swift build -c release \
+            -Xlinker -L -Xlinker "$LIBRARY_PATH" \
+            -Xlinker -lsharecli_ffi)
+          BIN=$(swift build -c release --package-path desktop/ShareCLITray --show-bin-path)/ShareCLITray
+          mkdir -p dist/macos/ShareCLITray.app/Contents/{MacOS,Resources}
+          cp "$BIN" dist/macos/ShareCLITray.app/Contents/MacOS/
+          cp target/aarch64-apple-darwin/release/libsharecli_ffi.dylib \
+             dist/macos/ShareCLITray.app/Contents/MacOS/ 2>/dev/null || true
+          ./scripts/build-appcast.sh --channel stable --archives dist/macos/archives --out dist/macos
+      entitlements-file: desktop/ShareCLITray/Sources/ShareCLITray/ShareCLITray.entitlements
+      artifact-dir: dist/macos
+      create-dmg: true
+      sign-identity: "Developer ID Application"
+    secrets:
+      INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
