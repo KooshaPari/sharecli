@@ -220,6 +220,7 @@ flowchart TD
 | T-1370 | SonarCloud Quality Gate: maintain A rating on main | FR-008 | T-1290 | S | DONE | All 6 conditions green on last 5 merges; `new_security_rating=1/A` maintained |
 | T-1380 | Multi-platform Windows tray: document build requirements | FR-011 | T-1270 | S | READY | `windows/ShareCLITray/README.md` documents VS Build Tools + Windows App SDK requirement |
 | T-1390 | macOS tray: document Xcode requirement for desktop app | FR-011 | T-1270 | S | READY | `desktop/ShareCLITray/README.md` documents macOS + Xcode 15+ requirement |
+| T-1400 | C06 L59 GPG-signed commits (Forge Bot provenance) 2→3 | FR-003 / C06 L59 | T-1370 | M | **DONE** | Generated fresh GPG ed25519 key for Forge Bot (`AAB36B31A8625A133B9398FE1C7D34D008A2D327`); `tests/c06_l59_gpg_provenance.rs` 4/4 FR-003 gates pass (gpg key exists with correct fingerprint + uid; .github/workflows/gpg.yml produces hard gate; `docs/ops/signed-commits.md` documents operator path with finger-printed key; workflow `.github/workflows/dco.yml` + `gpg.yml` chain in place). C06 L59 2→3; C06 27/30 90% A → 28/30 93% A. Weighted 93.9% A → 94.0% A (+0.1pp, C06 not in tier-1); unweighted sum 1121→1122 / 12 = 93.5% A. PR TBD. |
 
 ## Ownership notes
 - Do **not** claim tasks that touch `release.yml`, `Containerfile`, fuzz, benches, or `spawn-core` from the C03 FR-test lane alone — package those under Wave4 WBS IDs.
