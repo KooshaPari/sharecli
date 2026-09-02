@@ -1068,24 +1068,17 @@ async fn run() -> Result<()> {
             type StatusPanel = sharecli_fleet::StatusOperatorPanel;
             let (tx, rx) = std::sync::mpsc::channel::<(Option<PoolPanel>, Option<StatusPanel>)>();
             let pool_handle = tokio::runtime::Handle::current();
-            std::thread::spawn(move || {
-                loop {
-                    let (pool, status) = pool_handle.block_on(async {
-                        let pool_panel = crate::commands::build_pool_json()
-                            .await
-                            .ok()
-                            .map(Into::into);
-                        let status_panel = crate::commands::build_status_json()
-                            .await
-                            .ok()
-                            .map(Into::into);
-                        (pool_panel, status_panel)
-                    });
-                    if tx.send((pool, status)).is_err() {
-                        break;
-                    }
-                    std::thread::sleep(std::time::Duration::from_millis(250));
+            std::thread::spawn(move || loop {
+                let (pool, status) = pool_handle.block_on(async {
+                    let pool_panel = crate::commands::build_pool_json().await.ok().map(Into::into);
+                    let status_panel =
+                        crate::commands::build_status_json().await.ok().map(Into::into);
+                    (pool_panel, status_panel)
+                });
+                if tx.send((pool, status)).is_err() {
+                    break;
                 }
+                std::thread::sleep(std::time::Duration::from_millis(250));
             });
             let poll_pool_status = move || rx.recv().unwrap_or((None, None));
             thermal_tui::run_with_pool_status(&gov, *cap, Some(Box::new(poll_pool_status)))?;
