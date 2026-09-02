@@ -20,9 +20,5 @@
        If you ship a notarized DMG, Sparkle will download + verify + launch. -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
-
-  <!-- sharecli tray talks to the IPC sidecar via Unix socket -->
-  <key>com.apple.security.network.client</key>
-  <true/>
 </dict>
 </plist>
