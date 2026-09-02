@@ -3,11 +3,11 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(not(loom))]
+use std::sync::RwLock;
 
 #[cfg(loom)]
 use loom::sync::RwLock;
-#[cfg(not(loom))]
-use std::sync::RwLock;
 
 /// Lock-backed registry of managed process ids.
 #[derive(Debug, Default)]

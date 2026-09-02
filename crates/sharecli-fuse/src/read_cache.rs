@@ -137,9 +137,11 @@ impl ReadContentCache {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io::Write;
+
     use tempfile::NamedTempFile;
+
+    use super::*;
 
     /// FR-009 / AC-009.4 — first read misses; second identical mtime hits.
     #[test]

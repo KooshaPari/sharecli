@@ -1,9 +1,10 @@
+use std::{collections::HashMap, path::PathBuf};
+
 use anyhow::{anyhow, Result};
 use sharecli_session::{
     scan_and_record, AgentSession, ObservationKind, ProcessEvidence, SessionObservation,
     SessionStateProvider, SessionStore, SurfaceAdapter, SurfaceCapabilities, SurfaceRecord,
 };
-use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Clone)]
 struct FakeAdapter {

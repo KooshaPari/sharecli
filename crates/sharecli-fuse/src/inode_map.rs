@@ -106,8 +106,9 @@ pub fn abs_under(backing: &Path, rel: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::ffi::OsString;
+
+    use super::*;
 
     /// FR-009 / AC-009.3 — root resolves; nested lookup allocates stable inodes.
     #[test]

@@ -4,9 +4,10 @@
 //! AC-010.9 CLI `mesh status --queue` reports depths
 //! AC-010.10 CLI `mesh reclaim --queue --owner` returns cur→new
 
+use std::process::Command;
+
 use serde_json::json;
 use sharecli_mesh::MaildirQueue;
-use std::process::Command;
 use tempfile::TempDir;
 
 fn bin() -> Command {

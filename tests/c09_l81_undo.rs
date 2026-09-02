@@ -14,8 +14,7 @@ use std::path::PathBuf;
 
 /// Helper: find the workspace root relative to the test binary.
 fn workspace_root() -> PathBuf {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .unwrap_or_else(|_| ".".to_string());
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(manifest_dir)
 }
 
@@ -59,7 +58,8 @@ fn fr003_c09_l81_undo_doc_has_required_sections() {
     for section in required {
         assert!(
             text.contains(section),
-            "docs/ops/undo-model.md must contain section '{}'", section
+            "docs/ops/undo-model.md must contain section '{}'",
+            section
         );
     }
 }
@@ -90,19 +90,9 @@ fn fr003_c09_l81_undo_journal_path_xdg_or_home() {
 fn fr003_c09_l81_undo_jsonl_schema_includes_required_fields() {
     let undo_rs = workspace_root().join("src/commands/undo.rs");
     let text = std::fs::read_to_string(&undo_rs).expect("src/commands/undo.rs must be readable");
-    let required_fields = [
-        "id",
-        "ts",
-        "kind",
-        "target",
-        "reversible",
-        "note",
-    ];
+    let required_fields = ["id", "ts", "kind", "target", "reversible", "note"];
     for field in required_fields {
-        assert!(
-            text.contains(field),
-            "OperationRecord schema must include field '{}'", field
-        );
+        assert!(text.contains(field), "OperationRecord schema must include field '{}'", field);
     }
     assert!(
         text.contains("pub enum Severity") || text.contains("severity"),
@@ -116,20 +106,8 @@ fn fr003_c09_l81_undo_handlers_present() {
     // The run() function must accept the four CLI args + return Result.
     let undo_rs = workspace_root().join("src/commands/undo.rs");
     let text = std::fs::read_to_string(&undo_rs).expect("src/commands/undo.rs must be readable");
-    assert!(
-        text.contains("pub fn run"),
-        "undo.rs must export pub fn run"
-    );
-    assert!(
-        text.contains("limit: usize")
-            || text.contains("limit: ")
-    );
-    assert!(
-        text.contains("json: bool")
-            || text.contains("json: ")
-    );
-    assert!(
-        text.contains("restore: bool")
-            || text.contains("restore: ")
-    );
+    assert!(text.contains("pub fn run"), "undo.rs must export pub fn run");
+    assert!(text.contains("limit: usize") || text.contains("limit: "));
+    assert!(text.contains("json: bool") || text.contains("json: "));
+    assert!(text.contains("restore: bool") || text.contains("restore: "));
 }

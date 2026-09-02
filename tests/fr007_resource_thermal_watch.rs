@@ -11,6 +11,8 @@
 //! AC-007.8 host load watch via sample_host_load_1m
 //! AC-007.10 status surfaces live ResourceWatchSample via format_status_section
 
+use std::sync::Arc;
+
 use sharecli::monitoring::{
     sample_host_load_1m, sample_host_net, sample_self_fds, sample_self_rss_bytes, ProcessStats,
     ResourceWatchSample,
@@ -19,7 +21,6 @@ use sharecli_core::{
     FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest, ThermalDecision, ThermalGate,
 };
 use sharecli_fleet::{ThermalGovernor, ThermalLevel};
-use std::sync::Arc;
 use tempfile::TempDir;
 
 /// FR-007 / AC-007.1 — mock thermal levels are visible via poll.

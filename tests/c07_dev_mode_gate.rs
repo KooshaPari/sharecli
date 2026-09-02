@@ -79,9 +79,10 @@ async fn c07_dev_mode_binds_local_listener() {
 #[cfg(not(target_os = "windows"))]
 #[tokio::test]
 async fn c07_config_watcher_hot_reload_propagates() {
+    use std::io::Write;
+
     use sharecli::config::Config;
     use sharecli::config_watcher::ConfigWatcher;
-    use std::io::Write;
 
     let dir = TempDir::new().expect("tempdir");
     let config_path = dir.path().join("config.toml");
@@ -134,9 +135,10 @@ async fn c07_config_watcher_hot_reload_propagates() {
 #[cfg(not(target_os = "windows"))]
 #[tokio::test]
 async fn c07_config_watcher_survives_invalid_toml() {
+    use std::io::Write;
+
     use sharecli::config::Config;
     use sharecli::config_watcher::ConfigWatcher;
-    use std::io::Write;
 
     let dir = TempDir::new().expect("tempdir");
     let config_path = dir.path().join("config.toml");

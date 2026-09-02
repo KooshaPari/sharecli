@@ -1,11 +1,5 @@
 //! Shell-free zmx and capability-gated Ghostty adapters.
 
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use sharecli_session::{
-    LayoutRestoreReport, LayoutSnapshot, SurfaceAdapter, SurfaceCapabilities, SurfaceEventKind,
-    SurfaceRecord, MAX_EVENT_CHUNK_BYTES, MAX_EVENT_QUEUE_CAPACITY,
-};
 use std::io::{BufRead, BufReader, Write};
 #[cfg(unix)]
 use std::os::unix::net::UnixStream;
@@ -14,6 +8,13 @@ use std::process::Command;
 use std::sync::atomic::AtomicU64;
 #[cfg(unix)]
 use std::sync::atomic::Ordering;
+
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use sharecli_session::{
+    LayoutRestoreReport, LayoutSnapshot, SurfaceAdapter, SurfaceCapabilities, SurfaceEventKind,
+    SurfaceRecord, MAX_EVENT_CHUNK_BYTES, MAX_EVENT_QUEUE_CAPACITY,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZmxCommand {

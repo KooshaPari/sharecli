@@ -1,9 +1,11 @@
 //! Safe, bounded session recovery execution.
 
-use crate::{AgentSession, ResumeRecipe, SessionState};
+use std::process::Command;
+
 use anyhow::Result;
 use serde::Serialize;
-use std::process::Command;
+
+use crate::{AgentSession, ResumeRecipe, SessionState};
 
 /// Per-session recovery result.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

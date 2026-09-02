@@ -1,8 +1,10 @@
 //! Capability-gated terminal surface adapters.
 
-use crate::{ledger::SurfaceCapabilities, LayoutRestoreReport, LayoutSnapshot, SurfaceRecord};
-use anyhow::Result;
 use std::sync::Arc;
+
+use anyhow::Result;
+
+use crate::{ledger::SurfaceCapabilities, LayoutRestoreReport, LayoutSnapshot, SurfaceRecord};
 
 /// A discovered terminal surface and its capabilities.
 pub trait SurfaceAdapter: Send + Sync {
@@ -86,8 +88,9 @@ impl SurfaceAdapter for ZmxSurfaceAdapter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::PathBuf;
+
+    use super::*;
 
     fn surface() -> SurfaceRecord {
         SurfaceRecord {

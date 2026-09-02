@@ -3,6 +3,8 @@
 //!
 //! AC-006.12 aggregate watched-agent RSS escalates Hypervisor gate tier
 
+use std::sync::Arc;
+
 use sharecli_core::{
     AgentAwareThermalGate, FakeThermalGate, Hypervisor, QueuePriority, SpawnRequest,
     ThermalDecision, THERMAL_MAX_RETRIES,
@@ -11,7 +13,6 @@ use sharecli_fleet::agent_contention::{
     agent_resource_contention_tier, combined_agent_contention_tier, AgentContentionThresholds,
     AgentContentionTier, AgentResourceThresholds,
 };
-use std::sync::Arc;
 use tempfile::TempDir;
 
 /// FR-006 / AC-006.12 — RSS refuse tier maps to Hypervisor Refuse.

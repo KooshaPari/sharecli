@@ -28,11 +28,7 @@ fn run_gpg(args: &[&str]) -> Option<(String, i32)> {
     let out = Command::new(gpg_binary()).args(args).output().ok()?;
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
-    let combined = if stderr.trim().is_empty() {
-        stdout
-    } else {
-        format!("{stdout}\n{stderr}")
-    };
+    let combined = if stderr.trim().is_empty() { stdout } else { format!("{stdout}\n{stderr}") };
     Some((combined, out.status.code().unwrap_or(-1)))
 }
 
@@ -55,11 +51,8 @@ fn run_bash(cmd: &str) -> (String, i32) {
         Ok(o) => {
             let stdout = String::from_utf8_lossy(&o.stdout).into_owned();
             let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
-            let combined = if stderr.trim().is_empty() {
-                stdout
-            } else {
-                format!("{stdout}\n{stderr}")
-            };
+            let combined =
+                if stderr.trim().is_empty() { stdout } else { format!("{stdout}\n{stderr}") };
             (combined, o.status.code().unwrap_or(-1))
         }
         Err(_) => (String::new(), -1),
@@ -104,13 +97,9 @@ fn fr003_c06_l59_forge_bot_public_key_pgp_armor_well_formed() {
         // Fast path: literal UTF-8 substring present.
     } else {
         // Slow path: gpg --list-keys shows UID + fingerprint together.
-        let (list_out, _list_code) = run_gpg(&[
-            "--no-tty",
-            "--with-colons",
-            "--list-keys",
-            FORGE_BOT_FINGERPRINT,
-        ])
-        .unwrap_or_default();
+        let (list_out, _list_code) =
+            run_gpg(&["--no-tty", "--with-colons", "--list-keys", FORGE_BOT_FINGERPRINT])
+                .unwrap_or_default();
         assert!(
             list_out.contains(FORGE_BOT_FINGERPRINT),
             "Forge Bot fingerprint not findable via gpg --list-keys"

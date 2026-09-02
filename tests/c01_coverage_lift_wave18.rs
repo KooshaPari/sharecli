@@ -6,26 +6,20 @@ use std::time::Duration;
 
 // ── rate-limit tests ────────────────────────────────────────────────────────
 use sharecli::config::ServeConfig;
-use sharecli::serve_rate_limit::ServeRateLimit;
-
-// ── auth tests ──────────────────────────────────────────────────────────────
-use sharecli::serve_auth::ServeAuth;
-
 // ── dashboard tests ─────────────────────────────────────────────────────────
 use sharecli::dashboard_assets;
-
 // ── error envelope tests ────────────────────────────────────────────────────
 use sharecli::error_envelope::auth_failure_message;
-
+// ── base rate-limiter tests ─────────────────────────────────────────────────
+use sharecli::rate_limiter::RateLimiter;
+// ── auth tests ──────────────────────────────────────────────────────────────
+use sharecli::serve_auth::ServeAuth;
+use sharecli::serve_rate_limit::ServeRateLimit;
 // ── proc-scan tests ─────────────────────────────────────────────────────────
 use sharecli_core::proc_scan::{FakeProcSource, ProcSnapshot};
-
 // ── thermal tests ───────────────────────────────────────────────────────────
 use sharecli_core::ThermalDecision;
 use sharecli_fleet::ThermalLevel;
-
-// ── base rate-limiter tests ─────────────────────────────────────────────────
-use sharecli::rate_limiter::RateLimiter;
 
 // ---------------------------------------------------------------------------
 // (a) ServeRateLimit: exhaustion + retry_after_secs

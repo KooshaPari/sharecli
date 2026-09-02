@@ -19,17 +19,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use anyhow::Result;
 use serde::Serialize;
 pub use serve::run as serve_run;
-
-use crate::monitoring::HostResourceWatchJson;
-
-use crate::config::{self, Config, ConfigCmd, ProjectCmd};
-use crate::progress::StepProgress;
-#[cfg(test)]
-use crate::runtime::ProcState;
-use crate::runtime::{
-    ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
-};
-use crate::spawn_policy::SpawnPolicy;
 use sharecli_fleet::global_coalesce_meters;
 use sharecli_fleet::global_slot_queue_meters;
 use sharecli_fleet::thermal::ThermalGovernor;
@@ -42,6 +31,16 @@ use sharecli_fuse::{
     global_neg_dentry_meters, global_read_cache_meters, global_write_serialize_meters,
 };
 use sharecli_mesh::capture_maildir_status;
+
+use crate::config::{self, Config, ConfigCmd, ProjectCmd};
+use crate::monitoring::HostResourceWatchJson;
+use crate::progress::StepProgress;
+#[cfg(test)]
+use crate::runtime::ProcState;
+use crate::runtime::{
+    ProcessFilter, ProcessInfo, ProcessPool, ProjectLimits, ProjectResources, SharedRuntime,
+};
+use crate::spawn_policy::SpawnPolicy;
 
 /// Shared runtime instance
 static SHARED_RUNTIME: std::sync::OnceLock<SharedRuntime> = std::sync::OnceLock::new();

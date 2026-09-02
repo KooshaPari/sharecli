@@ -1,5 +1,6 @@
-use sharecli_session::{LayoutAxis, LayoutNode, LayoutSnapshot, SessionStore};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use sharecli_session::{LayoutAxis, LayoutNode, LayoutSnapshot, SessionStore};
 
 fn snapshot() -> LayoutSnapshot {
     LayoutSnapshot {

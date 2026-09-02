@@ -139,8 +139,9 @@ impl NegativeDentryCache {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::thread;
+
+    use super::*;
 
     /// FR-009 / AC-009.7 — remember miss then hit within TTL.
     #[test]

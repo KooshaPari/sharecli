@@ -1,12 +1,13 @@
-use sharecli_session::{
-    append_record, ProcessEvidence, SessionStateProvider, SidecarRecord, SidecarStateProvider,
-    SurfaceRecord,
-};
 use std::{
     fs,
     path::PathBuf,
     sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
+};
+
+use sharecli_session::{
+    append_record, ProcessEvidence, SessionStateProvider, SidecarRecord, SidecarStateProvider,
+    SurfaceRecord,
 };
 
 static SIDECARE_COUNTER: AtomicU64 = AtomicU64::new(0);

@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use loom::model;
 use loom::thread;
-
 use sharecli_sync::{PoolIndex, RelaxedCounter};
 
 #[test]

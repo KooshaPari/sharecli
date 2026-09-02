@@ -3,8 +3,9 @@
 //! Walks parent chains (`/proc` on Linux; `sysinfo` elsewhere) and matches
 //! [`crate::detect::match_known_agent`] — observation only, no vendor-bin wrap.
 
-use crate::detect::match_known_agent;
 use std::collections::HashMap;
+
+use crate::detect::match_known_agent;
 
 /// One process row used for tree walks and scans.
 #[derive(Debug, Clone, PartialEq, Eq)]
