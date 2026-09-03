@@ -1,61 +1,70 @@
-//! C08 L76 soft gate - Harbor soft stub (T-720 Wave16)
+//! C08 L76 FR-003 gate - Harbor 7d soak mirrored visibility (Wave17 onward)
 //! FR: FR-003
-//! Scope: doc stub only, no 7d log, EXTRACTED lane noted.
+//! Scope: honest mirror of the EXTRACTED Harbor soak; asserts 0/7 (no false claim).
 
 use std::fs;
 use std::path::Path;
 
-fn has_harbor_log(dir: &Path) -> bool {
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if p.is_file() {
-                let name = p.file_name().unwrap_or_default().to_string_lossy();
-                if name.contains("harbor") && name.contains("7d") && name.ends_with(".log") {
-                    return true;
-                }
-            }
-            if p.is_dir() {
-                let s = p.to_string_lossy();
-                if s.contains(".git") || s.contains("target") || s.contains(".cargo") {
-                    continue;
-                }
-                if has_harbor_log(&p) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
+fn read(path: &str) -> String {
+    fs::read_to_string(path).expect("file must exist")
 }
 
 #[test]
-fn c08_harbor_soft_stub_no_7d_log() {
-    // Soft gate, no 7d log required. Detect any harbor-7d.log anywhere.
-    assert!(!has_harbor_log(Path::new(".")), "no harbor-7d.log should exist anywhere in repo");
+fn c08_l76_harbor_7d_mirror_exists() {
+    // The visibility mirror must exist so sharecli auditors see the honest soak state.
     assert!(
-        Path::new("docs/eval/harbor-soft-stub.md").exists(),
-        "harbor-soft-stub.md must exist for T-720"
+        Path::new("docs/eval/harbor-7d.log").exists(),
+        "docs/eval/harbor-7d.log mirror must exist"
     );
 }
 
 #[test]
-fn c08_harbor_soft_stub_extracted_notion() {
-    // Ensures stub acknowledges EXTRACTED status by reading the doc.
-    let content =
-        fs::read_to_string("docs/eval/harbor-soft-stub.md").expect("harbor-soft-stub.md exists");
-    assert!(content.contains("EXTRACTED"), "Harbor 7d log is EXTRACTED, not in sharecli main");
-    assert!(content.contains("benchora/harbor-soft"), "doc must reference EXTRACTED lane");
+fn c08_l76_mirror_is_marked_zero_of_seven() {
+    // Honest status: the 7d soak is NOT complete. The mirror must say 0/7.
+    let content = read("docs/eval/harbor-7d.log");
+    assert!(
+        content.contains("0 / 7") || content.contains("0/7"),
+        "mirror must state the soak is 0/7, not claim completion"
+    );
 }
 
 #[test]
-fn c08_harbor_soft_stub_no_live_infra_doc_scope() {
-    // Doc-scope only - verifies stub doc scopes correctly, no live infra.
-    let content = fs::read_to_string("docs/eval/harbor-soft-stub.md").unwrap();
-    assert!(content.contains("doc stub only"), "scope must remain doc stub only");
-    // Ensure no Harbor workflow or live infra script is committed in sharecli main.
+fn c08_l76_mirror_does_not_claim_completion() {
+    // Guard against a false lift: the mirror must never advertise 7/7.
+    let content = read("docs/eval/harbor-7d.log");
+    assert!(
+        !content.contains("7 / 7") && !content.contains("7/7"),
+        "mirror must not claim a completed 7-day soak"
+    );
+}
+
+#[test]
+fn c08_l76_mirror_points_to_canonical_lane() {
+    // The mirror must hand off to the canonical EXTRACTED soak location.
+    let content = read("docs/eval/harbor-7d.log");
+    assert!(
+        content.contains("benchora/harbor-soft"),
+        "mirror must reference the canonical benchora/harbor-soft lane"
+    );
+    assert!(
+        content.contains("portage-temp"),
+        "mirror must reference the Harbor fork/env portage-temp"
+    );
+}
+
+#[test]
+fn c08_l76_stub_doc_still_marks_extracted() {
+    // The soft-stub doc remains valid: it must still state EXTRACTED for the hard log.
+    let content = read("docs/eval/harbor-soft-stub.md");
+    assert!(content.contains("EXTRACTED"), "stub doc must still mark EXTRACTED");
+    assert!(content.contains("benchora/harbor-soft"), "stub doc must reference EXTRACTED lane");
+}
+
+#[test]
+fn c08_l76_no_live_harbor_workflow() {
+    // Per ADR 0002 sharecli does not host Harbor workflows. Mirror is doc-only.
     assert!(
         !Path::new(".github/workflows/harbor.yml").exists(),
-        "no Harbor live workflow should exist in sharecli main"
+        "no live Harbor workflow should exist in sharecli main"
     );
 }
