@@ -1,43 +1,44 @@
-# Code signing & notarization (soft)
+# Code signing & notarization (hard gate — Infisical-backed)
 
-Audit-v38 **C11 L112**. Release archives today ship **unsigned** with `.sha256`
-checksums (`release.yml` `github-release`). This runbook is the soft contract
-until Apple/Windows signing secrets land.
+Audit-v38 **C11 L112**. macOS release binaries are signed with a Developer ID
+Application cert, notarized via `notarytool`, and stapled. Apple signing secrets
+are fetched from **Infisical** at CI runtime (never committed, never stored as
+raw GitHub secrets). Windows Authenticode remains soft until Azure Key Vault is
+provisioned.
 
 ## Current stance
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| macOS Developer ID + notarize + staple | **Blocked** | Needs org Apple Developer cert + `APPLE_*` secrets |
-| Windows Authenticode (`signtool`) | **Blocked** | Needs Authenticode cert + CI secret |
+| macOS Developer ID + notarize + staple | **Hard gate** | Infisical-backed Apple secrets (`codesign.yml` `macos-sign`) |
+| Windows Authenticode | **Soft** (`continue-on-error`) | Azure Key Vault not configured |
 | Linux | N/A for Gatekeeper | Cosign/SLSA cover supply-chain (C06); not OS code-sign |
 | Ad-hoc `codesign --sign -` | Dev only | Never for release assets |
 
-**Secret inventory (2026-07-22):** `gh secret list -R KooshaPari/sharecli` still
-returns **zero** Actions secrets. No `APPLE_*` / `WINDOWS_CERT_*` (or any other)
-repo secrets are configured. Status remains **Blocked** — do not invent secrets.
-Agent follow-up cannot flip L112 without the operator adding secrets in GitHub
-(Settings → Secrets and variables → Actions).
+## Secret flow
 
-## Required secrets (when unblocked)
+`.github/workflows/codesign.yml` (`macos-sign` job):
 
-| Secret | Use |
-|--------|-----|
-| `APPLE_CERTIFICATE_BASE64` | Developer ID Application .p12 |
-| `APPLE_CERTIFICATE_PASSWORD` | Unlock p12 |
-| `APPLE_API_KEY` / `APPLE_API_ISSUER` / `APPLE_API_KEY_ID` | `notarytool` |
-| `WINDOWS_CERT_PFX_BASE64` / `WINDOWS_CERT_PASSWORD` | Authenticode |
+1. Install Infisical CLI (`brew install infisical/get-cli/infisical`).
+2. `infisical export --projectId … --env … --token "$INFISICAL_TOKEN"` → dotenv.
+3. Load only the 5 Apple keys into `GITHUB_ENV` (GitHub masks them automatically).
 
-## Soft CI
+| Infisical key | Use |
+|---------------|-----|
+| `APPLE_CERTIFICATE` | Developer ID Application `.p12` (base64) |
+| `APPLE_CERTIFICATE_PWD` | `.p12` unlock password |
+| `APPLE_ID` | notarytool Apple ID |
+| `APPLE_TEAM_ID` | Apple Developer team ID |
+| `APPLE_APP_PASSWORD` | app-specific password for notarytool |
 
-`.github/workflows/codesign-soft.yml` asserts this doc exists and reports when
-signing secrets are absent (`continue-on-error`). It does **not** claim
-notarized artifacts.
+## Required repo config (one-time)
 
-## Follow-up (hard gate)
+- **Secret** `INFISICAL_TOKEN` — a Machine Identity token scoped to the project.
+- **Var** `INFISICAL_PROJECT_ID` (defaults to `8efe392e-56a6-4c3c-89f9-8141183dd7e8`).
+- **Var** `INFISICAL_ENV` (defaults to `prod`).
 
-1. Add the secrets above to the repo (or org) Actions secret store — never commit them.
-2. Add `codesign` / `notarytool` / `signtool` steps to `release.yml`.
-3. Staple macOS archives; attach signed Windows binaries.
-4. Flip `docs/deploy.md` Releases row from UNSIGNED → signed+notarized.
-5. Unblock W4.3 in `docs/ops/governance/WBS-PHASED.md`.
+## Follow-up (Windows)
+
+1. Provision Azure Key Vault + Authenticode cert.
+2. Set `AZURE_KEY_VAULT_URL` / `_CLIENT_ID` / `_CLIENT_SECRET` / `_TENANT_ID` / `_CERTIFICATE`.
+3. Flip `windows-sign` job `continue-on-error: false`.

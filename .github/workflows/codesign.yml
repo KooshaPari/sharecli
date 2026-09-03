@@ -23,40 +23,54 @@ concurrency:
 
 jobs:
   macos-sign:
-    name: macOS codesign + notarize (soft gate — pending Apple secrets)
+    name: macOS codesign + notarize (hard gate — Infisical-backed Apple secrets)
     runs-on: macos-latest
-    continue-on-error: true  # Wave18: hard gate deferred until Apple dev acct configured
     timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Validate Apple secrets
+      - name: Fetch Apple secrets from Infisical
+        id: infisical
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PWD: ${{ secrets.APPLE_CERTIFICATE_PWD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
+          INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID || secrets.INFISICAL_PROJECT_ID || '8efe392e-56a6-4c3c-89f9-8141183dd7e8' }}
+          INFISICAL_ENV: ${{ vars.INFISICAL_ENV || 'prod' }}
         run: |
-          missing=()
-          [[ -z "$APPLE_CERTIFICATE" ]] && missing+=("APPLE_CERTIFICATE")
-          [[ -z "$APPLE_CERTIFICATE_PWD" ]] && missing+=("APPLE_CERTIFICATE_PWD")
-          [[ -z "$APPLE_ID" ]] && missing+=("APPLE_ID")
-          [[ -z "$APPLE_TEAM_ID" ]] && missing+=("APPLE_TEAM_ID")
-          [[ -z "$APPLE_APP_PASSWORD" ]] && missing+=("APPLE_APP_PASSWORD")
-          if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "::error::Missing Apple signing secrets: ${missing[*]}"
-            echo "See docs/ops/governance/APPLE_SECRETS_SETUP.md for setup instructions"
+          set -euo pipefail
+          if [[ -z "$INFISICAL_TOKEN" ]]; then
+            echo "::error::INFISICAL_TOKEN secret not configured in repo settings"
             exit 1
           fi
-          echo "All Apple signing secrets configured"
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install infisical/get-cli/infisical
+          else
+            curl -1sLf "https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh" | sudo -E bash
+            sudo apt-get install -y infisical
+          fi
+          infisical export \
+            --projectId "$INFISICAL_PROJECT_ID" \
+            --env "$INFISICAL_ENV" \
+            --token "$INFISICAL_TOKEN" \
+            --format=dotenv --plain > "$RUNNER_TEMP/infisical.env"
+
+          # Load only the 5 Apple signing secrets into GITHUB_ENV (masked by GitHub).
+          declare -a WANTED=(APPLE_CERTIFICATE APPLE_CERTIFICATE_PWD APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD)
+          for key in "${WANTED[@]}"; do
+            line=$(grep -E "^${key}=" "$RUNNER_TEMP/infisical.env" || true)
+            if [[ -z "$line" ]]; then
+              echo "::error::${key} not found in Infisical env '${INFISICAL_ENV}'"
+              exit 1
+            fi
+            echo "$line" >> "$GITHUB_ENV"
+          done
+          echo "All Apple signing secrets fetched from Infisical"
 
       - name: Import Apple certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
-          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
-          p12-password: ${{ secrets.APPLE_CERTIFICATE_PWD }}
+          p12-file-base64: ${{ env.APPLE_CERTIFICATE }}
+          p12-password: ${{ env.APPLE_CERTIFICATE_PWD }}
 
       - name: Build release binary
         run: cargo build --release --locked 2>&1 | tail -5
@@ -66,9 +80,9 @@ jobs:
 
       - name: Notarize release binary
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_ID: ${{ env.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ env.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ env.APPLE_APP_PASSWORD }}
         run: |
           ditto -c -k --keepParent target/release/sharecli sharecli.zip
           xcrun notarytool submit sharecli.zip \
