@@ -52,7 +52,7 @@ jobs:
           toolchain: stable
 
       - name: Cargo cache
-        uses: Swatinem/rust-cache@9d4e6f0a4bfcab8c76ef08b0e5f1e583448d8eeb  # v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32  # v2
 
       - name: Build
         run: cargo build --workspace --all-features
