@@ -29,9 +29,9 @@ export default defineConfig({
     /\/assets\/brand\//,
     // Repo-root governance docs referenced from docs/ops — live outside the
     // VitePress source tree (no extension in link), so ignore dead-link check.
-    /THREAT_MODEL/,
-    /\/SECURITY(\.[a-z]+)?(#|\?|$)/,
-    /\/BOUNDARY(\.[a-z]+)?(#|\?|$)/,
+    /THREAT_MODEL(\.[a-z]+)?(#|\?|$)/,
+    /\/SECURITY(\.md)?(#|\?|$)/,
+    /\/BOUNDARY(\.md)?(#|\?|$)/,
   ],
   themeConfig: {
     nav: [
