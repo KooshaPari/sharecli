@@ -35,7 +35,9 @@ wrong profile.
 3. **Harbor soft surface ownership (external):** Harbor soft CI and soak live in
    `phenotype-tooling/crates/benchora/harbor-soft`. Harbor fork/env live in
    `KooshaPari/portage-temp` (awaiting GitHub restore of `portage`). **sharecli
-   does not host Harbor workflows**, stub scripts, or soak logs.
+   does not host Harbor workflows**, stub scripts, or soak logs. A read-only
+   *visibility mirror* (`docs/eval/harbor-7d.log`) documents the honest `0/7`
+   soak state for auditors; it is not a hosted soak and does not change scope.
 4. **Governance:** This ADR is the eval policy for sharecli (**L80**). Revisit
    only if sharecli claims an agent-eval or multi-lang harness product surface.
 

@@ -78,6 +78,10 @@ sign-off after an explicit FR or product-scope claim.
 **Auditor rule:** Missing in-repo Harbor paths are **not** product gaps. Score L76 as **1**
 until Phase 4 supersede trigger fires with an explicit FR or product-scope claim.
 
+A read-only **visibility mirror** (`docs/eval/harbor-7d.log`) mirrors the honest
+`0/7` soak state from `benchora/harbor-soft` into sharecli docs for auditor
+visibility only. It does not re-vendor the soak and does not count toward L76.
+
 ## Consequences
 
 - C08 agent-eval lifts come only after Phase 4 and lane re-score (L76 target 1→2+);

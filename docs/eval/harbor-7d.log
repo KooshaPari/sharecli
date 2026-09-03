@@ -1,0 +1,58 @@
+# Harbor 7d soak — mirrored visibility log (C08 L76)
+
+**Status:** MIRROR ONLY — canonical soak lives at
+`phenotype-tooling/crates/benchora/harbor-soft/audit/harbor-phase3-soak-log.md`.
+This file is a read-only visibility mirror so `sharecli` auditors can see the
+honest soak state without traversing the EXTRACTED lane.
+
+> **Important:** this is **not** a completed 7-day soak. See the checklist below.
+
+---
+
+## Honest soak state (as of last mirror, 2026-07-19 UTC)
+
+| Field | Value |
+|-------|-------|
+| Canonical source | `phenotype-tooling/crates/benchora/harbor-soft/audit/harbor-phase3-soak-log.md` |
+| Harbor fork/env | `KooshaPari/portage-temp` (awaiting GitHub restore of `portage`) |
+| `sharecli` owns Harbor soft CI | **No** (ADR 0002 §Decision.3, ADR 0005 Phase 2–3) |
+| Seven-day `main` soak complete | **0 / 7** |
+| Local soft parity only | L1 (2026-07-19, sharecli-era, historical — not counted) |
+| L76 score | **1** (seeded N/A per ADR 0002/0005) |
+
+## Seven consecutive `main` runs (all pending)
+
+| # | recorded_at_utc | git_sha | workflow_run | stub_pass | notes |
+|---|-----------------|---------|--------------|-----------|-------|
+| 1 | _pending_ | — | — | — | post-merge row 1 |
+| 2 | _pending_ | — | — | — | |
+| 3 | _pending_ | — | — | — | |
+| 4 | _pending_ | — | — | — | |
+| 5 | _pending_ | — | — | — | |
+| 6 | _pending_ | — | — | — | |
+| 7 | _pending_ | — | — | — | Phase 3 maintainer sign-off gate |
+
+## Phase 3 checklist (manual)
+
+- [ ] Seven consecutive `main` workflow runs green for `harbor-eval-stub-soft.yml`.
+- [ ] No merged PRs broke `scripts/eval/run-corpus.sh` preflight on `main` during the window.
+- [x] `harbor_soak.sh` reproduces CI locally on branch HEAD (scaffold + 2026-07-19 soft soak).
+- [ ] Cross-repo pins table filled with recorded portage / pheno-harness refs.
+- [ ] Maintainer acknowledges Phase 3 complete — does **not** mark ADR 0002 superseded (Phase 4).
+
+## Cross-repo pins (recorded)
+
+| Asset | Org repo | Recorded pin | Suite touchpoint |
+|-------|----------|--------------|------------------|
+| Harbor env provisioning | `KooshaPari/portage-temp` | _pending_ | `scripts/harbor_stub.sh` |
+| SWE-bench / Terminal-Bench tasks | `phenotype-org/pheno-harness` | _pending_ | sharecli eval GOVERNANCE N/A rows |
+| Adapter DAG | portage `adapters/pheno_harness_to_portage.py` | _pending_ | L71/L76 rubric cross-ref |
+
+## Mirroring contract
+
+- This file is **informational**. The authoritative `0/7` clock and rows live in the
+  canonical `benchora/harbor-soft` log.
+- Authored by the `tests/c08_harbor_soft_stub.rs` FR-003 gate, which asserts the mirror
+  exists, is marked `0/7`, and does **not** claim completion.
+- Updating this mirror is a manual, audited doc sync — no automated soak wiring is
+  re-vendored into `sharecli` (per ADR 0002).
