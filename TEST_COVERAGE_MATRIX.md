@@ -1,8 +1,8 @@
 # Test Coverage Matrix
 
 **Project**: sharecli  
-**Document Version**: 1.8
-**Last Updated**: 2026-08-27 (Wave17 T-810 lib pin @ `fa887e9` — **77.34%** lines / **79.79%** funcs / **80.14%** regions; prior workspace pin **80.51%** @ `5d8dc08` retained as historical evidence)
+**Document Version**: 1.9
+**Last Updated**: 2026-09-03 (Wave18 T-910 workspace-broad remeasure @ `d152eda` — **82.38%** lines / **84.34%** funcs / **83.39%** regions; supersedes prior workspace pin **80.51%** @ `5d8dc08`; lib pin **77.34%** @ `fa887e9` retained as the `--lib` hard-gate scope value)
 
 ---
 
@@ -17,7 +17,7 @@
 | Unit-ish tests in `src/` + `crates/` | ~1500+ (includes generated/large suites) |
 | Coverage Target | 85% (see `.github/workflows/quality-gate.yml` `COVERAGE_THRESHOLD`) |
 | Current Coverage (--lib, Wave17 T-810) | **77.34% lines** (`fa887e9`; local llvm-cov run `local-lib-20260827`) |
-| Retained Workspace Pin | **80.51% lines** (`5d8dc08` / run 29985746034; broad workspace pre-T-810 lifts) |
+| Retained Workspace Pin | **82.38% lines** (`d152eda` / local WSL workspace-broad run 2026-09-03; supersedes prior **80.51%** @ `5d8dc08`) |
 
 ---
 
@@ -32,6 +32,18 @@
 | Functions / regions | 79.79% functions (3,439 / 2,744); 80.14% regions (49,622 / 39,765) |
 | Meets 85% unit gate? | **No** (`meets_lines_target: false`); PR hard gate uses `--lib` scope per `quality-gate.yml` |
 | Scope note | `--workspace --all-features broad` measurement blocked on Windows for this pin cycle by integration-test compatibility regressions in `tests/fr008_coalesce_mesh` (operator-env critical-timeout hang) and `tests/fr009_fuse_*` (FUSE-specific Linux/macOS code paths). The `--lib` scope is what `quality-gate.yml` hard-gates; the `--workspace` measurement is supplementary. The prior workspace pin at `5d8dc08` / **80.51%** remains the most recent broad measurement and is retained as historical evidence. |
+
+### Wave18 workspace-broad pin (T-910 — current broad measurement)
+
+| Field | Evidence |
+|-------|----------|
+| Source revision | `d152eda` (Wave18 T-910 workspace-broad remeasure; main at measurement time) |
+| Scope | `--workspace --all-features --locked --ignore-run-fail --summary-only` (cargo llvm-cov 0.9.0; local WSL Linux run 2026-09-03) |
+| Retained snapshot | `audit/coverage-snapshots/d152eda.coverage-snapshot.json` |
+| Measured line percentage | **82.38%** (36,519 lines; 44,330 total) |
+| Functions / regions | 84.34% functions (4,681 / 5,550); 83.39% regions (65,219 / 78,208) |
+| Meets 85% unit gate? | **No** (workspace-broad is supplementary; `--lib` is the hard-gate scope) |
+| Scope note | This is the first successful `--workspace --all-features broad` measurement since the pre-T-810 lifts. It supersedes the prior broad pin **80.51%** @ `5d8dc08` and closes the Phase-1 `T-910` recovery-plan task ("unblock workspace measurement"). The `--lib` pin **77.34%** @ `fa887e9` remains the value hard-gated by `quality-gate.yml`. Measured on WSL (Linux) after resolving the Zig 0.14.x toolchain requirement for `spawn-core` and relocating `CARGO_TARGET_DIR` off the tmpfs. |
 
 ### Prior pin (superseded for current cycle)
 
@@ -132,7 +144,7 @@ Root FR stories: [`FUNCTIONAL_REQUIREMENTS.md`](FUNCTIONAL_REQUIREMENTS.md).
 ### Critical Gaps
 1. Homebrew bottle sha still PLACEHOLDER (`WORK_DAG` Wave4 / C11).
 2. `--lib` line coverage **77.34%** is below the 85% unit gate target (gap for prioritization; unit gate unchanged).
-3. `--workspace --all-features broad` remeasurement blocked on Windows by integration-test compatibility regressions (operator-env critical-timeout hang + FUSE path regressions); most recent broad pin **80.51%** @ `5d8dc08` retained.
+3. `--workspace --all-features broad` measurement now unblocked on WSL/Linux (Wave18 T-910) — **82.38%** @ `d152eda`; still below the 85% unit gate, but workspace-broad is a supplementary scope (the `--lib` scope is what `quality-gate.yml` hard-gates).
 
 ---
 
@@ -196,4 +208,4 @@ Once 85% is achieved, the ratchet locks:
 
 ---
 
-**Last Updated**: 2026-08-28 (Wave18 gap remediation; ADR-007 coverage ratchet recovery plan added)
+**Last Updated**: 2026-09-03 (Wave18 T-910 workspace-broad remeasure **82.38%** @ `d152eda`; Phase-1 unblock complete)
