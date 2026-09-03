@@ -88,6 +88,12 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
+      - name: Install target on active toolchain
+        # rust-toolchain.toml pins channel 1.96.0, overriding the action's
+        # 'stable' input. Add the target to whichever toolchain cargo resolves
+        # so 'cargo build --target' can find std/core.
+        run: rustup target add ${{ matrix.target }}
+
       - name: Install cross (FreeBSD)
         if: matrix.use-cross
         run: cargo install cross --locked
@@ -124,6 +130,11 @@ jobs:
 
       - name: Install musl-tools
         run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install target on active toolchain
+        # rust-toolchain.toml pins 1.96.0, not the action's 'stable'.
+        # Add musl to the resolved toolchain.
+        run: rustup target add x86_64-unknown-linux-musl
 
       - name: Test (lib, musl)
         run: cargo test --workspace --lib --target x86_64-unknown-linux-musl --no-fail-fast
