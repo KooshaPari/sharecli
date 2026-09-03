@@ -55,7 +55,7 @@ jobs:
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32  # v2
 
       - name: Build
-        run: cargo build --workspace --all-features
+        run: cargo build --workspace --all-features --locked 2>&1 | tail -5
 
       - name: Test (lib)
         run: cargo test --workspace --lib --no-fail-fast
@@ -98,7 +98,7 @@ jobs:
 
       - name: Build (native)
         if: "!matrix.use-cross"
-        run: cargo build --target ${{ matrix.target }} --workspace --all-features
+        run: cargo build --target ${{ matrix.target }} --workspace --all-features --locked
 
       - name: Summary
         run: |
