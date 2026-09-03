@@ -52,10 +52,10 @@ jobs:
           toolchain: stable
 
       - name: Cargo cache
-        uses: Swatinem/rust-cache@9d4e6f0a4bfcab8c76ef08b0e5f1e583448d8eeb  # v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32  # v2
 
       - name: Build
-        run: cargo build --workspace --all-features
+        run: cargo build --workspace --all-features --locked 2>&1 | tail -5
 
       - name: Test (lib)
         run: cargo test --workspace --lib --no-fail-fast
@@ -88,6 +88,12 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
+      - name: Install target on active toolchain
+        # rust-toolchain.toml pins channel 1.96.0, overriding the action's
+        # 'stable' input. Add the target to whichever toolchain cargo resolves
+        # so 'cargo build --target' can find std/core.
+        run: rustup target add ${{ matrix.target }}
+
       - name: Install cross (FreeBSD)
         if: matrix.use-cross
         run: cargo install cross --locked
@@ -98,7 +104,7 @@ jobs:
 
       - name: Build (native)
         if: "!matrix.use-cross"
-        run: cargo build --target ${{ matrix.target }} --workspace --all-features
+        run: cargo build --target ${{ matrix.target }} --workspace --all-features --locked
 
       - name: Summary
         run: |
@@ -124,6 +130,11 @@ jobs:
 
       - name: Install musl-tools
         run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install target on active toolchain
+        # rust-toolchain.toml pins 1.96.0, not the action's 'stable'.
+        # Add musl to the resolved toolchain.
+        run: rustup target add x86_64-unknown-linux-musl
 
       - name: Test (lib, musl)
         run: cargo test --workspace --lib --target x86_64-unknown-linux-musl --no-fail-fast
