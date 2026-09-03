@@ -77,6 +77,24 @@ fn fr003_coverage_yml_emits_snapshot_artifact() {
     );
 }
 
+/// FR-003 / C01 L11 — Wave18 workspace-broad snapshot retained and matches matrix pin.
+#[test]
+fn fr003_coverage_workspace_broad_snapshot_matches_pin() {
+    let path = repo_root().join("audit/coverage-snapshots/d152eda.coverage-snapshot.json");
+    let raw = fs::read_to_string(&path).expect("read d152eda coverage snapshot artifact");
+    let snapshot: serde_json::Value =
+        serde_json::from_str(&raw).expect("parse d152eda coverage snapshot JSON");
+
+    let lines_percent = snapshot["coverage"]["lines"]["percent"].as_f64().expect("lines.percent");
+    assert!(
+        (lines_percent - 82.38).abs() < 0.01,
+        "d152eda snapshot lines.percent must be 82.38%; got {lines_percent}"
+    );
+
+    let sha = snapshot["source"]["git_sha"].as_str().expect("source.git_sha");
+    assert!(sha.starts_with("d152eda"), "d152eda snapshot git_sha must match filename; got {sha}");
+}
+
 /// FR-003 / C01 L11 — prior workspace-broad pin snapshot retained as historical evidence.
 #[test]
 fn fr003_coverage_workspace_pin_retained_as_historical() {
