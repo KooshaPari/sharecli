@@ -4,7 +4,7 @@
 **Date:** 2026-08-31 (post-de8c2e2 Plan 805 Wave17 C09 L81.9 Undo/restore model merge)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00â€“C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `NEW_SHA` (Plan 805 post-#815 merge â€” C07 L69 2->3; C07 30/30 100% A; weighted 95.0% A; unweighted 94.0% A; tier-1 95.0% A). Plan 806 reconciles. Plan 805 ships C09 L81.9 2->3; C09 45/45 100% A.
+**Commit audited:** `9fbfa8d` (Plan 805 post-#815 merge â€” C07 L69 2->3; C07 30/30 100% A; weighted 95.0% A; unweighted 94.0% A; tier-1 95.0% A). Plan 806 reconciles. Plan 805 ships C09 L81.9 2->3; C09 45/45 100% A.
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars Ã— 3). Grade: Aâ‰¥90% Â· Bâ‰¥75% Â· Câ‰¥60% Â· Dâ‰¥40% Â· F<40%.
@@ -25,13 +25,13 @@
 | C08 | Eval Coverage | L71â€“L80 | 22/30 | 73% | C | Harbor soft EXTRACTEDâ†’benchora; forkâ†’portage-temp; L76 seeded N/A=1 (ADR 0002/0005); bench tighten remains |
 | C09 | Accessibility + UX | L81â€“L95 | 45/45 | 100% | A | live VO/NVDA soft; Plan 805 shipped L81.9; Plan 796 shipped L81.12+L81.15 |
 | C10 | Visual Identity | L96â€“L107 | 35/36 | 97% | A | visual provenance ledger; PNG regen after hex lock; light-theme dashboard matrix |
-| C11 | Packaging + Distribution | L108â€“L122 | 40/45 | 89% | B | hard codesign/notarize; dmg/msi signed; in-binary updater |
+| C11 | Packaging + Distribution | L108â€“L122 | 41/45 | 91% | A | prove signed+notarized artifact; dmg/msi signed; in-binary updater |
 
 ## Overall
 
 **Weighted overall score:** 95.0% Â· **Overall grade:** A
 
-(Unweighted mean of cluster pcts: (100+93+100+100+90+90+100+100+73+98+97+89)/12 = 1134/12 = **94.5% A**.)
+(Unweighted mean of cluster pcts: (100+93+100+100+90+90+100+100+73+98+97+91)/12 = 1136/12 = **94.7% A**.)
 
 (Tier-1 double-weight (C00â€“C03 + C07): (100+93+100+100+100)Ã—2 + (90+90+93+73+98+97+89) = 493Ã—2 + 630 = 1616 / 17 = **95.1% (A)**.)
 
