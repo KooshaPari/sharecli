@@ -72,6 +72,20 @@ jobs:
           done
           echo "All Apple signing secrets fetched from Infisical"
 
+      - name: Re-wrap p12 to PBES1 legacy (macOS security import compatibility)
+        run: |
+          set -euo pipefail
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/imported.p12"
+          openssl pkcs12 -in "$RUNNER_TEMP/imported.p12" \
+            -passin "pass:${APPLE_CERTIFICATE_PWD}" \
+            -passout "pass:${APPLE_CERTIFICATE_PWD}" \
+            -keypbe 3DES -certpbe PBE-SHA1-RC2-40 -macalg SHA1 \
+            -out "$RUNNER_TEMP/legacy.p12" 2>&1 | tail -5
+          rm "$RUNNER_TEMP/imported.p12"
+          APPLE_CERTIFICATE=$(base64 -i "$RUNNER_TEMP/legacy.p12" | tr -d '\r\n')
+          echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE" >> "$GITHUB_ENV"
+          echo "p12 re-wrapped to PBES1 legacy ($(wc -c < "$RUNNER_TEMP/legacy.p12") bytes)"
+
       - name: Import Apple certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
