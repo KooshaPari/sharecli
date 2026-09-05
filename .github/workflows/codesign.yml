@@ -72,6 +72,26 @@ jobs:
           done
           echo "All Apple signing secrets fetched from Infisical"
 
+      # macOS `security import` (used by apple-actions/import-codesign-certs) refuses
+      # PBES2 (AES-256/SHA-256) p12s produced by `security export -P` — the
+      # SecKeychainItemImport backend rejects the modern KDF even when openssl
+      # verifies the same file fine. Re-wrap to legacy PBES1 (RC2-40 cert + 3DES key
+      # + SHA-1 MAC) here on the macOS runner, which IS importable. The native
+      # PBES2 p12 stays in Infisical (don't downgrade the source secret); this
+      # is a per-run compatibility shim.
+      - name: Re-wrap p12 to legacy PBES1 (macOS import compatibility)
+        run: |
+          set -euo pipefail
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/DeveloperID_Application.p12"
+          openssl pkcs12 -in "$RUNNER_TEMP/DeveloperID_Application.p12" \
+            -passin "pass:${APPLE_CERTIFICATE_PWD}" \
+            -passout "pass:${APPLE_CERTIFICATE_PWD}" \
+            -out "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" \
+            -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-RC2-40 -macalg sha1
+          APPLE_CERTIFICATE=$(base64 -i "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" | tr -d '\n')
+          echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE re-wrapped to PBES1 legacy ($(wc -c < "$RUNNER_TEMP/DeveloperID_Application.legacy.p12") bytes)"
+
       - name: Import Apple certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
