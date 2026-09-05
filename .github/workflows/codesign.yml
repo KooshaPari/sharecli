@@ -72,30 +72,47 @@ jobs:
           done
           echo "All Apple signing secrets fetched from Infisical"
 
-      # macOS `security import` (used by apple-actions/import-codesign-certs) refuses
-      # PBES2 (AES-256/SHA-256) p12s produced by `security export -P` — the
-      # SecKeychainItemImport backend rejects the modern KDF even when openssl
-      # verifies the same file fine. Re-wrap to legacy PBES1 (RC2-40 cert + 3DES key
-      # + SHA-1 MAC) here on the macOS runner, which IS importable. The native
-      # PBES2 p12 stays in Infisical (don't downgrade the source secret); this
-      # is a per-run compatibility shim.
+      # Re-wrap p12 to legacy PBES1 IN-FILE (don't round-trip through GITHUB_ENV —
+      # GitHub Actions env vars are silently truncated at ~18KB; the native p12
+      # base64 is 40,913 chars and gets clipped, producing invalid b64 downstream).
+      # Read b64 directly from $RUNNER_TEMP/infisical.env (full, untruncated).
+      # The re-wrap is also necessary: macOS `security import` (used by
+      # apple-actions/import-codesign-certs) refuses PBES2 (AES-256/SHA-256) p12s
+      # produced by `security export -P` — SecKeychainItemImport rejects the modern
+      # KDF even when openssl verifies the same file fine. We re-wrap to legacy
+      # PBES1 (RC2-40 cert + 3DES key + SHA-1 MAC) here on the runner, which
+      # IS importable. The native PBES2 p12 stays in Infisical (don't downgrade
+      # the source secret); this is a per-run compatibility shim.
       - name: Re-wrap p12 to legacy PBES1 (macOS import compatibility)
+        env:
+          APPLE_CERTIFICATE_PWD: ${{ env.APPLE_CERTIFICATE_PWD }}
         run: |
           set -euo pipefail
-          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/DeveloperID_Application.p12"
+          # Read native (PBES2) p12 b64 directly from the source file — NOT
+          # from $APPLE_CERTIFICATE env var, which GitHub Actions truncates.
+          NATIVE_B64=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" | cut -d= -f2-)
+          printf '%s' "$NATIVE_B64" | base64 --decode > "$RUNNER_TEMP/DeveloperID_Application.p12"
+          echo "native p12 $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.p12") bytes"
           openssl pkcs12 -in "$RUNNER_TEMP/DeveloperID_Application.p12" \
             -passin "pass:${APPLE_CERTIFICATE_PWD}" \
             -passout "pass:${APPLE_CERTIFICATE_PWD}" \
             -out "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" \
             -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-RC2-40 -macalg sha1
-          APPLE_CERTIFICATE=$(base64 -i "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" | tr -d '\n')
-          echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE" >> "$GITHUB_ENV"
-          echo "APPLE_CERTIFICATE re-wrapped to PBES1 legacy ($(wc -c < "$RUNNER_TEMP/DeveloperID_Application.legacy.p12") bytes)"
+          echo "legacy p12 $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.legacy.p12") bytes"
+          # Write re-wrapped b64 to a FILE (also truncates in env vars).
+          base64 -i "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" \
+            | tr -d '\n' > "$RUNNER_TEMP/DeveloperID_Application.legacy.b64"
+          echo "legacy b64 $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.legacy.b64") chars"
 
-      - name: Import Apple certificate
+      - name: Import Apple certificate (legacy PBES1 re-wrap from runner file)
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
+        env:
+          APPLE_CERTIFICATE_PWD: ${{ env.APPLE_CERTIFICATE_PWD }}
         with:
-          p12-file-base64: ${{ env.APPLE_CERTIFICATE }}
+          # Pass the file PATH (not the base64 string) so the action reads
+          # `security import ... legacy.p12` directly. The base64 is ~28k chars
+          # which GitHub Actions env-var storage silently truncates at ~18KB.
+          p12-filepath: ${{ runner.temp }}/DeveloperID_Application.legacy.p12
           p12-password: ${{ env.APPLE_CERTIFICATE_PWD }}
 
       - name: Build release binary
