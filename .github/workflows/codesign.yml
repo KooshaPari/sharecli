@@ -58,7 +58,7 @@ jobs:
             --projectId "$INFISICAL_PROJECT_ID" \
             --env "$INFISICAL_ENV" \
             --token "$INFISICAL_TOKEN" \
-            --format=dotenv --plain > "$RUNNER_TEMP/infisical.env"
+            --format=dotenv > "$RUNNER_TEMP/infisical.env"
 
           # Load only the 5 Apple signing secrets into GITHUB_ENV (masked by GitHub).
           declare -a WANTED=(APPLE_CERTIFICATE APPLE_CERTIFICATE_PWD APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD)
