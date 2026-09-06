@@ -54,23 +54,27 @@ jobs:
             sudo -E bash "$RUNNER_TEMP/infisical-setup.deb.sh"
             sudo apt-get install -y infisical
           fi
-          infisical export \
+          # Per-secret read: avoids ALL dotenv quoting/escaping issues that
+          # affect the macOS Infisical CLI v0.43.129 (which adds escape
+          # backslashes for special chars like '=' and '+' inside long b64
+          # values, breaking any bash parameter-expansion or tr-based extract).
+          # Each `infisical secrets get` writes the raw b64 to a file
+          # with no quoting at all.
+          infisical secrets get APPLE_CERTIFICATE \
             --projectId "$INFISICAL_PROJECT_ID" \
             --env "$INFISICAL_ENV" \
             --token "$INFISICAL_TOKEN" \
-            --format=dotenv > "$RUNNER_TEMP/infisical.env"
-
-          # Export only the SMALL secrets via $GITHUB_ENV. APPLE_CERTIFICATE
-          # (~41KB base64) is too large for env-var storage; the next step
-          # reads it directly from $RUNNER_TEMP/infisical.env instead.
-          declare -a WANTED=(APPLE_CERTIFICATE_PWD APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD)
-          for key in "${WANTED[@]}"; do
-            line=$(grep -E "^${key}=" "$RUNNER_TEMP/infisical.env" || true)
-            if [[ -z "$line" ]]; then
+            --output base64 > "$RUNNER_TEMP/APPLE_CERTIFICATE.b64"
+          for key in APPLE_CERTIFICATE_PWD APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+            val=$(infisical secrets get "$key" \
+              --projectId "$INFISICAL_PROJECT_ID" \
+              --env "$INFISICAL_ENV" \
+              --token "$INFISICAL_TOKEN")
+            if [[ -z "$val" ]]; then
               echo "::error::${key} not found in Infisical env '${INFISICAL_ENV}'"
               exit 1
             fi
-            echo "$line" >> "$GITHUB_ENV"
+            echo "${key}=${val}" >> "$GITHUB_ENV"
           done
 
       # macOS `security import` (used by apple-actions/import-codesign-certs)
@@ -81,41 +85,22 @@ jobs:
       # importable. The native PBES2 p12 stays in Infisical (don't downgrade
       # the source secret); this is a per-run compatibility shim.
       #
-      # The native p12 is read DIRECTLY from the Infisical output file
-      # (not via $APPLE_CERTIFICATE env var) because GitHub Actions truncates
-      # env vars at ~18KB and the b64 is ~41KB. The re-wrapped legacy p12
-      # is written to disk and passed to the import action via its file-path
-      # input (also sidesteps truncation).
+      # The native p12 is read DIRECTLY from a file written by the Infisical
+      # CLI's per-secret read (not via $APPLE_CERTIFICATE env var) because
+      # GitHub Actions truncates env vars at ~18KB and the b64 is ~41KB.
+      # The re-wrapped legacy p12 is written to disk and passed to the import
+      # action via its file-path input (also sidesteps truncation).
       - name: Re-wrap p12 to legacy PBES1 (macOS import compatibility)
         run: |
           set -euo pipefail
-          # Read b64 directly from the Infisical output file (full ~41KB value).
-          # The macOS runner's Infisical CLI v0.43.129 emits dotenv with
-          # QUOTED keys for long values (APPLE_CERTIFICATE="<b64>"). The
-          # value is single-line. We handle both quoted and unquoted forms.
-          #
-          # IMPORTANT: do NOT use grep -Ez here. With -z, the entire file
-          # becomes one "line" terminated by \0 (instead of \n), so the $
-          # anchor requires \0 at the end which the -z output does not produce
-          # for a quoted multi-record file — the result is an empty match.
-          LINE=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" || true)
-          if [[ -z "$LINE" ]]; then
-            echo "::error::APPLE_CERTIFICATE not found in $RUNNER_TEMP/infisical.env"
-            exit 1
-          fi
-          # Pull only the b64 alphabet chars from the line. This is the
-          # robust extraction that survives any quoting/wrapping style
-          # (quoted, escaped, multi-line continuation, CR-LF endings,
-          # internal `\` escapes for special chars like `=` or `+`).
-          CERT_B64=$(printf '%s' "$LINE" | tr -cd 'A-Za-z0-9+/=')
-          if [[ -z "$CERT_B64" ]]; then
-            echo "::error::APPLE_CERTIFICATE extracted as empty string (likely wrong env format)"
-            exit 1
-          fi
-          echo "APPLE_CERTIFICATE b64 length: ${#CERT_B64}"
-          # Sanity check: b64 length must be a multiple of 4.
+          # APPLE_CERTIFICATE.b64 is raw base64 written by the previous step
+          # via `infisical secrets get --output base64` — no shell quoting, no
+          # escape sequences, no CRLF. Read it as plain text and verify length.
+          # Sanity check: b64 length must be a multiple of 4 (raw base64 has
+          # no embedded whitespace, escapes, or quoting — this should
+          # always pass; if not, the secret was corrupted on upload).
           if (( ${#CERT_B64} % 4 != 0 )); then
-            echo "::error::APPLE_CERTIFICATE b64 length ${#CERT_B64} is NOT a multiple of 4 (Infisical dotenv embedded whitespace?)"
+            echo "::error::APPLE_CERTIFICATE b64 length ${#CERT_B64} is NOT a multiple of 4 (raw b64 from Infisical corrupted?)"
             exit 1
           fi
           # Decode native p12 (PBES2 AES-256) to disk.
