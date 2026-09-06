@@ -66,10 +66,14 @@ jobs:
             --token "$INFISICAL_TOKEN" \
             --plain > "$RUNNER_TEMP/APPLE_CERTIFICATE.b64"
           for key in APPLE_CERTIFICATE_PWD APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+            # --plain returns the raw value (no Infisical table header like
+            # 'SECRET NAME | SECRET VALUE | SECRET TYPE'), so writing to
+            # $GITHUB_ENV never triggers 'Unable to process file command'.
             val=$(infisical secrets get "$key" \
               --projectId "$INFISICAL_PROJECT_ID" \
               --env "$INFISICAL_ENV" \
-              --token "$INFISICAL_TOKEN")
+              --token "$INFISICAL_TOKEN" \
+              --plain)
             if [[ -z "$val" ]]; then
               echo "::error::${key} not found in Infisical env '${INFISICAL_ENV}'"
               exit 1
