@@ -1,10 +1,10 @@
 ﻿# audit-v38 Scorecard â€” sharecli
 
 **Repo:** KooshaPari/sharecli
-**Date:** 2026-08-31 (post-de8c2e2 Plan 805 Wave17 C09 L81.9 Undo/restore model merge)
+**Date:** 2026-09-06 (post-632c51a Wave17 codesign-proven / L112-notarize-blocked)
 **Repo-type profile:** CLI+daemon
 **Auditor:** cursor-agent cluster-fleet (C00â€“C11); T-200 FR-002 + threat/release lifts
-**Commit audited:** `9fbfa8d` (Plan 805 post-#815 merge â€” C07 L69 2->3; C07 30/30 100% A; weighted 95.0% A; unweighted 94.0% A; tier-1 95.0% A). Plan 806 reconciles. Plan 805 ships C09 L81.9 2->3; C09 45/45 100% A.
+**Commit audited:** `632c51a` (Wave17 codesign pipeline PROVEN through real Developer ID codesign on `main`; notarize+staple blocked on a valid Apple app-specific password â€” L112 stays 2, C11 41/45 91% A). Weighted **95.0% A** · unweighted **94.7% A** · tier-1 **95.1% A**.
 
 > Scoring: each sub-pillar 0=absent / 1=seeded / 2=partial / 3=complete, evidence-mandatory (`file:line`).
 > Cluster score = sum / (sub-pillars Ã— 3). Grade: Aâ‰¥90% Â· Bâ‰¥75% Â· Câ‰¥60% Â· Dâ‰¥40% Â· F<40%.
