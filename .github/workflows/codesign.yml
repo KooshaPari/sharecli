@@ -58,13 +58,13 @@ jobs:
           # affect the macOS Infisical CLI v0.43.129 (which adds escape
           # backslashes for special chars like '=' and '+' inside long b64
           # values, breaking any bash parameter-expansion or tr-based extract).
-          # Each `infisical secrets get` writes the raw b64 to a file
-          # with no quoting at all.
+          # Each `infisical secrets get --plain` writes the raw b64 to a file
+          # with no quoting at all (just the value followed by a newline).
           infisical secrets get APPLE_CERTIFICATE \
             --projectId "$INFISICAL_PROJECT_ID" \
             --env "$INFISICAL_ENV" \
             --token "$INFISICAL_TOKEN" \
-            --output base64 > "$RUNNER_TEMP/APPLE_CERTIFICATE.b64"
+            --plain > "$RUNNER_TEMP/APPLE_CERTIFICATE.b64"
           for key in APPLE_CERTIFICATE_PWD APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
             val=$(infisical secrets get "$key" \
               --projectId "$INFISICAL_PROJECT_ID" \
@@ -94,7 +94,7 @@ jobs:
         run: |
           set -euo pipefail
           # APPLE_CERTIFICATE.b64 is raw base64 written by the previous step
-          # via `infisical secrets get --output base64` — no shell quoting, no
+          # via `infisical secrets get --plain` — no shell quoting, no
           # escape sequences, no CRLF. Read it as plain text and verify length.
           # Sanity check: b64 length must be a multiple of 4 (raw base64 has
           # no embedded whitespace, escapes, or quoting — this should
