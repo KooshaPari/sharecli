@@ -90,11 +90,27 @@ jobs:
         run: |
           set -euo pipefail
           # Read b64 directly from the Infisical output file (full ~41KB value).
-          # Infisical dotenv export may wrap long values with embedded newlines;
-          # strip ALL whitespace (incl. \r \n space) before decoding.
-          CERT_B64=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" | cut -d= -f2- | tr -d $' \t\r\n')
-          if [[ -z "$CERT_B64" ]]; then
+          # Infisical CLI v0.43.129 emits dotenv with QUOTED keys for long values
+          # (APPLE_CERTIFICATE="<b64>"), and the value may span multiple lines. The
+          # previous 'grep -E "^KEY=" | cut -d= -f2-' assumed unquoted single-line
+          # and produced an empty CERT_B64 on the macOS runner.
+          #
+          # Strategy: read the full record via grep -z, then strip an optional
+          # leading quote, a trailing ' " "', AND all embedded whitespace.
+          RAW=$(grep -Ez '^APPLE_CERTIFICATE=(.*)$' "$RUNNER_TEMP/infisical.env" | tr -d '\0')
+          if [[ -z "$RAW" ]]; then
             echo "::error::APPLE_CERTIFICATE not found in $RUNNER_TEMP/infisical.env"
+            exit 1
+          fi
+          # Strip the leading KEY= and any opening quote.
+          CERT_B64="${RAW#APPLE_CERTIFICATE=}"
+          CERT_B64="${CERT_B64#\"}"
+          # Strip a trailing quote (in case value is quoted single-line).
+          CERT_B64="${CERT_B64%\"}"
+          # Strip ALL embedded whitespace (space, tab, CR, LF, FF, VT).
+          CERT_B64=$(printf '%s' "$CERT_B64" | tr -d '[:space:]')
+          if [[ -z "$CERT_B64" ]]; then
+            echo "::error::APPLE_CERTIFICATE extracted as empty string (likely wrong env format)"
             exit 1
           fi
           echo "APPLE_CERTIFICATE b64 length: ${#CERT_B64}"
@@ -106,12 +122,14 @@ jobs:
           # Decode native p12 (PBES2 AES-256) to disk.
           printf '%s' "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/DeveloperID_Application.p12"
           echo "native p12 size: $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.p12") bytes"
-          # Re-wrap to legacy PBES1 (RC2-40 cert + 3DES key + SHA-1 MAC).
+          # Re-wrap to legacy PBES1. macOS LibreSSL accepts the SHORT names
+          # ('3DES', 'RC2-40') but rejects the long-form ('PBE-SHA1-3DES',
+          # 'PBE-SHA1-RC2-40') which is what triggered 'unknown option' earlier.
           openssl pkcs12 -in "$RUNNER_TEMP/DeveloperID_Application.p12" \
             -passin "pass:${APPLE_CERTIFICATE_PWD}" \
             -passout "pass:${APPLE_CERTIFICATE_PWD}" \
             -out "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" \
-            -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-RC2-40 -macalg sha1
+            -keypbe 3DES -certpbe RC2-40 -macalg sha1
           echo "legacy p12 size: $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.legacy.p12") bytes"
           # Verify the legacy p12 decrypts with the same passphrase (catches
           # the PBES2-compat issue before the import step errors cryptically).
