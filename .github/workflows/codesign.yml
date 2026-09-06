@@ -106,10 +106,16 @@ jobs:
           # Strip the leading KEY= and any opening quote (handle BOTH forms).
           CERT_B64="${RAW#APPLE_CERTIFICATE=}"
           CERT_B64="${CERT_B64#\"}"
-          # Strip a trailing quote + any trailing CR (handles CRLF line endings).
-          CERT_B64="${CERT_B64%\"}"
+          # Strip a trailing CR FIRST (handles CRLF line endings). The closing
+          # double-quote of a quoted dotenv value sits BEFORE the \r on macOS,
+          # so stripping the quote first leaves a stray \r (and the trailing
+          # %\" then can't find the quote to strip). Order matters: CR first,
+          # then quote.
           CERT_B64="${CERT_B64%$'\r'}"
-          # Strip ALL embedded whitespace (space, tab, CR, LF, FF, VT).
+          CERT_B64="${CERT_B64%\"}"
+          CERT_B64="${CERT_B64#\"}"
+          # Strip ALL remaining embedded whitespace (space, tab, FF, VT;
+          # CR and LF already removed).
           CERT_B64=$(printf '%s' "$CERT_B64" | tr -d '[:space:]')
           if [[ -z "$CERT_B64" ]]; then
             echo "::error::APPLE_CERTIFICATE extracted as empty string (likely wrong env format)"
