@@ -81,57 +81,32 @@ jobs:
             echo "${key}=${val}" >> "$GITHUB_ENV"
           done
 
-      # macOS `security import` (used by apple-actions/import-codesign-certs)
-      # refuses PBES2 (AES-256/SHA-256) p12s produced by `security export -P` —
-      # the SecKeychainItemImport backend rejects the modern KDF even when
-      # openssl verifies the same file fine. Re-wrap to legacy PBES1
-      # (RC2-40 cert + 3DES key + SHA-1 MAC) here on the runner, which IS
-      # importable. The native PBES2 p12 stays in Infisical (don't downgrade
-      # the source secret); this is a per-run compatibility shim.
-      #
-      # The native p12 is read DIRECTLY from a file written by the Infisical
-      # CLI's per-secret read (not via $APPLE_CERTIFICATE env var) because
-      # GitHub Actions truncates env vars at ~18KB and the b64 is ~41KB.
-      # The re-wrapped legacy p12 is written to disk and passed to the import
-      # action via its file-path input (also sidesteps truncation).
-      - name: Re-wrap p12 to legacy PBES1 (macOS import compatibility)
+      # Decode the native p12 (PBES2) from the raw base64 file. The b64 is read
+      # DIRECTLY from a file written by the Infisical CLI's per-secret read
+      # (not via the $APPLE_CERTIFICATE env var) because GitHub Actions
+      # truncates env vars at ~18KB and the b64 is ~41KB. No openssl re-wrap:
+      # macOS `security import` accepts the native p12 produced by
+      # `security export` (verified RAW_IMPORT_OK=1), and the earlier
+      # 'passphrase incorrect' error was the env-var truncation, not the
+      # p12 format.
+      - name: Decode Apple certificate (native p12 from b64)
         run: |
           set -euo pipefail
-          # APPLE_CERTIFICATE.b64 is raw base64 written by the previous step
-          # via `infisical secrets get --plain` — no shell quoting, no
-          # escape sequences, no CRLF. Read it as plain text and verify length.
-          # Sanity check: b64 length must be a multiple of 4 (raw base64 has
-          # no embedded whitespace, escapes, or quoting — this should
-          # always pass; if not, the secret was corrupted on upload).
           CERT_B64=$(cat "$RUNNER_TEMP/APPLE_CERTIFICATE.b64" | tr -d '[:space:]')
           if (( ${#CERT_B64} % 4 != 0 )); then
             echo "::error::APPLE_CERTIFICATE b64 length ${#CERT_B64} is NOT a multiple of 4 (raw b64 from Infisical corrupted?)"
             exit 1
           fi
-          # Decode native p12 (PBES2 AES-256) to disk.
           printf '%s' "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/DeveloperID_Application.p12"
           echo "native p12 size: $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.p12") bytes"
-          # Re-wrap to legacy PBES1. macOS LibreSSL accepts the SHORT names
-          # ('3DES', 'RC2-40') but rejects the long-form ('PBE-SHA1-3DES',
-          # 'PBE-SHA1-RC2-40') which is what triggered 'unknown option' earlier.
-          openssl pkcs12 -in "$RUNNER_TEMP/DeveloperID_Application.p12" \
-            -passin "pass:${APPLE_CERTIFICATE_PWD}" \
-            -passout "pass:${APPLE_CERTIFICATE_PWD}" \
-            -out "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" \
-            -keypbe 3DES -certpbe RC2-40 -macalg sha1
-          echo "legacy p12 size: $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.legacy.p12") bytes"
-          # Verify the legacy p12 decrypts with the same passphrase (catches
-          # the PBES2-compat issue before the import step errors cryptically).
-          openssl pkcs12 -in "$RUNNER_TEMP/DeveloperID_Application.legacy.p12" \
-            -info -passin "pass:${APPLE_CERTIFICATE_PWD}" -nokeys >/dev/null
           # Emit the file path as a workflow env var so the next step can
-          # reference it via $LEGACY_P12 (paths don't suffer truncation).
-          echo "LEGACY_P12=$RUNNER_TEMP/DeveloperID_Application.legacy.p12" >> "$GITHUB_ENV"
+          # reference it via $P12_PATH (paths don't suffer truncation).
+          echo "P12_PATH=$RUNNER_TEMP/DeveloperID_Application.p12" >> "$GITHUB_ENV"
 
       - name: Import Apple certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
-          p12-filepath: ${{ env.LEGACY_P12 }}
+          p12-filepath: ${{ env.P12_PATH }}
           p12-password: ${{ env.APPLE_CERTIFICATE_PWD }}
 
       - name: Build release binary
