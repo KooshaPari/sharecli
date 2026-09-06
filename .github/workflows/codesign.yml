@@ -98,25 +98,16 @@ jobs:
           # becomes one "line" terminated by \0 (instead of \n), so the $
           # anchor requires \0 at the end which the -z output does not produce
           # for a quoted multi-record file — the result is an empty match.
-          RAW=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" || true)
-          if [[ -z "$RAW" ]]; then
+          LINE=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" || true)
+          if [[ -z "$LINE" ]]; then
             echo "::error::APPLE_CERTIFICATE not found in $RUNNER_TEMP/infisical.env"
             exit 1
           fi
-          # Strip the leading KEY= and any opening quote (handle BOTH forms).
-          CERT_B64="${RAW#APPLE_CERTIFICATE=}"
-          CERT_B64="${CERT_B64#\"}"
-          # Strip a trailing CR FIRST (handles CRLF line endings). The closing
-          # double-quote of a quoted dotenv value sits BEFORE the \r on macOS,
-          # so stripping the quote first leaves a stray \r (and the trailing
-          # %\" then can't find the quote to strip). Order matters: CR first,
-          # then quote.
-          CERT_B64="${CERT_B64%$'\r'}"
-          CERT_B64="${CERT_B64%\"}"
-          CERT_B64="${CERT_B64#\"}"
-          # Strip ALL remaining embedded whitespace (space, tab, FF, VT;
-          # CR and LF already removed).
-          CERT_B64=$(printf '%s' "$CERT_B64" | tr -d '[:space:]')
+          # Pull only the b64 alphabet chars from the line. This is the
+          # robust extraction that survives any quoting/wrapping style
+          # (quoted, escaped, multi-line continuation, CR-LF endings,
+          # internal `\` escapes for special chars like `=` or `+`).
+          CERT_B64=$(printf '%s' "$LINE" | tr -cd 'A-Za-z0-9+/=')
           if [[ -z "$CERT_B64" ]]; then
             echo "::error::APPLE_CERTIFICATE extracted as empty string (likely wrong env format)"
             exit 1
