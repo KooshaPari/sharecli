@@ -99,6 +99,7 @@ jobs:
           # Sanity check: b64 length must be a multiple of 4 (raw base64 has
           # no embedded whitespace, escapes, or quoting — this should
           # always pass; if not, the secret was corrupted on upload).
+          CERT_B64=$(cat "$RUNNER_TEMP/APPLE_CERTIFICATE.b64" | tr -d '[:space:]')
           if (( ${#CERT_B64} % 4 != 0 )); then
             echo "::error::APPLE_CERTIFICATE b64 length ${#CERT_B64} is NOT a multiple of 4 (raw b64 from Infisical corrupted?)"
             exit 1
