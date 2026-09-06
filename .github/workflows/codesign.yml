@@ -90,12 +90,19 @@ jobs:
         run: |
           set -euo pipefail
           # Read b64 directly from the Infisical output file (full ~41KB value).
-          CERT_B64=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" | cut -d= -f2-)
+          # Infisical dotenv export may wrap long values with embedded newlines;
+          # strip ALL whitespace (incl. \r \n space) before decoding.
+          CERT_B64=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" | cut -d= -f2- | tr -d $' \t\r\n')
           if [[ -z "$CERT_B64" ]]; then
             echo "::error::APPLE_CERTIFICATE not found in $RUNNER_TEMP/infisical.env"
             exit 1
           fi
           echo "APPLE_CERTIFICATE b64 length: ${#CERT_B64}"
+          # Sanity check: b64 length must be a multiple of 4.
+          if (( ${#CERT_B64} % 4 != 0 )); then
+            echo "::error::APPLE_CERTIFICATE b64 length ${#CERT_B64} is NOT a multiple of 4 (Infisical dotenv embedded whitespace?)"
+            exit 1
+          fi
           # Decode native p12 (PBES2 AES-256) to disk.
           printf '%s' "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/DeveloperID_Application.p12"
           echo "native p12 size: $(wc -c < "$RUNNER_TEMP/DeveloperID_Application.p12") bytes"
