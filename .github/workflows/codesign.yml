@@ -132,7 +132,8 @@ jobs:
         run: cargo build --release --locked 2>&1 | tail -5
 
       - name: Codesign release binary
-        run: codesign --force --sign "Developer ID Application: Koosha Paridehpour (GCT2BN8WLL)" target/release/sharecli
+        run: |
+          codesign --force --sign "Developer ID Application: Koosha Paridehpour (GCT2BN8WLL)" target/release/sharecli
 
       - name: Notarize release binary
         env:
