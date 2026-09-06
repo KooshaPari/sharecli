@@ -90,23 +90,25 @@ jobs:
         run: |
           set -euo pipefail
           # Read b64 directly from the Infisical output file (full ~41KB value).
-          # Infisical CLI v0.43.129 emits dotenv with QUOTED keys for long values
-          # (APPLE_CERTIFICATE="<b64>"), and the value may span multiple lines. The
-          # previous 'grep -E "^KEY=" | cut -d= -f2-' assumed unquoted single-line
-          # and produced an empty CERT_B64 on the macOS runner.
+          # The macOS runner's Infisical CLI v0.43.129 emits dotenv with
+          # QUOTED keys for long values (APPLE_CERTIFICATE="<b64>"). The
+          # value is single-line. We handle both quoted and unquoted forms.
           #
-          # Strategy: read the full record via grep -z, then strip an optional
-          # leading quote, a trailing ' " "', AND all embedded whitespace.
-          RAW=$(grep -Ez '^APPLE_CERTIFICATE=(.*)$' "$RUNNER_TEMP/infisical.env" | tr -d '\0')
+          # IMPORTANT: do NOT use grep -Ez here. With -z, the entire file
+          # becomes one "line" terminated by \0 (instead of \n), so the $
+          # anchor requires \0 at the end which the -z output does not produce
+          # for a quoted multi-record file — the result is an empty match.
+          RAW=$(grep -E '^APPLE_CERTIFICATE=' "$RUNNER_TEMP/infisical.env" || true)
           if [[ -z "$RAW" ]]; then
             echo "::error::APPLE_CERTIFICATE not found in $RUNNER_TEMP/infisical.env"
             exit 1
           fi
-          # Strip the leading KEY= and any opening quote.
+          # Strip the leading KEY= and any opening quote (handle BOTH forms).
           CERT_B64="${RAW#APPLE_CERTIFICATE=}"
           CERT_B64="${CERT_B64#\"}"
-          # Strip a trailing quote (in case value is quoted single-line).
+          # Strip a trailing quote + any trailing CR (handles CRLF line endings).
           CERT_B64="${CERT_B64%\"}"
+          CERT_B64="${CERT_B64%$'\r'}"
           # Strip ALL embedded whitespace (space, tab, CR, LF, FF, VT).
           CERT_B64=$(printf '%s' "$CERT_B64" | tr -d '[:space:]')
           if [[ -z "$CERT_B64" ]]; then
